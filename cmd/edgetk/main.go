@@ -134,20 +134,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+		*length = 256
+	}
+
 	if *cph == "3des" && *pkey != "keygen" && *length != 192 && *crypt != "" {
 		*length = 192
 	}
 
-	if *cph == "des" && *pkey != "keygen" && *length != 64 && *crypt != "" {
-		*length = 64
-	}
-
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
-		*length = 256
-	}
-
 	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
+	}
+
+	if *cph == "des" && *pkey != "keygen" && *length != 64 && *crypt != "" {
+		*length = 64
 	}
 
 	if *pkey == "keygen" && *pwd == "" {
@@ -329,13 +329,7 @@ func main() {
 
 	if *crypt != "" && (*cph == "chacha20poly1305") {
 		var keyHex string
-		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var key []byte
 		var err error
 		if keyHex == "" {
@@ -392,13 +386,7 @@ func main() {
 
 	if *crypt != "" && (*cph == "chacha20") {
 		var keyHex string
-		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var key []byte
 		var err error
 		if keyHex == "" {
@@ -450,13 +438,7 @@ func main() {
 
 	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "seed" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM") {
 		var keyHex string
-		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var key []byte
 		var err error
 		if keyHex == "" {
@@ -1677,7 +1659,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		switch publicInterface.(type) {
 		case *rsa.PublicKey:
 			publicKey := publicInterface.(*rsa.PublicKey)
@@ -1691,7 +1672,6 @@ func main() {
 			log.Fatal("unknown type of public key")
 		}
 		fmt.Println(randomart.FromString(strings.ReplaceAll(string(buf), "\r\n", "\n")))
-
 	}
 
 	if (*pkey == "text" || *pkey == "modulus") && PEM == "Public" {
