@@ -64,6 +64,7 @@ import (
 	"github.com/pedroalbanese/go-idea"
 	"github.com/pedroalbanese/go-krcrypt"
 	"github.com/pedroalbanese/go-rc5"
+	"github.com/pedroalbanese/go-ripemd"
 	"github.com/pedroalbanese/gogost/gost28147"
 	"github.com/pedroalbanese/gogost/gost34112012256"
 	"github.com/pedroalbanese/gogost/gost34112012512"
@@ -77,13 +78,13 @@ import (
 )
 
 var (
-	alg       = flag.String("algorithm", "RSA", "Public key algorithm: RSA, EC (ECDSA) or SM2.")
-	cert      = flag.String("cert", "Certificate.pem", "Certificate name.")
+	alg       = flag.String("algorithm", "RSA", "Public key algorithm: RSA, ECDSA, Ed25519 or SM2.")
+	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
 	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
-	crypt     = flag.String("crypt", "", "Encrypt/Decrypt with block ciphers.")
+	crypt     = flag.String("crypt", "", "Encrypt/Decrypt with bulk ciphers. [enc|dec]")
 	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dec]")
-	info      = flag.String("info", "", "Additional info. (for HKDF command)")
+	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport     = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	iter      = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
 	kdf       = flag.Int("hkdf", 0, "HMAC-based key derivation function with given bit length.")
@@ -91,16 +92,16 @@ var (
 	length    = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac       = flag.String("mac", "", "Compute Hash-based message authentication code.")
 	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
-	mode      = flag.String("mode", "CTR", "Mode of operation: CFB8, CFB, CTR or OFB.")
+	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CFB8, CFB, CTR, OFB.")
 	pbkdf     = flag.Bool("pbkdf2", false, "Password-based key derivation function.")
-	pkey      = flag.String("pkey", "", "Generate keypair, Sign/Verify with RSA/ECDSA keypair.")
-	priv      = flag.String("private", "Private.pem", "Private key name. (for keypair generation)")
-	pub       = flag.String("public", "Public.pem", "Public key name. (for keypair generation)")
+	pkey      = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
+	priv      = flag.String("private", "Private.pem", "Private key path. (for keypair generation)")
+	pub       = flag.String("public", "Public.pem", "Public key path. (for keypair generation)")
 	pwd       = flag.String("pwd", "", "Password. (for Private key PEM encryption)")
 	random    = flag.Int("rand", 0, "Generate random cryptographic key with given bit length.")
 	recursive = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
-	salt      = flag.String("salt", "", "Salt. (for KDF only)")
-	sig       = flag.String("signature", "", "Input signature. (verification only)")
+	salt      = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
+	sig       = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	target    = flag.String("digest", "", "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	tcpip     = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector    = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
@@ -132,22 +133,6 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Usage of", os.Args[0]+":")
 		flag.PrintDefaults()
 		os.Exit(1)
-	}
-
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
-		*length = 256
-	}
-
-	if *cph == "3des" && *pkey != "keygen" && *length != 192 && *crypt != "" {
-		*length = 192
-	}
-
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
-		*length = 128
-	}
-
-	if *cph == "des" && *pkey != "keygen" && *length != 64 && *crypt != "" {
-		*length = 64
 	}
 
 	if *pkey == "keygen" && *pwd == "" {
@@ -194,6 +179,10 @@ func main() {
 		myHash = sha1.New
 	} else if *md == "rmd160" {
 		myHash = ripemd160.New
+	} else if *md == "rmd128" {
+		myHash = ripemd.New128
+	} else if *md == "rmd256" {
+		myHash = ripemd.New256
 	} else if *md == "sha3-224" {
 		myHash = sha3.New224
 	} else if *md == "sha3-256" {
@@ -285,6 +274,22 @@ func main() {
 		dump := hex.Dump([]byte(b))
 		os.Stdout.Write([]byte(dump))
 		os.Exit(0)
+	}
+
+	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+		*length = 256
+	}
+
+	if *cph == "3des" && *pkey != "keygen" && *length != 192 && *crypt != "" {
+		*length = 192
+	}
+
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+		*length = 128
+	}
+
+	if *cph == "des" && *pkey != "keygen" && *length != 64 && *crypt != "" {
+		*length = 64
 	}
 
 	if *crypt != "" && (*cph == "rc4") {
@@ -453,8 +458,8 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 16 {
-				log.Fatal(err)
+			if len(key) != 32 && len(key) != 24 && len(key) != 16 {
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var ciph cipher.Block
@@ -554,8 +559,8 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 128 && len(key) != 64 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
-				log.Fatal(err)
+			if len(key) != 32 && len(key) != 24 && len(key) != 16 {
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var ciph cipher.Block
@@ -652,7 +657,7 @@ func main() {
 				log.Fatal(err)
 			}
 			if len(key) != 16 && len(key) != 24 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var ciph cipher.Block
@@ -742,6 +747,10 @@ func main() {
 			h = sha1.New()
 		} else if *md == "rmd160" {
 			h = ripemd160.New()
+		} else if *md == "rmd128" {
+			h = ripemd.New128()
+		} else if *md == "rmd256" {
+			h = ripemd.New256()
 		} else if *md == "sha3-224" {
 			h = sha3.New224()
 		} else if *md == "sha3-256" {
@@ -800,6 +809,10 @@ func main() {
 					h = sha1.New()
 				} else if *md == "rmd160" {
 					h = ripemd160.New()
+				} else if *md == "rmd128" {
+					h = ripemd.New128()
+				} else if *md == "rmd256" {
+					h = ripemd.New256()
 				} else if *md == "sha3-224" {
 					h = sha3.New224()
 				} else if *md == "sha3-256" {
@@ -865,6 +878,10 @@ func main() {
 							h = sha1.New()
 						} else if *md == "rmd160" {
 							h = ripemd160.New()
+						} else if *md == "rmd128" {
+							h = ripemd.New128()
+						} else if *md == "rmd256" {
+							h = ripemd.New256()
 						} else if *md == "sha3-224" {
 							h = sha3.New224()
 						} else if *md == "sha3-256" {
@@ -945,6 +962,10 @@ func main() {
 					h = sha1.New()
 				} else if *md == "rmd160" {
 					h = ripemd160.New()
+				} else if *md == "rmd128" {
+					h = ripemd.New128()
+				} else if *md == "rmd256" {
+					h = ripemd.New256()
 				} else if *md == "sha3-224" {
 					h = sha3.New224()
 				} else if *md == "sha3-256" {
@@ -1950,9 +1971,13 @@ func main() {
 			}
 			fmt.Printf(string(privPEM))
 			fmt.Printf("RSA Private-Key: (%v-bit)\n", privKey.N.BitLen())
-			modulus := fmt.Sprintf("%x", privKeyPublicKey.N)
 			fmt.Printf("Modulus: \n")
-			splitz := SplitSubN(modulus, 2)
+			m := privKeyPublicKey.N.Bytes()
+			b, _ := hex.DecodeString("00")
+			c := []byte{}
+			c = append(c, b...)
+			c = append(c, m...)
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
 			}
@@ -2547,31 +2572,7 @@ func SignatureRSA(sourceData []byte) ([]byte, error) {
 	} else if *md == "rmd160" {
 		myHash = ripemd160.New()
 	}
-	/*
-		if *md == "sha224" {
-			myHash = sha256.New224()
-		} else if *md == "sha256" {
-			myHash = sha256.New()
-		} else if *md == "sha384" {
-			myHash = sha512.New384()
-		} else if *md == "sha512" {
-			myHash = sha512.New()
-		} else if *md == "sha3-224" {
-			myHash = sha3.New224()
-		} else if *md == "sha3-256" {
-			myHash = sha3.New256()
-		} else if *md == "sha3-384" {
-			myHash = sha3.New384()
-		} else if *md == "sha3-512" {
-			myHash = sha3.New512()
-		} else if *md == "sha1" {
-			myHash = sha1.New()
-		} else if *md == "md5" {
-			myHash = md5.New()
-		} else if *md == "rmd160" {
-			myHash = ripemd160.New()
-		}
-	*/
+
 	myHash.Write(sourceData)
 	hashRes := myHash.Sum(nil)
 	var res []byte
@@ -2607,26 +2608,6 @@ func SignatureRSA(sourceData []byte) ([]byte, error) {
 		}
 	} else if *md == "sha512" {
 		res, err = rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA512, hashRes)
-		if err != nil {
-			return msg, err
-		}
-	} else if *md == "sha3-224" {
-		res, err = rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA3_224, hashRes)
-		if err != nil {
-			return msg, err
-		}
-	} else if *md == "sha3-256" {
-		res, err = rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA3_256, hashRes)
-		if err != nil {
-			return msg, err
-		}
-	} else if *md == "sha3-384" {
-		res, err = rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA3_384, hashRes)
-		if err != nil {
-			return msg, err
-		}
-	} else if *md == "sha3-512" {
-		res, err = rsa.SignPKCS1v15(rand.Reader, privateKey, crypto.SHA3_512, hashRes)
 		if err != nil {
 			return msg, err
 		}
@@ -2702,26 +2683,6 @@ func VerifyRSA(sourceData, signedData []byte) error {
 		}
 	} else if *md == "sha512" {
 		err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA512, res, signedData)
-		if err != nil {
-			return err
-		}
-	} else if *md == "sha3-224" {
-		err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA3_224, res, signedData)
-		if err != nil {
-			return err
-		}
-	} else if *md == "sha3-256" {
-		err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA3_256, res, signedData)
-		if err != nil {
-			return err
-		}
-	} else if *md == "sha3-384" {
-		err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA3_384, res, signedData)
-		if err != nil {
-			return err
-		}
-	} else if *md == "sha3-512" {
-		err = rsa.VerifyPKCS1v15(publicKey, crypto.SHA3_512, res, signedData)
 		if err != nil {
 			return err
 		}
@@ -3017,6 +2978,10 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sha1.New
 	} else if *md == "rmd160" {
 		myHash = ripemd160.New
+	} else if *md == "rmd128" {
+		myHash = ripemd.New128
+	} else if *md == "rmd256" {
+		myHash = ripemd.New256
 	} else if *md == "sha3-256" {
 		myHash = sha3.New256
 	} else if *md == "sha3-512" {
