@@ -6,7 +6,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pedroalbanese/edgetk)](https://golang.org)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pedroalbanese/edgetk)](https://github.com/pedroalbanese/edgetk/releases)
 
-Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encryption, recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA) and TLS 1.2 for small or embedded systems. 
+Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC) recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA/EdDSA) and TLS 1.2 for small or embedded systems. 
 
 ***Fully OpenSSL compliant***
 
@@ -46,7 +46,7 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
 - **Modes of Operation:**
    - CFB8: Cipher Feedback 8-bit
    - CFB: Cipher Feedback
-   - CTR: Counter Mode (a.k.a. CNT)
+   - CTR: Counter Mode (default)
    - OFB: Output Feedback
    
 - **Message Digest Algorithms:**
@@ -70,7 +70,7 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
 * **Cryptographic Functions:**
 
    * Asymmetric Encryption
-   * Symmetric Encryption
+   * Symmetric Encryption + AEAD Modes
    * Digital Signature
    * Recursive Hash Digest + Check
    * ECDH (Shared Key Agreement)
