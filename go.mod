@@ -28,12 +28,12 @@ require github.com/pedroalbanese/randomart v0.0.0-20130402080559-540116cac932
 require github.com/pkg/errors v0.9.1 // indirect
 
 exclude (
-	github.com/pedroalbanese/edgetk/ccm
-	github.com/pedroalbanese/edgetk/cfb8
-	github.com/pedroalbanese/edgetk/eax
-	github.com/pedroalbanese/edgetk/groestl
-	github.com/pedroalbanese/edgetk/jh
-	github.com/pedroalbanese/edgetk/ocb
-	github.com/pedroalbanese/edgetk/ecb
-	github.com/pedroalbanese/edgetk/threefish
+	github.com/pedroalbanese/edgetk/ccm v0.0.0
+	github.com/pedroalbanese/edgetk/cfb8 v0.0.0
+	github.com/pedroalbanese/edgetk/eax v0.0.0
+	github.com/pedroalbanese/edgetk/groestl v0.0.0
+	github.com/pedroalbanese/edgetk/jh v0.0.0
+	github.com/pedroalbanese/edgetk/ocb v0.0.0
+	github.com/pedroalbanese/edgetk/ecb v0.0.0
+	github.com/pedroalbanese/edgetk/threefish v0.0.0
 )
