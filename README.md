@@ -87,7 +87,7 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
 
 ## Usage
 <pre> -algorithm string
-       Public key algorithm: RSA, EC (ECDSA) or SM2. (default "RSA")
+       Public key algorithm: RSA, ECDSA, Ed25519 or SM2. (default "RSA")
  -bits int
        Key length. (for keypair generation and symmetric encryption)
  -cert string
@@ -97,7 +97,7 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
  -cipher string
        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
  -crypt string
-       Encrypt/Decrypt with block ciphers.
+       Encrypt/Decrypt with bulk ciphers. [enc|dec]
  -digest string
        Target file/wildcard to generate hashsum list. ('-' for STDIN)
  -hex string
@@ -105,7 +105,7 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
  -hkdf int
        HMAC-based key derivation function with given bit length.
  -info string
-       Additional info. (for HKDF command)
+       Additional info. (for HKDF command and AEAD bulk encryption)
  -ipport string
        Local Port/remote's side Public IP:Port.
  -iter int
@@ -119,11 +119,11 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
  -md string
        Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
  -mode string
-       Mode of operation: CFB8, CFB, CTR or OFB. (default "CTR")
+       Mode of operation: GCM, MGM, CFB8, CFB, CTR, OFB. (default "CTR")
  -pbkdf2
        Password-based key derivation function.
  -pkey string
-       Generate keypair, Sign/Verify with RSA/ECDSA keypair.
+       Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
  -private string
        Private key path. (for keypair generation) (default "Private.pem")
  -public string
@@ -135,9 +135,9 @@ Multi-purpose cross-platform cryptography tool for symmetric and asymmetric encr
  -recursive
        Process directories recursively. (for DIGEST command only)
  -salt string
-       Salt. (for KDF only)
+       Salt. (for HKDF and PBKDF2 commands)
  -signature string
-       Input signature. (verification only)
+       Input signature. (for VERIFY command and MAC verification)
  -tcp string
        Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
 
