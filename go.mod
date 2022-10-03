@@ -25,4 +25,7 @@ require (
 
 require github.com/pedroalbanese/randomart v0.0.0-20130402080559-540116cac932
 
-require github.com/pkg/errors v0.9.1 // indirect
+require (
+	github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10
+	github.com/pkg/errors v0.9.1 // indirect
+)

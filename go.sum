@@ -23,6 +23,8 @@ github.com/pedroalbanese/go-krcrypt v0.0.0-20170928183100-a0c871728ae1 h1:u0Ndzh
 github.com/pedroalbanese/go-krcrypt v0.0.0-20170928183100-a0c871728ae1/go.mod h1:7LOlyYV2C5+0UD7eoPYN9fuGds6A3Y73tWihNKFQHO8=
 github.com/pedroalbanese/go-rc5 v0.0.0-20181025211356-a14dd155920a h1:A44dEfQF9P/nft5Oi/lteB6Tk3krO+xe3r65D2FiMZc=
 github.com/pedroalbanese/go-rc5 v0.0.0-20181025211356-a14dd155920a/go.mod h1:nVuhsla4svgWTrzUbeg75dMmFkaqmnTabTVE2OmK3bA=
+github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10 h1:iu0q912gVo1C2uZBdh875c/Ht1gstFAjMYjrgm9AL9Y=
+github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10/go.mod h1:njkESwAoSiroc25e1pcoqQVlecnhnW62Bf7VTQal2SY=
 github.com/pedroalbanese/gogost v0.0.0-20220417104440-4d34dbc5957c h1:ZTaxii+Lx3DYndAJyT+j/33lFbcGi5KegVJ8fksd8QA=
 github.com/pedroalbanese/gogost v0.0.0-20220417104440-4d34dbc5957c/go.mod h1:OE57eDVJnUjrOz821fgDD0maXt4RmTXjoXTaTv7f3wM=
 github.com/pedroalbanese/kuznechik v0.0.0 h1:JiVREgKdbKnvof57hL1sCkatIy97JBymQwUUDrorSEo=
