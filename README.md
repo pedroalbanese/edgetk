@@ -178,7 +178,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 #### Parse keys info:
 ```sh
 ./edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
-./edgetk -pkey [text|modulus] -key public.pem
+./edgetk -pkey [text|modulus|randomart] -key public.pem
 ```
 #### Digital signature:
 ```sh
