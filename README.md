@@ -31,7 +31,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |      Cipher      |  Key Size  |  IV  |         Modes         |
     |:-----------------|:----------:|:----:|:---------------------:|
     | Chacha20Poly1305 | 256        |   96 | AEAD Stream Cipher    |
-    | RC4 (Obsolete)   | 128        |    - | AEAD Stream Cipher    |
+    | RC4 [Obsolete]   | 128        |    - | XOR                   |
 
 - **128-bit block ciphers:**
 
@@ -50,15 +50,15 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |      Cipher      | Block Size |  Key Size    |    Modes    |
     |:-----------------|:----------:|:------------:|:-----------:|
-    | DES (Obsolete)   |          64|            64|CFB, CTR, OFB|
-    | 3DES (Obsolete)  |          64|           192|CFB, CTR, OFB|
+    | DES [Obsolete]   |          64|            64|CFB, CTR, OFB|
+    | 3DES [Obsolete]  |          64|           192|CFB, CTR, OFB|
     | Blowfish         |          64|     40 to 448|CFB, CTR, OFB|
     | CAST5            |          64|           128|CFB, CTR, OFB|
     | GOST89           |          64|           256|CFB, MGM, CTR, OFB|
-    | IDEA (Obsolete)  |          64|           128|CFB, CTR, OFB|
-    | Magma            |          64|           256|CFB8, MGM, CTR, OFB|
-    | RC2 (Obsolete)   |          64|           128|CFB, CTR, OFB|
-    | RC5 (Obsolete)   |          64|           128|CFB, CTR, OFB|
+    | IDEA [Obsolete]  |          64|           128|CFB, CTR, OFB|
+    | Magma            |          64|           256|CFB, MGM, CTR, OFB|
+    | RC2 [Obsolete]   |          64|           128|CFB, CTR, OFB|
+    | RC5 [Obsolete]   |          64|           128|CFB, CTR, OFB|
 
 - **Modes of Operation:**
 
@@ -68,7 +68,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | MGM | Galois/Counter Mode (AEAD)     |64/128      |Any        | 
     |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
-    | CTR | Counter Mode (a.k.a. CNT)      |All         |Any        |
+    | CTR | Counter Mode (default)      |All         |Any        |
     | OFB | Output Feedback Mode           |All         |Any        |
    
 - **Message Digest Algorithms:**
