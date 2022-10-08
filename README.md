@@ -83,7 +83,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Poly1305        | O   |     |     |     | O   |
     | RIPEMD          | [O](https://thomaspeyrin.github.io/web/assets/docs/slides/Landelle-Peyrin-EUROCRYPT2013_slides.pdf)   | O   | O   |     |     |
     | SHA1 [Obsolete] |     | O   |     |     |     |
-    | SHA2-256 (default)  |     |     | O   | O   |     | 
+    | SHA2 (default)  |     |     | O   | O   |     | 
     | SHA3            |     |     | O   | O   |     |
     | SM3             |     |     | O   |     |     |
     | Streebog        |     |     | O   | O   |     | 
