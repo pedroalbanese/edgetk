@@ -13,59 +13,82 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
-* ECDSA 224/256/384/521-bit
-* Ed25519 (256-bit)
-* RSA Cryptosystem
-* SM2 (256-bit)
+
+    |  Algorithm          | 256 | 512 |ECDH |DSA  |Encryption| TLS |
+    |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
+    | ECDSA               | O   | O   | O   | O   |          | O   |
+    | Ed25519             | O   |     |     | O   |          | O   |
+    | GOST2012            | O   | O   | O   | O   |          | O   |
+    | RSA                 |     |     |     | O   | O        | O   |
+    | SM2                 | O   |     | O   | O   |          |     |
 
 ### Symmetric
 
 - **Stream ciphers:**
-   - Chacha20 (256-bit)
-   - RC4 128-bit [Obsolete]
-   
+
+    |      Cipher      |  Key Size  |  IV  |         Modes         |
+    |:-----------------|:----------:|:----:|:---------------------:|
+    | Chacha20Poly1305 | 256        |   96 | AEAD Stream Cipher    |
+    | RC4 (Obsolete)   | 128        |    - | AEAD Stream Cipher    |
+
 - **128-bit block ciphers:**
-   - AES (Rijndael) 128/192/256-bit (Default)
-   - ARIA 128/192/256-bit
-   - Camellia 128/192/256-bit
-   - Grasshopper (256-bit)
-   - SEED 128-bit
-   - SM4 (128-bit)
+
+    |      Cipher      | Block Size |  Key Size   |         Modes           |
+    |:-----------------|:----------:|:-----------:|:-----------------------:|
+    | AES (Rijndael)   |        128 | 128/192/256 | All modes supported     |
+    | Anubis           |        128 |         128 | All modes supported     |
+    | ARIA             |        128 | 128/192/256 | All modes supported     |
+    | Camellia         |        128 | 128/192/256 | All modes supported     |
+    | Grasshopper      |        128 |         256 | All modes supported     |
+    | SEED             |        128 |         128 | All modes supported     |
+    | SM4              |        128 |         128 | All modes supported     |
    
 - **64-bit block ciphers:**
-   - DES (64-bit) [Obsolete]
-   - 3DES (192-bit) [Almost Obsolete]
-   - Blowfish 128-bit
-   - CAST5 (128-bit)
-   - GOST89 (256-bit)
-   - IDEA (128-bit) [Obsolete]
-   - Magma (256-bit)
-   - RC2 (128-bit) [Obsolete]
-   - RC5 (128-bit) [Obsolete]
+
+
+    |      Cipher      | Block Size |  Key Size    |    Modes    |
+    |:-----------------|:----------:|:------------:|:-----------:|
+    | DES (Obsolete)   |          64|            64|CFB, CTR, OFB|
+    | 3DES (Obsolete)  |          64|           192|CFB, CTR, OFB|
+    | Blowfish         |          64|     40 to 448|CFB, CTR, OFB|
+    | CAST5            |          64|           128|CFB, CTR, OFB|
+    | GOST89           |          64|           256|CFB, MGM, CTR, OFB|
+    | IDEA (Obsolete)  |          64|           128|CFB, CTR, OFB|
+    | Magma            |          64|           256|CFB8, MGM, CTR, OFB|
+    | RC2 (Obsolete)   |          64|           128|CFB, CTR, OFB|
+    | RC5 (Obsolete)   |          64|           128|CFB, CTR, OFB|
 
 - **Modes of Operation:**
-   - CFB8: Cipher Feedback 8-bit
-   - CFB: Cipher Feedback
-   - CTR: Counter Mode (default)
-   - OFB: Output Feedback
+
+    |Mode |                                | Blocks     |  Keys     |
+    |:---:|:-------------------------------|:----------:|:---------:|
+    | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256| 
+    | MGM | Galois/Counter Mode (AEAD)     |64/128      |Any        | 
+    |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
+    | CFB | Cipher Feedback Mode           |All         |Any        |
+    | CTR | Counter Mode (a.k.a. CNT)      |All         |Any        |
+    | OFB | Output Feedback Mode           |All         |Any        |
    
 - **Message Digest Algorithms:**
-   - BLAKE-2B 512-bit
-   - BLAKE-2S 256-bit
-   - GOST94 (256-bit)
-   - MD4 (128-bit) [Obsolete]
-   - MD5 (128-bit) [Obsolete]
-   - RIPEMD (160-bit)
-   - SHA1 (160-bit) [Obsolete]
-   - SHA2 224/256/384/512-bit (default) 
-   - SHA3 224/256/384/512-bit
-   - SM3 (256-bit)
-   - Streebog 256/512-bit
-   - Whirlpool (512-bit)
 
-- **Message Authentication Code Algorithms:**
-   - Poly1305 (128-bit)
-   
+    |    Algorithm    | 128 | 160 | 192 | 256 | 512 | MAC |
+    |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|
+    | BLAKE-2B        |     |     |     | O   | O   | O   |
+    | BLAKE-2S        | O   |     |     | O   |     | O   |
+    | GOST94 CryptoPro      |     |     |     | O   |     |     |
+    | MD4 [Obsolete]  | O   |     |     |     |     |     |
+    | MD5 [Obsolete]  | O   |     |     |     |     |     |
+    | Poly1305        | O   |     |     |     |     | O   |
+    | RIPEMD          | [O](https://thomaspeyrin.github.io/web/assets/docs/slides/Landelle-Peyrin-EUROCRYPT2013_slides.pdf)   | O   |     | O   |     |     |
+    | SHA1 [Obsolete] |     | O   |     |     |     |     |
+    | SHA2-256 (default)  |     |     |     | O   | O   |     | 
+    | SHA3            |     |     |     | O   | O   |     |
+    | SM3             |     |     |     | O   |     |     |
+    | Streebog        |     |     |     | O   | O   |     | 
+    | Whirlpool       |     |     |     |     | O   |     | 
+    
+    - MAC refers to keyed hash function, like HMAC. 
+
 ## Features
 * **Cryptographic Functions:**
 
