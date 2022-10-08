@@ -54,9 +54,9 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | 3DES [Obsolete]  |          64|           192|CFB8, CFB, CTR, OFB|
     | Blowfish         |          64|           128|CFB8, CFB, CTR, OFB|
     | CAST5            |          64|           128|CFB8, CFB, CTR, OFB|
-    | GOST89           |          64|           256|CFB, MGM, CTR, OFB|
+    | GOST89           |          64|           256|MGM, CFB, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|CFB8, CFB, CTR, OFB|
-    | Magma            |          64|           256|CFB, MGM, CTR, OFB|
+    | Magma            |          64|           256|MGM, CFB, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CFB8, CFB, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CFB8, CFB, CTR, OFB|
 
@@ -68,7 +68,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        | 
     |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
-    | CTR | Counter Mode (default)      |All         |Any        |
+    | CTR | Counter Mode (default)         |All         |Any        |
     | OFB | Output Feedback Mode           |All         |Any        |
    
 - **Message Digest Algorithms:**
