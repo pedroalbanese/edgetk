@@ -77,7 +77,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
     | BLAKE-2B        |     |     |     | O   |     | O   | O   |
     | BLAKE-2S        | O   |     |     | O   |     |     | O   |
-    | GOST94 CryptoPro      |     |     |     |     | O   |     |     |
+    | GOST94          |     |     |     |     | O   |     |     |
     | MD4 [Obsolete]  | O   |     |     |     |     |     |     |
     | MD5 [Obsolete]  | O   |     |     |     |     |     |     |
     | Poly1305        | O   |     |     |     |     |     | O   |
