@@ -107,8 +107,9 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
    
 * **Non-cryptographic Functions:**
 
-   * Hex string encoder/dump/decoder (as xxd)
-   * RandomArt (as OpenSSH)
+   * Hex string encoder/dump/decoder (xxd-like)
+   * Privacy-Enhanced Mail (PEM format)
+   * RandomArt (OpenSSH-like)
 
 ## Usage
 <pre> -algorithm string
