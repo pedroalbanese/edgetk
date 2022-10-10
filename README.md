@@ -203,7 +203,7 @@ echo $?
 ```
 #### TLS Layer (TCP/IP):
 ```sh
-./edgetk -tcp ip > PubIP.txt
+./edgetk -tcp ip > MyExternalIP.txt
 ./edgetk -tcp server -cert certificate.pem -key private.pem [-ipport "8081"]
 ./edgetk -tcp client -cert certificate.pem -key private.pem [-ipport "127.0.0.1:8081"]
 ```
