@@ -83,7 +83,7 @@ var (
 	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crypt     = flag.String("crypt", "", "Encrypt/Decrypt with bulk ciphers. [enc|dec]")
-	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dec]")
+	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport     = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	iter      = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
@@ -193,6 +193,8 @@ func main() {
 		myHash = sha3.New512
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
+	} else if *md == "blake2b256" {
+		myHash = crypto.BLAKE2b_256.New
 	} else if *md == "blake2b512" {
 		myHash = crypto.BLAKE2b_512.New
 	} else if *md == "blake2s256" {
@@ -211,11 +213,6 @@ func main() {
 		myHash = sm3.New
 	} else if *md == "md4" {
 		myHash = md4.New
-	}
-
-	if *pbkdf {
-		keyRaw := pbkdf2.Key([]byte(*key), []byte(*salt), *iter, *length/8, myHash)
-		*key = hex.EncodeToString(keyRaw)
 	}
 
 	if *random != 0 {
@@ -292,6 +289,11 @@ func main() {
 		*length = 64
 	}
 
+	if *pbkdf {
+		keyRaw := pbkdf2.Key([]byte(*key), []byte(*salt), *iter, *length/8, myHash)
+		*key = hex.EncodeToString(keyRaw)
+	}
+
 	if *crypt != "" && (*cph == "rc4") {
 		var keyHex string
 		keyHex = *key
@@ -309,7 +311,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 16 && len(key) != 10 {
+			if len(key) != 32 && len(key) != 16 && len(key) != 10 {
 				log.Fatal(err)
 			}
 		}
@@ -761,10 +763,14 @@ func main() {
 			h = sha3.New512()
 		} else if *md == "whirlpool" {
 			h = whirlpool.New()
+		} else if *md == "blake2b256" {
+			h, _ = blake2b.New256([]byte(*key))
 		} else if *md == "blake2b512" {
-			h, _ = blake2b.New512(nil)
+			h, _ = blake2b.New512([]byte(*key))
+		} else if *md == "blake2s128" {
+			h, _ = blake2s.New128([]byte(*key))
 		} else if *md == "blake2s256" {
-			h, _ = blake2s.New256(nil)
+			h, _ = blake2s.New256([]byte(*key))
 		} else if *md == "md5" {
 			h = md5.New()
 		} else if *md == "gost94" {
@@ -823,10 +829,14 @@ func main() {
 					h = sha3.New512()
 				} else if *md == "whirlpool" {
 					h = whirlpool.New()
+				} else if *md == "blake2b256" {
+					h, _ = blake2b.New256([]byte(*key))
 				} else if *md == "blake2b512" {
-					h, _ = blake2b.New512(nil)
+					h, _ = blake2b.New512([]byte(*key))
+				} else if *md == "blake2s128" {
+					h, _ = blake2s.New128([]byte(*key))
 				} else if *md == "blake2s256" {
-					h, _ = blake2s.New256(nil)
+					h, _ = blake2s.New256([]byte(*key))
 				} else if *md == "md5" {
 					h = md5.New()
 				} else if *md == "gost94" {
@@ -892,10 +902,14 @@ func main() {
 							h = sha3.New512()
 						} else if *md == "whirlpool" {
 							h = whirlpool.New()
+						} else if *md == "blake2b256" {
+							h, _ = blake2b.New256([]byte(*key))
 						} else if *md == "blake2b512" {
-							h, _ = blake2b.New512(nil)
+							h, _ = blake2b.New512([]byte(*key))
+						} else if *md == "blake2s128" {
+							h, _ = blake2s.New128([]byte(*key))
 						} else if *md == "blake2s256" {
-							h, _ = blake2s.New256(nil)
+							h, _ = blake2s.New256([]byte(*key))
 						} else if *md == "md5" {
 							h = md5.New()
 						} else if *md == "gost94" {
@@ -976,10 +990,14 @@ func main() {
 					h = sha3.New512()
 				} else if *md == "whirlpool" {
 					h = whirlpool.New()
+				} else if *md == "blake2b256" {
+					h, _ = blake2b.New256([]byte(*key))
 				} else if *md == "blake2b512" {
-					h, _ = blake2b.New512(nil)
+					h, _ = blake2b.New512([]byte(*key))
+				} else if *md == "blake2s128" {
+					h, _ = blake2s.New128([]byte(*key))
 				} else if *md == "blake2s256" {
-					h, _ = blake2s.New256(nil)
+					h, _ = blake2s.New256([]byte(*key))
 				} else if *md == "md5" {
 					h = md5.New()
 				} else if *md == "gost94" {
@@ -2244,7 +2262,6 @@ func main() {
 
 			PermittedDNSDomainsCritical: true,
 			DNSNames:                    []string{ip.String()},
-			IPAddresses:                 []net.IP{net.IPv4(127, 0, 0, 1).To4(), net.ParseIP("2001:4860:0:2001::68")},
 		}
 
 		template.IsCA = true
@@ -2988,6 +3005,8 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sha3.New512
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
+	} else if *md == "blake2b256" {
+		myHash = crypto.BLAKE2b_256.New
 	} else if *md == "blake2b512" {
 		myHash = crypto.BLAKE2b_512.New
 	} else if *md == "blake2s256" {
