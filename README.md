@@ -220,11 +220,13 @@ echo $?
 ```sh
 ./edgetk -mac cmac -key $128bitsecret < file.ext
 ./edgetk -mac cmac -key $128bitsecret -signature $128bitmac < file.ext
+echo $?
 ```
 #### HMAC:
 ```sh
 ./edgetk -mac hmac -key "secret" < file.ext
 ./edgetk -mac hmac -key "secret" -signature $256bitmac < file.ext
+echo $?
 ```
 #### HKDF (HMAC-based key derivation function) (128-bit):
 ```sh
