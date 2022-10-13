@@ -216,12 +216,6 @@ echo $?
 ./edgetk -crypt enc -key $256bitkey < plaintext.ext > ciphertext.ext
 ./edgetk -crypt dec -key $256bitkey < ciphertext.ext > plaintext.ext
 ```
-#### CMAC:
-```sh
-./edgetk -mac cmac -key $128bitsecret < file.ext
-./edgetk -mac cmac -key $128bitsecret -signature $128bitmac < file.ext
-echo $?
-```
 #### HMAC:
 ```sh
 ./edgetk -mac hmac -key "secret" < file.ext
