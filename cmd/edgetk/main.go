@@ -2184,9 +2184,6 @@ func main() {
 			log.Fatalf("Failed to generate serial number: %v", err)
 		}
 
-		consensus := externalip.DefaultConsensus(nil, nil)
-		ip, _ := consensus.ExternalIP()
-
 		Mins := 1200
 		NotAfter := time.Now().Local().Add(time.Minute * time.Duration(Mins))
 
@@ -2261,7 +2258,6 @@ func main() {
 			AuthorityKeyId:        authority,
 
 			PermittedDNSDomainsCritical: true,
-			DNSNames:                    []string{ip.String()},
 		}
 
 		template.IsCA = true
