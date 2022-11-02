@@ -31,7 +31,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |      Cipher      |  Key Size  |  IV  |         Modes         |
     |:-----------------|:----------:|:----:|:---------------------:|
     | Chacha20Poly1305 | 256        |   96 | AEAD Stream Cipher    |
-    | RC4 [Obsolete]   | 128        |    - | XOR                   |
+    | RC4 [Obsolete]   | 40/128     |    - | XOR                   |
 
 - **128-bit block ciphers:**
 
