@@ -311,7 +311,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 16 && len(key) != 10 {
+			if len(key) != 32 && len(key) != 16 && len(key) != 5 {
 				log.Fatal(err)
 			}
 		}
