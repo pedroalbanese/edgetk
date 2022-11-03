@@ -1455,6 +1455,14 @@ func main() {
 			h = sha3.New512()
 		} else if *md == "sha1" {
 			h = sha1.New()
+		} else if *md == "whirlpool" {
+			h = whirlpool.New()
+		} else if *md == "blake2b256" {
+			h = crypto.BLAKE2b_256.New()
+		} else if *md == "blake2b512" {
+			h = crypto.BLAKE2b_512.New()
+		} else if *md == "blake2s256" {
+			h = crypto.BLAKE2s_256.New()
 		}
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
