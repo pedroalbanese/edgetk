@@ -1216,6 +1216,50 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "SM2") {
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		public, err = DecodePublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := bytes.NewBuffer(nil)
+		data := os.Stdin
+		io.Copy(buf, data)
+		scanner := string(buf.Bytes())
+		ciphertxt, err := sm2.EncryptASN1(rand.Reader, public, []byte(scanner))
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%x\n", ciphertxt)
+		os.Exit(0)
+	}
+
+	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "SM2") {
+		var privatekey *sm2.PrivateKey
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		privatekey, err = DecodeSM2PrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := bytes.NewBuffer(nil)
+		data := os.Stdin
+		io.Copy(buf, data)
+		scanner := string(buf.Bytes())
+		str, _ := hex.DecodeString(string(scanner))
+		plaintxt, err := sm2.Decrypt(privatekey, []byte(str))
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s\n", plaintxt)
+		os.Exit(0)
+	}
+
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ED25519") {
 		var privatekey ed25519.PrivateKey
 		var public ed25519.PublicKey
@@ -1512,8 +1556,7 @@ func main() {
 		var privatekey *ecdsa.PrivateKey
 		file, err := ioutil.ReadFile(*pub)
 		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
+			log.Fatal(err)
 		}
 		public, err = DecodePublicKey(file)
 		if err != nil {
