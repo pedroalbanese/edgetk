@@ -22,7 +22,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Ed25519             | O   |     |     | O   |          | O   |
     | GOST2012            | O   | O   | O   | O   |          | O   |
     | RSA                 |     |     |     | O   | O        | O   |
-    | SM2                 | O   |     | O   | O   |          |     |
+    | SM2                 | O   |     | O   | O   | O        |     |
 
 ### Symmetric
 
