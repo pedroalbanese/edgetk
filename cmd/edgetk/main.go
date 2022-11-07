@@ -55,6 +55,7 @@ import (
 	"github.com/emmansun/gmsm/sm3"
 	"github.com/emmansun/gmsm/sm4"
 	"github.com/emmansun/gmsm/smx509"
+	"github.com/emmansun/gmsm/zuc"
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast5"
@@ -281,7 +282,11 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis" || *mac == "eia256") && *pkey != "keygen" && (*length != 128) && *crypt != "" && *mac != "" {
+		*length = 128
+	}
+
+	if *mac == "eia256" && (*length != 32 && *length != 64 && *length != 128) {
 		*length = 128
 	}
 
@@ -440,6 +445,220 @@ func main() {
 				break
 			}
 		}
+		os.Exit(0)
+	}
+
+	if *crypt == "eea256" || (*crypt != "" && *cph == "zuc256") {
+		var keyHex string
+		var keyRaw []byte
+		if *pbkdf {
+			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
+			keyHex = hex.EncodeToString(keyRaw)
+		} else {
+			keyHex = *key
+		}
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 32 {
+				log.Fatal(err)
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, _ = hex.DecodeString(*vector)
+		} else {
+			nonce = make([]byte, 23)
+			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+		}
+		ciph, _ := zuc.NewCipher(key, nonce)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = os.Stdin.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt == "eea128" || (*crypt != "" && *cph == "zuc128") {
+		var keyHex string
+		var keyRaw []byte
+		if *pbkdf {
+			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 16, myHash)
+			keyHex = hex.EncodeToString(keyRaw)
+		} else {
+			keyHex = *key
+		}
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 16)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, _ = hex.DecodeString(*vector)
+		} else {
+			nonce = make([]byte, 16)
+			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+		}
+		ciph, _ := zuc.NewCipher(key, nonce)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = os.Stdin.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *mac == "eia256" {
+		var keyHex string
+		var keyRaw []byte
+		if *pbkdf {
+			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
+			keyHex = hex.EncodeToString(keyRaw)
+		} else {
+			keyHex = *key
+		}
+		var err error
+		if keyHex == "" {
+			keyRaw, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(keyRaw))
+		} else {
+			keyRaw, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(keyRaw) != 32 {
+				log.Fatal(err)
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, err = hex.DecodeString(*vector)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			nonce, _ = hex.DecodeString("0000000000000000000000000000000000000000000000")
+			fmt.Fprintln(os.Stderr, "IV=", hex.EncodeToString(nonce))
+		}
+		h, _ := zuc.NewHash256(keyRaw, nonce, *length/8)
+		if _, err := io.Copy(h, os.Stdin); err != nil {
+			log.Fatal(err)
+		}
+		io.Copy(h, os.Stdin)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac), h.Sum(nil))
+		os.Exit(0)
+	}
+
+	if *mac == "eia128" {
+		var keyHex string
+		var keyRaw []byte
+		if *pbkdf {
+			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 16, myHash)
+			keyHex = hex.EncodeToString(keyRaw)
+		} else {
+			keyHex = *key
+		}
+		var err error
+		if keyHex == "" {
+			keyRaw, _ = hex.DecodeString("00000000000000000000000000000000")
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(keyRaw))
+		} else {
+			keyRaw, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(keyRaw) != 16 {
+				log.Fatal(err)
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, err = hex.DecodeString(*vector)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			nonce, _ = hex.DecodeString("00000000000000000000000000000000")
+			fmt.Fprintln(os.Stderr, "IV=", hex.EncodeToString(nonce))
+		}
+		h, _ := zuc.NewHash(keyRaw, nonce)
+		if _, err := io.Copy(h, os.Stdin); err != nil {
+			log.Fatal(err)
+		}
+		io.Copy(h, os.Stdin)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac), h.Sum(nil))
 		os.Exit(0)
 	}
 
@@ -1185,7 +1404,51 @@ func main() {
 		ioutil.WriteFile(*pub, pubpem, 0644)
 		os.Exit(0)
 	}
+	/*
+		if *pkey == "encrypt" && (strings.ToUpper(*alg) == "ECDSA") {
+			file, err := ioutil.ReadFile(*key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			public, err = DecodePublicKey(file)
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf := bytes.NewBuffer(nil)
+			data := os.Stdin
+			io.Copy(buf, data)
+			scanner := string(buf.Bytes())
+			ciphertxt, err := public.EncryptAsn1([]byte(scanner), rand.Reader)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%x\n", ciphertxt)
+			os.Exit(0)
+		}
 
+		if *pkey == "decrypt" && (strings.ToUpper(*alg) == "ECDSA") {
+			var privatekey *ecdsa.PrivateKey
+			file, err := ioutil.ReadFile(*key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			privatekey, err = DecodePrivateKey(file)
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf := bytes.NewBuffer(nil)
+			data := os.Stdin
+			io.Copy(buf, data)
+			scanner := string(buf.Bytes())
+			str, _ := hex.DecodeString(string(scanner))
+			plaintxt, err := privatekey.DecryptAsn1([]byte(str))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s\n", plaintxt)
+			os.Exit(0)
+		}
+	*/
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "SM2") {
 		var privatekey *sm2.PrivateKey
 		if *key != "" {
