@@ -32,8 +32,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:-----------------|:----------:|:----:|:---------------------:|
     | Chacha20Poly1305 | 256        |   96 | AEAD Stream Cipher    |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
-    | ZUC128 Zu Chunghzi  | 128     |  128 | XOR Stream            |
-    | ZUC128 Zu Chunghzi  | 256     |  184 | XOR Stream            |
+    | ZUC-128 Zu Chunghzi  | 128     |  128 | XOR Stream            |
+    | ZUC-128 Zu Chunghzi  | 256     |  184 | XOR Stream            |
 
 - **128-bit block ciphers:**
 
@@ -89,6 +89,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | SHA3            |     |     | O   | O   |     |
     | SM3             |     |     | O   |     |     |
     | Streebog        |     |     | O   | O   |     | 
+    | ZUC (Zu Chongzhi)| O   |     |     |     | O   |
     | Whirlpool       |     |     |     | O   |     | 
     
     - MAC refers to keyed hash function, like HMAC. 
