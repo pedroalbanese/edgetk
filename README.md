@@ -18,7 +18,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |  Algorithm          | 256 | 512 |ECDH |DSA  |Encryption| TLS |
     |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
-    | ECDSA               | O   | O   | O   | O   |          | O   |
+    | ECDSA               | O   | O   | O   | O   | O        | O   |
     | Ed25519             | O   |     |     | O   |          | O   |
     | GOST2012            | O   | O   | O   | O   |          | O   |
     | RSA                 |     |     |     | O   | O        | O   |
