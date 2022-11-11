@@ -282,7 +282,7 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis" || *mac == "eia256") && *pkey != "keygen" && (*length != 128) && *crypt != "" && *mac != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
