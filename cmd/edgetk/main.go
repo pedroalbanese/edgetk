@@ -7,6 +7,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
+	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
@@ -31,6 +32,7 @@ import (
 	"golang.org/x/crypto/blowfish"
 	"golang.org/x/crypto/chacha20"
 	"golang.org/x/crypto/chacha20poly1305"
+	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/md4"
@@ -61,6 +63,7 @@ import (
 	"github.com/pedroalbanese/cast5"
 	"github.com/pedroalbanese/cfb8"
 	"github.com/pedroalbanese/cmac"
+	"github.com/pedroalbanese/ecb"
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
 	"github.com/pedroalbanese/go-krcrypt"
@@ -146,11 +149,11 @@ func main() {
 	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
@@ -762,6 +765,61 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *crypt != "" && (*cph == "aes") && strings.ToUpper(*mode) == "ECB" {
+		var keyHex string
+		keyHex = *key
+		var err error
+		var key []byte
+
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 32 && len(key) != 24 && len(key) != 16 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		var ciph cipher.Block
+		ciph, err = aes.NewCipher(key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if *crypt == "enc" && strings.ToUpper(*mode) == "ECB" {
+			scanner := bufio.NewScanner(os.Stdin)
+			if !scanner.Scan() {
+				log.Printf("Failed to read: %v", scanner.Err())
+				return
+			}
+			plaintext := scanner.Bytes()
+			plaintext = PKCS7Padding(plaintext)
+			ciphertext := make([]byte, len(plaintext))
+			mode := ecb.NewECBEncrypter(ciph)
+			mode.CryptBlocks(ciphertext, plaintext)
+			fmt.Printf("%s", ciphertext)
+		} else if *crypt == "dec" && strings.ToUpper(*mode) == "ECB" {
+			scanner := bufio.NewScanner(os.Stdin)
+			if !scanner.Scan() {
+				log.Printf("Failed to read: %v", scanner.Err())
+				return
+			}
+			ciphertext := scanner.Bytes()
+			plaintext := make([]byte, len(ciphertext))
+			mode := ecb.NewECBDecrypter(ciph)
+			mode.CryptBlocks(plaintext, ciphertext)
+			plaintext = PKCS7UnPadding(plaintext)
+			fmt.Printf("%s", plaintext)
+		}
+		os.Exit(0)
+	}
+
 	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "gost89") {
 		var keyHex string
 		keyHex = *key
@@ -1156,7 +1214,7 @@ func main() {
 				return nil
 			})
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 	}
 
@@ -1733,11 +1791,11 @@ func main() {
 		var privPEM []byte
 		file, err := os.Open(*key)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
@@ -1761,7 +1819,7 @@ func main() {
 
 		var privKey, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		edKey := privKey.(ed25519.PrivateKey)
 
@@ -1830,7 +1888,166 @@ func main() {
 		}
 		os.Exit(0)
 	}
+	/*
+		if *pkey == "keygen" && (strings.ToUpper(*alg) == "X25519") {
+			var privateKey *ecdh.PrivateKey
 
+			privateKey, err = ecdh.X25519().GenerateKey(rand.Reader)
+			if err != nil {
+				log.Fatal(err)
+			}
+			publicKey := privateKey.Public()
+
+			privateKey, err := ecdh.X25519().NewPrivateKey(privateKey.Bytes())
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("error4")
+			privateStream, err := x509.MarshalPKCS8PrivateKey(privateKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			block := &pem.Block{
+				Type:  "X25519 PRIVATE KEY",
+				Bytes: privateStream,
+			}
+			file, err := os.Create(*priv)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if *pwd != "" {
+				if *cph == "aes128" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherAES128)
+				} else if *cph == "aes192" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherAES192)
+				} else if *cph == "aes" || *cph == "aes256" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherAES256)
+				} else if *cph == "3des" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipher3DES)
+				} else if *cph == "des" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherDES)
+				} else if *cph == "sm4" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSM4)
+				} else if *cph == "gost" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherGOST)
+				} else if *cph == "idea" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherIDEA)
+				} else if *cph == "camellia128" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAMELLIA128)
+				} else if *cph == "camellia192" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAMELLIA192)
+				} else if *cph == "camellia" || *cph == "camellia256" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAMELLIA256)
+				} else if *cph == "aria128" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA128)
+				} else if *cph == "aria192" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA192)
+				} else if *cph == "aria" || *cph == "aria256" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA256)
+				} else if *cph == "seed" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSEED)
+				} else if *cph == "cast5" {
+					block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAST)
+				} else if *cph == "anubis" {
+					block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherANUBIS)
+				}
+				if err != nil {
+					log.Fatal(err)
+				}
+				err = pem.Encode(file, block)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				err = pem.Encode(file, block)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+
+			publicStream, err := x509.MarshalPKIXPublicKey(publicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pubblock := &pem.Block{
+				Type:  "X25519 PUBLIC KEY",
+				Bytes: publicStream,
+			}
+			pubfile, err := os.Create(*pub)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = pem.Encode(pubfile, pubblock)
+			if err != nil {
+				log.Fatal(err)
+			}
+			os.Exit(0)
+		}
+
+		if *pkey == "derive" && (strings.ToUpper(*alg) == "X25519") {
+			var privPEM []byte
+			file, err := os.Open(*key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err := file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf := make([]byte, info.Size())
+			file.Read(buf)
+			var block *pem.Block
+			block, _ = pem.Decode(buf)
+			if block == nil {
+				errors.New("no valid private key found")
+			}
+			var privKeyBytes []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				privPEM = pem.EncodeToMemory(&pem.Block{Type: "X25519 PRIVATE KEY", Bytes: privKeyBytes})
+			} else {
+				privPEM = buf
+			}
+
+			var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
+
+			var privKey, _ = x509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			XKey := privKey.(*ecdh.PrivateKey)
+
+			file, err = os.Open(*pub)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err = file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = make([]byte, info.Size())
+			file.Read(buf)
+			block, _ = pem.Decode(buf)
+			publicInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			publicKey := publicInterface.(*ecdh.PublicKey)
+
+			var secret []byte
+			secret, err = XKey.ECDH(publicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%x\n", secret[:])
+			os.Exit(0)
+		}
+	*/
 	if *pkey == "derive" {
 		var privatekey *ecdsa.PrivateKey
 		file, err := ioutil.ReadFile(*pub)
@@ -1843,7 +2060,7 @@ func main() {
 		}
 		file2, err := ioutil.ReadFile(*key)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal(err)
 			os.Exit(1)
 		}
 		privatekey, err = DecodePrivateKey(file2)
@@ -1862,7 +2079,7 @@ func main() {
 
 	if *pkey == "sign" && *key == "" && strings.ToUpper(*alg) == "RSA" {
 		fmt.Fprintln(os.Stderr, "Usage:")
-		fmt.Fprintln(os.Stderr, os.Args[0]+" -sign -key <privatekey.pem>")
+		fmt.Fprintln(os.Stderr, os.Args[0]+" -pkey sign -key <privatekey.pem>")
 		os.Exit(1)
 	} else if *pkey == "sign" && *key != "" && strings.ToUpper(*alg) == "RSA" {
 		buf := bytes.NewBuffer(nil)
@@ -1900,18 +2117,18 @@ func main() {
 	if *pkey == "encrypt" && (*key != "") && strings.ToUpper(*alg) == "RSA" {
 		file, err := os.Open(*key)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
 		block, _ := pem.Decode(buf)
 		publicInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		publicKey := publicInterface.(*rsa.PublicKey)
 
@@ -1930,11 +2147,11 @@ func main() {
 	if *pkey == "decrypt" && (*key != "") && strings.ToUpper(*alg) == "RSA" {
 		file, err := os.Open(*key)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
@@ -2078,7 +2295,7 @@ func main() {
 			publicKey := publicInterface.(*rsa.PublicKey)
 			derBytes, err := x509.MarshalPKIXPublicKey(publicKey)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			block := &pem.Block{
 				Type:  "PUBLIC KEY",
@@ -2102,7 +2319,7 @@ func main() {
 			publicKey := publicInterface.(ed25519.PublicKey)
 			derBytes, err := smx509.MarshalPKIXPublicKey(publicKey)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			block := &pem.Block{
 				Type:  "PUBLIC KEY",
@@ -2123,7 +2340,7 @@ func main() {
 			}
 			_, err = asn1.Unmarshal(derBytes, &spki)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
 			fmt.Printf("\nSKID: %x \n", skid)
@@ -2131,7 +2348,7 @@ func main() {
 			publicKey := publicInterface.(*ecdsa.PublicKey)
 			derBytes, err := smx509.MarshalPKIXPublicKey(publicKey)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			block := &pem.Block{
 				Type:  "PUBLIC KEY",
@@ -2187,11 +2404,11 @@ func main() {
 		var privPEM []byte
 		file, err := os.Open(*key)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
@@ -2260,14 +2477,14 @@ func main() {
 			}
 			_, err = asn1.Unmarshal(derBytes, &spki)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
 			fmt.Printf("\nSKID: %x \n", skid)
 		} else if strings.ToUpper(*alg) == "ED25519" {
 			var privKey, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			edKey := privKey.(ed25519.PrivateKey)
 			fmt.Printf(string(privPEM))
@@ -2294,7 +2511,7 @@ func main() {
 			}
 			_, err = asn1.Unmarshal(derBytes, &spki)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
 			fmt.Printf("\nSKID: %x \n", skid)
@@ -2324,7 +2541,7 @@ func main() {
 			fmt.Printf("Exponent: %X\n\n", privKeyPublicKey.E)
 			derBytes, err := x509.MarshalPKIXPublicKey(&privKeyPublicKey)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 
 			var spki struct {
@@ -2333,7 +2550,7 @@ func main() {
 			}
 			_, err = asn1.Unmarshal(derBytes, &spki)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
 			fmt.Printf("SKID: %x \n", skid)
@@ -2344,11 +2561,11 @@ func main() {
 		var certPEM []byte
 		file, err := os.Open(*cert)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
@@ -2406,11 +2623,11 @@ func main() {
 	if *pkey == "certgen" {
 		file, err := os.Open(*key)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		info, err := file.Stat()
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
@@ -2604,7 +2821,7 @@ func main() {
 
 		certfile, err := os.Create(*cert)
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
 		pem.Encode(certfile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 		os.Exit(0)
@@ -2685,11 +2902,11 @@ func main() {
 		} else {
 			file, err := os.Open(*key)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			info, err := file.Stat()
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			buf := make([]byte, info.Size())
 			file.Read(buf)
@@ -2705,7 +2922,7 @@ func main() {
 			if IsEncryptedPEMBlock(block) {
 				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
 				if err != nil {
-					log.Println(err)
+					log.Fatal(err)
 				}
 				privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
 			} else {
@@ -2714,11 +2931,11 @@ func main() {
 
 			file, err = os.Open(*cert)
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			info, err = file.Stat()
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			buf = make([]byte, info.Size())
 			file.Read(buf)
@@ -2744,7 +2961,7 @@ func main() {
 
 			conn, err := ln.Accept()
 			if err != nil {
-				log.Println(err)
+				log.Fatal(err)
 			}
 			defer ln.Close()
 
@@ -2820,7 +3037,7 @@ func main() {
 					Bytes: cert.Raw,
 				})
 				if err != nil {
-					log.Println(err)
+					log.Fatal(err)
 				}
 			}
 			fmt.Println(b.String())
@@ -3397,4 +3614,16 @@ func zeroByteSlice() []byte {
 		0, 0, 0, 0,
 		0, 0, 0, 0,
 	}
+}
+
+func PKCS7Padding(ciphertext []byte) []byte {
+	padding := aes.BlockSize - len(ciphertext)%aes.BlockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
+
+func PKCS7UnPadding(plantText []byte) []byte {
+	length := len(plantText)
+	unpadding := int(plantText[length-1])
+	return plantText[:(length - unpadding)]
 }
