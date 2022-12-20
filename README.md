@@ -68,8 +68,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:---:|:-------------------------------|:----------:|:---------:|
     | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256| 
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        | 
-    |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CBC | Cipher-Block Chaining          |All         |Any        |
+    |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
     | CTR | Counter Mode (default)         |All         |Any        |
     | ECB | Eletronic Codebook Mode        |All         |Any        |
