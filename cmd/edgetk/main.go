@@ -766,7 +766,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes") && strings.ToUpper(*mode) == "ECB" {
+	if *crypt != "" && (strings.ToUpper(*mode) == "ECB" || strings.ToUpper(*mode) == "CBC") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -774,6 +774,9 @@ func main() {
 
 		if keyHex == "" {
 			key = make([]byte, *length/8)
+			if *cph == "3des" {
+				key = make([]byte, 24)
+			}
 			_, err = io.ReadFull(rand.Reader, key)
 			if err != nil {
 				log.Fatal(err)
@@ -784,12 +787,60 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
+
 		var ciph cipher.Block
-		ciph, err = aes.NewCipher(key)
+		var n int
+		if *cph == "aes" {
+			ciph, err = aes.NewCipher(key)
+			n = 16
+		} else if *cph == "aria" {
+			ciph, err = aria.NewCipher(key)
+			n = 16
+		} else if *cph == "camellia" {
+			ciph, err = camellia.NewCipher(key)
+			n = 16
+		} else if *cph == "grasshopper" {
+			ciph = gost3412128.NewCipher(key)
+			n = 16
+		} else if *cph == "sm4" {
+			ciph, _ = sm4.NewCipher(key)
+			n = 16
+		} else if *cph == "seed" {
+			ciph, _ = krcrypt.NewSEED(key)
+			n = 16
+		} else if *cph == "anubis" {
+			ciph, _ = anubis.New(key)
+			n = 16
+		} else if *cph == "magma" {
+			ciph = gost341264.NewCipher(key)
+			n = 8
+		} else if *cph == "gost89" {
+			ciph = gost28147.NewCipher(key, &gost28147.SboxIdtc26gost28147paramZ)
+			n = 8
+		} else if *cph == "3des" {
+			ciph, err = des.NewTripleDESCipher(key)
+			n = 8
+		} else if *cph == "des" {
+			ciph, err = des.NewCipher(key)
+			n = 8
+		} else if *cph == "rc2" {
+			ciph, err = rc2.NewCipher(key)
+			n = 8
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		iv := make([]byte, n)
+		if *vector != "" {
+			iv, _ = hex.DecodeString(*vector)
+		} else {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		}
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -814,6 +865,31 @@ func main() {
 			ciphertext := scanner.Bytes()
 			plaintext := make([]byte, len(ciphertext))
 			mode := ecb.NewECBDecrypter(ciph)
+			mode.CryptBlocks(plaintext, ciphertext)
+			plaintext = PKCS7UnPadding(plaintext)
+			fmt.Printf("%s", plaintext)
+		}
+		if *crypt == "enc" && strings.ToUpper(*mode) == "CBC" {
+			scanner := bufio.NewScanner(os.Stdin)
+			if !scanner.Scan() {
+				log.Printf("Failed to read: %v", scanner.Err())
+				return
+			}
+			plaintext := scanner.Bytes()
+			plaintext = PKCS7Padding(plaintext)
+			ciphertext := make([]byte, len(plaintext))
+			mode := cipher.NewCBCEncrypter(ciph, iv)
+			mode.CryptBlocks(ciphertext, plaintext)
+			fmt.Printf("%s", ciphertext)
+		} else if *crypt == "dec" && strings.ToUpper(*mode) == "CBC" {
+			scanner := bufio.NewScanner(os.Stdin)
+			if !scanner.Scan() {
+				log.Printf("Failed to read: %v", scanner.Err())
+				return
+			}
+			ciphertext := scanner.Bytes()
+			plaintext := make([]byte, len(ciphertext))
+			mode := cipher.NewCBCDecrypter(ciph, iv)
 			mode.CryptBlocks(plaintext, ciphertext)
 			plaintext = PKCS7UnPadding(plaintext)
 			fmt.Printf("%s", plaintext)
