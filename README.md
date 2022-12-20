@@ -200,7 +200,7 @@ echo $?
 ```
 #### EC Diffie-Hellman:
 ```sh
-./edgetk -pkey derive -algorithm EC -key private.pem -public perrkey.pem
+./edgetk -pkey derive -algorithm EC -key private.pem -public peerkey.pem
 ```
 #### Generate Certificate:
 ```sh
