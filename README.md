@@ -177,10 +177,6 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 ```sh
 ./edgetk -pkey keygen -bits 4096 [-pwd "pass"]
 ```
-#### Asymmetric EC keypair generation (256-bit):
-```sh
-./edgetk -pkey keygen -bits 256 -algorithm EC [-pwd "pass"]
-```
 #### Parse keys info:
 ```sh
 ./edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
@@ -197,6 +193,14 @@ echo $?
 ```sh
 ./edgetk -pkey encrypt -key public.pem < plaintext.ext > ciphertext.ext
 ./edgetk -pkey decrypt -key private.pem < ciphertext.ext > plaintext.ext
+```
+#### Asymmetric EC keypair generation (256-bit):
+```sh
+./edgetk -pkey keygen -bits 256 -algorithm EC [-pwd "pass"]
+```
+#### EC Diffie-Hellman:
+```sh
+./edgetk -pkey derive -algorithm EC -key private.pem -public perrkey.pem
 ```
 #### Generate Certificate:
 ```sh
