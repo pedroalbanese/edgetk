@@ -1540,7 +1540,7 @@ func main() {
 		os.Exit(0)
 	}
 	/*
-		if *pkey == "encrypt" && (strings.ToUpper(*alg) == "ECDSA") {
+		if *pkey == "encrypt" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") {
 			file, err := ioutil.ReadFile(*key)
 			if err != nil {
 				log.Fatal(err)
@@ -1557,11 +1557,11 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("%x\n", ciphertxt)
+			fmt.Printf("%s", ciphertxt)
 			os.Exit(0)
 		}
 
-		if *pkey == "decrypt" && (strings.ToUpper(*alg) == "ECDSA") {
+		if *pkey == "decrypt" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") {
 			var privatekey *ecdsa.PrivateKey
 			file, err := ioutil.ReadFile(*key)
 			if err != nil {
@@ -1575,12 +1575,12 @@ func main() {
 			data := os.Stdin
 			io.Copy(buf, data)
 			scanner := string(buf.Bytes())
-			str, _ := hex.DecodeString(string(scanner))
+			str := string(scanner)
 			plaintxt, err := privatekey.DecryptAsn1([]byte(str))
 			if err != nil {
 				log.Fatal(err)
 			}
-			fmt.Printf("%s\n", plaintxt)
+			fmt.Printf("%s", plaintxt)
 			os.Exit(0)
 		}
 	*/
@@ -1631,7 +1631,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%x\n", ciphertxt)
+		fmt.Printf("%s", ciphertxt)
 		os.Exit(0)
 	}
 
@@ -1649,12 +1649,12 @@ func main() {
 		data := os.Stdin
 		io.Copy(buf, data)
 		scanner := string(buf.Bytes())
-		str, _ := hex.DecodeString(string(scanner))
+		str := string(scanner)
 		plaintxt, err := sm2.Decrypt(privatekey, []byte(str))
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s\n", plaintxt)
+		fmt.Printf("%s", plaintxt)
 		os.Exit(0)
 	}
 
