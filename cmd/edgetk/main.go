@@ -32,7 +32,6 @@ import (
 	"golang.org/x/crypto/blowfish"
 	"golang.org/x/crypto/chacha20"
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/curve25519"
 	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/md4"
@@ -117,6 +116,8 @@ func publicKey(priv interface{}) interface{} {
 		return &k.PublicKey
 	case *ecdsa.PrivateKey:
 		return &k.PublicKey
+	case *ecdh.PrivateKey:
+		return k.Public().(*ecdh.PublicKey)
 	case ed25519.PrivateKey:
 		return k.Public().(ed25519.PublicKey)
 	case *rsa.PrivateKey:
@@ -1903,7 +1904,6 @@ func main() {
 				log.Fatal(err)
 			}
 
-			fmt.Println("error4")
 			privateStream, err := x509.MarshalPKCS8PrivateKey(privateKey)
 			if err != nil {
 				log.Fatal(err)
@@ -1972,7 +1972,7 @@ func main() {
 				log.Fatal(err)
 			}
 			pubblock := &pem.Block{
-				Type:  "X25519 PUBLIC KEY",
+				Type:  "PUBLIC KEY",
 				Bytes: publicStream,
 			}
 			pubfile, err := os.Create(*pub)
@@ -2216,6 +2216,8 @@ func main() {
 			*alg = "RSA"
 		} else if strings.Contains(s, "EC PRIVATE") {
 			*alg = "EC"
+		} else if strings.Contains(s, "X25519 PRIVATE") {
+			*alg = "X25519"
 		} else {
 			*alg = "ED25519"
 		}
@@ -2235,7 +2237,7 @@ func main() {
 		block, _ := pem.Decode(buf)
 		publicInterface, err := smx509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
-			log.Fatal(err)
+			publicInterface, err = x509.ParsePKIXPublicKey(block.Bytes)
 		}
 		switch publicInterface.(type) {
 		case *rsa.PublicKey:
@@ -2244,6 +2246,8 @@ func main() {
 		case *ecdsa.PublicKey:
 			publicKey := publicInterface.(*ecdsa.PublicKey)
 			fmt.Printf("ECDSA (%v-bit)\n", publicKey.Curve.Params().BitSize)
+		case *ecdh.PublicKey:
+			fmt.Println("X25519 (256-bit)")
 		case ed25519.PublicKey:
 			fmt.Println("Ed25519 (256-bit)")
 		default:
@@ -2264,18 +2268,20 @@ func main() {
 		buf := make([]byte, info.Size())
 		file.Read(buf)
 		block, _ := pem.Decode(buf)
-		publicInterface, err := smx509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
 
+		publicInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			publicInterface, err = smx509.ParsePKIXPublicKey(block.Bytes)
+		}
 		switch publicInterface.(type) {
+		case *ecdh.PublicKey:
+			*alg = "X25519"
+		case ed25519.PublicKey:
+			*alg = "ED25519"
 		case *rsa.PublicKey:
 			*alg = "RSA"
 		case *ecdsa.PublicKey:
 			*alg = "EC"
-		case ed25519.PublicKey:
-			*alg = "ED25519"
 		default:
 			log.Fatal("unknown type of public key")
 		}
@@ -2329,6 +2335,35 @@ func main() {
 			fmt.Printf(string(public))
 
 			fmt.Printf("ED25519 Public-Key:\n")
+			fmt.Printf("pub: \n")
+			splitz := SplitSubN(hex.EncodeToString(derBytes)[24:], 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Fatal(err)
+			}
+			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nSKID: %x \n", skid)
+		} else if strings.ToUpper(*alg) == "X25519" {
+			publicKey := publicInterface.(*ecdh.PublicKey)
+			derBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			block := &pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: derBytes,
+			}
+			public := pem.EncodeToMemory(block)
+			fmt.Printf(string(public))
+
+			fmt.Printf("X25519 Public-Key:\n")
 			fmt.Printf("pub: \n")
 			splitz := SplitSubN(hex.EncodeToString(derBytes)[24:], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -2501,6 +2536,41 @@ func main() {
 			}
 			fmt.Printf("pub: \n")
 			splitz = SplitSubN(p[64:], 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Fatal(err)
+			}
+			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nSKID: %x \n", skid)
+		} else if strings.ToUpper(*alg) == "X25519" {
+			var privKey, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			edKey := privKey.(*ecdh.PrivateKey)
+			fmt.Printf(string(privPEM))
+			derBytes, err := x509.MarshalPKIXPublicKey(edKey.Public())
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("X25519 Private-Key:\n")
+			p := fmt.Sprintf("%x", edKey.Bytes())
+			fmt.Printf("priv: \n")
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			p = fmt.Sprintf("%x", edKey.PublicKey().Bytes())
+			fmt.Printf("pub: \n")
+			splitz = SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
 			}
