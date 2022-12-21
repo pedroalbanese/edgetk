@@ -838,7 +838,7 @@ func main() {
 		iv := make([]byte, n)
 		if *vector != "" {
 			iv, _ = hex.DecodeString(*vector)
-		} else {
+		} else if strings.ToUpper(*mode) == "CBC" {
 			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
 		}
 		if err != nil {
