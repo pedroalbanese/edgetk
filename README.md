@@ -96,6 +96,27 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     
     - MAC refers to keyed hash function, like HMAC. 
 
+### AEAD تشفير مصدق مع البيانات المرتبطة
+
+Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
+
+### XOR
+
+XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
+
+- **exclusive or**
+
+    |x    |y    | x^y |
+    |:---:|:---:|:---:|
+    |0    |0    |0    |
+    |0    |1    |1    |
+    |1    |0    |1    |
+    |1    |1    |0    |
+
+
+### IKM (input key material value)
+Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
+
 ## Features
 * **Cryptographic Functions:**
 
