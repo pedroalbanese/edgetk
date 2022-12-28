@@ -2781,7 +2781,15 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Print(result)
-		os.Exit(0)
+
+		ok := time.Now().Before(certa.NotAfter)
+		fmt.Println("IsValid:", ok)
+
+		if ok {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
 	}
 
 	if *pkey == "certgen" {
