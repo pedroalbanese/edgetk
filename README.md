@@ -96,7 +96,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     
     - MAC refers to keyed hash function, like HMAC. 
 
-### AEAD تشفير مصدق مع البيانات المرتبطة
+### AEAD
 
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
 
