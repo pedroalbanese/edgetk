@@ -47,6 +47,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1435,39 +1436,56 @@ func main() {
 
 	if *mac == "cmac" {
 		var c cipher.Block
+		var err error
 		if *cph == "blowfish" {
-			c, _ = blowfish.NewCipher([]byte(*key))
+			c, err = blowfish.NewCipher([]byte(*key))
 		} else if *cph == "idea" {
-			c, _ = idea.NewCipher([]byte(*key))
+			c, err = idea.NewCipher([]byte(*key))
 		} else if *cph == "cast5" {
-			c, _ = cast5.NewCipher([]byte(*key))
+			c, err = cast5.NewCipher([]byte(*key))
 		} else if *cph == "rc5" {
-			c, _ = rc5.New([]byte(*key))
+			c, err = rc5.New([]byte(*key))
 		} else if *cph == "sm4" {
-			c, _ = sm4.NewCipher([]byte(*key))
+			c, err = sm4.NewCipher([]byte(*key))
 		} else if *cph == "seed" {
-			c, _ = krcrypt.NewSEED([]byte(*key))
+			c, err = krcrypt.NewSEED([]byte(*key))
 		} else if *cph == "rc2" {
-			c, _ = rc2.NewCipher([]byte(*key))
+			c, err = rc2.NewCipher([]byte(*key))
 		} else if *cph == "des" {
-			c, _ = des.NewCipher([]byte(*key))
+			c, err = des.NewCipher([]byte(*key))
 		} else if *cph == "3des" {
-			c, _ = des.NewTripleDESCipher([]byte(*key))
+			c, err = des.NewTripleDESCipher([]byte(*key))
 		} else if *cph == "aes" {
-			c, _ = aes.NewCipher([]byte(*key))
+			c, err = aes.NewCipher([]byte(*key))
 		} else if *cph == "aria" {
-			c, _ = aria.NewCipher([]byte(*key))
+			c, err = aria.NewCipher([]byte(*key))
 		} else if *cph == "camellia" {
-			c, _ = camellia.NewCipher([]byte(*key))
+			c, err = camellia.NewCipher([]byte(*key))
 		} else if *cph == "magma" {
+			if len(*key) != 32 {
+				log.Fatal("MAGMA invalid key size ", len(*key))
+			}
 			c = gost341264.NewCipher([]byte(*key))
 		} else if *cph == "grasshopper" {
+			if len(*key) != 32 {
+				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
+			}
 			c = gost3412128.NewCipher([]byte(*key))
 		} else if *cph == "gost89" {
+			if len(*key) != 32 {
+				log.Fatal("GOST89: invalid key size ", len(*key))
+			}
 			c = gost28147.NewCipher([]byte(*key), &gost28147.SboxIdtc26gost28147paramZ)
 		} else if *cph == "anubis" {
-			c, _ = anubis.New([]byte(*key))
+			if len(*key) != 16 {
+				log.Fatal("ANUBIS: invalid key size ", len(*key))
+			}
+			c, err = anubis.New([]byte(*key))
 		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
 		h, _ := cmac.New(c)
 		io.Copy(h, os.Stdin)
 		var verify bool
@@ -2869,9 +2887,6 @@ func main() {
 			log.Fatalf("Failed to generate serial number: %v", err)
 		}
 
-		Mins := 1200
-		NotAfter := time.Now().Local().Add(time.Minute * time.Duration(Mins))
-
 		scanner := bufio.NewScanner(os.Stdin)
 
 		fmt.Print("CommonName: ")
@@ -2917,6 +2932,13 @@ func main() {
 		fmt.Print("AuthorityKeyId: ")
 		scanner.Scan()
 		authority, _ := hex.DecodeString(scanner.Text())
+
+		fmt.Print("Validity (in Days): ")
+		scanner.Scan()
+		validity := scanner.Text()
+
+		intVar, err := strconv.Atoi(validity)
+		NotAfter := time.Now().AddDate(0, 0, intVar)
 
 		template := x509.Certificate{
 			SerialNumber: serialNumber,
