@@ -90,8 +90,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | SHA1 [Obsolete] |     | O   |     |     |     |
     | SHA2 (default)  |     |     | O   | O   |     | 
     | SHA3            |     |     | O   | O   |     |
-    | SM3             |     |     | O   |     |     |
     | SipHash         | O   |     |     |     | O   |
+    | SM3             |     |     | O   |     |     |
     | Streebog        |     |     | O   | O   |     | 
     | ZUC-256 (Zu Chongzhi)| O   |     |     |     | O   |
     | Whirlpool       |     |     |     | O   |     | 
