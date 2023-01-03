@@ -77,24 +77,24 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
    
 - **Message Digest Algorithms:**
 
-    |    Algorithm    | 128 | 160 | 256 | 512 | MAC |
+    |    Algorithm    |  64 | 128 | 160 | 256 | 512 | MAC |
     |:----------------|:---:|:---:|:---:|:---:|:---:|
-    | BLAKE-2B        |     |     | O   | O   | O   |
-    | BLAKE-2S        | O   |     | O   |     | O   |
-    | Cubehash        |     |     |     | O   |     |
-    | GOST94 CryptoPro      |     |     | O   |     |     |
-    | MD4 [Obsolete]  | O   |     |     |     |     |
-    | MD5 [Obsolete]  | O   |     |     |     |     |
-    | Poly1305        | O   |     |     |     | O   |
-    | RIPEMD          | [O](https://thomaspeyrin.github.io/web/assets/docs/slides/Landelle-Peyrin-EUROCRYPT2013_slides.pdf)   | O   | O   |     |     |
-    | SHA1 [Obsolete] |     | O   |     |     |     |
-    | SHA2 (default)  |     |     | O   | O   |     | 
-    | SHA3            |     |     | O   | O   |     |
-    | SipHash         | O   |     |     |     | O   |
-    | SM3             |     |     | O   |     |     |
-    | Streebog        |     |     | O   | O   |     | 
-    | ZUC-256 (Zu Chongzhi)| O   |     |     |     | O   |
-    | Whirlpool       |     |     |     | O   |     | 
+    | BLAKE-2B        |     |     |     | O   | O   | O   |
+    | BLAKE-2S        |     | O   |     | O   |     | O   |
+    | Cubehash        |     |     |     |     | O   |     |
+    | GOST94 CryptoPro      |     |     |     | O   |     |     |
+    | MD4 [Obsolete]  |     | O   |     |     |     |     |
+    | MD5 [Obsolete]  |     | O   |     |     |     |     |
+    | Poly1305        |     | O   |     |     |     | O   |
+    | RIPEMD          |     | [O](https://thomaspeyrin.github.io/web/assets/docs/slides/Landelle-Peyrin-EUROCRYPT2013_slides.pdf)   | O   | O   |     |     |
+    | SHA1 [Obsolete] |     |     | O   |     |     |     |
+    | SHA2 (default)  |     |     |     | O   | O   |     | 
+    | SHA3            |     |     |     | O   | O   |     |
+    | SipHash         | O   | O   |     |     |     | O   |
+    | SM3             |     |     |     | O   |     |     |
+    | Streebog        |     |     |     | O   | O   |     | 
+    | ZUC-256 (Zu Chongzhi)| O   | O   |     |     |     | O   |
+    | Whirlpool       |     |     |     |     | O   |     | 
     
     - MAC refers to keyed hash function, like HMAC. 
 
