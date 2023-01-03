@@ -63,6 +63,7 @@ import (
 	"github.com/pedroalbanese/cast5"
 	"github.com/pedroalbanese/cfb8"
 	"github.com/pedroalbanese/cmac"
+	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/ecb"
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
@@ -78,6 +79,7 @@ import (
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
+	"github.com/pedroalbanese/siphash"
 	"github.com/pedroalbanese/whirlpool"
 )
 
@@ -219,6 +221,8 @@ func main() {
 		myHash = sm3.New
 	} else if *md == "md4" {
 		myHash = md4.New
+	} else if *md == "cubehash" {
+		myHash = cubehash.New
 	}
 
 	if *random != 0 {
@@ -1138,6 +1142,16 @@ func main() {
 			h = sm3.New()
 		} else if *md == "md4" {
 			h = md4.New()
+		} else if *md == "siphash" || *md == "siphash128" {
+			var xkey [16]byte
+			copy(xkey[:], []byte(*key))
+			h, _ = siphash.New128(xkey[:])
+		} else if *md == "siphash64" {
+			var xkey [16]byte
+			copy(xkey[:], []byte(*key))
+			h, _ = siphash.New64(xkey[:])
+		} else if *md == "cubehash" {
+			h = cubehash.New()
 		}
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)))
@@ -1204,6 +1218,16 @@ func main() {
 					h = sm3.New()
 				} else if *md == "md4" {
 					h = md4.New()
+				} else if *md == "siphash" || *md == "siphash128" {
+					var xkey [16]byte
+					copy(xkey[:], []byte(*key))
+					h, _ = siphash.New128(xkey[:])
+				} else if *md == "siphash64" {
+					var xkey [16]byte
+					copy(xkey[:], []byte(*key))
+					h, _ = siphash.New64(xkey[:])
+				} else if *md == "cubehash" {
+					h = cubehash.New()
 				}
 				if _, err := io.Copy(h, f); err != nil {
 					log.Fatal(err)
@@ -1277,6 +1301,16 @@ func main() {
 							h = sm3.New()
 						} else if *md == "md4" {
 							h = md4.New()
+						} else if *md == "siphash" || *md == "siphash128" {
+							var xkey [16]byte
+							copy(xkey[:], []byte(*key))
+							h, _ = siphash.New128(xkey[:])
+						} else if *md == "siphash64" {
+							var xkey [16]byte
+							copy(xkey[:], []byte(*key))
+							h, _ = siphash.New64(xkey[:])
+						} else if *md == "cubehash" {
+							h = cubehash.New()
 						}
 						f, err := os.Open(path)
 						if err != nil {
@@ -1365,6 +1399,16 @@ func main() {
 					h = sm3.New()
 				} else if *md == "md4" {
 					h = md4.New()
+				} else if *md == "siphash" || *md == "siphash128" {
+					var xkey [16]byte
+					copy(xkey[:], []byte(*key))
+					h, _ = siphash.New128(xkey[:])
+				} else if *md == "siphash64" {
+					var xkey [16]byte
+					copy(xkey[:], []byte(*key))
+					h, _ = siphash.New64(xkey[:])
+				} else if *md == "cubehash" {
+					h = cubehash.New()
 				}
 				_, err := os.Stat(lines[1])
 				if err == nil {
@@ -1510,7 +1554,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s\n", hash[:*kdf/8])
+		fmt.Printf("%x\n", hash[:*kdf/8])
 	}
 
 	var pubkey ecdsa.PublicKey
@@ -2162,7 +2206,7 @@ func main() {
 			log.Fatal(err)
 		}
 		b, _ := public.Curve.ScalarMult(public.X, public.Y, privatekey.D.Bytes())
-		fmt.Printf("%s", b.Bytes())
+		fmt.Printf("%x", b.Bytes())
 		os.Exit(0)
 	}
 
@@ -3736,6 +3780,8 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = gost34112012512.New
 	} else if *md == "sm3" {
 		myHash = sm3.New
+	} else if *md == "cubehash" {
+		myHash = cubehash.New
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
