@@ -81,6 +81,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:----------------|:---:|:---:|:---:|:---:|:---:|
     | BLAKE-2B        |     |     | O   | O   | O   |
     | BLAKE-2S        | O   |     | O   |     | O   |
+    | Cubehash        |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     | O   |     |     |
     | MD4 [Obsolete]  | O   |     |     |     |     |
     | MD5 [Obsolete]  | O   |     |     |     |     |
@@ -90,6 +91,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | SHA2 (default)  |     |     | O   | O   |     | 
     | SHA3            |     |     | O   | O   |     |
     | SM3             |     |     | O   |     |     |
+    | SipHash         | O   |     |     |     | O   |
     | Streebog        |     |     | O   | O   |     | 
     | ZUC-256 (Zu Chongzhi)| O   |     |     |     | O   |
     | Whirlpool       |     |     |     | O   |     | 
