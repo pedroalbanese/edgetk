@@ -113,6 +113,16 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |1    |0    |1    |
     |1    |1    |0    |
 
+### Key sizes
+- **Bit-length Equivalence**
+
+    | Symmetric Key Size  | RSA and DSA Key Size  | ECC Key Size   | 
+    |:-------------------:|:---------------------:|:--------------:| 
+    | 80                  | 1024                  | 160            | 
+    | 112                 | 2048                  | 224            | 
+    | 128                 | 3072                  | 256            | 
+    | 192                 | 7680                  | 384            | 
+    | 256                 | 15360                 | 512            |  
 
 ### IKM (input key material value)
 Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
