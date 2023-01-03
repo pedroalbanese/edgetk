@@ -78,7 +78,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 - **Message Digest Algorithms:**
 
     |    Algorithm    |  64 | 128 | 160 | 256 | 512 | MAC |
-    |:----------------|:---:|:---:|:---:|:---:|:---:|
+    |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|
     | BLAKE-2B        |     |     |     | O   | O   | O   |
     | BLAKE-2S        |     | O   |     | O   |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
