@@ -1829,6 +1829,8 @@ func main() {
 			h = sha3.New512()
 		} else if *md == "sha1" {
 			h = sha1.New()
+		} else if *md == "sm3" {
+			h = sm3.New()
 		}
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
@@ -1870,6 +1872,8 @@ func main() {
 			h = sha3.New512()
 		} else if *md == "sha1" {
 			h = sha1.New()
+		} else if *md == "sm3" {
+			h = sm3.New()
 		}
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
@@ -1923,6 +1927,8 @@ func main() {
 			h = crypto.BLAKE2b_512.New()
 		} else if *md == "blake2s256" {
 			h = crypto.BLAKE2s_256.New()
+		} else if *md == "cubehash" {
+			h = cubehash.New()
 		}
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
@@ -1996,6 +2002,8 @@ func main() {
 			h = crypto.BLAKE2b_512.New()
 		} else if *md == "blake2s256" {
 			h = crypto.BLAKE2s_256.New()
+		} else if *md == "cubehash" {
+			h = cubehash.New()
 		}
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
