@@ -1848,7 +1848,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("(stdin)=", hex.EncodeToString(signature))
+		fmt.Println(strings.ToUpper(*alg)+"-"+strings.ToUpper(*md)+"(stdin)=", hex.EncodeToString(signature))
 		os.Exit(0)
 	}
 
@@ -1970,7 +1970,7 @@ func main() {
 
 		signature := ed25519.Sign(edKey, h.Sum(nil))
 
-		fmt.Println("(stdin)=", hex.EncodeToString(signature))
+		fmt.Println("ED25519-"+strings.ToUpper(*md)+"(stdin)=", hex.EncodeToString(signature))
 		os.Exit(0)
 	}
 
@@ -2238,7 +2238,7 @@ func main() {
 			fmt.Println("cryption error:", err)
 			os.Exit(1)
 		}
-		fmt.Println("(stdin)=", hex.EncodeToString(signData))
+		fmt.Println("RSA-"+strings.ToUpper(*md)+"(stdin)=", hex.EncodeToString(signData))
 		os.Exit(0)
 	}
 
