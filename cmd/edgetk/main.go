@@ -108,7 +108,7 @@ var (
 	recursive = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
 	salt      = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
 	sig       = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
-	target    = flag.String("digest", "", "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
+	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	tcpip     = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector    = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
 )
@@ -308,6 +308,21 @@ func main() {
 		*key = hex.EncodeToString(keyRaw)
 	}
 
+	Files := strings.Join(flag.Args(), " ")
+	var inputfile io.Reader
+	var inputdesc string
+	var err error
+	if Files == "-" || Files == "" || strings.Contains(Files, "*") {
+		inputfile = os.Stdin
+		inputdesc = "stdin"
+	} else {
+		inputfile, err = os.Open(flag.Arg(0))
+		if err != nil {
+			log.Fatalf("failed opening file: %s", err)
+		}
+		inputdesc = flag.Arg(0)
+	}
+
 	if *crypt != "" && (*cph == "rc4") {
 		var keyHex string
 		keyHex = *key
@@ -333,7 +348,7 @@ func main() {
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
-			n, err = os.Stdin.Read(buf)
+			n, err = inputfile.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
@@ -375,7 +390,7 @@ func main() {
 			log.Fatal(err)
 		}
 		buf := bytes.NewBuffer(nil)
-		io.Copy(buf, os.Stdin)
+		io.Copy(buf, inputfile)
 		msg := buf.Bytes()
 
 		if *crypt == "enc" {
@@ -442,7 +457,7 @@ func main() {
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
-			n, err = os.Stdin.Read(buf)
+			n, err = inputfile.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
@@ -495,7 +510,7 @@ func main() {
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
-			n, err = os.Stdin.Read(buf)
+			n, err = inputfile.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
@@ -548,7 +563,7 @@ func main() {
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
-			n, err = os.Stdin.Read(buf)
+			n, err = inputfile.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
@@ -599,7 +614,7 @@ func main() {
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
 		}
-		io.Copy(h, os.Stdin)
+		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
 			mac := hex.EncodeToString(h.Sum(nil))
@@ -653,7 +668,7 @@ func main() {
 		if _, err := io.Copy(h, os.Stdin); err != nil {
 			log.Fatal(err)
 		}
-		io.Copy(h, os.Stdin)
+		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
 			mac := hex.EncodeToString(h.Sum(nil))
@@ -740,7 +755,7 @@ func main() {
 		}
 
 		buf := bytes.NewBuffer(nil)
-		io.Copy(buf, os.Stdin)
+		io.Copy(buf, inputfile)
 		msg := buf.Bytes()
 
 		if *crypt == "enc" {
@@ -850,7 +865,7 @@ func main() {
 			log.Fatal(err)
 		}
 		if *crypt == "enc" && strings.ToUpper(*mode) == "ECB" {
-			scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(inputfile)
 			if !scanner.Scan() {
 				log.Printf("Failed to read: %v", scanner.Err())
 				return
@@ -862,7 +877,7 @@ func main() {
 			mode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
 		} else if *crypt == "dec" && strings.ToUpper(*mode) == "ECB" {
-			scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(inputfile)
 			if !scanner.Scan() {
 				log.Printf("Failed to read: %v", scanner.Err())
 				return
@@ -875,7 +890,7 @@ func main() {
 			fmt.Printf("%s", plaintext)
 		}
 		if *crypt == "enc" && strings.ToUpper(*mode) == "CBC" {
-			scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(inputfile)
 			if !scanner.Scan() {
 				log.Printf("Failed to read: %v", scanner.Err())
 				return
@@ -887,7 +902,7 @@ func main() {
 			mode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
 		} else if *crypt == "dec" && strings.ToUpper(*mode) == "CBC" {
-			scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(inputfile)
 			if !scanner.Scan() {
 				log.Printf("Failed to read: %v", scanner.Err())
 				return
@@ -982,7 +997,7 @@ func main() {
 		buf := make([]byte, 128*1<<10)
 		var n int
 		for {
-			n, err = os.Stdin.Read(buf)
+			n, err = inputfile.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
@@ -1079,7 +1094,7 @@ func main() {
 		buf := make([]byte, 128*1<<10)
 		var n int
 		for {
-			n, err = os.Stdin.Read(buf)
+			n, err = inputfile.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Fatal(err)
 			}
@@ -1094,7 +1109,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *target == "-" {
+	if *digest && (Files == "-" || Files == "") {
 		var h hash.Hash
 		if *md == "sha224" {
 			h = sha256.New224()
@@ -1158,19 +1173,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *target != "" && *recursive == false {
-		files, err := filepath.Glob(*target)
-		if err != nil {
-			log.Fatal(err)
-		}
-		for _, match := range files {
-			f, err := os.Open(match)
+	if *digest && *recursive == false {
+		for _, wildcard := range flag.Args() {
+			files, err := filepath.Glob(wildcard)
 			if err != nil {
 				log.Fatal(err)
 			}
-			file, err := os.Stat(match)
-			if file.IsDir() {
-			} else {
+			for _, match := range files {
 				var h hash.Hash
 				if *md == "sha224" {
 					h = sha256.New224()
@@ -1229,17 +1238,26 @@ func main() {
 				} else if *md == "cubehash" {
 					h = cubehash.New()
 				}
-				if _, err := io.Copy(h, f); err != nil {
+				f, err := os.Open(match)
+				if err != nil {
 					log.Fatal(err)
 				}
-				fmt.Println(hex.EncodeToString(h.Sum(nil)), "*"+f.Name())
+				file, err := os.Stat(match)
+				if file.IsDir() {
+				} else {
+					if _, err := io.Copy(h, f); err != nil {
+						log.Fatal(err)
+					}
+					fmt.Println(hex.EncodeToString(h.Sum(nil)), "*"+f.Name())
+				}
+				f.Close()
 			}
-			f.Close()
 		}
+		os.Exit(0)
 	}
 
-	if *target != "" && *recursive == true {
-		err := filepath.Walk(filepath.Dir(*target),
+	if *digest && *recursive == true {
+		err := filepath.Walk(filepath.Dir(Files),
 			func(path string, info os.FileInfo, err error) error {
 				if err != nil {
 					return err
@@ -1247,86 +1265,88 @@ func main() {
 				file, err := os.Stat(path)
 				if file.IsDir() {
 				} else {
-					filename := filepath.Base(path)
-					pattern := filepath.Base(*target)
-					matched, err := filepath.Match(pattern, filename)
-					if err != nil {
-						fmt.Println(err)
-					}
-					if matched {
-						var h hash.Hash
-						if *md == "sha224" {
-							h = sha256.New224()
-						} else if *md == "sha256" {
-							h = sha256.New()
-						} else if *md == "sha384" {
-							h = sha512.New384()
-						} else if *md == "sha512" {
-							h = sha512.New()
-						} else if *md == "sha1" {
-							h = sha1.New()
-						} else if *md == "rmd160" {
-							h = ripemd160.New()
-						} else if *md == "rmd128" {
-							h = ripemd.New128()
-						} else if *md == "rmd256" {
-							h = ripemd.New256()
-						} else if *md == "sha3-224" {
-							h = sha3.New224()
-						} else if *md == "sha3-256" {
-							h = sha3.New256()
-						} else if *md == "sha3-384" {
-							h = sha3.New384()
-						} else if *md == "sha3-512" {
-							h = sha3.New512()
-						} else if *md == "whirlpool" {
-							h = whirlpool.New()
-						} else if *md == "blake2b256" {
-							h, _ = blake2b.New256([]byte(*key))
-						} else if *md == "blake2b512" {
-							h, _ = blake2b.New512([]byte(*key))
-						} else if *md == "blake2s128" {
-							h, _ = blake2s.New128([]byte(*key))
-						} else if *md == "blake2s256" {
-							h, _ = blake2s.New256([]byte(*key))
-						} else if *md == "md5" {
-							h = md5.New()
-						} else if *md == "gost94" {
-							h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
-						} else if *md == "streebog256" {
-							h = gost34112012256.New()
-						} else if *md == "streebog512" {
-							h = gost34112012512.New()
-						} else if *md == "sm3" {
-							h = sm3.New()
-						} else if *md == "md4" {
-							h = md4.New()
-						} else if *md == "siphash" || *md == "siphash128" {
-							var xkey [16]byte
-							copy(xkey[:], []byte(*key))
-							h, _ = siphash.New128(xkey[:])
-						} else if *md == "siphash64" {
-							var xkey [16]byte
-							copy(xkey[:], []byte(*key))
-							h, _ = siphash.New64(xkey[:])
-						} else if *md == "cubehash" {
-							h = cubehash.New()
-						}
-						f, err := os.Open(path)
+					for _, match := range flag.Args() {
+						filename := filepath.Base(path)
+						pattern := filepath.Base(match)
+						matched, err := filepath.Match(pattern, filename)
 						if err != nil {
-							log.Fatal(err)
+							fmt.Println(err)
 						}
-						if _, err := io.Copy(h, f); err != nil {
-							log.Fatal(err)
+						if matched {
+							var h hash.Hash
+							if *md == "sha224" {
+								h = sha256.New224()
+							} else if *md == "sha256" {
+								h = sha256.New()
+							} else if *md == "sha384" {
+								h = sha512.New384()
+							} else if *md == "sha512" {
+								h = sha512.New()
+							} else if *md == "sha1" {
+								h = sha1.New()
+							} else if *md == "rmd160" {
+								h = ripemd160.New()
+							} else if *md == "rmd128" {
+								h = ripemd.New128()
+							} else if *md == "rmd256" {
+								h = ripemd.New256()
+							} else if *md == "sha3-224" {
+								h = sha3.New224()
+							} else if *md == "sha3-256" {
+								h = sha3.New256()
+							} else if *md == "sha3-384" {
+								h = sha3.New384()
+							} else if *md == "sha3-512" {
+								h = sha3.New512()
+							} else if *md == "whirlpool" {
+								h = whirlpool.New()
+							} else if *md == "blake2b256" {
+								h, _ = blake2b.New256([]byte(*key))
+							} else if *md == "blake2b512" {
+								h, _ = blake2b.New512([]byte(*key))
+							} else if *md == "blake2s128" {
+								h, _ = blake2s.New128([]byte(*key))
+							} else if *md == "blake2s256" {
+								h, _ = blake2s.New256([]byte(*key))
+							} else if *md == "md5" {
+								h = md5.New()
+							} else if *md == "gost94" {
+								h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
+							} else if *md == "streebog256" {
+								h = gost34112012256.New()
+							} else if *md == "streebog512" {
+								h = gost34112012512.New()
+							} else if *md == "sm3" {
+								h = sm3.New()
+							} else if *md == "md4" {
+								h = md4.New()
+							} else if *md == "siphash" || *md == "siphash128" {
+								var xkey [16]byte
+								copy(xkey[:], []byte(*key))
+								h, _ = siphash.New128(xkey[:])
+							} else if *md == "siphash64" {
+								var xkey [16]byte
+								copy(xkey[:], []byte(*key))
+								h, _ = siphash.New64(xkey[:])
+							} else if *md == "cubehash" {
+								h = cubehash.New()
+							}
+							f, err := os.Open(path)
+							if err != nil {
+								log.Fatal(err)
+							}
+							if _, err := io.Copy(h, f); err != nil {
+								log.Fatal(err)
+							}
+							f.Close()
+							fmt.Println(hex.EncodeToString(h.Sum(nil)), "*"+f.Name())
 						}
-						f.Close()
-						fmt.Println(hex.EncodeToString(h.Sum(nil)), "*"+f.Name())
 					}
 				}
 				return nil
 			})
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 	}
 
@@ -1437,7 +1457,7 @@ func main() {
 		var keyx [32]byte
 		copy(keyx[:], []byte(*key))
 		h := poly1305.New(&keyx)
-		io.Copy(h, os.Stdin)
+		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
 			mac := hex.EncodeToString(h.Sum(nil))
@@ -1451,14 +1471,14 @@ func main() {
 				os.Exit(0)
 			}
 		}
-		fmt.Println("(stdin)=", hex.EncodeToString(h.Sum(nil)))
+		fmt.Println("MAC-POLY1305("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
 	if *mac == "hmac" {
 		var err error
 		h := hmac.New(myHash, []byte(*key))
-		if _, err = io.Copy(h, os.Stdin); err != nil {
+		if _, err = io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
 		var verify bool
@@ -1474,7 +1494,7 @@ func main() {
 				os.Exit(0)
 			}
 		}
-		fmt.Println("(stdin)=", hex.EncodeToString(h.Sum(nil)))
+		fmt.Println("HMAC-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -1531,7 +1551,7 @@ func main() {
 		}
 
 		h, _ := cmac.New(c)
-		io.Copy(h, os.Stdin)
+		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
 			mac := hex.EncodeToString(h.Sum(nil))
@@ -1545,7 +1565,7 @@ func main() {
 				os.Exit(0)
 			}
 		}
-		fmt.Println("(stdin)=", hex.EncodeToString(h.Sum(nil)))
+		fmt.Println("CMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -1559,7 +1579,6 @@ func main() {
 
 	var pubkey ecdsa.PublicKey
 	var public *ecdsa.PublicKey
-	var err error
 	var pubkeyCurve elliptic.Curve
 
 	if *pkey == "keygen" && *length == 224 {
@@ -1612,7 +1631,7 @@ func main() {
 				log.Fatal(err)
 			}
 			buf := bytes.NewBuffer(nil)
-			data := os.Stdin
+			data := inputfile
 			io.Copy(buf, data)
 			scanner := string(buf.Bytes())
 			ciphertxt, err := public.EncryptAsn1([]byte(scanner), rand.Reader)
@@ -1634,7 +1653,7 @@ func main() {
 				log.Fatal(err)
 			}
 			buf := bytes.NewBuffer(nil)
-			data := os.Stdin
+			data := inputfile
 			io.Copy(buf, data)
 			scanner := string(buf.Bytes())
 			str := string(scanner)
@@ -1686,7 +1705,7 @@ func main() {
 			log.Fatal(err)
 		}
 		buf := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buf, data)
 		scanner := string(buf.Bytes())
 		ciphertxt, err := sm2.EncryptASN1(rand.Reader, public, []byte(scanner))
@@ -1708,7 +1727,7 @@ func main() {
 			log.Fatal(err)
 		}
 		buf := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buf, data)
 		scanner := string(buf.Bytes())
 		str := string(scanner)
@@ -1832,7 +1851,7 @@ func main() {
 		} else if *md == "sm3" {
 			h = sm3.New()
 		}
-		if _, err := io.Copy(h, os.Stdin); err != nil {
+		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
 		file, err := ioutil.ReadFile(*key)
@@ -1848,7 +1867,7 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(strings.ToUpper(*alg)+"-"+strings.ToUpper(*md)+"(stdin)=", hex.EncodeToString(signature))
+		fmt.Println(strings.ToUpper(*alg)+"-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
 		os.Exit(0)
 	}
 
@@ -1875,7 +1894,7 @@ func main() {
 		} else if *md == "sm3" {
 			h = sm3.New()
 		}
-		if _, err := io.Copy(h, os.Stdin); err != nil {
+		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
 		file, err := ioutil.ReadFile(*key)
@@ -1930,7 +1949,7 @@ func main() {
 		} else if *md == "cubehash" {
 			h = cubehash.New()
 		}
-		if _, err := io.Copy(h, os.Stdin); err != nil {
+		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
 		var privPEM []byte
@@ -1970,7 +1989,7 @@ func main() {
 
 		signature := ed25519.Sign(edKey, h.Sum(nil))
 
-		fmt.Println("ED25519-"+strings.ToUpper(*md)+"(stdin)=", hex.EncodeToString(signature))
+		fmt.Println("ED25519-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
 		os.Exit(0)
 	}
 
@@ -2005,7 +2024,7 @@ func main() {
 		} else if *md == "cubehash" {
 			h = cubehash.New()
 		}
-		if _, err := io.Copy(h, os.Stdin); err != nil {
+		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
 		file, err := os.Open(*key)
@@ -2229,7 +2248,7 @@ func main() {
 		os.Exit(1)
 	} else if *pkey == "sign" && *key != "" && strings.ToUpper(*alg) == "RSA" {
 		buf := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buf, data)
 		Data := string(buf.Bytes())
 		sourceData := []byte(Data)
@@ -2238,7 +2257,7 @@ func main() {
 			fmt.Println("cryption error:", err)
 			os.Exit(1)
 		}
-		fmt.Println("RSA-"+strings.ToUpper(*md)+"(stdin)=", hex.EncodeToString(signData))
+		fmt.Println("RSA-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signData))
 		os.Exit(0)
 	}
 
@@ -2248,7 +2267,7 @@ func main() {
 		os.Exit(1)
 	} else if *pkey == "verify" && (*key != "" || *sig != "") && strings.ToUpper(*alg) == "RSA" {
 		buf := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buf, data)
 		Data := string(buf.Bytes())
 		Signature, err := hex.DecodeString(*sig)
@@ -2279,7 +2298,7 @@ func main() {
 		publicKey := publicInterface.(*rsa.PublicKey)
 
 		buffer := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buffer, data)
 
 		ciphertext, err := rsa.EncryptPKCS1v15(rand.Reader, publicKey, buffer.Bytes())
@@ -2324,7 +2343,7 @@ func main() {
 		}
 
 		buffer := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buffer, data)
 
 		plaintext, err := rsa.DecryptPKCS1v15(rand.Reader, privateKey, buffer.Bytes())
