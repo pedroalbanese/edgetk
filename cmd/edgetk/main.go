@@ -77,6 +77,7 @@ import (
 	"github.com/pedroalbanese/gogost/gost3412128"
 	"github.com/pedroalbanese/gogost/gost341264"
 	"github.com/pedroalbanese/gogost/mgm"
+	"github.com/pedroalbanese/gopass"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
 	"github.com/pedroalbanese/siphash"
@@ -89,6 +90,7 @@ var (
 	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crypt     = flag.String("crypt", "", "Encrypt/Decrypt with bulk ciphers. [enc|dec]")
+	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport     = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
@@ -108,7 +110,6 @@ var (
 	recursive = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
 	salt      = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
 	sig       = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
-	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	tcpip     = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector    = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
 )
@@ -167,10 +168,9 @@ func main() {
 			errors.New("no valid private key found")
 		}
 		if IsEncryptedPEMBlock(block) {
-			scanner := bufio.NewScanner(os.Stdin)
 			print("Password: ")
-			scanner.Scan()
-			*pwd = scanner.Text()
+			pass, _ := gopass.GetPasswd()
+			*pwd = string(pass)
 		}
 	}
 
