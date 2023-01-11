@@ -237,8 +237,23 @@ func main() {
 		os.Exit(0)
 	}
 
+	Files := strings.Join(flag.Args(), " ")
+	var inputfile io.Reader
+	var inputdesc string
+	var err error
+	if Files == "-" || Files == "" || strings.Contains(Files, "*") {
+		inputfile = os.Stdin
+		inputdesc = "stdin"
+	} else {
+		inputfile, err = os.Open(flag.Arg(0))
+		if err != nil {
+			log.Fatalf("failed opening file: %s", err)
+		}
+		inputdesc = flag.Arg(0)
+	}
+
 	if *encode == "enc" {
-		b, err := ioutil.ReadAll(os.Stdin)
+		b, err := ioutil.ReadAll(inputfile)
 		if len(b) == 0 {
 			os.Exit(0)
 		}
@@ -252,7 +267,7 @@ func main() {
 	} else if *encode == "dec" {
 		var err error
 		buf := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buf, data)
 		b := strings.TrimSuffix(string(buf.Bytes()), "\r\n")
 		b = strings.TrimSuffix(string(b), "\n")
@@ -274,7 +289,7 @@ func main() {
 		os.Exit(0)
 	} else if *encode == "dump" {
 		buf := bytes.NewBuffer(nil)
-		data := os.Stdin
+		data := inputfile
 		io.Copy(buf, data)
 		b := strings.TrimSuffix(string(buf.Bytes()), "\r\n")
 		b = strings.TrimSuffix(string(b), "\n")
@@ -306,21 +321,6 @@ func main() {
 	if *pbkdf {
 		keyRaw := pbkdf2.Key([]byte(*key), []byte(*salt), *iter, *length/8, myHash)
 		*key = hex.EncodeToString(keyRaw)
-	}
-
-	Files := strings.Join(flag.Args(), " ")
-	var inputfile io.Reader
-	var inputdesc string
-	var err error
-	if Files == "-" || Files == "" || strings.Contains(Files, "*") {
-		inputfile = os.Stdin
-		inputdesc = "stdin"
-	} else {
-		inputfile, err = os.Open(flag.Arg(0))
-		if err != nil {
-			log.Fatalf("failed opening file: %s", err)
-		}
-		inputdesc = flag.Arg(0)
 	}
 
 	if *crypt != "" && (*cph == "rc4") {
