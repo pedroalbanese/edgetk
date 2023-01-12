@@ -162,10 +162,10 @@ Keying material is in general to include things like shared Diffie-Hellman secre
        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
  -crypt string
        Encrypt/Decrypt with bulk ciphers. [enc|dec]
- -digest string
+ -digest
        Target file/wildcard to generate hashsum list. ('-' for STDIN)
  -hex string
-       Encode binary string to hex format and vice-versa. [enc|dec]
+       Encode binary string to hex format and vice-versa. [enc|dump|dec]
  -hkdf int
        HMAC-based key derivation function with given bit length.
  -info string
