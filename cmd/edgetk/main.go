@@ -879,24 +879,18 @@ func main() {
 			log.Fatal(err)
 		}
 		if *crypt == "enc" && strings.ToUpper(*mode) == "ECB" {
-			scanner := bufio.NewScanner(inputfile)
-			if !scanner.Scan() {
-				log.Printf("Failed to read: %v", scanner.Err())
-				return
-			}
-			plaintext := scanner.Bytes()
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, inputfile)
+			plaintext := buf.Bytes()
 			plaintext = PKCS7Padding(plaintext)
 			ciphertext := make([]byte, len(plaintext))
 			mode := ecb.NewECBEncrypter(ciph)
 			mode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
 		} else if *crypt == "dec" && strings.ToUpper(*mode) == "ECB" {
-			scanner := bufio.NewScanner(inputfile)
-			if !scanner.Scan() {
-				log.Printf("Failed to read: %v", scanner.Err())
-				return
-			}
-			ciphertext := scanner.Bytes()
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, inputfile)
+			ciphertext := buf.Bytes()
 			plaintext := make([]byte, len(ciphertext))
 			mode := ecb.NewECBDecrypter(ciph)
 			mode.CryptBlocks(plaintext, ciphertext)
@@ -904,48 +898,36 @@ func main() {
 			fmt.Printf("%s", plaintext)
 		}
 		if *crypt == "enc" && strings.ToUpper(*mode) == "CBC" {
-			scanner := bufio.NewScanner(inputfile)
-			if !scanner.Scan() {
-				log.Printf("Failed to read: %v", scanner.Err())
-				return
-			}
-			plaintext := scanner.Bytes()
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, inputfile)
+			plaintext := buf.Bytes()
 			plaintext = PKCS7Padding(plaintext)
 			ciphertext := make([]byte, len(plaintext))
 			mode := cipher.NewCBCEncrypter(ciph, iv)
 			mode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
 		} else if *crypt == "dec" && strings.ToUpper(*mode) == "CBC" {
-			scanner := bufio.NewScanner(inputfile)
-			if !scanner.Scan() {
-				log.Printf("Failed to read: %v", scanner.Err())
-				return
-			}
-			ciphertext := scanner.Bytes()
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, inputfile)
+			ciphertext := buf.Bytes()
 			plaintext := make([]byte, len(ciphertext))
 			mode := cipher.NewCBCDecrypter(ciph, iv)
 			mode.CryptBlocks(plaintext, ciphertext)
 			plaintext = PKCS7UnPadding(plaintext)
 			fmt.Printf("%s", plaintext)
 		} else if *crypt == "enc" && strings.ToUpper(*mode) == "IGE" {
-			scanner := bufio.NewScanner(inputfile)
-			if !scanner.Scan() {
-				log.Printf("Failed to read: %v", scanner.Err())
-				return
-			}
-			plaintext := scanner.Bytes()
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, inputfile)
+			plaintext := buf.Bytes()
 			plaintext = PKCS7Padding(plaintext)
 			ciphertext := make([]byte, len(plaintext))
 			mode := ige.NewIGEEncrypter(ciph, iv)
 			mode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
 		} else if *crypt == "dec" && strings.ToUpper(*mode) == "IGE" {
-			scanner := bufio.NewScanner(inputfile)
-			if !scanner.Scan() {
-				log.Printf("Failed to read: %v", scanner.Err())
-				return
-			}
-			ciphertext := scanner.Bytes()
+			buf := bytes.NewBuffer(nil)
+			io.Copy(buf, inputfile)
+			ciphertext := buf.Bytes()
 			plaintext := make([]byte, len(ciphertext))
 			mode := ige.NewIGEDecrypter(ciph, iv)
 			mode.CryptBlocks(plaintext, ciphertext)
