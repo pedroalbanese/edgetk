@@ -73,6 +73,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | CFB | Cipher Feedback Mode           |All         |Any        |
     | CTR | Counter Mode (default)         |All         |Any        |
     | ECB | Eletronic Codebook Mode        |All         |Any        |
+    | IGE | Infinite Garble Extension      |All         |Any        |
     | OFB | Output Feedback Mode           |All         |Any        |
    
 - **Message Digest Algorithms:**
