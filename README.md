@@ -52,15 +52,15 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |      Cipher      | Block Size |  Key Size    |    Modes    |
     |:-----------------|:----------:|:------------:|:-----------:|
-    | DES [Obsolete]   |          64|            64|CFB8, CFB, CTR, OFB|
-    | 3DES [Obsolete]  |          64|           192|CFB8, CFB, CTR, OFB|
-    | Blowfish         |          64|           128|CFB8, CFB, CTR, OFB|
-    | CAST5            |          64|           128|CFB8, CFB, CTR, OFB|
+    | DES [Obsolete]   |          64|            64|CBC, CFB, CTR, OFB|
+    | 3DES [Obsolete]  |          64|           192|CBC, CFB, CTR, OFB|
+    | Blowfish         |          64|           128|~CBC~, CFB, CTR, OFB|
+    | CAST5            |          64|           128|CBC, CFB, CTR, OFB|
     | GOST89 (TC26)    |          64|           256|MGM, CFB, CTR, OFB|
-    | IDEA [Obsolete]  |          64|           128|CFB8, CFB, CTR, OFB|
+    | IDEA [Obsolete]  |          64|           128|CBC, CFB, CTR, OFB|
     | Magma            |          64|           256|MGM, CFB, CTR, OFB|
-    | RC2 [Obsolete]   |          64|           128|CFB8, CFB, CTR, OFB|
-    | RC5 [Obsolete]   |          64|           128|CFB8, CFB, CTR, OFB|
+    | RC2 [Obsolete]   |          64|           128|CBC, CFB, CTR, OFB|
+    | RC5 [Obsolete]   |          64|           128|CBC, CFB, CTR, OFB|
 
 - **Modes of Operation:**
 
