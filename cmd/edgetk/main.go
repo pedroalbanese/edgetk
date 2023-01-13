@@ -939,7 +939,7 @@ func main() {
 			mode := ige.NewIGEEncrypter(ciph, iv)
 			mode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
-		} else if *crypt == "dec" && strings.ToUpper(*mode) == "CBC" {
+		} else if *crypt == "dec" && strings.ToUpper(*mode) == "IGE" {
 			scanner := bufio.NewScanner(inputfile)
 			if !scanner.Scan() {
 				log.Printf("Failed to read: %v", scanner.Err())
