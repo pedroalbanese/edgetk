@@ -56,9 +56,9 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | 3DES [Obsolete]  |          64|           192|CBC, CFB-8, CTR, OFB|
     | Blowfish         |          64|           128|~CBC~, CFB-8, CTR, OFB|
     | CAST5            |          64|           128|CBC, CFB-8, CTR, OFB|
-    | GOST89 (TC26)    |          64|           256|All modes supported|
+    | GOST89 (TC26)    |          64|           256|MGM, CFB, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|CBC, CFB-8, CTR, OFB|
-    | Magma            |          64|           256|All modes supported|
+    | Magma            |          64|           256|MGM, CFB, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
 
