@@ -849,6 +849,15 @@ func main() {
 		} else if *cph == "rc2" {
 			ciph, err = rc2.NewCipher(key)
 			n = 8
+		} else if *cph == "idea" {
+			ciph, _ = idea.NewCipher(key)
+			n = 8
+		} else if *cph == "blowfish" {
+			ciph, err = blowfish.NewCipher(key)
+			n = 8
+		} else if *cph == "cast5" {
+			ciph, _ = cast5.NewCipher(key)
+			n = 8
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3881,6 +3890,18 @@ func split(s string, size int) []string {
 	return ss
 }
 
+func PKCS7Padding(ciphertext []byte) []byte {
+	padding := aes.BlockSize - len(ciphertext)%aes.BlockSize
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
+
+func PKCS7UnPadding(plantText []byte) []byte {
+	length := len(plantText)
+	unpadding := int(plantText[length-1])
+	return plantText[:(length - unpadding)]
+}
+
 func zeroByteSlice() []byte {
 	return []byte{
 		0, 0, 0, 0,
@@ -3892,16 +3913,4 @@ func zeroByteSlice() []byte {
 		0, 0, 0, 0,
 		0, 0, 0, 0,
 	}
-}
-
-func PKCS7Padding(ciphertext []byte) []byte {
-	padding := aes.BlockSize - len(ciphertext)%aes.BlockSize
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padtext...)
-}
-
-func PKCS7UnPadding(plantText []byte) []byte {
-	length := len(plantText)
-	unpadding := int(plantText[length-1])
-	return plantText[:(length - unpadding)]
 }
