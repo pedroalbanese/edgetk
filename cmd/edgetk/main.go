@@ -58,6 +58,7 @@ import (
 	"github.com/emmansun/gmsm/sm4"
 	"github.com/emmansun/gmsm/smx509"
 	"github.com/emmansun/gmsm/zuc"
+	"github.com/pedroalbanese/IGE-go/ige"
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast5"
@@ -784,7 +785,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (strings.ToUpper(*mode) == "ECB" || strings.ToUpper(*mode) == "CBC") {
+	if *crypt != "" && (strings.ToUpper(*mode) == "ECB" || strings.ToUpper(*mode) == "CBC" || strings.ToUpper(*mode) == "IGE") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -853,10 +854,16 @@ func main() {
 			log.Fatal(err)
 		}
 
-		iv := make([]byte, n)
+		var iv []byte
+		if strings.ToUpper(*mode) == "CBC" || strings.ToUpper(*mode) == "ECB" {
+			iv = make([]byte, n)
+		} else {
+			iv = make([]byte, n*2)
+		}
+
 		if *vector != "" {
 			iv, _ = hex.DecodeString(*vector)
-		} else if strings.ToUpper(*mode) == "CBC" {
+		} else if strings.ToUpper(*mode) == "CBC" || strings.ToUpper(*mode) == "IGE" {
 			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
 		}
 		if err != nil {
@@ -908,6 +915,30 @@ func main() {
 			ciphertext := scanner.Bytes()
 			plaintext := make([]byte, len(ciphertext))
 			mode := cipher.NewCBCDecrypter(ciph, iv)
+			mode.CryptBlocks(plaintext, ciphertext)
+			plaintext = PKCS7UnPadding(plaintext)
+			fmt.Printf("%s", plaintext)
+		} else if *crypt == "enc" && strings.ToUpper(*mode) == "IGE" {
+			scanner := bufio.NewScanner(inputfile)
+			if !scanner.Scan() {
+				log.Printf("Failed to read: %v", scanner.Err())
+				return
+			}
+			plaintext := scanner.Bytes()
+			plaintext = PKCS7Padding(plaintext)
+			ciphertext := make([]byte, len(plaintext))
+			mode := ige.NewIGEEncrypter(ciph, iv)
+			mode.CryptBlocks(ciphertext, plaintext)
+			fmt.Printf("%s", ciphertext)
+		} else if *crypt == "dec" && strings.ToUpper(*mode) == "CBC" {
+			scanner := bufio.NewScanner(inputfile)
+			if !scanner.Scan() {
+				log.Printf("Failed to read: %v", scanner.Err())
+				return
+			}
+			ciphertext := scanner.Bytes()
+			plaintext := make([]byte, len(ciphertext))
+			mode := ige.NewIGEDecrypter(ciph, iv)
 			mode.CryptBlocks(plaintext, ciphertext)
 			plaintext = PKCS7UnPadding(plaintext)
 			fmt.Printf("%s", plaintext)
