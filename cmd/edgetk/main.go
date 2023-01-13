@@ -291,9 +291,7 @@ func main() {
 		buf := bytes.NewBuffer(nil)
 		data := inputfile
 		io.Copy(buf, data)
-		b := strings.TrimSuffix(string(buf.Bytes()), "\r\n")
-		b = strings.TrimSuffix(string(b), "\n")
-		dump := hex.Dump([]byte(b))
+		dump := hex.Dump(buf.Bytes())
 		os.Stdout.Write([]byte(dump))
 		os.Exit(0)
 	}
