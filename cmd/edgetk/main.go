@@ -65,6 +65,7 @@ import (
 	"github.com/pedroalbanese/cfb8"
 	"github.com/pedroalbanese/cmac"
 	"github.com/pedroalbanese/cubehash"
+	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
@@ -79,6 +80,8 @@ import (
 	"github.com/pedroalbanese/gogost/gost341264"
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/gopass"
+	"github.com/pedroalbanese/ocb"
+	"github.com/pedroalbanese/pmac"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
 	"github.com/pedroalbanese/siphash"
@@ -101,7 +104,7 @@ var (
 	length    = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac       = flag.String("mac", "", "Compute Hash-based message authentication code.")
 	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
-	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CFB8, CFB, CTR, OFB.")
+	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB, OCB, OFB.")
 	pbkdf     = flag.Bool("pbkdf2", false, "Password-based key derivation function.")
 	pkey      = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
 	priv      = flag.String("private", "Private.pem", "Private key path. (for keypair generation)")
@@ -685,7 +688,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "seed" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "seed" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -743,14 +746,15 @@ func main() {
 		var aead cipher.AEAD
 		if strings.ToUpper(*mode) == "GCM" {
 			aead, err = cipher.NewGCMWithTagSize(ciph, 16)
-			if err != nil {
-				log.Fatal(err)
-			}
 		} else if strings.ToUpper(*mode) == "MGM" {
 			aead, err = mgm.NewMGM(ciph, n)
-			if err != nil {
-				log.Fatal(err)
-			}
+		} else if strings.ToUpper(*mode) == "OCB" {
+			aead, err = ocb.NewOCB(ciph)
+		} else if strings.ToUpper(*mode) == "EAX" {
+			aead, err = eax.NewEAX(ciph)
+		}
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		buf := bytes.NewBuffer(nil)
@@ -1586,6 +1590,53 @@ func main() {
 			}
 		}
 		fmt.Println("CMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "pmac" {
+		var c cipher.Block
+		var err error
+		if *cph == "sm4" {
+			c, err = sm4.NewCipher([]byte(*key))
+		} else if *cph == "seed" {
+			c, err = krcrypt.NewSEED([]byte(*key))
+		} else if *cph == "aes" {
+			c, err = aes.NewCipher([]byte(*key))
+		} else if *cph == "aria" {
+			c, err = aria.NewCipher([]byte(*key))
+		} else if *cph == "camellia" {
+			c, err = camellia.NewCipher([]byte(*key))
+		} else if *cph == "grasshopper" {
+			if len(*key) != 32 {
+				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
+			}
+			c = gost3412128.NewCipher([]byte(*key))
+		} else if *cph == "anubis" {
+			if len(*key) != 16 {
+				log.Fatal("ANUBIS: invalid key size ", len(*key))
+			}
+			c, err = anubis.New([]byte(*key))
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		h := pmac.New(c)
+		io.Copy(h, inputfile)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("PMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
