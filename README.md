@@ -141,6 +141,7 @@ Keying material is in general to include things like shared Diffie-Hellman secre
    * Recursive Hash Digest + Check
    * ECDH (Shared Key Agreement)
    * CMAC (Cipher-based message authentication code)
+   * PMAC (Parallelizable message authentication code)
    * HMAC (Hash-based message authentication code)
    * HKDF (HMAC-based key derivation function)
    * PBKDF2 (Password-based key derivation function)
