@@ -66,6 +66,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |Mode |                                | Blocks     |  Keys     |
     |:---:|:-------------------------------|:----------:|:---------:|
+    | EAX | Encrypt-Authenticate-Translate |128         |128/192/256| 
+    | OCB | Offset Codebook Mode (AEAD)    |128         |128/192/256| 
     | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256| 
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        | 
     | CBC | Cipher-Block Chaining          |All         |Any        |
