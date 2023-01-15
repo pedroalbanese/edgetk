@@ -189,7 +189,7 @@ Keying material is in general to include things like shared Diffie-Hellman secre
  -md string
        Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
  -mode string
-       Mode of operation: GCM, MGM, CFB8, CFB, CTR, OFB. (default "CTR")
+       Mode of operation: GCM, MGM, CBC, CFB, OCB, OFB. (default "CTR")
  -pbkdf2
        Password-based key derivation function.
  -pkey string
