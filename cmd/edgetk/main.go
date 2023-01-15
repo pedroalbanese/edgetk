@@ -70,6 +70,7 @@ import (
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
 	"github.com/pedroalbanese/go-krcrypt"
+	"github.com/pedroalbanese/go-misty1"
 	"github.com/pedroalbanese/go-rc5"
 	"github.com/pedroalbanese/go-ripemd"
 	"github.com/pedroalbanese/gogost/gost28147"
@@ -308,7 +309,7 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -865,6 +866,9 @@ func main() {
 		} else if *cph == "cast5" {
 			ciph, err = cast5.NewCipher(key)
 			n = 8
+		} else if *cph == "misty1" {
+			ciph, err = misty1.New(key)
+			n = 8
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -1039,7 +1043,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "anubis") {
+	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -1097,6 +1101,9 @@ func main() {
 			iv = make([]byte, 8)
 		} else if *cph == "3des" {
 			ciph, err = des.NewTripleDESCipher(key)
+			iv = make([]byte, 8)
+		} else if *cph == "misty1" {
+			ciph, err = misty1.New(key)
 			iv = make([]byte, 8)
 		}
 		if err != nil {
@@ -1557,6 +1564,8 @@ func main() {
 			c, err = aria.NewCipher([]byte(*key))
 		} else if *cph == "camellia" {
 			c, err = camellia.NewCipher([]byte(*key))
+		} else if *cph == "misty1" {
+			c, err = misty1.New([]byte(*key))
 		} else if *cph == "magma" {
 			if len(*key) != 32 {
 				log.Fatal("MAGMA invalid key size ", len(*key))
