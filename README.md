@@ -60,6 +60,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | HIGHT            |          64|           128|CBC, CFB-8, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|CBC, CFB-8, CTR, OFB|
     | Magma            |          64|           256|MGM, CFB, CTR, OFB|
+    | MISTY1           |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
 
