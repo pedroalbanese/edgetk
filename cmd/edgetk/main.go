@@ -308,7 +308,7 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -830,13 +830,16 @@ func main() {
 			ciph = gost3412128.NewCipher(key)
 			n = 16
 		} else if *cph == "sm4" {
-			ciph, _ = sm4.NewCipher(key)
+			ciph, err = sm4.NewCipher(key)
 			n = 16
 		} else if *cph == "seed" {
-			ciph, _ = krcrypt.NewSEED(key)
+			ciph, err = krcrypt.NewSEED(key)
 			n = 16
+		} else if *cph == "hight" {
+			ciph, err = krcrypt.NewHIGHT(key)
+			n = 8
 		} else if *cph == "anubis" {
-			ciph, _ = anubis.New(key)
+			ciph, err = anubis.New(key)
 			n = 16
 		} else if *cph == "magma" {
 			ciph = gost341264.NewCipher(key)
@@ -860,7 +863,7 @@ func main() {
 			ciph, err = blowfish.NewCipher(key)
 			n = 8
 		} else if *cph == "cast5" {
-			ciph, _ = cast5.NewCipher(key)
+			ciph, err = cast5.NewCipher(key)
 			n = 8
 		}
 		if err != nil {
@@ -1036,7 +1039,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "anubis") {
+	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "anubis") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -1066,20 +1069,23 @@ func main() {
 			ciph, err = blowfish.NewCipher(key)
 			iv = make([]byte, 8)
 		} else if *cph == "idea" {
-			ciph, _ = idea.NewCipher(key)
+			ciph, err = idea.NewCipher(key)
 			iv = make([]byte, 8)
 		} else if *cph == "cast5" {
-			ciph, _ = cast5.NewCipher(key)
+			ciph, err = cast5.NewCipher(key)
 			iv = make([]byte, 8)
 		} else if *cph == "rc5" {
-			ciph, _ = rc5.New(key)
+			ciph, err = rc5.New(key)
 			iv = make([]byte, 8)
 		} else if *cph == "sm4" {
-			ciph, _ = sm4.NewCipher(key)
+			ciph, err = sm4.NewCipher(key)
 			iv = make([]byte, 16)
 		} else if *cph == "seed" {
-			ciph, _ = krcrypt.NewSEED(key)
+			ciph, err = krcrypt.NewSEED(key)
 			iv = make([]byte, 16)
+		} else if *cph == "hight" {
+			ciph, err = krcrypt.NewHIGHT(key)
+			iv = make([]byte, 8)
 		} else if *cph == "anubis" {
 			ciph, err = anubis.New(key)
 			iv = make([]byte, 16)
@@ -1537,6 +1543,8 @@ func main() {
 			c, err = sm4.NewCipher([]byte(*key))
 		} else if *cph == "seed" {
 			c, err = krcrypt.NewSEED([]byte(*key))
+		} else if *cph == "hight" {
+			c, err = krcrypt.NewHIGHT([]byte(*key))
 		} else if *cph == "rc2" {
 			c, err = rc2.NewCipher([]byte(*key))
 		} else if *cph == "des" {
