@@ -57,6 +57,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Blowfish         |          64|           128|~CBC~, CFB-8, CTR, OFB|
     | CAST5            |          64|           128|CBC, CFB-8, CTR, OFB|
     | GOST89 (TC26)    |          64|           256|MGM, CFB, CTR, OFB|
+    | HIGHT            |          64|           128|CBC, CFB-8, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|CBC, CFB-8, CTR, OFB|
     | Magma            |          64|           256|MGM, CFB, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
