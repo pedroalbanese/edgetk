@@ -69,6 +69,7 @@ import (
 	"github.com/pedroalbanese/ecb"
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
+	"github.com/pedroalbanese/go-kcipher2"
 	"github.com/pedroalbanese/go-krcrypt"
 	"github.com/pedroalbanese/go-misty1"
 	"github.com/pedroalbanese/go-rc5"
@@ -348,6 +349,53 @@ func main() {
 			}
 		}
 		ciph, _ := rc4.NewCipher(key)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "kcipher2") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 16)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+		var iv []byte
+		iv = make([]byte, 16)
+		if *vector != "" {
+			iv, _ = hex.DecodeString(*vector)
+		} else {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		}
+		ciph, _ := kcipher2.New(iv, key)
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
