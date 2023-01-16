@@ -282,7 +282,7 @@ echo $?
 ./edgetk -hex dump < file.ext
 ```
 ## Documentation
-```sh
+```
     CHASKEY Message Authentication Code (ESAT-COSIC)
     Cubehash and SipHash64/128 support
     GB/T 32918.4-2016 SM2 Encryption
