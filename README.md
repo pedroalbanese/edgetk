@@ -32,7 +32,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:-----------------|:----------:|:----:|:---------------------:|
     | Chacha20Poly1305 | 256        | 96/128 | AEAD Stream Cipher  |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
-    | Kcipher-2        | 128        |  128 | XOR Stream            |
+    | KCipher-2        | 128        |  128 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -57,10 +57,10 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | 3DES [Obsolete]  |          64|           192|CBC, CFB-8, CTR, OFB|
     | Blowfish         |          64|           128|~CBC~, CFB-8, CTR, OFB|
     | CAST5            |          64|           128|CBC, CFB-8, CTR, OFB|
-    | GOST89 (TC26)    |          64|           256|MGM, CFB, CTR, OFB|
+    | GOST89 (TC26)    |          64|           256|MGM, CFB-8, CTR, OFB|
     | HIGHT            |          64|           128|CBC, CFB-8, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|CBC, CFB-8, CTR, OFB|
-    | Magma            |          64|           256|MGM, CFB, CTR, OFB|
+    | Magma            |          64|           256|MGM, CFB-8, CTR, OFB|
     | MISTY1           |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
