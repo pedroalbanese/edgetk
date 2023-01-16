@@ -525,13 +525,7 @@ func main() {
 
 	if *crypt == "eea256" || (*crypt != "" && *cph == "zuc256") {
 		var keyHex string
-		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var key []byte
 		var err error
 		if keyHex == "" {
@@ -578,13 +572,7 @@ func main() {
 
 	if *crypt == "eea128" || (*crypt != "" && *cph == "zuc128") {
 		var keyHex string
-		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 16, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var key []byte
 		var err error
 		if keyHex == "" {
@@ -632,12 +620,7 @@ func main() {
 	if *mac == "eia256" {
 		var keyHex string
 		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 32, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var err error
 		if keyHex == "" {
 			keyRaw, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
@@ -662,10 +645,9 @@ func main() {
 			fmt.Fprintln(os.Stderr, "IV=", hex.EncodeToString(nonce))
 		}
 		h, _ := zuc.NewHash256(keyRaw, nonce, *length/8)
-		if _, err := io.Copy(h, os.Stdin); err != nil {
+		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
-		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
 			mac := hex.EncodeToString(h.Sum(nil))
@@ -679,19 +661,14 @@ func main() {
 				os.Exit(0)
 			}
 		}
-		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac), h.Sum(nil))
+		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac)+"("+inputdesc+")", h.Sum(nil))
 		os.Exit(0)
 	}
 
 	if *mac == "eia128" {
 		var keyHex string
 		var keyRaw []byte
-		if *pbkdf {
-			keyRaw = pbkdf2.Key([]byte(*key), []byte(*salt), *iter, 16, myHash)
-			keyHex = hex.EncodeToString(keyRaw)
-		} else {
-			keyHex = *key
-		}
+		keyHex = *key
 		var err error
 		if keyHex == "" {
 			keyRaw, _ = hex.DecodeString("00000000000000000000000000000000")
@@ -716,10 +693,9 @@ func main() {
 			fmt.Fprintln(os.Stderr, "IV=", hex.EncodeToString(nonce))
 		}
 		h, _ := zuc.NewHash(keyRaw, nonce)
-		if _, err := io.Copy(h, os.Stdin); err != nil {
+		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
-		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
 			mac := hex.EncodeToString(h.Sum(nil))
@@ -733,7 +709,7 @@ func main() {
 				os.Exit(0)
 			}
 		}
-		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac), h.Sum(nil))
+		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac)+"("+inputdesc+")", h.Sum(nil))
 		os.Exit(0)
 	}
 
