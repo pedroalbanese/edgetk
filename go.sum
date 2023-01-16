@@ -5,6 +5,8 @@ github.com/emmansun/certinfo v0.1.0/go.mod h1:nS7ylLEXORr7PEZRhAl/qbxI3YKHuc2ZRK
 github.com/emmansun/gmsm v0.14.0/go.mod h1:Arb6+udgQfz1R0BQFE2rKZAxkhbMGftwlaKjsnSjaiw=
 github.com/emmansun/gmsm v0.15.5 h1:iLvUezUwA9WZHQFhK/UUhKhqviDczb28Qx+gynbvTKY=
 github.com/emmansun/gmsm v0.15.5/go.mod h1:2m4jygryohSWkaSduFErgCwQKab5BNjURoFrn2DNwyU=
+github.com/pedroalbanese/IGE-go v0.0.0-20140730194654-752bc7fd80fb h1:2GTkI6b/GaOzjZSB161w491QrxsHWpxV1FNr7ds+7Jc=
+github.com/pedroalbanese/IGE-go v0.0.0-20140730194654-752bc7fd80fb/go.mod h1:EnRxQQGUSvWsqNFSAtGSuyjJKl91Csy57sQ1atRV01k=
 github.com/pedroalbanese/anubis v0.0.0-gama h1:06CnGLlF4N7JU8POmN9DntPs6t2e64lo5PmbOdLtrq8=
 github.com/pedroalbanese/anubis v0.0.0-gama/go.mod h1:MMJog7ga594ydzm17Qzj8wIynFJmrp/gFzZIjdX/2fQ=
 github.com/pedroalbanese/camellia v0.0.0-20220911183557-30cc05c20118 h1:GJQwwzoQDXGcYO35ViGcG/A994BGB35/7dNoVW4Je8s=
@@ -17,14 +19,20 @@ github.com/pedroalbanese/cmac v0.0.0-20210429130952-a58975ec8f4c h1:mX7NRMOVOwh5
 github.com/pedroalbanese/cmac v0.0.0-20210429130952-a58975ec8f4c/go.mod h1:5AAl1CY49A0PRTLlbGIOkmWLRyDY3c9WfBjdOWDGWww=
 github.com/pedroalbanese/cubehash v0.0.0 h1:y9AhRV9uJx6tnGeoWg2eC91TkTsjRqsdxSQOpbubSlE=
 github.com/pedroalbanese/cubehash v0.0.0/go.mod h1:QqD7USkRZMUwdDsx0SR2EqgIpN8MZhtQuYMG8R9IqeI=
+github.com/pedroalbanese/eax v0.0.0-20220826180322-27e4c16b7eac h1:KGunu14NUwvCZsKHlfKrc6SXYja4zVFTOS5bTVH5BmI=
+github.com/pedroalbanese/eax v0.0.0-20220826180322-27e4c16b7eac/go.mod h1:0CjgupJmGspryEr9zLAn0FpbD9AHy6m1L97mDkDQZ/Y=
 github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b h1:b+T06WpwxEPv4rTxVK64JxnEs0oLlJ0nifFdUDysVjw=
 github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b/go.mod h1:g/+SLuBiyj6xkBXvOu8P1LODdpuuxKHT20mrPXoWIec=
 github.com/pedroalbanese/go-external-ip v0.0.0-20200601212049-c872357d968e h1:VUR1tH5e1MXJgiJNq+8kh8ztihi5/wrkuIEG4bmYpBU=
 github.com/pedroalbanese/go-external-ip v0.0.0-20200601212049-c872357d968e/go.mod h1:SvmxrS/2giIWAuUE60MY8tf9mgI0gBLc1Q1W4juTans=
 github.com/pedroalbanese/go-idea v0.0.0-20170306091226-d2fb45a411fb h1:DbXfqQlMrVOoCnlaUvadwU9wlmuEcTHD1AJjDzls5KI=
 github.com/pedroalbanese/go-idea v0.0.0-20170306091226-d2fb45a411fb/go.mod h1:MCFBIvwimQFbM99CHdVwTKr7PhaYgQpsK8zRRECmACk=
+github.com/pedroalbanese/go-kcipher2 v0.0.0-20170506094415-4fcf5aa27627 h1:UTBcC74OvxjaX6OjvhznvP8ZR3JOVOBr7bOMBp4ELgk=
+github.com/pedroalbanese/go-kcipher2 v0.0.0-20170506094415-4fcf5aa27627/go.mod h1:K9++QOhv26m2sWb/B7RLfKxvL2Buc3UZVq4cL5WJ6lY=
 github.com/pedroalbanese/go-krcrypt v0.0.0-20170928183100-a0c871728ae1 h1:u0NdzhCdSPnuRA2nKIg7CAW0F8Pl8dRooy/g0i+4tGw=
 github.com/pedroalbanese/go-krcrypt v0.0.0-20170928183100-a0c871728ae1/go.mod h1:7LOlyYV2C5+0UD7eoPYN9fuGds6A3Y73tWihNKFQHO8=
+github.com/pedroalbanese/go-misty1 v0.0.0-20150819220543-a3984aec4fae h1:PVfyVgFdoXAjRuwM4dqEUlIXNrY0gwKeyJ9z/9AbTZ0=
+github.com/pedroalbanese/go-misty1 v0.0.0-20150819220543-a3984aec4fae/go.mod h1:nc3lEnA3uS8fyzDdV4TJ0LPv1gpFy/0pxiz6CFb1vbI=
 github.com/pedroalbanese/go-rc5 v0.0.0-20181025211356-a14dd155920a h1:A44dEfQF9P/nft5Oi/lteB6Tk3krO+xe3r65D2FiMZc=
 github.com/pedroalbanese/go-rc5 v0.0.0-20181025211356-a14dd155920a/go.mod h1:nVuhsla4svgWTrzUbeg75dMmFkaqmnTabTVE2OmK3bA=
 github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10 h1:iu0q912gVo1C2uZBdh875c/Ht1gstFAjMYjrgm9AL9Y=
@@ -35,6 +43,10 @@ github.com/pedroalbanese/gopass v0.0.0-20210920133722-c8aef6fb66ef h1:WS+9fDuTDn
 github.com/pedroalbanese/gopass v0.0.0-20210920133722-c8aef6fb66ef/go.mod h1:o3gfYg4p7EKXxkukiCDR4akrR2HGKSdoQqCgUE8pga0=
 github.com/pedroalbanese/kuznechik v0.0.0 h1:JiVREgKdbKnvof57hL1sCkatIy97JBymQwUUDrorSEo=
 github.com/pedroalbanese/kuznechik v0.0.0/go.mod h1:mRbUXtz1RYBvxIjCRPSM4fw6/KPfBRVh3jiX3BMhHO8=
+github.com/pedroalbanese/ocb v0.0.0-20220826180104-94244d1d80b8 h1:oeZN0UlMgp+o+iwTTMgspqNKfFWEurrVX+cgJTYiOUE=
+github.com/pedroalbanese/ocb v0.0.0-20220826180104-94244d1d80b8/go.mod h1:dlllB0nX79F4Pfwaf5HOgrZ97nQE6ISo4lK2DHPZOlw=
+github.com/pedroalbanese/pmac v0.0.0-20220627194402-f0cad01ed05b h1:Jl9ihCm8ORBM81uL33VMSNwyiulb9Bp4cFhNJ2r/KII=
+github.com/pedroalbanese/pmac v0.0.0-20220627194402-f0cad01ed05b/go.mod h1:gcomSeqoCX+TqezdqwWmawVM3fMYfkQzPQGvdD05oa0=
 github.com/pedroalbanese/randomart v0.0.0-20130402080559-540116cac932 h1:lhyWm5kEilIJI800qc210GWsjJmln9o3vEr71nur//U=
 github.com/pedroalbanese/randomart v0.0.0-20130402080559-540116cac932/go.mod h1:VkPk1ppMWhMMgMxu4kLy8vGEvxY3Q+hp/SN9za0GKxc=
 github.com/pedroalbanese/rc2 v0.0.0-20131011165748-24b9757f5521 h1:ObGXSrJQ6vQQrCU+A0ywvQVtFv5g0RnMZIhMhQ8e7O0=
@@ -50,6 +62,7 @@ golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACk
 golang.org/x/crypto v0.0.0-20210503195802-e9a32991a82e/go.mod h1:P+XmwS30IXTQdn5tA2iutPOUgjI07+tq3H3K9MVA1s8=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
 golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
+golang.org/x/crypto v0.0.0-20220824171710-5757bc0c5503/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/crypto v0.4.0 h1:UVQgzMY87xqpKNgb+kDsll2Igd33HszWHFLmpaRMq/8=
 golang.org/x/crypto v0.4.0/go.mod h1:3quD/ATkf6oY+rnes5c3ExXTbLc8mueNue5/DoinL80=
@@ -58,6 +71,7 @@ golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLL
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
 golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20220722155237-a158d28d115b/go.mod h1:XRhObCWvk6IyKnWLug+ECip1KBveYUHfp+8e9klMJ9c=
+golang.org/x/net v0.0.0-20220826154423-83b083e8dc8b/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
 golang.org/x/net v0.0.0-20220909164309-bea034e7d591/go.mod h1:YDH+HFinaLZZlnHAfSS6ZXJJ9M9t4Dl22yv3iI2vPwk=
 golang.org/x/net v0.3.0/go.mod h1:MBQ8lrhLObU/6UmLb4fmbmk5OcyYmqtbGd/9yIeKjEE=
 golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
