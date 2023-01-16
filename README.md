@@ -307,7 +307,6 @@ echo $?
     RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
     RFC 8032: Ed25519 Signature
     RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers
-
 ## Contribute
 **Use issues for everything**
 - You can help and get help by:
