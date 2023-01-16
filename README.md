@@ -30,8 +30,9 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |      Cipher      |  Key Size  |  IV  |         Modes         |
     |:-----------------|:----------:|:----:|:---------------------:|
-    | Chacha20Poly1305 | 256        | 96/128 | AEAD Stream Cipher    |
+    | Chacha20Poly1305 | 256        | 96/128 | AEAD Stream Cipher  |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
+    | Kcipher-2        | 128        |  128 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
