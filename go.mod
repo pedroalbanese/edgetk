@@ -15,7 +15,7 @@ require (
 	github.com/pedroalbanese/cubehash v0.0.0
 	github.com/pedroalbanese/eax v0.0.0-20220826180322-27e4c16b7eac
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
-	github.com/pedroalbanese/go-chaskey v0.0.0-20211015221446-013fc2e4d86d
+	github.com/pedroalbanese/go-chaskey v0.0.0-20230117155006-a9e41c18223c
 	github.com/pedroalbanese/go-external-ip v0.0.0-20200601212049-c872357d968e
 	github.com/pedroalbanese/go-idea v0.0.0-20170306091226-d2fb45a411fb
 	github.com/pedroalbanese/go-kcipher2 v0.0.0-20170506094415-4fcf5aa27627
@@ -36,7 +36,6 @@ require (
 )
 
 require (
-	github.com/dchest/siphash v1.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/term v0.3.0 // indirect
