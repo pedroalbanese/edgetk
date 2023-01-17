@@ -15,7 +15,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
 - **Public key algorithms:**  
 
-    |  Algorithm          | 256 | 512 |ECDH |DSA  |Encryption| TLS |
+    |  Algorithm          | 256 | 512 |ECDH |ECDSA|Encryption| TLS |
     |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O   | O        | O   |
     | Ed25519             | O   |     | O   | O   |          | O   |
@@ -68,16 +68,16 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |Mode |                                | Blocks     |  Keys     |
     |:---:|:-------------------------------|:----------:|:---------:|
-    | EAX | Encrypt-Authenticate-Translate |128         |128/192/256| 
-    | OCB | Offset Codebook Mode (AEAD)    |128         |128/192/256| 
-    | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256| 
-    | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        | 
     | CBC | Cipher-Block Chaining          |All         |Any        |
-    |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
+    |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CTR | Counter Mode (default)         |All         |Any        |
+    | EAX | Encrypt-Authenticate-Translate |128         |128/192/256|
     | ECB | Eletronic Codebook Mode        |All         |Any        |
+    | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256|
     | IGE | Infinite Garble Extension      |All         |Any        |
+    | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        |
+    | OCB | Offset Codebook Mode (AEAD)    |128         |128/192/256|
     | OFB | Output Feedback Mode           |All         |Any        |
    
 - **Message Digest Algorithms:**
