@@ -23,8 +23,8 @@ KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
 NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
 RFC 2144: CAST-128 64-bit Block cipher with 128 bit keys
-RFC 4764: EAX Authenticated-Encryption Mode of Operation
 RFC 4493: Cipher-based Message Authentication Code
+RFC 4764: EAX Authenticated-Encryption Mode of Operation
 RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
 RFC 5869: HMAC-based Key Derivation Function (HKDF)
 RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
