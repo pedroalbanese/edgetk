@@ -54,7 +54,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:-----------------|:----------:|:------------:|:-----------:|
     | DES [Obsolete]   |          64|            64|CBC, CFB-8, CTR, OFB|
     | 3DES [Obsolete]  |          64|           192|CBC, CFB-8, CTR, OFB|
-    | Blowfish         |          64|           128|~CBC~, CFB-8, CTR, OFB|
+    | Blowfish         |          64|           128|CBC, CFB-8, CTR, OFB|
     | CAST5            |          64|           128|CBC, CFB-8, CTR, OFB|
     | GOST89 (TC26)    |          64|           256|MGM, CFB-8, CTR, OFB|
     | HIGHT            |          64|           128|CBC, CFB-8, CTR, OFB|
