@@ -88,7 +88,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | BLAKE-2S        |     | O   |     | O   |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
-    | Keccak Legacy   |     |     |     | O   | O   |     |
+    | Legacy Keccak   |     |     |     | O   | O   |     |
     | MD4 [Obsolete]  |     | O   |     |     |     |     |
     | MD5 [Obsolete]  |     | O   |     |     |     |     |
     | Poly1305        |     | O   |     |     |     | O   |
