@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -67,6 +68,7 @@ import (
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
+	"github.com/pedroalbanese/go-chaskey"
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
 	"github.com/pedroalbanese/go-kcipher2"
@@ -88,6 +90,7 @@ import (
 	"github.com/pedroalbanese/rc2"
 	"github.com/pedroalbanese/siphash"
 	"github.com/pedroalbanese/whirlpool"
+	"github.com/pedroalbanese/xoodoo/xoodyak"
 )
 
 var (
@@ -205,6 +208,10 @@ func main() {
 		myHash = sha3.New384
 	} else if *md == "sha3-512" {
 		myHash = sha3.New512
+	} else if *md == "keccak256" {
+		myHash = sha3.NewLegacyKeccak256
+	} else if *md == "keccak512" {
+		myHash = sha3.NewLegacyKeccak512
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
@@ -229,6 +236,8 @@ func main() {
 		myHash = md4.New
 	} else if *md == "cubehash" {
 		myHash = cubehash.New
+	} else if *md == "xoodyak" || *md == "xhash" {
+		myHash = xoodyak.NewXoodyakHash
 	}
 
 	if *random != 0 {
@@ -310,7 +319,7 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "xoodyak") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -412,6 +421,65 @@ func main() {
 			}
 		}
 		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "xoodyak") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 16)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		aead, err := xoodyak.NewXoodyakAEAD(key)
+		if err != nil {
+			panic(err)
+		}
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
 	}
 
 	if *crypt != "" && (*cph == "chacha20poly1305") {
@@ -710,6 +778,42 @@ func main() {
 			}
 		}
 		fmt.Printf("MAC-%s= %x\n", strings.ToUpper(*mac)+"("+inputdesc+")", h.Sum(nil))
+		os.Exit(0)
+	}
+
+	if *mac == "chaskey" {
+		var keyRaw []byte
+		if *key == "" {
+			keyRaw = []byte("0000000000000000")
+			fmt.Fprintf(os.Stderr, "Key= %s\n", keyRaw)
+		} else {
+			keyRaw = []byte(*key)
+		}
+		if len([]byte(keyRaw)) != 16 {
+			log.Fatal("CHASKEY's secret key must have 64-bit.")
+		}
+		xkey := [4]uint32{binary.LittleEndian.Uint32([]byte(keyRaw)[:]),
+			binary.LittleEndian.Uint32([]byte(keyRaw)[4:]),
+			binary.LittleEndian.Uint32([]byte(keyRaw)[8:]),
+			binary.LittleEndian.Uint32([]byte(keyRaw)[12:]),
+		}
+		var t [32]byte
+		h := chaskey.New(xkey)
+		line, _ := ioutil.ReadAll(inputfile)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.MAC(line, t[:]))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Printf("MAC-CHASKEY("+inputdesc+")= %s\n", hex.EncodeToString(h.MAC(line, t[:])))
 		os.Exit(0)
 	}
 
@@ -1196,6 +1300,10 @@ func main() {
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
+		} else if *md == "keccak256" {
+			h = sha3.NewLegacyKeccak256()
+		} else if *md == "keccak512" {
+			h = sha3.NewLegacyKeccak512()
 		} else if *md == "whirlpool" {
 			h = whirlpool.New()
 		} else if *md == "blake2b256" {
@@ -1228,6 +1336,8 @@ func main() {
 			h, _ = siphash.New64(xkey[:])
 		} else if *md == "cubehash" {
 			h = cubehash.New()
+		} else if *md == "xoodyak" || *md == "xhash" {
+			h = xoodyak.NewXoodyakHash()
 		}
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)))
@@ -1266,6 +1376,10 @@ func main() {
 					h = sha3.New384()
 				} else if *md == "sha3-512" {
 					h = sha3.New512()
+				} else if *md == "keccak256" {
+					h = sha3.NewLegacyKeccak256()
+				} else if *md == "keccak512" {
+					h = sha3.NewLegacyKeccak512()
 				} else if *md == "whirlpool" {
 					h = whirlpool.New()
 				} else if *md == "blake2b256" {
@@ -1298,6 +1412,8 @@ func main() {
 					h, _ = siphash.New64(xkey[:])
 				} else if *md == "cubehash" {
 					h = cubehash.New()
+				} else if *md == "xoodyak" || *md == "xhash" {
+					h = xoodyak.NewXoodyakHash()
 				}
 				f, err := os.Open(match)
 				if err != nil {
@@ -1359,6 +1475,10 @@ func main() {
 								h = sha3.New384()
 							} else if *md == "sha3-512" {
 								h = sha3.New512()
+							} else if *md == "keccak256" {
+								h = sha3.NewLegacyKeccak256()
+							} else if *md == "keccak512" {
+								h = sha3.NewLegacyKeccak512()
 							} else if *md == "whirlpool" {
 								h = whirlpool.New()
 							} else if *md == "blake2b256" {
@@ -1391,6 +1511,8 @@ func main() {
 								h, _ = siphash.New64(xkey[:])
 							} else if *md == "cubehash" {
 								h = cubehash.New()
+							} else if *md == "xoodyak" || *md == "xhash" {
+								h = xoodyak.NewXoodyakHash()
 							}
 							f, err := os.Open(path)
 							if err != nil {
@@ -1458,6 +1580,10 @@ func main() {
 					h = sha3.New384()
 				} else if *md == "sha3-512" {
 					h = sha3.New512()
+				} else if *md == "keccak256" {
+					h = sha3.NewLegacyKeccak256()
+				} else if *md == "keccak512" {
+					h = sha3.NewLegacyKeccak512()
 				} else if *md == "whirlpool" {
 					h = whirlpool.New()
 				} else if *md == "blake2b256" {
@@ -1490,6 +1616,8 @@ func main() {
 					h, _ = siphash.New64(xkey[:])
 				} else if *md == "cubehash" {
 					h = cubehash.New()
+				} else if *md == "xoodyak" || *md == "xhash" {
+					h = xoodyak.NewXoodyakHash()
 				}
 				_, err := os.Stat(lines[1])
 				if err == nil {
@@ -1678,6 +1806,18 @@ func main() {
 			}
 		}
 		fmt.Println("PMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "xmac" || *mac == "xoodyak" {
+		var err error
+		var file io.Reader
+		file = inputfile
+		h := xoodyak.NewXoodyakMac([]byte(*key))
+		if _, err = io.Copy(h, file); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("XMAC("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -1958,10 +2098,16 @@ func main() {
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
+		} else if *md == "keccak256" {
+			h = sha3.NewLegacyKeccak256()
+		} else if *md == "keccak512" {
+			h = sha3.NewLegacyKeccak512()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "sm3" {
 			h = sm3.New()
+		} else if *md == "whirlpool" {
+			h = whirlpool.New()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -2001,10 +2147,16 @@ func main() {
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
+		} else if *md == "keccak256" {
+			h = sha3.NewLegacyKeccak256()
+		} else if *md == "keccak512" {
+			h = sha3.NewLegacyKeccak512()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "sm3" {
 			h = sm3.New()
+		} else if *md == "whirlpool" {
+			h = whirlpool.New()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -2048,6 +2200,10 @@ func main() {
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
+		} else if *md == "keccak256" {
+			h = sha3.NewLegacyKeccak256()
+		} else if *md == "keccak512" {
+			h = sha3.NewLegacyKeccak512()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "whirlpool" {
@@ -2123,6 +2279,10 @@ func main() {
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
+		} else if *md == "keccak256" {
+			h = sha3.NewLegacyKeccak256()
+		} else if *md == "keccak512" {
+			h = sha3.NewLegacyKeccak512()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "whirlpool" {
@@ -3897,6 +4057,10 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sha3.New256
 	} else if *md == "sha3-512" {
 		myHash = sha3.New512
+	} else if *md == "keccak256" {
+		myHash = sha3.NewLegacyKeccak256
+	} else if *md == "keccak512" {
+		myHash = sha3.NewLegacyKeccak512
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
@@ -3921,6 +4085,8 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sm3.New
 	} else if *md == "cubehash" {
 		myHash = cubehash.New
+	} else if *md == "xoodyak" || *md == "xhash" {
+		myHash = xoodyak.NewXoodyakHash
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
