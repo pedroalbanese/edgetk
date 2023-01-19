@@ -109,7 +109,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |      Cipher      |  Key Size  |  IV  |         Modes         |
     |:-----------------|:----------:|:----:|:---------------------:|
-    | Xoodyak          | 128        | 128  |AEAD Permutation Cipher|
+    | Xoodyak          | 128        | 128  |Lightweight AEAD Permutation Cipher|
     
 ### AEAD
 
