@@ -99,9 +99,9 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | SipHash         | O   | O   |     |     |     | O   |
     | SM3             |     |     |     | O   |     |     |
     | Streebog        |     |     |     | O   | O   |     | 
-    | ZUC-256 (Zu Chongzhi)| O   | O   |     |     |     | O   |
     | Whirlpool       |     |     |     |     | O   |     | 
     | Xoodyak         |     |     |     | O   |     | O   |
+    | ZUC-256 (Zu Chongzhi)| O   | O   |     |     |     | O   |
     
     - MAC refers to keyed hash function, like HMAC. 
 
