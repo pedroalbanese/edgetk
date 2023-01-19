@@ -109,6 +109,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
 
     |     Cipher    |  Key |  IV  |         Mode          |
     |:--------------|:----:|:----:|:---------------------:|
+    | ASCON 1.2     |  128 |  128 |Lightweight AEAD Stream Cipher|
+    | Grain128a     |  128 |   96 |Lightweight AEAD Stream Cipher|
     | Xoodyak       |  128 |  128 |Lightweight AEAD Permutation Cipher|
     
 ### AEAD
