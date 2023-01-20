@@ -46,6 +46,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Grasshopper      |        128 |         256 | All modes supported     |
     | SEED             |        128 |         128 | All modes supported     |
     | SM4              |        128 |         128 | All modes supported     |
+    | Twofish          |        128 | 128/192/256 | All modes supported     |
    
 - **64-bit block ciphers:**
 
