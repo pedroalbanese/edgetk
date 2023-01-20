@@ -113,7 +113,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:--------------|:----:|:----:|:---------------------:|
     | Xoodyak v1    |  128 |  128 |Lightweight AEAD Permutation Cipher|
     | Ascon 1.2     |  128 |  128 |NIST Lightweight AEAD Stream Cipher|
-    | Grain128a     |  128 |   96 |NIST Lightweight AEAD Stream Cipher|
+    | Grain128a     |  128 |40-96 |NIST Lightweight AEAD Stream Cipher|
     
 ### AEAD
 
