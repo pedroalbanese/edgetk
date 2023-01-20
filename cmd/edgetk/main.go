@@ -40,6 +40,7 @@ import (
 	"golang.org/x/crypto/poly1305"
 	"golang.org/x/crypto/ripemd160"
 	"golang.org/x/crypto/sha3"
+	"golang.org/x/crypto/twofish"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -84,7 +85,10 @@ import (
 	"github.com/pedroalbanese/gogost/gost341264"
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/gopass"
+	"github.com/pedroalbanese/lwcrypto/ascon2"
+	"github.com/pedroalbanese/lwcrypto/grain"
 	"github.com/pedroalbanese/ocb"
+	"github.com/pedroalbanese/ocb3"
 	"github.com/pedroalbanese/pmac"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
@@ -311,7 +315,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "twofish") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -454,6 +458,126 @@ func main() {
 		aead, err := xoodyak.NewXoodyakAEAD(key)
 		if err != nil {
 			panic(err)
+		}
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+	}
+
+	if *crypt != "" && *cph == "grain128a" {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 16)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+		var nonce []byte
+		nonce = make([]byte, 12)
+		var iv []byte
+		iv = make([]byte, 12)
+
+		if *vector != "" {
+			iv, _ = hex.DecodeString(*vector)
+			copy(nonce[:], iv)
+		} else {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		}
+
+		ciph, err := grain.NewUnauthenticated(key, iv)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "ascon" || *cph == "grain128aead") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 16)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		var aead cipher.AEAD
+		if *cph == "ascon" {
+			aead, err = ascon.New128a(key)
+		} else if *cph == "grain128aead" {
+			aead, err = grain.New(key)
+		}
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		if *crypt == "enc" {
@@ -817,7 +941,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "seed" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "EAX") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "seed" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "twofish") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -842,6 +966,9 @@ func main() {
 		var n int
 		if *cph == "aes" {
 			ciph, err = aes.NewCipher(key)
+			n = 16
+		} else if *cph == "twofish" {
+			ciph, err = twofish.NewCipher(key)
 			n = 16
 		} else if *cph == "aria" {
 			ciph, err = aria.NewCipher(key)
@@ -879,6 +1006,8 @@ func main() {
 			aead, err = mgm.NewMGM(ciph, n)
 		} else if strings.ToUpper(*mode) == "OCB" {
 			aead, err = ocb.NewOCB(ciph)
+		} else if strings.ToUpper(*mode) == "OCB3" {
+			aead, err = ocb3.New(ciph)
 		} else if strings.ToUpper(*mode) == "EAX" {
 			aead, err = eax.NewEAX(ciph)
 		}
@@ -948,6 +1077,9 @@ func main() {
 		var n int
 		if *cph == "aes" {
 			ciph, err = aes.NewCipher(key)
+			n = 16
+		} else if *cph == "twofish" {
+			ciph, err = twofish.NewCipher(key)
 			n = 16
 		} else if *cph == "aria" {
 			ciph, err = aria.NewCipher(key)
@@ -1076,7 +1208,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "gost89") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "gost89" || *cph == "twofish") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -1102,6 +1234,9 @@ func main() {
 		var iv []byte
 		if *cph == "aes" {
 			ciph, err = aes.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "twofish" {
+			ciph, err = twofish.NewCipher(key)
 			iv = make([]byte, 16)
 		} else if *cph == "aria" {
 			ciph, err = aria.NewCipher(key)
