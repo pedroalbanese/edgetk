@@ -71,7 +71,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | EAX | Encrypt-Authenticate-Translate |128         |128/192/256|
     | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256|
     | OCB | Offset Codebook Mode (AEAD)    |128         |128/192/256|
-    | OCB3| Offset Codebook Mode 3 (AEAD)  |128         |128/192/256|
+    | OCB3| Offset Codebook v3 (AEAD)      |128         |128/192/256|
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        |
     | CBC | Cipher-Block Chaining          |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
@@ -87,6 +87,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|
     | BLAKE-2B        |     |     |     | O   | O   | O   |
     | BLAKE-2S        |     | O   |     | O   |     | O   |
+    | Chaskey         |     | O   |     |     |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
