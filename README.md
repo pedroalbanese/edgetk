@@ -44,6 +44,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | ARIA             |        128 | 128/192/256 | All modes supported     |
     | Camellia         |        128 | 128/192/256 | All modes supported     |
     | Grasshopper      |        128 |         256 | All modes supported     |
+    | LEA              |        128 | 128/192/256 | All modes supported     |
     | SEED             |        128 |         128 | All modes supported     |
     | SM4              |        128 |         128 | All modes supported     |
     | Twofish          |        128 | 128/192/256 | All modes supported     |
