@@ -93,6 +93,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
+    | LSH             |     |     |     | O   | O   |     |
     | MD4 [Obsolete]  |     | O   |     |     |     |     |
     | MD5 [Obsolete]  |     | O   |     |     |     |     |
     | Poly1305        |     | O   |     |     |     | O   |
