@@ -32,6 +32,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Chacha20Poly1305 | 256        | 96/192 | AEAD Stream Cipher  |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | KCipher-2        | 128        |  128 | XOR Stream            |
+    | Salsa20          | 256        |  192 | XOR Stream            |
+    | Skein            | 256        |   96 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -102,6 +104,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | SHA2 (default)  |     |     |     | O   | O   |     | 
     | SHA3            |     |     |     | O   | O   |     |
     | SipHash         | O   | O   |     |     |     | O   |
+    | Skein           |     |     |     | O   | O   | O   | 
     | SM3             |     |     |     | O   |     |     |
     | Streebog        |     |     |     | O   | O   |     | 
     | Whirlpool       |     |     |     |     | O   |     | 
