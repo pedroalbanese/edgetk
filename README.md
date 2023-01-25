@@ -8,7 +8,7 @@
 
 Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA/EdDSA) and TLS 1.2 for small or embedded systems. 
 
-***Fully OpenSSL compliant***
+***Fully OpenSSL/LibreSSL/RHash compliant***
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
