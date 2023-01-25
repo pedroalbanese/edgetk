@@ -50,6 +50,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Grasshopper      |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
     | SEED             |        128 |         128 | All modes supported     |
+    | Serpent          |        128 | 128/192/256 | All modes supported     |
     | SM4              |        128 |         128 | All modes supported     |
     | Twofish          |        128 | 128/192/256 | All modes supported     |
    
@@ -89,31 +90,32 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
    
 - **Message Digest Algorithms:**
 
-    |    Algorithm    |  64 | 128 | 160 | 256 | 512 | MAC |
+    |    Algorithm    | 128 | 160 | 192 | 256 | 512 | MAC |
     |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|
     | BLAKE-2B        |     |     |     | O   | O   | O   |
-    | BLAKE-2S        |     | O   |     | O   |     | O   |
-    | Chaskey         |     | O   |     |     |     | O   |
+    | BLAKE-2S        | O   |     |     | O   |     | O   |
+    | Chaskey         | O   |     |     |     |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
     | JH              |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
-    | MD4 [Obsolete]  |     | O   |     |     |     |     |
-    | MD5 [Obsolete]  |     | O   |     |     |     |     |
-    | Poly1305        |     | O   |     |     |     | O   |
-    | RIPEMD          |     | [O](https://thomaspeyrin.github.io/web/assets/docs/slides/Landelle-Peyrin-EUROCRYPT2013_slides.pdf)   | O   | O   |     |     |
-    | SHA1 [Obsolete] |     |     | O   |     |     |     |
+    | MD4 [Obsolete]  | O   |     |     |     |     |     |
+    | MD5 [Obsolete]  | O   |     |     |     |     |     |
+    | Poly1305        | O   |     |     |     |     | O   |
+    | RIPEMD          | [O](https://thomaspeyrin.github.io/web/assets/docs/slides/Landelle-Peyrin-EUROCRYPT2013_slides.pdf)   | O   |     | O   |     |     |
+    | SHA1 [Obsolete] |     | O   |     |     |     |     |
     | SHA2 (default)  |     |     |     | O   | O   |     | 
     | SHA3            |     |     |     | O   | O   |     |
-    | SipHash         | O   | O   |     |     |     | O   |
+    | SipHash         | O   |     |     |     |     | O   |
     | Skein           |     |     |     | O   | O   | O   | 
     | SM3             |     |     |     | O   |     |     |
     | Streebog        |     |     |     | O   | O   |     | 
+    | Tiger           |     |     | O   |     |     |     | 
     | Whirlpool       |     |     |     |     | O   |     | 
     | Xoodyak         |     |     |     | O   |     | O   |
-    | ZUC-256 (Zu Chongzhi)| O   | O   |     |     |     | O   |
+    | ZUC-256 (Zu Chongzhi)|  O   |     |     |     |     | O   |
     
     - MAC refers to keyed hash function, like HMAC. 
 
