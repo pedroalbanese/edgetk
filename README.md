@@ -33,7 +33,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | KCipher-2        | 128        |  128 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | Salsa20          | 256        |  192 | XOR Stream            |
-    | Skein            | 256        |   96 | XOR Stream            |
+    | Skein            | 256        |  128 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
