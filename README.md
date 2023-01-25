@@ -115,7 +115,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Tiger           |     |     | O   |     |     |     | 
     | Whirlpool       |     |     |     |     | O   |     | 
     | Xoodyak         |     |     |     | O   |     | O   |
-    | ZUC-256 (Zu Chongzhi)|  O   |     |     |     |     | O   |
+    | ZUC-256 Zu Chongzhi|  O   |     |     |     |     | O   |
     
     - MAC refers to keyed hash function, like HMAC. 
 
