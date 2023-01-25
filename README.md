@@ -96,6 +96,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Chaskey         |     | O   |     |     |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
+    | Grøstl          |     |     |     | O   |     |     |
     | JH              |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
