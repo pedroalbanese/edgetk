@@ -30,6 +30,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |      Cipher      |  Key Size  |  IV  |         Modes         |
     |:-----------------|:----------:|:----:|:---------------------:|
     | Chacha20Poly1305 | 256        | 96/192 | AEAD Stream Cipher  |
+    | HC128            | 128        |  128 | MAC + XOR Stream      |
+    | HC256            | 256        |  256 | MAC + XOR Stream      |
     | KCipher-2        | 128        |  128 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | Salsa20          | 256        |  192 | XOR Stream            |
@@ -94,6 +96,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Chaskey         |     | O   |     |     |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
+    | JH              |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
     | MD4 [Obsolete]  |     | O   |     |     |     |     |
