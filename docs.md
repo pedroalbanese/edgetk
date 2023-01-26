@@ -1,7 +1,7 @@
 ## Documentation
 ```
-Anubis Involutional SPN 128-bit block cipher (ESAT-COSIC)
-CHASKEY Message Authentication Code (ESAT-COSIC)
+Anubis Involutional SPN 128-bit block cipher (ESAT/COSIC)
+CHASKEY Message Authentication Code (ESAT/COSIC)
 Cubehash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
 GB/T 32918.4-2016 SM2 Encryption
 GM/T 0001-2012 ZUC Zu Chongzhi Stream cipher 128/256-bit key
@@ -15,8 +15,9 @@ GOST R 34.11-2012 Streebog hash function (RFC 6986)
 GOST R 34.11-94 hash function (RFC 5831)
 GOST R 34.12-2015 128-bit block cipher Kuznechik (RFC 7801)
 GOST R 34.12-2015 64-bit block cipher Magma (RFC 8891)
+HC-128 Strem Cipher simplified version of HC-256 (ESAT/COSIC) 
 IGE Mode of Operation for Block ciphers
-ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT-COSIC)
+ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT/COSIC)
 ISO/IEC 18033-3:2010 HIGHT, SEED, Camellia and MISTY1 Block ciphers
 ISO/IEC 18033-4:2011 KCipher-2 stream cipher (RFC 7008)
 KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
@@ -30,7 +31,7 @@ RFC 5869: HMAC-based Key Derivation Function (HKDF)
 RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
 RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
 RFC 7693: The BLAKE2 Cryptographic Hash and MAC
-RFC 8032: Ed25519 Signature
+RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
 RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers
 TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
 TTAK.KO-12.0276 LSH Message digest algorithm
