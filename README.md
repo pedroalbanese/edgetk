@@ -6,7 +6,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pedroalbanese/edgetk)](https://golang.org)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pedroalbanese/edgetk)](https://github.com/pedroalbanese/edgetk/releases)
 
-Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA/EdDSA) and TLS 1.2 for small or embedded systems. 
+Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA/EdDSA) and TLS 1.2 for small or embedded systems. 
 
 ***Fully OpenSSL/LibreSSL/RHash compliant***
 ## Command-line Integrated Security Suite
@@ -34,8 +34,8 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | HC-256           | 256        |  256 | XOR Stream            |
     | KCipher-2        | 128        |  128 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
-    | Salsa20          | 256        |  192 | XOR Stream            |
-    | Skein512         | 256        |  128 | XOR Stream            |
+    | Salsa20          | 256        | 64/192 | XOR Stream            |
+    | Skein512         | Any        |  Any | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -77,7 +77,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     |:---:|:-------------------------------|:----------:|:---------:|
     | EAX | Encrypt-Authenticate-Translate |128         |128/192/256|
     | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256|
-    | OCB | Offset Codebook Mode (AEAD)    |128         |128/192/256|
+    | OCB1| Offset Codebook v1 (AEAD)      |128         |128/192/256|
     | OCB3| Offset Codebook v3 (AEAD)      |128         |128/192/256|
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        |
     | CBC | Cipher-Block Chaining          |All         |Any        |
