@@ -6,6 +6,7 @@ goarch: x86
 AMD AthlonX2
 
 - Stream Ciphers:
+
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | `Chacha20Poly1305` | 501.6 ± 23.5 | 475.4 | 546.9 | 4.23 ± 0.25 |
@@ -20,6 +21,7 @@ AMD AthlonX2
 | `ZUC-256` | 485.8 ± 21.9 | 468.1 | 532.9 | 4.09 ± 0.24 |
 
 - 128-bit Block Ciphers:
+
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | `AES-256-CBC` | 562.3 ± 42.4 | 531.5 | 676.8 | 1.64 ± 0.56 |
@@ -34,6 +36,7 @@ AMD AthlonX2
 | `Twofish-256-CBC` | 791.8 ± 15.9 | 762.7 | 814.8 | 2.31 ± 0.77 |
 
 - 64-bit Block Ciphers:
+
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | `DES-CBC` | 751.6 ± 21.9 | 732.9 | 806.1 | 1.82 ± 0.10 |
@@ -49,6 +52,7 @@ AMD AthlonX2
 | `RC5-CBC` | 439.9 ± 12.2 | 425.9 | 466.3 | 1.07 ± 0.06 |
 
 - Modes of Operation: 
+
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | `AES-256-EAX` | 982.8 ± 17.3 | 960.3 | 1010.1 | 2.23 ± 0.05 |
@@ -65,6 +69,7 @@ AMD AthlonX2
 | `AES-256-OFB` | 449.4 ± 8.2 | 440.2 | 465.2 | 1.02 ± 0.02 |
 
 - Message Digest:
+
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | `blake2s128` | 119.1 ± 3.4 | 116.6 | 130.0 | 1.44 ± 0.17 |
@@ -106,6 +111,7 @@ AMD AthlonX2
 | `xoodyak` | 542.5 ± 4.4 | 536.9 | 551.9 | 6.56 ± 0.74 |
 
 - Message Authentication Code:
+
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | `CMAC` | 397.8 ± 13.0 | 380.6 | 421.4 | 2.71 ± 0.29 |
