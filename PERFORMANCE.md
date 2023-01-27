@@ -1,9 +1,10 @@
 # Performance  
 
-### Symmetric
 goos: windows  
 goarch: x86  
 AMD AthlonX2  
+
+### Symmetric
 
 - Stream Ciphers:
 
