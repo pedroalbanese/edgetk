@@ -2,7 +2,7 @@
 
 goos: windows  
 goarch: x86  
-AMD Athlon X2  
+AMD64 Athlon X2 (Dual-Core) 3GB RAM  
 
 ## Symmetric
 
