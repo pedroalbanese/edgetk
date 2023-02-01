@@ -39,6 +39,7 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/poly1305"
 	"golang.org/x/crypto/ripemd160"
+	"golang.org/x/crypto/salsa20"
 	"golang.org/x/crypto/sha3"
 	"golang.org/x/crypto/twofish"
 	"hash"
@@ -52,8 +53,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 
 	"github.com/RyuaNerin/go-krypto/aria"
+	"github.com/RyuaNerin/go-krypto/lea"
+	"github.com/RyuaNerin/go-krypto/lsh256"
+	"github.com/RyuaNerin/go-krypto/lsh512"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -66,6 +71,9 @@ import (
 	"github.com/pedroalbanese/cast5"
 	"github.com/pedroalbanese/cfb8"
 	"github.com/pedroalbanese/cmac"
+	"github.com/pedroalbanese/crypto/hc128"
+	"github.com/pedroalbanese/crypto/hc256"
+	"github.com/pedroalbanese/crypto/serpent"
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
@@ -75,16 +83,19 @@ import (
 	"github.com/pedroalbanese/go-kcipher2"
 	"github.com/pedroalbanese/go-krcrypt"
 	"github.com/pedroalbanese/go-misty1"
+	"github.com/pedroalbanese/go-pkcs12"
 	"github.com/pedroalbanese/go-rc5"
 	"github.com/pedroalbanese/go-ripemd"
 	"github.com/pedroalbanese/gogost/gost28147"
 	"github.com/pedroalbanese/gogost/gost34112012256"
 	"github.com/pedroalbanese/gogost/gost34112012512"
 	"github.com/pedroalbanese/gogost/gost341194"
-	"github.com/pedroalbanese/gogost/gost3412128"
 	"github.com/pedroalbanese/gogost/gost341264"
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/gopass"
+	"github.com/pedroalbanese/groestl-1"
+	"github.com/pedroalbanese/jh"
+	"github.com/pedroalbanese/kuznechik"
 	"github.com/pedroalbanese/lwcrypto/ascon2"
 	"github.com/pedroalbanese/lwcrypto/grain"
 	"github.com/pedroalbanese/ocb"
@@ -93,6 +104,9 @@ import (
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
 	"github.com/pedroalbanese/siphash"
+	"github.com/pedroalbanese/skein"
+	skeincipher "github.com/pedroalbanese/skein-1"
+	"github.com/pedroalbanese/tiger"
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 )
@@ -102,7 +116,7 @@ var (
 	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
 	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
-	crypt     = flag.String("crypt", "", "Encrypt/Decrypt with bulk ciphers. [enc|dec]")
+	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec]")
 	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
@@ -111,7 +125,7 @@ var (
 	kdf       = flag.Int("hkdf", 0, "HMAC-based key derivation function with given bit length.")
 	key       = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
 	length    = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
-	mac       = flag.String("mac", "", "Compute Hash-based message authentication code.")
+	mac       = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
 	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
 	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB, OCB, OFB.")
 	pbkdf     = flag.Bool("pbkdf2", false, "Password-based key derivation function.")
@@ -159,12 +173,12 @@ func main() {
 
 	if *pkey == "keygen" && *pwd == "" {
 		scanner := bufio.NewScanner(os.Stdin)
-		print("Password: ")
+		print("Passphrase: ")
 		scanner.Scan()
 		*pwd = scanner.Text()
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client") && *key != "" && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -181,7 +195,20 @@ func main() {
 			errors.New("no valid private key found")
 		}
 		if IsEncryptedPEMBlock(block) {
-			print("Password: ")
+			print("Passphrase: ")
+			pass, _ := gopass.GetPasswd()
+			*pwd = string(pass)
+		}
+	}
+
+	if (*pkey == "pkcs12") && *key == "" && *pwd == "" {
+		pfxBytes, err := os.ReadFile(*cert)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, _, err = pkcs12.Decode(pfxBytes, *pwd)
+		if err != nil {
+			print("Passphrase: ")
 			pass, _ := gopass.GetPasswd()
 			*pwd = string(pass)
 		}
@@ -216,6 +243,14 @@ func main() {
 		myHash = sha3.NewLegacyKeccak256
 	} else if *md == "keccak512" {
 		myHash = sha3.NewLegacyKeccak512
+	} else if *md == "lsh224" {
+		myHash = lsh256.New224
+	} else if *md == "lsh256" {
+		myHash = lsh256.New
+	} else if *md == "lsh384" {
+		myHash = lsh512.New384
+	} else if *md == "lsh512" {
+		myHash = lsh512.New
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
@@ -242,6 +277,24 @@ func main() {
 		myHash = cubehash.New
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
+	} else if *md == "skein256" {
+		g := func() hash.Hash {
+			return skein.New256(nil)
+		}
+		myHash = g
+	} else if *md == "skein512" {
+		g := func() hash.Hash {
+			return skein.New512(nil)
+		}
+		myHash = g
+	} else if *md == "jh" {
+		myHash = jh.New256
+	} else if *md == "groestl" {
+		myHash = groestl.New256
+	} else if *md == "tiger" {
+		myHash = tiger.New
+	} else if *md == "tiger2" {
+		myHash = tiger.New2
 	}
 
 	if *random != 0 {
@@ -315,7 +368,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "twofish") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -323,7 +376,7 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "xoodyak") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -715,6 +768,187 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *crypt != "" && (*cph == "salsa20") {
+		var keyHex string
+		keyHex = *key
+		var err error
+		var key = [32]byte{}
+		var raw []byte
+		if keyHex == "" {
+			raw := make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, raw)
+			if err != nil {
+				log.Fatal(err)
+			}
+			key = *byte32(raw)
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key[:]))
+		} else {
+			raw, _ = hex.DecodeString(keyHex)
+			copy(key[:], raw)
+		}
+		var nonce []byte
+		nonce = make([]byte, 24)
+		var iv []byte
+		iv = make([]byte, 24)
+
+		if *vector != "" {
+			iv, _ = hex.DecodeString(*vector)
+			copy(nonce[:], iv)
+		} else {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		}
+
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			salsa20.XORKeyStream(buf[:n], buf[:n], nonce[:], &key)
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "skein") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+		}
+		var nonce []byte
+		nonce = make([]byte, 16)
+		var iv []byte
+		iv = make([]byte, 16)
+
+		if *vector != "" {
+			iv, _ = hex.DecodeString(*vector)
+			copy(nonce[:], iv)
+		} else {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		}
+
+		ciph := skeincipher.NewStream(key, nonce)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "hc128" || *cph == "hc256") {
+		var keyHex string
+		var keyRaw []byte
+		var err error
+		keyHex = *key
+
+		var ciph cipher.Stream
+		if *cph == "hc256" {
+			var key [32]byte
+			if keyHex != "" {
+				raw, _ := hex.DecodeString(keyHex)
+				key = *byte32(raw)
+			} else {
+				keyRaw = make([]byte, 32)
+				_, err = io.ReadFull(rand.Reader, keyRaw)
+				if err != nil {
+					log.Fatal(err)
+				}
+				key = *byte32(keyRaw)
+				fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key[:]))
+			}
+			var nonce [32]byte
+			var iv []byte
+			iv = make([]byte, 32)
+			if *vector != "" {
+				iv, _ = hex.DecodeString(*vector)
+				copy(nonce[:], iv)
+			} else {
+				fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+			}
+			ciph = hc256.NewCipher(&nonce, &key)
+			if len(key) != 32 {
+				log.Fatal(err)
+			}
+		} else if *cph == "hc128" {
+			var key [16]byte
+			var raw []byte
+			if keyHex != "" {
+				raw, _ = hex.DecodeString(keyHex)
+				key = *byte16(raw)
+			} else {
+				keyRaw = make([]byte, 16)
+				_, err = io.ReadFull(rand.Reader, keyRaw)
+				if err != nil {
+					log.Fatal(err)
+				}
+				key = *byte16(keyRaw)
+				fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key[:]))
+			}
+			var iv []byte
+			iv = make([]byte, 16)
+			var nonce [16]byte
+			if *vector != "" {
+				iv, _ = hex.DecodeString(*vector)
+				copy(nonce[:], iv)
+			} else {
+				fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+			}
+			copy(key[:], raw)
+			ciph = hc128.NewCipher(&nonce, &key)
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+		buf := make([]byte, 128*1<<10)
+		var n int
+
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
 	if *crypt == "eea256" || (*crypt != "" && *cph == "zuc256") {
 		var keyHex string
 		keyHex = *key
@@ -815,7 +1049,7 @@ func main() {
 		keyHex = *key
 		var err error
 		if keyHex == "" {
-			keyRaw, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000000")
+			keyRaw = make([]byte, 256/8)
 			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(keyRaw))
 		} else {
 			keyRaw, err = hex.DecodeString(keyHex)
@@ -833,7 +1067,7 @@ func main() {
 				log.Fatal(err)
 			}
 		} else {
-			nonce, _ = hex.DecodeString("0000000000000000000000000000000000000000000000")
+			nonce = make([]byte, 184/8)
 			fmt.Fprintln(os.Stderr, "IV=", hex.EncodeToString(nonce))
 		}
 		h, _ := zuc.NewHash256(keyRaw, nonce, *length/8)
@@ -863,7 +1097,7 @@ func main() {
 		keyHex = *key
 		var err error
 		if keyHex == "" {
-			keyRaw, _ = hex.DecodeString("00000000000000000000000000000000")
+			keyRaw = make([]byte, 128/8)
 			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(keyRaw))
 		} else {
 			keyRaw, err = hex.DecodeString(keyHex)
@@ -881,7 +1115,7 @@ func main() {
 				log.Fatal(err)
 			}
 		} else {
-			nonce, _ = hex.DecodeString("00000000000000000000000000000000")
+			nonce = make([]byte, 128/8)
 			fmt.Fprintln(os.Stderr, "IV=", hex.EncodeToString(nonce))
 		}
 		h, _ := zuc.NewHash(keyRaw, nonce)
@@ -914,7 +1148,7 @@ func main() {
 			keyRaw = []byte(*key)
 		}
 		if len([]byte(keyRaw)) != 16 {
-			log.Fatal("CHASKEY's secret key must have 64-bit.")
+			log.Fatal("CHASKEY secret key must have 16 bytes.")
 		}
 		xkey := [4]uint32{binary.LittleEndian.Uint32([]byte(keyRaw)[:]),
 			binary.LittleEndian.Uint32([]byte(keyRaw)[4:]),
@@ -941,7 +1175,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "seed" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "twofish") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -973,20 +1207,26 @@ func main() {
 		} else if *cph == "aria" {
 			ciph, err = aria.NewCipher(key)
 			n = 16
+		} else if *cph == "lea" {
+			ciph, err = lea.NewCipher(key)
+			n = 16
 		} else if *cph == "camellia" {
 			ciph, err = camellia.NewCipher(key)
 			n = 16
+		} else if *cph == "serpent" {
+			ciph, err = serpent.NewCipher(key)
+			n = 16
 		} else if *cph == "grasshopper" {
-			ciph = gost3412128.NewCipher(key)
+			ciph, err = kuznechik.NewCipher(key)
 			n = 16
 		} else if *cph == "sm4" {
-			ciph, _ = sm4.NewCipher(key)
+			ciph, err = sm4.NewCipher(key)
 			n = 16
 		} else if *cph == "seed" {
-			ciph, _ = krcrypt.NewSEED(key)
+			ciph, err = krcrypt.NewSEED(key)
 			n = 16
 		} else if *cph == "anubis" {
-			ciph, _ = anubis.New(key)
+			ciph, err = anubis.New(key)
 			n = 16
 		} else if *cph == "magma" {
 			ciph = gost341264.NewCipher(key)
@@ -1004,7 +1244,7 @@ func main() {
 			aead, err = cipher.NewGCMWithTagSize(ciph, 16)
 		} else if strings.ToUpper(*mode) == "MGM" {
 			aead, err = mgm.NewMGM(ciph, n)
-		} else if strings.ToUpper(*mode) == "OCB" {
+		} else if strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" {
 			aead, err = ocb.NewOCB(ciph)
 		} else if strings.ToUpper(*mode) == "OCB3" {
 			aead, err = ocb3.New(ciph)
@@ -1084,11 +1324,17 @@ func main() {
 		} else if *cph == "aria" {
 			ciph, err = aria.NewCipher(key)
 			n = 16
+		} else if *cph == "lea" {
+			ciph, err = lea.NewCipher(key)
+			n = 16
 		} else if *cph == "camellia" {
 			ciph, err = camellia.NewCipher(key)
 			n = 16
+		} else if *cph == "serpent" {
+			ciph, err = serpent.NewCipher(key)
+			n = 16
 		} else if *cph == "grasshopper" {
-			ciph = gost3412128.NewCipher(key)
+			ciph, err = kuznechik.NewCipher(key)
 			n = 16
 		} else if *cph == "sm4" {
 			ciph, err = sm4.NewCipher(key)
@@ -1116,6 +1362,9 @@ func main() {
 			n = 8
 		} else if *cph == "rc2" {
 			ciph, err = rc2.NewCipher(key)
+			n = 8
+		} else if *cph == "rc5" {
+			ciph, err = rc5.New(key)
 			n = 8
 		} else if *cph == "idea" {
 			ciph, _ = idea.NewCipher(key)
@@ -1149,66 +1398,43 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if *crypt == "enc" && strings.ToUpper(*mode) == "ECB" {
+		if *crypt == "enc" {
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, inputfile)
 			plaintext := buf.Bytes()
 			plaintext = PKCS7Padding(plaintext)
 			ciphertext := make([]byte, len(plaintext))
-			mode := ecb.NewECBEncrypter(ciph)
-			mode.CryptBlocks(ciphertext, plaintext)
+			var blockmode cipher.BlockMode
+			if strings.ToUpper(*mode) == "ECB" {
+				blockmode = ecb.NewECBEncrypter(ciph)
+			} else if strings.ToUpper(*mode) == "CBC" {
+				blockmode = cipher.NewCBCEncrypter(ciph, iv)
+			} else if strings.ToUpper(*mode) == "IGE" {
+				blockmode = ige.NewIGEEncrypter(ciph, iv)
+			}
+			blockmode.CryptBlocks(ciphertext, plaintext)
 			fmt.Printf("%s", ciphertext)
-		} else if *crypt == "dec" && strings.ToUpper(*mode) == "ECB" {
+		} else if *crypt == "dec" {
 			buf := bytes.NewBuffer(nil)
 			io.Copy(buf, inputfile)
 			ciphertext := buf.Bytes()
 			plaintext := make([]byte, len(ciphertext))
-			mode := ecb.NewECBDecrypter(ciph)
-			mode.CryptBlocks(plaintext, ciphertext)
-			plaintext = PKCS7UnPadding(plaintext)
-			fmt.Printf("%s", plaintext)
-		}
-		if *crypt == "enc" && strings.ToUpper(*mode) == "CBC" {
-			buf := bytes.NewBuffer(nil)
-			io.Copy(buf, inputfile)
-			plaintext := buf.Bytes()
-			plaintext = PKCS7Padding(plaintext)
-			ciphertext := make([]byte, len(plaintext))
-			mode := cipher.NewCBCEncrypter(ciph, iv)
-			mode.CryptBlocks(ciphertext, plaintext)
-			fmt.Printf("%s", ciphertext)
-		} else if *crypt == "dec" && strings.ToUpper(*mode) == "CBC" {
-			buf := bytes.NewBuffer(nil)
-			io.Copy(buf, inputfile)
-			ciphertext := buf.Bytes()
-			plaintext := make([]byte, len(ciphertext))
-			mode := cipher.NewCBCDecrypter(ciph, iv)
-			mode.CryptBlocks(plaintext, ciphertext)
-			plaintext = PKCS7UnPadding(plaintext)
-			fmt.Printf("%s", plaintext)
-		} else if *crypt == "enc" && strings.ToUpper(*mode) == "IGE" {
-			buf := bytes.NewBuffer(nil)
-			io.Copy(buf, inputfile)
-			plaintext := buf.Bytes()
-			plaintext = PKCS7Padding(plaintext)
-			ciphertext := make([]byte, len(plaintext))
-			mode := ige.NewIGEEncrypter(ciph, iv)
-			mode.CryptBlocks(ciphertext, plaintext)
-			fmt.Printf("%s", ciphertext)
-		} else if *crypt == "dec" && strings.ToUpper(*mode) == "IGE" {
-			buf := bytes.NewBuffer(nil)
-			io.Copy(buf, inputfile)
-			ciphertext := buf.Bytes()
-			plaintext := make([]byte, len(ciphertext))
-			mode := ige.NewIGEDecrypter(ciph, iv)
-			mode.CryptBlocks(plaintext, ciphertext)
+			var blockmode cipher.BlockMode
+			if strings.ToUpper(*mode) == "ECB" {
+				blockmode = ecb.NewECBDecrypter(ciph)
+			} else if strings.ToUpper(*mode) == "CBC" {
+				blockmode = cipher.NewCBCDecrypter(ciph, iv)
+			} else if strings.ToUpper(*mode) == "IGE" {
+				blockmode = ige.NewIGEDecrypter(ciph, iv)
+			}
+			blockmode.CryptBlocks(plaintext, ciphertext)
 			plaintext = PKCS7UnPadding(plaintext)
 			fmt.Printf("%s", plaintext)
 		}
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "gost89" || *cph == "twofish") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -1241,8 +1467,14 @@ func main() {
 		} else if *cph == "aria" {
 			ciph, err = aria.NewCipher(key)
 			iv = make([]byte, 16)
+		} else if *cph == "lea" {
+			ciph, err = lea.NewCipher(key)
+			iv = make([]byte, 16)
 		} else if *cph == "camellia" {
 			ciph, err = camellia.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "serpent" {
+			ciph, err = serpent.NewCipher(key)
 			iv = make([]byte, 16)
 		} else if *cph == "magma" {
 			ciph = gost341264.NewCipher(key)
@@ -1251,7 +1483,7 @@ func main() {
 			ciph = gost28147.NewCipher(key, &gost28147.SboxIdtc26gost28147paramZ)
 			iv = make([]byte, 8)
 		} else if *cph == "grasshopper" {
-			ciph = gost3412128.NewCipher(key)
+			ciph, err = kuznechik.NewCipher(key)
 			a := make([]byte, 8)
 			s, _ := hex.DecodeString("0000000000000000")
 			iv = append(a, s...)
@@ -1435,6 +1667,14 @@ func main() {
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
+		} else if *md == "lsh224" {
+			h = lsh256.New224()
+		} else if *md == "lsh256" {
+			h = lsh256.New()
+		} else if *md == "lsh384" {
+			h = lsh512.New384()
+		} else if *md == "lsh512" {
+			h = lsh512.New()
 		} else if *md == "keccak256" {
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
@@ -1473,6 +1713,18 @@ func main() {
 			h = cubehash.New()
 		} else if *md == "xoodyak" || *md == "xhash" {
 			h = xoodyak.NewXoodyakHash()
+		} else if *md == "skein256" {
+			h = skein.New256([]byte(*key))
+		} else if *md == "skein512" {
+			h = skein.New512([]byte(*key))
+		} else if *md == "jh" {
+			h = jh.New256()
+		} else if *md == "groestl" {
+			h = groestl.New256()
+		} else if *md == "tiger" {
+			h = tiger.New()
+		} else if *md == "tiger2" {
+			h = tiger.New2()
 		}
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)))
@@ -1511,6 +1763,14 @@ func main() {
 					h = sha3.New384()
 				} else if *md == "sha3-512" {
 					h = sha3.New512()
+				} else if *md == "lsh224" {
+					h = lsh256.New224()
+				} else if *md == "lsh256" {
+					h = lsh256.New()
+				} else if *md == "lsh384" {
+					h = lsh512.New384()
+				} else if *md == "lsh512" {
+					h = lsh512.New()
 				} else if *md == "keccak256" {
 					h = sha3.NewLegacyKeccak256()
 				} else if *md == "keccak512" {
@@ -1549,12 +1809,27 @@ func main() {
 					h = cubehash.New()
 				} else if *md == "xoodyak" || *md == "xhash" {
 					h = xoodyak.NewXoodyakHash()
+				} else if *md == "skein256" {
+					h = skein.New256([]byte(*key))
+				} else if *md == "skein512" {
+					h = skein.New512([]byte(*key))
+				} else if *md == "jh" {
+					h = jh.New256()
+				} else if *md == "groestl" {
+					h = groestl.New256()
+				} else if *md == "tiger" {
+					h = tiger.New()
+				} else if *md == "tiger2" {
+					h = tiger.New2()
 				}
 				f, err := os.Open(match)
 				if err != nil {
 					log.Fatal(err)
 				}
 				file, err := os.Stat(match)
+				if err != nil {
+					log.Fatal(err)
+				}
 				if file.IsDir() {
 				} else {
 					if _, err := io.Copy(h, f); err != nil {
@@ -1582,7 +1857,7 @@ func main() {
 						pattern := filepath.Base(match)
 						matched, err := filepath.Match(pattern, filename)
 						if err != nil {
-							fmt.Println(err)
+							log.Fatal(err)
 						}
 						if matched {
 							var h hash.Hash
@@ -1610,6 +1885,14 @@ func main() {
 								h = sha3.New384()
 							} else if *md == "sha3-512" {
 								h = sha3.New512()
+							} else if *md == "lsh224" {
+								h = lsh256.New224()
+							} else if *md == "lsh256" {
+								h = lsh256.New()
+							} else if *md == "lsh384" {
+								h = lsh512.New384()
+							} else if *md == "lsh512" {
+								h = lsh512.New()
 							} else if *md == "keccak256" {
 								h = sha3.NewLegacyKeccak256()
 							} else if *md == "keccak512" {
@@ -1648,6 +1931,18 @@ func main() {
 								h = cubehash.New()
 							} else if *md == "xoodyak" || *md == "xhash" {
 								h = xoodyak.NewXoodyakHash()
+							} else if *md == "skein256" {
+								h = skein.New256([]byte(*key))
+							} else if *md == "skein512" {
+								h = skein.New512([]byte(*key))
+							} else if *md == "jh" {
+								h = jh.New256()
+							} else if *md == "groestl" {
+								h = groestl.New256()
+							} else if *md == "tiger" {
+								h = tiger.New()
+							} else if *md == "tiger2" {
+								h = tiger.New2()
 							}
 							f, err := os.Open(path)
 							if err != nil {
@@ -1715,6 +2010,14 @@ func main() {
 					h = sha3.New384()
 				} else if *md == "sha3-512" {
 					h = sha3.New512()
+				} else if *md == "lsh224" {
+					h = lsh256.New224()
+				} else if *md == "lsh256" {
+					h = lsh256.New()
+				} else if *md == "lsh384" {
+					h = lsh512.New384()
+				} else if *md == "lsh512" {
+					h = lsh512.New()
 				} else if *md == "keccak256" {
 					h = sha3.NewLegacyKeccak256()
 				} else if *md == "keccak512" {
@@ -1753,6 +2056,18 @@ func main() {
 					h = cubehash.New()
 				} else if *md == "xoodyak" || *md == "xhash" {
 					h = xoodyak.NewXoodyakHash()
+				} else if *md == "skein256" {
+					h = skein.New256([]byte(*key))
+				} else if *md == "skein512" {
+					h = skein.New512([]byte(*key))
+				} else if *md == "jh" {
+					h = jh.New256()
+				} else if *md == "groestl" {
+					h = groestl.New256()
+				} else if *md == "tiger" {
+					h = tiger.New()
+				} else if *md == "tiger2" {
+					h = tiger.New2()
 				}
 				_, err := os.Stat(lines[1])
 				if err == nil {
@@ -1796,6 +2111,73 @@ func main() {
 			}
 		}
 		fmt.Println("MAC-POLY1305("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "siphash" {
+		var xkey [16]byte
+		copy(xkey[:], []byte(*key))
+		h, _ := siphash.New128(xkey[:])
+		io.Copy(h, inputfile)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("MAC-SIPHASH("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "siphash64" {
+		var xkey [16]byte
+		copy(xkey[:], []byte(*key))
+		h, _ := siphash.New64(xkey[:])
+		io.Copy(h, inputfile)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("MAC-SIPHASH("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "skein" {
+		var err error
+		h := skeincipher.NewMAC(32, []byte(*key))
+		if _, err = io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("MAC-SKEIN("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -1847,10 +2229,16 @@ func main() {
 			c, err = des.NewTripleDESCipher([]byte(*key))
 		} else if *cph == "aes" {
 			c, err = aes.NewCipher([]byte(*key))
+		} else if *cph == "twofish" {
+			c, err = twofish.NewCipher([]byte(*key))
 		} else if *cph == "aria" {
 			c, err = aria.NewCipher([]byte(*key))
+		} else if *cph == "lea" {
+			c, err = lea.NewCipher([]byte(*key))
 		} else if *cph == "camellia" {
 			c, err = camellia.NewCipher([]byte(*key))
+		} else if *cph == "serpent" {
+			c, err = serpent.NewCipher([]byte(*key))
 		} else if *cph == "misty1" {
 			c, err = misty1.New([]byte(*key))
 		} else if *cph == "magma" {
@@ -1862,7 +2250,7 @@ func main() {
 			if len(*key) != 32 {
 				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
 			}
-			c = gost3412128.NewCipher([]byte(*key))
+			c, err = kuznechik.NewCipher([]byte(*key))
 		} else if *cph == "gost89" {
 			if len(*key) != 32 {
 				log.Fatal("GOST89: invalid key size ", len(*key))
@@ -1906,15 +2294,18 @@ func main() {
 			c, err = krcrypt.NewSEED([]byte(*key))
 		} else if *cph == "aes" {
 			c, err = aes.NewCipher([]byte(*key))
+		} else if *cph == "twofish" {
+			c, err = twofish.NewCipher([]byte(*key))
 		} else if *cph == "aria" {
 			c, err = aria.NewCipher([]byte(*key))
+		} else if *cph == "lea" {
+			c, err = lea.NewCipher([]byte(*key))
 		} else if *cph == "camellia" {
 			c, err = camellia.NewCipher([]byte(*key))
+		} else if *cph == "serpent" {
+			c, err = serpent.NewCipher([]byte(*key))
 		} else if *cph == "grasshopper" {
-			if len(*key) != 32 {
-				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
-			}
-			c = gost3412128.NewCipher([]byte(*key))
+			c, err = kuznechik.NewCipher([]byte(*key))
 		} else if *cph == "anubis" {
 			if len(*key) != 16 {
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
@@ -1952,7 +2343,7 @@ func main() {
 		if _, err = io.Copy(h, file); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println("XMAC("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		fmt.Println("MAC-XOODYAK("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -2176,12 +2567,24 @@ func main() {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA192)
 			} else if *cph == "aria" || *cph == "aria256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA256)
+			} else if *cph == "lea128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA128)
+			} else if *cph == "lea192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA192)
+			} else if *cph == "lea" || *cph == "lea256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA256)
 			} else if *cph == "seed" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSEED)
 			} else if *cph == "cast5" {
 				block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAST)
 			} else if *cph == "anubis" {
 				block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherANUBIS)
+			} else if *cph == "serpent128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT128)
+			} else if *cph == "serpent192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
+			} else if *cph == "serpent" || *cph == "serpent256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -2243,6 +2646,12 @@ func main() {
 			h = sm3.New()
 		} else if *md == "whirlpool" {
 			h = whirlpool.New()
+		} else if *md == "cubehash" {
+			h = cubehash.New()
+		} else if *md == "jh" {
+			h = jh.New256()
+		} else if *md == "groestl" {
+			h = groestl.New256()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -2292,6 +2701,12 @@ func main() {
 			h = sm3.New()
 		} else if *md == "whirlpool" {
 			h = whirlpool.New()
+		} else if *md == "cubehash" {
+			h = cubehash.New()
+		} else if *md == "jh" {
+			h = jh.New256()
+		} else if *md == "groestl" {
+			h = groestl.New256()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -2351,6 +2766,10 @@ func main() {
 			h = crypto.BLAKE2s_256.New()
 		} else if *md == "cubehash" {
 			h = cubehash.New()
+		} else if *md == "jh" {
+			h = jh.New256()
+		} else if *md == "groestl" {
+			h = groestl.New256()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -2430,6 +2849,10 @@ func main() {
 			h = crypto.BLAKE2s_256.New()
 		} else if *md == "cubehash" {
 			h = cubehash.New()
+		} else if *md == "jh" {
+			h = jh.New256()
+		} else if *md == "groestl" {
+			h = groestl.New256()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -2518,12 +2941,24 @@ func main() {
 					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA192)
 				} else if *cph == "aria" || *cph == "aria256" {
 					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA256)
+				} else if *cph == "lea128" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA128)
+				} else if *cph == "lea192" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA192)
+				} else if *cph == "lea" || *cph == "lea256" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA256)
 				} else if *cph == "seed" {
 					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSEED)
 				} else if *cph == "cast5" {
 					block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAST)
 				} else if *cph == "anubis" {
 					block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherANUBIS)
+				} else if *cph == "serpent128" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT128)
+				} else if *cph == "serpent192" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
+				} else if *cph == "serpent" || *cph == "serpent256" {
+					block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
 				}
 				if err != nil {
 					log.Fatal(err)
@@ -2646,6 +3081,22 @@ func main() {
 
 	if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
 		GenerateRsaKey(*length)
+		os.Exit(0)
+	}
+
+	if *pkey == "pkcs12" && *key != "" {
+		err := PfxGen()
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+
+	if *pkey == "pkcs12" && *key == "" {
+		err := PfxParse()
+		if err != nil {
+			log.Fatal(err)
+		}
 		os.Exit(0)
 	}
 
@@ -3306,7 +3757,7 @@ func main() {
 				}
 			}
 			priv = priva
-		} else if strings.ToUpper(*alg) == "EC" {
+		} else if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" {
 			var privateKey *ecdsa.PrivateKey
 			var privKeyBytes []byte
 			if IsEncryptedPEMBlock(block) {
@@ -3942,10 +4393,22 @@ func GenerateRsaKey(bit int) error {
 			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA192)
 		} else if *cph == "aria" || *cph == "aria256" {
 			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA256)
+		} else if *cph == "lea128" {
+			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA128)
+		} else if *cph == "lea192" {
+			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA192)
+		} else if *cph == "lea" || *cph == "lea256" {
+			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA256)
 		} else if *cph == "cast5" {
 			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAST)
 		} else if *cph == "anubis" {
 			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherANUBIS)
+		} else if *cph == "serpent128" {
+			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT128)
+		} else if *cph == "serpent192" {
+			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
+		} else if *cph == "serpent" || *cph == "serpent256" {
+			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
 		}
 		if err != nil {
 			return err
@@ -4021,10 +4484,22 @@ func EncodeSM2PrivateKey(key *sm2.PrivateKey) ([]byte, error) {
 			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA192)
 		} else if *cph == "aria" || *cph == "aria256" {
 			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA256)
+		} else if *cph == "lea128" {
+			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA128)
+		} else if *cph == "lea192" {
+			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA192)
+		} else if *cph == "lea" || *cph == "lea256" {
+			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA256)
 		} else if *cph == "cast5" {
 			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAST)
 		} else if *cph == "anubis" {
 			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherANUBIS)
+		} else if *cph == "serpent128" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT128)
+		} else if *cph == "serpent192" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
+		} else if *cph == "serpent" || *cph == "serpent256" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
 		}
 		return pem.EncodeToMemory(keyBlock), nil
 	} else {
@@ -4103,10 +4578,22 @@ func EncodePrivateKey(key *ecdsa.PrivateKey) ([]byte, error) {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA192)
 		} else if *cph == "aria" || *cph == "aria256" {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA256)
+		} else if *cph == "lea128" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA128)
+		} else if *cph == "lea192" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA192)
+		} else if *cph == "lea" || *cph == "lea256" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA256)
 		} else if *cph == "cast5" {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAST)
 		} else if *cph == "anubis" {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherANUBIS)
+		} else if *cph == "serpent128" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT128)
+		} else if *cph == "serpent192" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
+		} else if *cph == "serpent" || *cph == "serpent256" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
 		}
 		return pem.EncodeToMemory(keyBlock), nil
 	} else {
@@ -4196,6 +4683,14 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sha3.NewLegacyKeccak256
 	} else if *md == "keccak512" {
 		myHash = sha3.NewLegacyKeccak512
+	} else if *md == "lsh224" {
+		myHash = lsh256.New224
+	} else if *md == "lsh256" {
+		myHash = lsh256.New
+	} else if *md == "lsh384" {
+		myHash = lsh512.New384
+	} else if *md == "lsh512" {
+		myHash = lsh512.New
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
@@ -4222,6 +4717,20 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = cubehash.New
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
+	} else if *md == "skein256" {
+		g := func() hash.Hash {
+			return skein.New256(nil)
+		}
+		myHash = g
+	} else if *md == "skein512" {
+		g := func() hash.Hash {
+			return skein.New512(nil)
+		}
+		myHash = g
+	} else if *md == "jh" {
+		myHash = jh.New256
+	} else if *md == "groestl" {
+		myHash = groestl.New256
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
@@ -4232,6 +4741,272 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 	copy(result[:], key)
 
 	return result, err
+}
+
+func PfxGen() error {
+	var certPEM []byte
+	file, err := os.Open(*cert)
+	if err != nil {
+		return err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, info.Size())
+	file.Read(buf)
+	certPEM = buf
+	var certPemBlock, _ = pem.Decode([]byte(certPEM))
+	var certificate, _ = x509.ParseCertificate(certPemBlock.Bytes)
+
+	var privPEM []byte
+	file, err = os.Open(*key)
+	if err != nil {
+		return err
+	}
+	info, err = file.Stat()
+	if err != nil {
+		return err
+	}
+	buf = make([]byte, info.Size())
+	file.Read(buf)
+	var block *pem.Block
+	block, _ = pem.Decode(buf)
+	if block == nil {
+		errors.New("no valid private key found")
+	}
+	var privKeyBytes []byte
+
+	if IsEncryptedPEMBlock(block) {
+		privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+		if err != nil {
+			return err
+		}
+		privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
+	} else {
+		privPEM = buf
+	}
+	var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
+
+	scanner := bufio.NewScanner(os.Stdin)
+	print("PFX Certificate Passphrase: ")
+	scanner.Scan()
+	psd := scanner.Text()
+
+	var pfxBytes []byte
+	if strings.ToUpper(*alg) == "RSA" {
+		var privKey, _ = x509.ParsePKCS1PrivateKey(privateKeyPemBlock.Bytes)
+		if err := privKey.Validate(); err != nil {
+			panic("error validating the private key: " + err.Error())
+		}
+		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*x509.Certificate{}, psd)
+	} else if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" {
+		var privKey, _ = x509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
+		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*x509.Certificate{}, psd)
+	} else if strings.ToUpper(*alg) == "ED25519" {
+		var privKey, _ = x509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*x509.Certificate{}, psd)
+	}
+
+	if err != nil {
+		return err
+	}
+	if _, _, err := pkcs12.Decode(pfxBytes, psd); err != nil {
+		return err
+	}
+
+	certname := strings.Split(*cert, ".")
+	if err := ioutil.WriteFile(
+		certname[0]+".pfx",
+		pfxBytes,
+		os.ModePerm,
+	); err != nil {
+		return err
+	}
+	fmt.Printf("The certificate has been generated: %s\n", certname[0]+".pfx")
+	return nil
+}
+
+func PfxParse() error {
+	pfxBytes, err := os.ReadFile(*cert)
+	if err != nil {
+		return err
+	}
+	_, certificate, err := pkcs12.Decode(pfxBytes, *pwd)
+	if err != nil {
+		return err
+	}
+
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certificate.Raw})
+	fmt.Printf("%s", pemCert)
+
+	PEM, err := pkcs12.ToPEM(pfxBytes, *pwd)
+	if err != nil {
+		return err
+	}
+
+	_, err = x509.ParsePKCS1PrivateKey(PEM[1].Bytes)
+	if err != nil {
+		ecdsaPublicKey := certificate.PublicKey.(*ecdsa.PublicKey)
+		publicStream, err := x509.MarshalPKIXPublicKey(ecdsaPublicKey)
+		if err != nil {
+			return err
+		}
+		pubblock := pem.Block{Type: "PUBLIC KEY", Bytes: publicStream}
+		fmt.Printf("%s", pem.EncodeToMemory(&pubblock))
+	} else {
+		rsaPublicKey := certificate.PublicKey.(*rsa.PublicKey)
+		publicStream, err := x509.MarshalPKIXPublicKey(rsaPublicKey)
+		if err != nil {
+			return err
+		}
+		pubblock := pem.Block{Type: "PUBLIC KEY", Bytes: publicStream}
+		fmt.Printf("%s", pem.EncodeToMemory(&pubblock))
+	}
+
+	fmt.Printf("Expiry:         %s \n", certificate.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
+	fmt.Printf("Common Name:    %s \n", certificate.Issuer.CommonName)
+	fmt.Printf("Issuer:         %s \n", certificate.Issuer)
+	fmt.Printf("EmailAddresses: %s \n", certificate.EmailAddresses)
+	fmt.Printf("SerialNumber:   %x \n", certificate.SerialNumber)
+	fmt.Printf("SubjectKeyId:   %x \n", certificate.SubjectKeyId)
+	fmt.Printf("AuthorityKeyId: %x \n", certificate.AuthorityKeyId)
+
+	print("Enter PEM Passphrase: ")
+	pass, _ := gopass.GetPasswd()
+	psd := string(pass)
+
+	_, err = x509.ParsePKCS1PrivateKey(PEM[1].Bytes)
+	if err != nil {
+		keyBlock := &pem.Block{
+			Type:  "EC PRIVATE KEY",
+			Bytes: PEM[1].Bytes,
+		}
+		if psd != "" {
+			if *cph == "aes128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES128)
+			} else if *cph == "aes192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES192)
+			} else if *cph == "aes" || *cph == "aes256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES256)
+			} else if *cph == "3des" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipher3DES)
+			} else if *cph == "des" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherDES)
+			} else if *cph == "sm4" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSM4)
+			} else if *cph == "seed" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSEED)
+			} else if *cph == "gost" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherGOST)
+			} else if *cph == "idea" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherIDEA)
+			} else if *cph == "camellia128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA128)
+			} else if *cph == "camellia192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA192)
+			} else if *cph == "camellia256" || *cph == "camellia" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA256)
+			} else if *cph == "aria128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA128)
+			} else if *cph == "aria192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA192)
+			} else if *cph == "aria" || *cph == "aria256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA256)
+			} else if *cph == "cast5" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAST)
+			} else if *cph == "anubis" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherANUBIS)
+			} else if *cph == "lea128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherLEA128)
+			} else if *cph == "lea192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherLEA192)
+			} else if *cph == "lea" || *cph == "lea256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherLEA256)
+			} else if *cph == "serpent128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT128)
+			} else if *cph == "serpent192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT192)
+			} else if *cph == "serpent" || *cph == "serpent256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT256)
+			}
+		}
+		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
+	} else {
+		keyBlock := &pem.Block{
+			Type:  "RSA PRIVATE KEY",
+			Bytes: PEM[1].Bytes,
+		}
+		if psd != "" {
+			if *cph == "aes128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES128)
+			} else if *cph == "aes192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES192)
+			} else if *cph == "aes" || *cph == "aes256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES256)
+			} else if *cph == "3des" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipher3DES)
+			} else if *cph == "des" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherDES)
+			} else if *cph == "sm4" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSM4)
+			} else if *cph == "seed" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSEED)
+			} else if *cph == "gost" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherGOST)
+			} else if *cph == "idea" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherIDEA)
+			} else if *cph == "camellia128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA128)
+			} else if *cph == "camellia192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA192)
+			} else if *cph == "camellia256" || *cph == "camellia" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA256)
+			} else if *cph == "aria128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA128)
+			} else if *cph == "aria192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA192)
+			} else if *cph == "aria" || *cph == "aria256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA256)
+			} else if *cph == "cast5" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAST)
+			} else if *cph == "anubis" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherANUBIS)
+			} else if *cph == "lea128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherLEA128)
+			} else if *cph == "lea192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherLEA192)
+			} else if *cph == "lea" || *cph == "lea256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherLEA256)
+			} else if *cph == "serpent128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT128)
+			} else if *cph == "serpent192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT192)
+			} else if *cph == "serpent" || *cph == "serpent256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT256)
+			}
+		}
+		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
+	}
+
+	return nil
+}
+
+func PKCS7Padding(ciphertext []byte) []byte {
+	var padding int
+	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" {
+		padding = 16 - len(ciphertext)%16
+	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" {
+		padding = 8 - len(ciphertext)%8
+	}
+	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
+	return append(ciphertext, padtext...)
+}
+
+func PKCS7UnPadding(plantText []byte) []byte {
+	length := len(plantText)
+	unpadding := int(plantText[length-1])
+	return plantText[:(length - unpadding)]
 }
 
 func SplitSubN(s string, n int) []string {
@@ -4265,16 +5040,18 @@ func split(s string, size int) []string {
 	return ss
 }
 
-func PKCS7Padding(ciphertext []byte) []byte {
-	padding := aes.BlockSize - len(ciphertext)%aes.BlockSize
-	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(ciphertext, padtext...)
+func byte32(s []byte) (a *[32]byte) {
+	if len(a) <= len(s) {
+		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
+	}
+	return a
 }
 
-func PKCS7UnPadding(plantText []byte) []byte {
-	length := len(plantText)
-	unpadding := int(plantText[length-1])
-	return plantText[:(length - unpadding)]
+func byte16(s []byte) (a *[16]byte) {
+	if len(a) <= len(s) {
+		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
+	}
+	return a
 }
 
 func zeroByteSlice() []byte {
