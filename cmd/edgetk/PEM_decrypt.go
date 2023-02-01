@@ -12,10 +12,12 @@ import (
 	"strings"
 
 	"github.com/RyuaNerin/go-krypto/aria"
+	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/emmansun/gmsm/sm4"
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast5"
+	"github.com/pedroalbanese/crypto/serpent"
 	"github.com/pedroalbanese/go-idea"
 	"github.com/pedroalbanese/go-krcrypt"
 	"github.com/pedroalbanese/kuznechik"
@@ -23,6 +25,7 @@ import (
 
 type PEMCipher int
 
+// Possible values for the EncryptPEMBlock encryption algorithm.
 const (
 	_ PEMCipher = iota
 	PEMCipherDES
@@ -34,6 +37,9 @@ const (
 	PEMCipherARIA128
 	PEMCipherARIA192
 	PEMCipherARIA256
+	PEMCipherLEA128
+	PEMCipherLEA192
+	PEMCipherLEA256
 	PEMCipherCAMELLIA128
 	PEMCipherCAMELLIA192
 	PEMCipherCAMELLIA256
@@ -42,8 +48,12 @@ const (
 	PEMCipherGOST
 	PEMCipherCAST
 	PEMCipherANUBIS
+	PEMCipherSERPENT128
+	PEMCipherSERPENT192
+	PEMCipherSERPENT256
 )
 
+// rfc1423Algo holds a method for enciphering a PEM block.
 type rfc1423Algo struct {
 	cipher     PEMCipher
 	name       string
@@ -52,6 +62,8 @@ type rfc1423Algo struct {
 	blockSize  int
 }
 
+// rfc1423Algos holds a slice of the possible ways to encrypt a PEM
+// block. The ivSize numbers were taken from the OpenSSL source.
 var rfc1423Algos = []rfc1423Algo{{
 	cipher:     PEMCipherGOST,
 	name:       "GRASSHOPPER-CBC",
@@ -113,6 +125,24 @@ var rfc1423Algos = []rfc1423Algo{{
 	keySize:    32,
 	blockSize:  aria.BlockSize,
 }, {
+	cipher:     PEMCipherLEA128,
+	name:       "LEA-128-CBC",
+	cipherFunc: lea.NewCipher,
+	keySize:    16,
+	blockSize:  lea.BlockSize,
+}, {
+	cipher:     PEMCipherLEA192,
+	name:       "LEA-192-CBC",
+	cipherFunc: lea.NewCipher,
+	keySize:    24,
+	blockSize:  lea.BlockSize,
+}, {
+	cipher:     PEMCipherLEA256,
+	name:       "LEA-256-CBC",
+	cipherFunc: lea.NewCipher,
+	keySize:    32,
+	blockSize:  lea.BlockSize,
+}, {
 	cipher:     PEMCipherCAMELLIA128,
 	name:       "CAMELLIA-128-CBC",
 	cipherFunc: camellia.NewCipher,
@@ -160,9 +190,32 @@ var rfc1423Algos = []rfc1423Algo{{
 	cipherFunc: anubis.New,
 	keySize:    16,
 	blockSize:  16,
+}, {
+	cipher:     PEMCipherSERPENT128,
+	name:       "SERPENT-128-CBC",
+	cipherFunc: serpent.NewCipher,
+	keySize:    16,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherSERPENT192,
+	name:       "SERPENT-192-CBC",
+	cipherFunc: serpent.NewCipher,
+	keySize:    24,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherSERPENT256,
+	name:       "SERPENT-256-CBC",
+	cipherFunc: serpent.NewCipher,
+	keySize:    32,
+	blockSize:  16,
 },
 }
 
+
+
+// deriveKey uses a key derivation function to stretch the password into a key
+// with the number of bits our cipher requires. This algorithm was derived from
+// the OpenSSL source.
 func (c rfc1423Algo) deriveKey(password, salt []byte) []byte {
 	hash := md5.New()
 	out := make([]byte, c.keySize)
@@ -179,13 +232,32 @@ func (c rfc1423Algo) deriveKey(password, salt []byte) []byte {
 	return out
 }
 
+// IsEncryptedPEMBlock returns whether the PEM block is password encrypted
+// according to RFC 1423.
+//
+// Deprecated: Legacy PEM encryption as specified in RFC 1423 is insecure by
+// design. Since it does not authenticate the ciphertext, it is vulnerable to
+// padding oracle attacks that can let an attacker recover the plaintext.
 func IsEncryptedPEMBlock(b *pem.Block) bool {
 	_, ok := b.Headers["DEK-Info"]
 	return ok
 }
 
+// IncorrectPasswordError is returned when an incorrect password is detected.
 var IncorrectPasswordError = errors.New("x509: decryption password incorrect")
 
+// DecryptPEMBlock takes a PEM block encrypted according to RFC 1423 and the
+// password used to encrypt it and returns a slice of decrypted DER encoded
+// bytes. It inspects the DEK-Info header to determine the algorithm used for
+// decryption. If no DEK-Info header is present, an error is returned. If an
+// incorrect password is detected an IncorrectPasswordError is returned. Because
+// of deficiencies in the format, it's not always possible to detect an
+// incorrect password. In these cases no error will be returned but the
+// decrypted DER bytes will be random noise.
+//
+// Deprecated: Legacy PEM encryption as specified in RFC 1423 is insecure by
+// design. Since it does not authenticate the ciphertext, it is vulnerable to
+// padding oracle attacks that can let an attacker recover the plaintext.
 func DecryptPEMBlock(b *pem.Block, password []byte) ([]byte, error) {
 	dek, ok := b.Headers["DEK-Info"]
 	if !ok {
@@ -210,6 +282,8 @@ func DecryptPEMBlock(b *pem.Block, password []byte) ([]byte, error) {
 		return nil, errors.New("x509: incorrect IV size")
 	}
 
+	// Based on the OpenSSL implementation. The salt is the first 8 bytes
+	// of the initialization vector.
 	key := ciph.deriveKey(password, iv[:8])
 	block, err := ciph.cipherFunc(key)
 	if err != nil {
@@ -224,6 +298,12 @@ func DecryptPEMBlock(b *pem.Block, password []byte) ([]byte, error) {
 	dec := cipher.NewCBCDecrypter(block, iv)
 	dec.CryptBlocks(data, b.Bytes)
 
+	// Blocks are padded using a scheme where the last n bytes of padding are all
+	// equal to n. It can pad from 1 to blocksize bytes inclusive. See RFC 1423.
+	// For example:
+	//	[x y z 2 2]
+	//	[x y 7 7 7 7 7 7 7]
+	// If we detect a bad padding, we assume it is an invalid password.
 	dlen := len(data)
 	if dlen == 0 || dlen%ciph.blockSize != 0 {
 		return nil, errors.New("x509: invalid padding")
@@ -243,6 +323,13 @@ func DecryptPEMBlock(b *pem.Block, password []byte) ([]byte, error) {
 	return data[:dlen-last], nil
 }
 
+// EncryptPEMBlock returns a PEM block of the specified type holding the
+// given DER encoded data encrypted with the specified algorithm and
+// password according to RFC 1423.
+//
+// Deprecated: Legacy PEM encryption as specified in RFC 1423 is insecure by
+// design. Since it does not authenticate the ciphertext, it is vulnerable to
+// padding oracle attacks that can let an attacker recover the plaintext.
 func EncryptPEMBlock(rand io.Reader, blockType string, data, password []byte, alg PEMCipher) (*pem.Block, error) {
 	ciph := cipherByKey(alg)
 	if ciph == nil {
@@ -252,6 +339,8 @@ func EncryptPEMBlock(rand io.Reader, blockType string, data, password []byte, al
 	if _, err := io.ReadFull(rand, iv); err != nil {
 		return nil, errors.New("x509: cannot generate IV: " + err.Error())
 	}
+	// The salt is the first 8 bytes of the initialization vector,
+	// matching the key derivation in DecryptPEMBlock.
 	key := ciph.deriveKey(password, iv[:8])
 	block, err := ciph.cipherFunc(key)
 	if err != nil {
@@ -260,7 +349,11 @@ func EncryptPEMBlock(rand io.Reader, blockType string, data, password []byte, al
 	enc := cipher.NewCBCEncrypter(block, iv)
 	pad := ciph.blockSize - len(data)%ciph.blockSize
 	encrypted := make([]byte, len(data), len(data)+pad)
+	// We could save this copy by encrypting all the whole blocks in
+	// the data separately, but it doesn't seem worth the additional
+	// code.
 	copy(encrypted, data)
+	// See RFC 1423, Section 1.1.
 	for i := 0; i < pad; i++ {
 		encrypted = append(encrypted, byte(pad))
 	}
