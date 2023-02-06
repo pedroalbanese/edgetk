@@ -6,7 +6,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pedroalbanese/edgetk)](https://golang.org)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pedroalbanese/edgetk)](https://github.com/pedroalbanese/edgetk/releases)
 
-Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA/EdDSA) and TLS 1.2 for small or embedded systems. 
+Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH), digital signature (RSA/ECDSA/EdDSA) and TLS 1.3 for small or embedded systems. 
 
 ***Fully OpenSSL/LibreSSL/RHash compliant***
 ## Command-line Integrated Security Suite
@@ -171,7 +171,7 @@ Keying material is in general to include things like shared Diffie-Hellman secre
    * HMAC (Hash-based message authentication code)
    * HKDF (HMAC-based key derivation function)
    * PBKDF2 (Password-based key derivation function)
-   * TLS 1.2 (Transport Layer Security)
+   * TLS 1.3 (Transport Layer Security)
    
 * **Non-cryptographic Functions:**
 
