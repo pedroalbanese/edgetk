@@ -111,6 +111,8 @@ import (
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 )
 
+var oidEmailAddress = asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}
+
 var (
 	alg       = flag.String("algorithm", "RSA", "Public key algorithm: RSA, ECDSA, Ed25519 or SM2.")
 	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
@@ -170,15 +172,15 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-
-	if *pkey == "keygen" && *pwd == "" {
-		scanner := bufio.NewScanner(os.Stdin)
-		print("Passphrase: ")
-		scanner.Scan()
-		*pwd = scanner.Text()
-	}
-
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12") && *key != "" && *pwd == "" {
+	/*
+		if *pkey == "keygen" && *pwd == "" {
+			scanner := bufio.NewScanner(os.Stdin)
+			print("Passphrase: ")
+			scanner.Scan()
+			*pwd = scanner.Text()
+		}
+	*/
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -316,7 +318,7 @@ func main() {
 	if Files == "-" || Files == "" || strings.Contains(Files, "*") {
 		inputfile = os.Stdin
 		inputdesc = "stdin"
-	} else {
+	} else if *pkey != "x509" && *pkey != "req" {
 		inputfile, err = os.Open(flag.Arg(0))
 		if err != nil {
 			log.Fatalf("failed opening file: %s", err)
@@ -3100,6 +3102,14 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *pkey == "x509" {
+		err := csrToCrt()
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}
+
 	if *pkey == "sign" && *key == "" && strings.ToUpper(*alg) == "RSA" {
 		fmt.Fprintln(os.Stderr, "Usage:")
 		fmt.Fprintln(os.Stderr, os.Args[0]+" -pkey sign -key <privatekey.pem>")
@@ -3214,7 +3224,7 @@ func main() {
 
 	var PEM string
 	var b []byte
-	if *pkey == "text" || *pkey == "modulus" || *pkey == "info" || *pkey == "randomart" {
+	if *pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart" {
 		if *key != "" {
 			b, err = ioutil.ReadFile(*key)
 			if err != nil {
@@ -3231,6 +3241,8 @@ func main() {
 			PEM = "Private"
 		} else if strings.Contains(s, "PUBLIC") {
 			PEM = "Public"
+		} else if strings.Contains(s, "CERTIFICATE REQUEST") {
+			PEM = "CertificateRequest"
 		} else if strings.Contains(s, "CERTIFICATE") {
 			PEM = "Certificate"
 		}
@@ -3667,10 +3679,14 @@ func main() {
 		var certa, _ = smx509.ParseCertificate(certPemBlock.Bytes)
 
 		signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
-		if signature != "SHA256-RSA" && signature != "99" {
+		if signature == "ECDSA-SHA256" || signature == "ECDSA-SHA384" || signature == "ECDSA-SHA512" {
 			*alg = "EC"
 		} else if signature == "99" {
 			*alg = "SM2"
+		} else if signature == "Ed25519" {
+			*alg = "ED25519"
+		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
+			*alg = "RSA"
 		}
 
 		if *pkey == "modulus" && strings.ToUpper(*alg) == "RSA" {
@@ -3715,6 +3731,112 @@ func main() {
 		fmt.Println("IsValid:", ok)
 
 		if ok {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
+	}
+
+	if *pkey == "check" {
+		var certPEM []byte
+		file, err := os.Open(*cert)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		certPEM = buf
+		var certPemBlock, _ = pem.Decode([]byte(certPEM))
+		var certa, _ = smx509.ParseCertificate(certPemBlock.Bytes)
+
+		pemData, err := ioutil.ReadFile(*cert)
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, rest := pem.Decode([]byte(pemData))
+		if block == nil || len(rest) > 0 {
+			log.Fatal("Certificate decoding error")
+		}
+
+		signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
+		if signature == "ECDSA-SHA256" || signature == "ECDSA-SHA384" || signature == "ECDSA-SHA512" {
+			*alg = "EC"
+		} else if signature == "99" {
+			*alg = "SM2"
+		} else if signature == "Ed25519" {
+			*alg = "ED25519"
+		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
+			*alg = "RSA"
+		}
+
+		var h hash.Hash
+		h = sha256.New()
+		if signature == "ECDSA-SHA256" {
+			h = sha256.New()
+		} else if signature == "ECDSA-SHA384" {
+			h = sha512.New384()
+		} else if signature == "ECDSA-SHA512" {
+			h = sha512.New()
+		} else if signature == "SHA384-RSA" {
+			h = sha512.New384()
+		} else if signature == "SHA512-RSA" {
+			h = sha512.New()
+		} else if signature == "SHA1-RSA" {
+			h = sha1.New()
+		}
+
+		var verifystatus bool
+		h.Write(certa.RawTBSCertificate)
+		hash_data := h.Sum(nil)
+
+		file, err = os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err = file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf = make([]byte, info.Size())
+		file.Read(buf)
+		block, _ = pem.Decode(buf)
+
+		publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			publicKey, err = smx509.ParsePKIXPublicKey(block.Bytes)
+		}
+		if *alg == "EC" {
+			verifystatus = ecdsa.VerifyASN1(publicKey.(*ecdsa.PublicKey), hash_data, certa.Signature)
+		} else if *alg == "RSA" {
+			if signature == "SHA256-RSA" {
+				err = rsa.VerifyPKCS1v15(publicKey.(*rsa.PublicKey), crypto.SHA256, hash_data, certa.Signature)
+			} else if signature == "SHA384-RSA" {
+				err = rsa.VerifyPKCS1v15(publicKey.(*rsa.PublicKey), crypto.SHA384, hash_data, certa.Signature)
+				h = sha512.New384()
+			} else if signature == "SHA512-RSA" {
+				err = rsa.VerifyPKCS1v15(publicKey.(*rsa.PublicKey), crypto.SHA512, hash_data, certa.Signature)
+				h = sha512.New()
+			} else if signature == "SHA1-RSA" {
+				err = rsa.VerifyPKCS1v15(publicKey.(*rsa.PublicKey), crypto.SHA1, hash_data, certa.Signature)
+				h = sha1.New()
+			}
+			if err != nil {
+				verifystatus = false
+			} else {
+				verifystatus = true
+			}
+		} else if *alg == "SM2" {
+			verifystatus = sm2.VerifyASN1WithSM2(publicKey.(*ecdsa.PublicKey), nil, certa.RawTBSCertificate, certa.Signature)
+		} else if *alg == "ED25519" {
+			verifystatus = ed25519.Verify(publicKey.(ed25519.PublicKey), certa.RawTBSCertificate, certa.Signature)
+		}
+
+		fmt.Println("Verified:", verifystatus)
+		if verifystatus {
 			os.Exit(0)
 		} else {
 			os.Exit(1)
@@ -3824,53 +3946,55 @@ func main() {
 			log.Fatalf("Failed to generate serial number: %v", err)
 		}
 
+		println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
+
 		scanner := bufio.NewScanner(os.Stdin)
 
-		fmt.Print("CommonName: ")
+		print("Common Name: ")
 		scanner.Scan()
 		name := scanner.Text()
 
-		fmt.Print("Country: ")
+		print("Country Name (2 letter code) [AU]: ")
 		scanner.Scan()
 		country := scanner.Text()
 
-		fmt.Print("State/Province: ")
+		print("State or Province Name (full name) [Some-State]: ")
 		scanner.Scan()
 		province := scanner.Text()
 
-		fmt.Print("Locality: ")
+		print("Locality Name (eg, city): ")
 		scanner.Scan()
 		locality := scanner.Text()
 
-		fmt.Print("Organization: ")
+		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
 		scanner.Scan()
 		organization := scanner.Text()
 
-		fmt.Print("OrganizationUnit: ")
+		print("Organizational Unit Name (eg, section): ")
 		scanner.Scan()
 		organizationunit := scanner.Text()
 
-		fmt.Print("Email: ")
+		print("Email Address []: ")
 		scanner.Scan()
 		email := scanner.Text()
 
-		fmt.Print("StreetAddress: ")
+		print("StreetAddress: ")
 		scanner.Scan()
 		street := scanner.Text()
 
-		fmt.Print("PostalCode: ")
+		print("PostalCode: ")
 		scanner.Scan()
 		postalcode := scanner.Text()
 
-		fmt.Print("SerialNumber: ")
+		print("SerialNumber: ")
 		scanner.Scan()
 		number := scanner.Text()
-
-		fmt.Print("AuthorityKeyId: ")
-		scanner.Scan()
-		authority, _ := hex.DecodeString(scanner.Text())
-
-		fmt.Print("Validity (in Days): ")
+		/*
+			print("AuthorityKeyId: ")
+			scanner.Scan()
+			authority, _ := hex.DecodeString(scanner.Text())
+		*/
+		print("Validity (in Days): ")
 		scanner.Scan()
 		validity := scanner.Text()
 
@@ -3899,7 +4023,6 @@ func main() {
 			ExtKeyUsage:           []smx509.ExtKeyUsage{smx509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
 			IsCA:                  true,
-			AuthorityKeyId:        authority,
 
 			PermittedDNSDomainsCritical: true,
 		}
@@ -3930,6 +4053,227 @@ func main() {
 		}
 		pem.Encode(certfile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
 		os.Exit(0)
+	}
+
+	if *pkey == "req" && *key != "" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+
+		var keyBytes interface{}
+
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+
+		if strings.ToUpper(*alg) == "ED25519" {
+			var priva interface{}
+			var privKeyBytes []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				priva, err = x509.ParsePKCS8PrivateKey(privKeyBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				priva, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			keyBytes = priva
+		} else if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" {
+			var privateKey *ecdsa.PrivateKey
+			var privKeyBytes []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				privateKey, err = smx509.ParseECPrivateKey(privKeyBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				privateKey, err = smx509.ParseECPrivateKey(block.Bytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			keyBytes = privateKey
+		} else if strings.ToUpper(*alg) == "SM2" {
+			var privateKey *sm2.PrivateKey
+			var privKeyBytes []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				privateKey, err = smx509.ParseSM2PrivateKey(privKeyBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				privateKey, err = smx509.ParseSM2PrivateKey(block.Bytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			keyBytes = privateKey
+		} else if strings.ToUpper(*alg) == "RSA" {
+			var privateKey *rsa.PrivateKey
+			var privKeyBytes []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				privateKey, err = x509.ParsePKCS1PrivateKey(privKeyBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				privateKey, err = x509.ParsePKCS1PrivateKey(block.Bytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			keyBytes = privateKey
+		}
+
+		println("You are about to be asked to enter information that \nwill be incorporated into your certificate request.")
+
+		scanner := bufio.NewScanner(os.Stdin)
+
+		print("Common Name: ")
+		scanner.Scan()
+		name := scanner.Text()
+
+		print("Country Name (2 letter code) [AU]: ")
+		scanner.Scan()
+		country := scanner.Text()
+
+		print("State or Province Name (full name) [Some-State]: ")
+		scanner.Scan()
+		province := scanner.Text()
+
+		print("Locality Name (eg, city): ")
+		scanner.Scan()
+		locality := scanner.Text()
+
+		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
+		scanner.Scan()
+		organization := scanner.Text()
+
+		print("Organizational Unit Name (eg, section): ")
+		scanner.Scan()
+		organizationunit := scanner.Text()
+
+		print("Email Address []: ")
+		scanner.Scan()
+		email := scanner.Text()
+
+		print("StreetAddress: ")
+		scanner.Scan()
+		street := scanner.Text()
+
+		print("PostalCode: ")
+		scanner.Scan()
+		postalcode := scanner.Text()
+
+		print("SerialNumber: ")
+		scanner.Scan()
+		number := scanner.Text()
+
+		emailAddress := email
+		subj := pkix.Name{
+			CommonName:         name,
+			SerialNumber:       number,
+			Country:            []string{country},
+			Province:           []string{province},
+			Locality:           []string{locality},
+			Organization:       []string{organization},
+			OrganizationalUnit: []string{organizationunit},
+			StreetAddress:      []string{street},
+			PostalCode:         []string{postalcode},
+		}
+		rawSubj := subj.ToRDNSequence()
+		rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
+			{Type: oidEmailAddress, Value: emailAddress},
+		})
+
+		asn1Subj, _ := asn1.Marshal(rawSubj)
+		var template x509.CertificateRequest
+		if strings.ToUpper(*alg) == "RSA" {
+			template = x509.CertificateRequest{
+				RawSubject:         asn1Subj,
+				EmailAddresses:     []string{emailAddress},
+				SignatureAlgorithm: x509.SHA256WithRSA,
+			}
+		} else if strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "EC" {
+			template = x509.CertificateRequest{
+				RawSubject:         asn1Subj,
+				EmailAddresses:     []string{emailAddress},
+				SignatureAlgorithm: x509.ECDSAWithSHA256,
+			}
+		} else if strings.ToUpper(*alg) == "SM2" {
+			template = x509.CertificateRequest{
+				RawSubject:         asn1Subj,
+				EmailAddresses:     []string{emailAddress},
+				SignatureAlgorithm: smx509.SM2WithSM3,
+			}
+		} else if strings.ToUpper(*alg) == "ED25519" {
+			template = x509.CertificateRequest{
+				RawSubject:         asn1Subj,
+				EmailAddresses:     []string{emailAddress},
+				SignatureAlgorithm: x509.PureEd25519,
+			}
+		}
+		var output *os.File
+		if flag.Arg(0) == "" {
+			output = os.Stdout
+		} else {
+			file, err := os.Create(flag.Arg(0))
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close()
+			output = file
+		}
+		csrBytes, _ := smx509.CreateCertificateRequest(rand.Reader, &template, keyBytes)
+		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+	}
+
+	if *pkey == "text" && PEM == "CertificateRequest" {
+		var certPEM []byte
+		file, err := os.Open(*cert)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		certPEM = buf
+		var certPemBlock, _ = pem.Decode([]byte(certPEM))
+		var certa, _ = smx509.ParseCertificateRequest(certPemBlock.Bytes)
+
+		result, err := certinfo.CertificateRequestText(certa.ToX509())
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Print(result)
 	}
 
 	if *tcpip == "server" || *tcpip == "client" {
@@ -4049,7 +4393,7 @@ func main() {
 
 		if *tcpip == "server" {
 			cert, err := tls.X509KeyPair(certPEM, privPEM)
-			cfg := tls.Config{Certificates: []tls.Certificate{cert}, ClientAuth: tls.RequireAnyClientCert}
+			cfg := tls.Config{Certificates: []tls.Certificate{cert}, ClientAuth: tls.RequireAnyClientCert, MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS13}
 			cfg.Rand = rand.Reader
 
 			port := "8081"
@@ -4069,7 +4413,7 @@ func main() {
 				log.Fatal(err)
 			}
 			defer ln.Close()
-
+			println("Test01")
 			tlscon := conn.(*tls.Conn)
 			err = tlscon.Handshake()
 			if err != nil {
@@ -4077,6 +4421,7 @@ func main() {
 			} else {
 				log.Print("server: conn: Handshake completed")
 			}
+			println("Test01")
 			state := tlscon.ConnectionState()
 
 			for _, v := range state.PeerCertificates {
@@ -4125,14 +4470,71 @@ func main() {
 			}
 			certs := conn.ConnectionState().PeerCertificates
 			for _, cert := range certs {
-				fmt.Printf("Issuer Name: %s\n", cert.Issuer)
+				fmt.Printf("Issuer: \n\t%s\n", cert.Issuer)
+				fmt.Printf("Subject: \n\t%s\n", cert.Subject)
 				fmt.Printf("Expiry: %s \n", cert.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
-				fmt.Printf("Common Name: %s \n", cert.Issuer.CommonName)
-				fmt.Printf("IP Address: %s \n", cert.IPAddresses)
 			}
 			if err != nil {
 				log.Fatal(err)
 			}
+			if conn.ConnectionState().Version == 771 {
+				fmt.Println("Protocol: TLS v1.2")
+			} else if conn.ConnectionState().Version == 772 {
+				fmt.Println("Protocol: TLS v1.3")
+			}
+			if conn.ConnectionState().CipherSuite == 0x1301 {
+				fmt.Println("CipherSuite: TLS_AES_128_GCM_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0x1302 {
+				fmt.Println("CipherSuite: TLS_AES_256_GCM_SHA384")
+			} else if conn.ConnectionState().CipherSuite == 0x1303 {
+				fmt.Println("CipherSuite: TLS_CHACHA20_POLY1305_SHA256")
+			}
+			if conn.ConnectionState().CipherSuite == 0x0005 {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_RC4_128_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0x000a {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_3DES_EDE_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0x002f {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_AES_128_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0x0035 {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_AES_256_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0x003c {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_AES_128_CBC_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0x009c {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_AES_128_GCM_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0x009d {
+				fmt.Println("CipherSuite: TLS_RSA_WITH_AES_256_GCM_SHA384")
+			} else if conn.ConnectionState().CipherSuite == 0xc007 {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_RC4_128_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc009 {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc00a {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc011 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_RC4_128_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc012 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc013 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc014 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA")
+			} else if conn.ConnectionState().CipherSuite == 0xc023 {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0xc027 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0xc02f {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0xc02b {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0xc030 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384")
+			} else if conn.ConnectionState().CipherSuite == 0xc02c {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384")
+			} else if conn.ConnectionState().CipherSuite == 0xcca8 {
+				fmt.Println("CipherSuite: TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256")
+			} else if conn.ConnectionState().CipherSuite == 0xcca9 {
+				fmt.Println("CipherSuite: TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256")
+			}
+
 			defer conn.Close()
 
 			var b bytes.Buffer
@@ -4990,6 +5392,141 @@ func PfxParse() error {
 	}
 
 	return nil
+}
+
+func csrToCrt() error {
+	caPublicKeyFile, err := ioutil.ReadFile(*cert)
+	if err != nil {
+		return err
+	}
+	pemBlock, _ := pem.Decode(caPublicKeyFile)
+	if pemBlock == nil {
+		panic("pem.Decode failed")
+	}
+	caCRT, err := smx509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return err
+	}
+
+	caPrivateKeyFile, err := ioutil.ReadFile(*key)
+	if err != nil {
+		return err
+	}
+	pemBlock, _ = pem.Decode(caPrivateKeyFile)
+	if pemBlock == nil {
+		panic("pem.Decode failed")
+	}
+	/*
+		der, err := smx509.DecryptPEMBlock(pemBlock, []byte(*pwd))
+		if err != nil {
+			return err
+		}
+	*/
+	var der []byte
+	if IsEncryptedPEMBlock(pemBlock) {
+		der, err = DecryptPEMBlock(pemBlock, []byte(*pwd))
+		if err != nil {
+			return err
+		}
+	} else {
+		der = pemBlock.Bytes
+	}
+
+	clientCSRFile, err := ioutil.ReadFile(flag.Arg(0))
+	if err != nil {
+		return err
+	}
+	pemBlock, _ = pem.Decode(clientCSRFile)
+	if pemBlock == nil {
+		panic("pem.Decode failed")
+	}
+	clientCSR, err := smx509.ParseCertificateRequest(pemBlock.Bytes)
+	if err != nil {
+		return err
+	}
+	if err = clientCSR.CheckSignature(); err != nil {
+		return err
+	}
+
+	scanner := bufio.NewScanner(os.Stdin)
+	println("Digital certificates are valid for up to three years:")
+	print("Validity (in Days): ")
+	scanner.Scan()
+	validity := scanner.Text()
+
+	intVar, err := strconv.Atoi(validity)
+	NotAfter := time.Now().AddDate(0, 0, intVar)
+
+	clientCRTTemplate := x509.Certificate{
+		Signature:          clientCSR.Signature,
+		SignatureAlgorithm: clientCSR.SignatureAlgorithm,
+
+		PublicKeyAlgorithm: clientCSR.PublicKeyAlgorithm,
+		PublicKey:          clientCSR.PublicKey,
+
+		SerialNumber: big.NewInt(2),
+		Issuer:       caCRT.Subject,
+		Subject:      clientCSR.Subject,
+		NotBefore:    time.Now(),
+		NotAfter:     NotAfter,
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	}
+
+	if strings.ToUpper(*alg) == "RSA" {
+		if *md == "sha256" {
+			clientCRTTemplate.SignatureAlgorithm = smx509.SHA256WithRSA
+		} else if *md == "sha384" {
+			clientCRTTemplate.SignatureAlgorithm = smx509.SHA384WithRSA
+		} else if *md == "sha512" {
+			clientCRTTemplate.SignatureAlgorithm = smx509.SHA512WithRSA
+		} else if *md == "sha1" {
+			clientCRTTemplate.SignatureAlgorithm = smx509.SHA1WithRSA
+		}
+	}
+
+	var clientCRTRaw []byte
+	if strings.ToUpper(*alg) == "RSA" {
+		caPrivateKey, err := x509.ParsePKCS1PrivateKey(der)
+		if err != nil {
+			return err
+		}
+		clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+	} else if strings.ToUpper(*alg) == "ED25519" {
+		caPrivateKey, err := x509.ParsePKCS8PrivateKey(der)
+		if err != nil {
+			return err
+		}
+		clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+	} else if strings.ToUpper(*alg) == "ECDSA" {
+		caPrivateKey, err := x509.ParseECPrivateKey(der)
+		if err != nil {
+			return err
+		}
+		clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+	} else if strings.ToUpper(*alg) == "SM2" {
+		caPrivateKey, err := smx509.ParseSM2PrivateKey(der)
+		if err != nil {
+			return err
+		}
+		clientCRTRaw, err = smx509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+	}
+	if err != nil {
+		return err
+	}
+	var output *os.File
+	if flag.Arg(1) == "" {
+		output = os.Stdout
+	} else {
+		file, err := os.Create(flag.Arg(1))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		output = file
+	}
+	pem.Encode(output, &pem.Block{Type: "CERTIFICATE", Bytes: clientCRTRaw})
+	return err
 }
 
 func PKCS7Padding(ciphertext []byte) []byte {
