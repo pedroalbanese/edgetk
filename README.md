@@ -172,6 +172,7 @@ Keying material is in general to include things like shared Diffie-Hellman secre
    * HKDF (HMAC-based key derivation function)
    * PBKDF2 (Password-based key derivation function)
    * TLS 1.3 (Transport Layer Security)
+   * X.509 certificates, CSRs and CRLs
    
 * **Non-cryptographic Functions:**
 
