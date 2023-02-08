@@ -172,14 +172,14 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
-	/*
-		if *pkey == "keygen" && *pwd == "" {
-			scanner := bufio.NewScanner(os.Stdin)
-			print("Passphrase: ")
-			scanner.Scan()
-			*pwd = scanner.Text()
-		}
-	*/
+
+	if *pkey == "keygen" && *pwd == "" {
+		scanner := bufio.NewScanner(os.Stdin)
+		print("Passphrase: ")
+		scanner.Scan()
+		*pwd = scanner.Text()
+	}
+
 	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
