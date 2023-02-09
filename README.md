@@ -33,6 +33,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | HC-128           | 128        |  128 | XOR Stream            |
     | HC-256           | 256        |  256 | XOR Stream            |
     | KCipher-2        | 128        |  128 | XOR Stream            |
+    | Rabbit           | 128        |   64 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | Salsa20          | 256        | 64/192 | XOR Stream            |
     | Skein512         | Any        |  Any | XOR Stream            |
