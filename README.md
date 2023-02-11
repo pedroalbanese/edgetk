@@ -275,7 +275,7 @@ echo $?
 ```sh
 ./edgetk -pkey req -key private.pem [cert.csr]
 ```
-#### Sign CSR:
+#### Sign CSR with CA Certificate:
 ```sh
 ./edgetk -pkey x509 -key private.pem -cert cacert.pem cert.csr [cert.crt]
 ```
