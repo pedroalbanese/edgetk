@@ -267,9 +267,17 @@ echo $?
 ```sh
 ./edgetk -pkey derive -algorithm EC -key private.pem -public peerkey.pem
 ```
-#### Generate Certificate:
+#### Generate Self Signed Certificate:
 ```sh
 ./edgetk -pkey certgen -key private.pem [-pwd "pass"] [-cert "output.ext"]
+```
+#### Generate Certificate Signing Request:
+```sh
+./edgetk -pkey req -key private.pem [cert.csr]
+```
+#### Sign CSR:
+```sh
+./edgetk -pkey x509 -key private.pem -cert cacert.pem cert.csr [cert.crt]
 ```
 #### Parse Certificate info:
 ```sh
