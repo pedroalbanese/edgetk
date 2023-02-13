@@ -21,7 +21,7 @@ Multi-purpose hybrid cross-platform cryptography tool for symmetric and asymmetr
     | Ed25519             | O   |     | O   | O   |          | O   |
     | GOST2012            | O   | O   | O   | O   |          | O   |
     | RSA                 |     |     |     | O   | O        | O   |
-    | SM2                 | O   |     | O   | O   | O        |     |
+    | SM2                 | O   |     | O   | O   | O        | O   |
 
 ### Symmetric
 
@@ -173,6 +173,7 @@ Keying material is in general to include things like shared Diffie-Hellman secre
    * HKDF (HMAC-based key derivation function)
    * PBKDF2 (Password-based key derivation function)
    * TLS 1.3 (Transport Layer Security)
+   * TLCP (Transport Layer Cryptography Protocol)
    * X.509 CSRs and Certificates
   
 * **Non-cryptographic Functions:**
