@@ -65,6 +65,7 @@ import (
 	"github.com/emmansun/gmsm/sm4"
 	"github.com/emmansun/gmsm/smx509"
 	"github.com/emmansun/gmsm/zuc"
+	"github.com/emmansun/go-pkcs12"
 	"github.com/pedroalbanese/IGE-go/ige"
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
@@ -83,7 +84,6 @@ import (
 	"github.com/pedroalbanese/go-kcipher2"
 	"github.com/pedroalbanese/go-krcrypt"
 	"github.com/pedroalbanese/go-misty1"
-	"github.com/pedroalbanese/go-pkcs12"
 	"github.com/pedroalbanese/go-rc5"
 	"github.com/pedroalbanese/go-ripemd"
 	"github.com/pedroalbanese/gogost/gost28147"
@@ -101,6 +101,7 @@ import (
 	"github.com/pedroalbanese/ocb"
 	"github.com/pedroalbanese/ocb3"
 	"github.com/pedroalbanese/pmac"
+	"github.com/pedroalbanese/rabbitio"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
 	"github.com/pedroalbanese/siphash"
@@ -378,7 +379,7 @@ func main() {
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -391,6 +392,9 @@ func main() {
 	}
 
 	if *pbkdf {
+		if *md == "jh" {
+			*salt = fmt.Sprintf("%-64s", *salt)
+		}
 		keyRaw := pbkdf2.Key([]byte(*key), []byte(*salt), *iter, *length/8, myHash)
 		*key = hex.EncodeToString(keyRaw)
 	}
@@ -417,6 +421,52 @@ func main() {
 			}
 		}
 		ciph, _ := rc4.NewCipher(key)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && *cph == "rabbit" {
+		var keyHex string
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 16)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 {
+				log.Fatal(err)
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, _ = hex.DecodeString(*vector)
+		} else {
+			nonce = make([]byte, 8)
+			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+		}
+		ciph, _ := rabbitio.NewCipher(key, nonce)
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
@@ -838,9 +888,9 @@ func main() {
 
 		}
 		var nonce []byte
-		nonce = make([]byte, 16)
+		nonce = make([]byte, 32)
 		var iv []byte
-		iv = make([]byte, 16)
+		iv = make([]byte, 32)
 
 		if *vector != "" {
 			iv, _ = hex.DecodeString(*vector)
@@ -2350,6 +2400,9 @@ func main() {
 	}
 
 	if *kdf != 0 {
+		if *md == "jh" {
+			*info = fmt.Sprintf("%-64s", *info)
+		}
 		hash, err := Hkdf([]byte(*key), []byte(*salt), []byte(*info))
 		if err != nil {
 			log.Fatal(err)
@@ -3253,7 +3306,7 @@ func main() {
 			*alg = "EC"
 		} else if strings.Contains(s, "X25519 PRIVATE") {
 			*alg = "X25519"
-		} else {
+		} else if strings.Contains(s, "PRIVATE") {
 			*alg = "ED25519"
 		}
 	}
@@ -3329,6 +3382,10 @@ func main() {
 			var publicKey = publicInterface.(*ecdsa.PublicKey)
 			fmt.Printf("Public.X=%X\n", publicKey.X)
 			fmt.Printf("Public.Y=%X\n", publicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ED25519") {
+			var publicKey = publicInterface.(ed25519.PublicKey)
+			fmt.Printf("Public=%X\n", publicKey)
 			os.Exit(0)
 		}
 
@@ -3499,7 +3556,10 @@ func main() {
 		}
 		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
 		if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "SM2" {
-			var privKey, _ = smx509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
+			var privKey, err = smx509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
 			derBytes, err := smx509.MarshalPKIXPublicKey(&privKey.PublicKey)
 			if err != nil {
 				log.Fatal(err)
@@ -3557,6 +3617,12 @@ func main() {
 				log.Fatal(err)
 			}
 			edKey := privKey.(ed25519.PrivateKey)
+
+			if *pkey == "modulus" {
+				fmt.Printf("Public=%X\n", edKey.Public())
+				os.Exit(0)
+			}
+
 			fmt.Printf(string(privPEM))
 			derBytes, err := smx509.MarshalPKIXPublicKey(edKey.Public())
 			if err != nil {
@@ -3662,7 +3728,7 @@ func main() {
 		}
 	}
 
-	if (*pkey == "text" || *pkey == "modulus" || *pkey == "info") && PEM == "Certificate" {
+	if (*pkey == "text" || *pkey == "modulus" || *pkey == "info") && (PEM == "Certificate") {
 		var certPEM []byte
 		file, err := os.Open(*cert)
 		if err != nil {
@@ -3697,6 +3763,10 @@ func main() {
 			var certaPublicKey = certa.PublicKey.(*ecdsa.PublicKey)
 			fmt.Printf("Public.X=%X\n", certaPublicKey.X)
 			fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ED25519") {
+			var certaPublicKey = certa.PublicKey.(ed25519.PublicKey)
+			fmt.Printf("Public=%X\n", certaPublicKey)
 			os.Exit(0)
 		}
 
@@ -4253,7 +4323,7 @@ func main() {
 		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
 	}
 
-	if *pkey == "text" && PEM == "CertificateRequest" {
+	if (*pkey == "text" || *pkey == "modulus") && PEM == "CertificateRequest" {
 		var certPEM []byte
 		file, err := os.Open(*cert)
 		if err != nil {
@@ -4268,6 +4338,32 @@ func main() {
 		certPEM = buf
 		var certPemBlock, _ = pem.Decode([]byte(certPEM))
 		var certa, _ = smx509.ParseCertificateRequest(certPemBlock.Bytes)
+
+		signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
+		if signature == "ECDSA-SHA256" || signature == "ECDSA-SHA384" || signature == "ECDSA-SHA512" {
+			*alg = "EC"
+		} else if signature == "99" {
+			*alg = "SM2"
+		} else if signature == "Ed25519" {
+			*alg = "ED25519"
+		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
+			*alg = "RSA"
+		}
+
+		if *pkey == "modulus" && strings.ToUpper(*alg) == "RSA" {
+			var certaPublicKey = certa.PublicKey.(*rsa.PublicKey)
+			fmt.Printf("Modulus=%X\n", certaPublicKey.N)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "SM2") {
+			var certaPublicKey = certa.PublicKey.(*ecdsa.PublicKey)
+			fmt.Printf("Public.X=%X\n", certaPublicKey.X)
+			fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ED25519") {
+			var certaPublicKey = certa.PublicKey.(ed25519.PublicKey)
+			fmt.Printf("Public=%X\n", certaPublicKey)
+			os.Exit(0)
+		}
 
 		result, err := certinfo.CertificateRequestText(certa.ToX509())
 		if err != nil {
@@ -4413,7 +4509,7 @@ func main() {
 				log.Fatal(err)
 			}
 			defer ln.Close()
-			println("Test01")
+
 			tlscon := conn.(*tls.Conn)
 			err = tlscon.Handshake()
 			if err != nil {
@@ -4421,7 +4517,7 @@ func main() {
 			} else {
 				log.Print("server: conn: Handshake completed")
 			}
-			println("Test01")
+
 			state := tlscon.ConnectionState()
 
 			for _, v := range state.PeerCertificates {
@@ -5159,7 +5255,7 @@ func PfxGen() error {
 	file.Read(buf)
 	certPEM = buf
 	var certPemBlock, _ = pem.Decode([]byte(certPEM))
-	var certificate, _ = x509.ParseCertificate(certPemBlock.Bytes)
+	var certificate, _ = smx509.ParseCertificate(certPemBlock.Bytes)
 
 	var privPEM []byte
 	file, err = os.Open(*key)
@@ -5197,17 +5293,17 @@ func PfxGen() error {
 
 	var pfxBytes []byte
 	if strings.ToUpper(*alg) == "RSA" {
-		var privKey, _ = x509.ParsePKCS1PrivateKey(privateKeyPemBlock.Bytes)
+		var privKey, _ = smx509.ParsePKCS1PrivateKey(privateKeyPemBlock.Bytes)
 		if err := privKey.Validate(); err != nil {
 			panic("error validating the private key: " + err.Error())
 		}
-		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*x509.Certificate{}, psd)
+		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*smx509.Certificate{}, psd)
 	} else if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" {
-		var privKey, _ = x509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
-		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*x509.Certificate{}, psd)
-	} else if strings.ToUpper(*alg) == "ED25519" {
-		var privKey, _ = x509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
-		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*x509.Certificate{}, psd)
+		var privKey, _ = smx509.ParseECPrivateKey(privateKeyPemBlock.Bytes)
+		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*smx509.Certificate{}, psd)
+	} else if strings.ToUpper(*alg) == "SM2" {
+		var privKey, _ = smx509.ParseSM2PrivateKey(privateKeyPemBlock.Bytes)
+		pfxBytes, err = pkcs12.Encode(rand.Reader, privKey, certificate, []*smx509.Certificate{}, psd)
 	}
 
 	if err != nil {
@@ -5247,10 +5343,10 @@ func PfxParse() error {
 		return err
 	}
 
-	_, err = x509.ParsePKCS1PrivateKey(PEM[1].Bytes)
+	_, err = smx509.ParsePKCS1PrivateKey(PEM[1].Bytes)
 	if err != nil {
 		ecdsaPublicKey := certificate.PublicKey.(*ecdsa.PublicKey)
-		publicStream, err := x509.MarshalPKIXPublicKey(ecdsaPublicKey)
+		publicStream, err := smx509.MarshalPKIXPublicKey(ecdsaPublicKey)
 		if err != nil {
 			return err
 		}
@@ -5258,7 +5354,7 @@ func PfxParse() error {
 		fmt.Printf("%s", pem.EncodeToMemory(&pubblock))
 	} else {
 		rsaPublicKey := certificate.PublicKey.(*rsa.PublicKey)
-		publicStream, err := x509.MarshalPKIXPublicKey(rsaPublicKey)
+		publicStream, err := smx509.MarshalPKIXPublicKey(rsaPublicKey)
 		if err != nil {
 			return err
 		}
@@ -5267,18 +5363,18 @@ func PfxParse() error {
 	}
 
 	fmt.Printf("Expiry:         %s \n", certificate.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
-	fmt.Printf("Common Name:    %s \n", certificate.Issuer.CommonName)
+	fmt.Printf("Common Name:    %s \n", certificate.Subject.CommonName)
 	fmt.Printf("Issuer:         %s \n", certificate.Issuer)
+	fmt.Printf("Subject:        %s \n", certificate.Subject)
 	fmt.Printf("EmailAddresses: %s \n", certificate.EmailAddresses)
 	fmt.Printf("SerialNumber:   %x \n", certificate.SerialNumber)
-	fmt.Printf("SubjectKeyId:   %x \n", certificate.SubjectKeyId)
 	fmt.Printf("AuthorityKeyId: %x \n", certificate.AuthorityKeyId)
 
 	print("Enter PEM Passphrase: ")
 	pass, _ := gopass.GetPasswd()
 	psd := string(pass)
 
-	_, err = x509.ParsePKCS1PrivateKey(PEM[1].Bytes)
+	_, err = smx509.ParsePKCS1PrivateKey(PEM[1].Bytes)
 	if err != nil {
 		keyBlock := &pem.Block{
 			Type:  "EC PRIVATE KEY",
@@ -5390,7 +5486,6 @@ func PfxParse() error {
 		}
 		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
 	}
-
 	return nil
 }
 
@@ -5457,6 +5552,21 @@ func csrToCrt() error {
 	intVar, err := strconv.Atoi(validity)
 	NotAfter := time.Now().AddDate(0, 0, intVar)
 
+	var spki struct {
+		Algorithm        pkix.AlgorithmIdentifier
+		SubjectPublicKey asn1.BitString
+	}
+
+	derBytes, err := smx509.MarshalPKIXPublicKey(clientCSR.PublicKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = asn1.Unmarshal(derBytes, &spki)
+	if err != nil {
+		return err
+	}
+	skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,
 		SignatureAlgorithm: clientCSR.SignatureAlgorithm,
@@ -5464,13 +5574,15 @@ func csrToCrt() error {
 		PublicKeyAlgorithm: clientCSR.PublicKeyAlgorithm,
 		PublicKey:          clientCSR.PublicKey,
 
-		SerialNumber: big.NewInt(2),
-		Issuer:       caCRT.Subject,
-		Subject:      clientCSR.Subject,
-		NotBefore:    time.Now(),
-		NotAfter:     NotAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		SerialNumber:   caCRT.SerialNumber,
+		Issuer:         caCRT.Subject,
+		Subject:        clientCSR.Subject,
+		SubjectKeyId:   skid[:],
+		EmailAddresses: clientCSR.EmailAddresses,
+		NotBefore:      time.Now(),
+		NotAfter:       NotAfter,
+		KeyUsage:       x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 
 	if strings.ToUpper(*alg) == "RSA" {
