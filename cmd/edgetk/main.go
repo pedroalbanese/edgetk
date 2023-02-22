@@ -3411,10 +3411,10 @@ func main() {
 			log.Fatal(err)
 		}
 		if !isValid {
-			fmt.Println("false")
+			fmt.Println("Verified: false")
 			os.Exit(1)
 		}
-		fmt.Println("true")
+		fmt.Println("Verified: true")
 		os.Exit(0)
 	}
 
@@ -3631,8 +3631,14 @@ func main() {
 		validity := scanner.Text()
 
 		intVar, err := strconv.Atoi(validity)
-
 		NotAfter := time.Now().AddDate(0, 0, intVar)
+
+		hasher := gost34112012256.New()
+		if _, err = hasher.Write(gost341012256Pub.(*gost3410.PublicKey).Raw()); err != nil {
+			log.Fatalln(err)
+		}
+		spki := hasher.Sum(nil)
+		spki = spki[:20]
 
 		template := x509.Certificate{
 			SerialNumber: serialNumber,
@@ -3648,6 +3654,7 @@ func main() {
 				PostalCode:         []string{postalcode},
 			},
 			EmailAddresses: []string{email},
+			SubjectKeyId:   spki,
 
 			NotBefore: time.Now(),
 			NotAfter:  NotAfter,
@@ -4158,10 +4165,12 @@ func main() {
 			os.Exit(0)
 		}
 		fmt.Printf(string(privPEM))
-		derBytes, err := x509.MarshalPKIXPublicKey(gostKey.Public())
-		if err != nil {
-			log.Fatal(err)
-		}
+		/*
+			derBytes, err := x509.MarshalPKIXPublicKey(gostKey.Public())
+			if err != nil {
+				log.Fatal(err)
+			}
+		*/
 		p := fmt.Sprintf("%X", gostKey.Raw())
 		fmt.Println("Private key:", p)
 
@@ -4169,17 +4178,25 @@ func main() {
 		var publicKey = pubKey.(*gost3410.PublicKey)
 		fmt.Printf("   X:%X\n", publicKey.X)
 		fmt.Printf("   Y:%X\n", publicKey.Y)
-
-		var spki struct {
-			Algorithm        pkix.AlgorithmIdentifier
-			SubjectPublicKey asn1.BitString
+		/*
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Println(err)
+			}
+			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nSKID: %x \n", skid)
+		*/
+		hasher := gost34112012256.New()
+		if _, err = hasher.Write(publicKey.Raw()); err != nil {
+			log.Fatalln(err)
 		}
-		_, err = asn1.Unmarshal(derBytes, &spki)
-		if err != nil {
-			log.Println(err)
-		}
-		skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
-		fmt.Printf("\nSKID: %x \n", skid)
+		spki := hasher.Sum(nil)
+		spki = spki[:20]
+		fmt.Printf("\nSKID: %x \n", spki)
 		os.Exit(0)
 	}
 
@@ -4822,7 +4839,7 @@ func main() {
 			*alg = "ED25519"
 		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
 			*alg = "RSA"
-		} else if signature == "GOST256" || signature == "GOST512" {
+		} else if signature == "0" {
 			*alg = "GOST2012"
 		}
 
@@ -4887,7 +4904,15 @@ func main() {
 		} else if *alg == "ED25519" {
 			verifystatus = ed25519.Verify(publicKey.(ed25519.PublicKey), certa.RawTBSCertificate, certa.Signature)
 		} else if *alg == "GOST2012" {
-			verifystatus, _ = publicKey.(*gost3410.PublicKey).VerifyDigest(certa.RawTBSCertificate, certa.Signature)
+			var certa, _ = x509.ParseCertificate(certPemBlock.Bytes)
+			h = gost34112012256.New()
+			h.Write(certa.RawTBSCertificate)
+			hash_data := h.Sum(nil)
+			reverseBytes(hash_data)
+			verifystatus, err = publicKey.(*gost3410.PublicKey).VerifyDigest(hash_data, certa.Signature)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		fmt.Println("Verified:", verifystatus)
@@ -7110,21 +7135,28 @@ func csrToCrt2() error {
 
 	intVar, err := strconv.Atoi(validity)
 	NotAfter := time.Now().AddDate(0, 0, intVar)
+	/*
+		var spki struct {
+			Algorithm        pkix.AlgorithmIdentifier
+			SubjectPublicKey asn1.BitString
+		}
 
-	var spki struct {
-		Algorithm        pkix.AlgorithmIdentifier
-		SubjectPublicKey asn1.BitString
+		derBytes, err := x509.MarshalPKIXPublicKey(clientCSR.PublicKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = asn1.Unmarshal(derBytes, &spki)
+		if err != nil {
+			return err
+		}
+		skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+	*/
+	hasher := gost34112012256.New()
+	if _, err = hasher.Write(clientCSR.PublicKey.(*gost3410.PublicKey).Raw()); err != nil {
+		log.Fatalln(err)
 	}
-
-	derBytes, err := x509.MarshalPKIXPublicKey(clientCSR.PublicKey)
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = asn1.Unmarshal(derBytes, &spki)
-	if err != nil {
-		return err
-	}
-	skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+	spki := hasher.Sum(nil)
+	spki = spki[:20]
 
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,
@@ -7136,7 +7168,7 @@ func csrToCrt2() error {
 		SerialNumber:   caCRT.SerialNumber,
 		Issuer:         caCRT.Subject,
 		Subject:        clientCSR.Subject,
-		SubjectKeyId:   skid[:],
+		SubjectKeyId:   spki,
 		EmailAddresses: clientCSR.EmailAddresses,
 		NotBefore:      time.Now(),
 		NotAfter:       NotAfter,
@@ -7243,6 +7275,12 @@ func PKCS7UnPadding(plantText []byte) []byte {
 	length := len(plantText)
 	unpadding := int(plantText[length-1])
 	return plantText[:(length - unpadding)]
+}
+
+func reverseBytes(d []byte) {
+	for i, j := 0, len(d)-1; i < j; i, j = i+1, j-1 {
+		d[i], d[j] = d[j], d[i]
+	}
 }
 
 func SplitSubN(s string, n int) []string {
