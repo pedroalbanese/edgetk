@@ -1,6 +1,6 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.19
+go 1.20
 
 require (
 	github.com/RyuaNerin/go-krypto v1.0.2
