@@ -271,11 +271,11 @@ echo $?
 ```
 #### Generate Self Signed Certificate:
 ```sh
-./edgetk -pkey certgen -key private.pem [-pwd "pass"] [-cert "output.ext"]
+./edgetk -pkey certgen -key private.pem [-pwd "pass"] [-cert "output.crt"]
 ```
 #### Generate Certificate Signing Request:
 ```sh
-./edgetk -pkey req -key private.pem -cert cert.csr
+./edgetk -pkey req -key private.pem [-pwd "pass"] [-cert certificate.csr]
 ```
 #### Sign CSR with CA Certificate:
 ```sh
