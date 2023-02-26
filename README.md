@@ -275,11 +275,11 @@ echo $?
 ```
 #### Generate Certificate Signing Request:
 ```sh
-./edgetk -pkey req -key private.pem [cert.csr]
+./edgetk -pkey req -key private.pem -cert cert.csr
 ```
 #### Sign CSR with CA Certificate:
 ```sh
-./edgetk -pkey x509 -key private.pem -cert cacert.pem cert.csr [cert.crt]
+./edgetk -pkey x509 -key private.pem -root cacert.pem -cert cert.csr > cert.crt
 ```
 #### Parse Certificate info:
 ```sh
@@ -308,7 +308,7 @@ echo $?
 ```
 #### HKDF (HMAC-based key derivation function) (128-bit):
 ```sh
-./edgetk -hkdf 128 -key "IKM" [-salt "salt"] [-info "AD"]
+./edgetk -kdf hkdf -bits 128 -key "IKM" [-salt "salt"] [-info "AD"]
 ```
 #### Hex Encoder/Decoder:
 ```sh
