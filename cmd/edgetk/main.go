@@ -2188,6 +2188,39 @@ func main() {
 		os.Exit(exit)
 	}
 
+	if *mac == "gost" {
+		var keyRaw []byte
+		if *key == "" {
+			keyRaw = []byte("00000000000000000000000000000000")
+			fmt.Fprintf(os.Stderr, "Key= %s\n", keyRaw)
+		} else {
+			keyRaw = []byte(*key)
+		}
+		if len(keyRaw) != 256/8 {
+			fmt.Println("Secret key must have 128-bit.")
+			os.Exit(1)
+		}
+		var iv [8]byte
+		if *vector == "" {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		} else {
+			raw, err := hex.DecodeString(*vector)
+			if err != nil {
+				log.Fatal(err)
+			}
+			iv = *byte8(raw)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		c := gost28147.NewCipher([]byte(keyRaw), &gost28147.SboxIdtc26gost28147paramZ)
+		h, _ := c.NewMAC(8, iv[:])
+		io.Copy(h, inputfile)
+
+		fmt.Println("MAC-GOST("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
 	if *mac == "poly1305" {
 		var keyx [32]byte
 		copy(keyx[:], []byte(*key))
@@ -3724,33 +3757,35 @@ func main() {
 			}
 		}
 
+		println("You are about to be asked to enter information that \nwill be incorporated into your certificate request.")
+
 		scanner := bufio.NewScanner(os.Stdin)
 
-		print("\nCommonName: ")
+		print("Common Name: ")
 		scanner.Scan()
 		name := scanner.Text()
 
-		print("Country: ")
+		print("Country Name (2 letter code) [AU]: ")
 		scanner.Scan()
 		country := scanner.Text()
 
-		print("State/Province: ")
+		print("State or Province Name (full name) [Some-State]: ")
 		scanner.Scan()
 		province := scanner.Text()
 
-		print("Locality: ")
+		print("Locality Name (eg, city): ")
 		scanner.Scan()
 		locality := scanner.Text()
 
-		print("Organization: ")
+		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
 		scanner.Scan()
 		organization := scanner.Text()
 
-		print("OrganizationUnit: ")
+		print("Organizational Unit Name (eg, section): ")
 		scanner.Scan()
 		organizationunit := scanner.Text()
 
-		print("Email: ")
+		print("Email Address []: ")
 		scanner.Scan()
 		email := scanner.Text()
 
@@ -7322,6 +7357,13 @@ func byte32(s []byte) (a *[32]byte) {
 }
 
 func byte16(s []byte) (a *[16]byte) {
+	if len(a) <= len(s) {
+		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
+	}
+	return a
+}
+
+func byte8(s []byte) (a *[8]byte) {
 	if len(a) <= len(s) {
 		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
 	}
