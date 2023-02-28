@@ -3662,11 +3662,7 @@ func main() {
 		print("SerialNumber: ")
 		scanner.Scan()
 		number := scanner.Text()
-		/*
-			print("AuthorityKeyId: ")
-			scanner.Scan()
-			authority, _ := hex.DecodeString(scanner.Text())
-		*/
+
 		print("Validity (in Days): ")
 		scanner.Scan()
 		validity := scanner.Text()
@@ -3810,6 +3806,13 @@ func main() {
 		scanner.Scan()
 		number := scanner.Text()
 
+		var sigalg x509.SignatureAlgorithm
+		if *length == 512 {
+			sigalg = x509.GOST512
+		} else {
+			sigalg = x509.GOST256
+		}
+
 		emailAddress := email
 		subj := pkix.Name{
 			CommonName:         name,
@@ -3833,7 +3836,7 @@ func main() {
 		template = x509.CertificateRequest{
 			RawSubject:         asn1Subj,
 			EmailAddresses:     []string{emailAddress},
-			SignatureAlgorithm: x509.GOST256,
+			SignatureAlgorithm: sigalg,
 		}
 
 		var output *os.File
@@ -4955,7 +4958,12 @@ func main() {
 			verifystatus = ed25519.Verify(publicKey.(ed25519.PublicKey), certa.RawTBSCertificate, certa.Signature)
 		} else if *alg == "GOST2012" {
 			var certa, _ = x509.ParseCertificate(certPemBlock.Bytes)
-			h = gost34112012256.New()
+			signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
+			if signature == "GOST512" {
+				h = gost34112012512.New()
+			} else {
+				h = gost34112012256.New()
+			}
 			h.Write(certa.RawTBSCertificate)
 			hash_data := h.Sum(nil)
 			reverseBytes(hash_data)
