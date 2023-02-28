@@ -26,10 +26,10 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     
 - **Paramsets:**  
 
-    |  Algorithm                       |  A  |  B  |  C  |  D  |
-    |:---------------------------------|:---:|:---:|:---:|:---:|
-    | GOST2012 R 34.10-2012 256-bit    | O   | O   | O   | O   |
-    | GOST2012 R 34.10-2012 512-bit    | O   | O   | O   |     |
+    |  Algorithm          |  Paramset A  |  Paramset B  |  Paramset C  |  Paramset D  |
+    |:--------------------|:---:|:---:|:---:|:---:|
+    | GOST2012 256-bit    | O   | O   | O   | O   |
+    | GOST2012 512-bit    | O   | O   | O   |     |
 
 ### Symmetric
 
