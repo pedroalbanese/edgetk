@@ -55,7 +55,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Anubis           |        128 |         128 | All modes supported     |
     | ARIA             |        128 | 128/192/256 | All modes supported     |
     | Camellia         |        128 | 128/192/256 | All modes supported     |
-    | Grasshopper      |        128 |         256 | All modes supported     |
+    | Kuznechik        |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
     | SEED             |        128 |         128 | All modes supported     |
     | Serpent          |        128 | 128/192/256 | All modes supported     |
