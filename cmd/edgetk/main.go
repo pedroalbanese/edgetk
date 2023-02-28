@@ -1,6 +1,6 @@
 /*
    EDGE Toolkit -- Pure Go Command-line Integrated Security Suite
-   Copyright (C) 2020-2023 Pedro Albanese <pedroalbanese@hotmail.com>
+   Copyright (C) 2020-2023 Pedro F. Albanese <pedroalbanese@hotmail.com>
 
    This program is free software: you can redistribute it and/or modify it
    under the terms of the ISC License.
@@ -131,7 +131,7 @@ import (
 )
 
 var (
-	alg       = flag.String("algorithm", "RSA", "Public key algorithm: RSA, ECDSA, Ed25519 or SM2.")
+	alg       = flag.String("algorithm", "RSA", "Public key algorithm: RSA, EC, Ed25519, GOST, SM2.")
 	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
 	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
@@ -146,7 +146,7 @@ var (
 	length    = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac       = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
 	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
-	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB, OCB, OFB.")
+	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
 	pkey      = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
 	priv      = flag.String("private", "Private.pem", "Private key path. (for keypair generation)")
 	pub       = flag.String("public", "Public.pem", "Public key path. (for keypair generation)")
@@ -158,7 +158,7 @@ var (
 	sig       = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	tcpip     = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector    = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
-	paramset  = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D.")
+	paramset  = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -433,6 +433,14 @@ func main() {
 
 	if *cph == "des" && *pkey != "keygen" && *length != 64 && *crypt != "" {
 		*length = 64
+	}
+
+	if strings.ToUpper(*alg) == "RSA" && *pkey == "keygen" && *length == 0 {
+		*length = 2048
+	}
+
+	if (strings.ToUpper(*alg) == "GOST2012" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && *pkey == "keygen" && *length == 0 {
+		*length = 256
 	}
 
 	if *kdf == "pbkdf2" {
@@ -3688,6 +3696,7 @@ func main() {
 			},
 			EmailAddresses: []string{email},
 			SubjectKeyId:   spki,
+			AuthorityKeyId: spki,
 
 			NotBefore: time.Now(),
 			NotAfter:  NotAfter,
