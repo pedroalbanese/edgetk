@@ -415,7 +415,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -1279,7 +1279,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -1320,7 +1320,7 @@ func main() {
 		} else if *cph == "serpent" {
 			ciph, err = serpent.NewCipher(key)
 			n = 16
-		} else if *cph == "grasshopper" {
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			ciph, err = kuznechik.NewCipher(key)
 			n = 16
 		} else if *cph == "sm4" {
@@ -1437,7 +1437,7 @@ func main() {
 		} else if *cph == "serpent" {
 			ciph, err = serpent.NewCipher(key)
 			n = 16
-		} else if *cph == "grasshopper" {
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			ciph, err = kuznechik.NewCipher(key)
 			n = 16
 		} else if *cph == "sm4" {
@@ -1538,7 +1538,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -1586,29 +1586,17 @@ func main() {
 		} else if *cph == "gost89" {
 			ciph = gost28147.NewCipher(key, &gost28147.SboxIdtc26gost28147paramZ)
 			iv = make([]byte, 8)
-		} else if *cph == "grasshopper" {
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			ciph, err = kuznechik.NewCipher(key)
-			a := make([]byte, 8)
-			s, _ := hex.DecodeString("0000000000000000")
-			iv = append(a, s...)
+			iv = make([]byte, 16)
 		}
 		if err != nil {
 			log.Fatal(err)
 		}
 		if *vector != "" {
-			if *cph != "grasshopper" {
-				iv, _ = hex.DecodeString(*vector)
-			} else {
-				s, _ := hex.DecodeString("0000000000000000")
-				a, _ := hex.DecodeString(*vector)
-				iv = append(a, s...)
-			}
+			iv, _ = hex.DecodeString(*vector)
 		} else {
-			if *cph != "grasshopper" {
-				fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
-			} else {
-				fmt.Fprintf(os.Stderr, "IV= %x\n", iv[:8])
-			}
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
 		}
 		var stream cipher.Stream
 		if strings.ToUpper(*mode) == "CTR" {
@@ -2383,7 +2371,7 @@ func main() {
 				log.Fatal("MAGMA invalid key size ", len(*key))
 			}
 			c = gost341264.NewCipher([]byte(*key))
-		} else if *cph == "grasshopper" {
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			if len(*key) != 32 {
 				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
 			}
@@ -2441,7 +2429,7 @@ func main() {
 			c, err = camellia.NewCipher([]byte(*key))
 		} else if *cph == "serpent" {
 			c, err = serpent.NewCipher([]byte(*key))
-		} else if *cph == "grasshopper" {
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			c, err = kuznechik.NewCipher([]byte(*key))
 		} else if *cph == "anubis" {
 			if len(*key) != 16 {
@@ -4278,7 +4266,8 @@ func main() {
 		case ed25519.PublicKey:
 			fmt.Println("Ed25519 (256-bit)")
 		case *gost3410.PublicKey:
-			fmt.Println("GOST2012")
+			publicKey := publicInterface.(*gost3410.PublicKey)
+			fmt.Printf("GOST2012 (%v-bit)\n", len(publicKey.Raw())*4)
 		default:
 			log.Fatal("unknown type of public key")
 		}
@@ -5127,11 +5116,7 @@ func main() {
 		print("SerialNumber: ")
 		scanner.Scan()
 		number := scanner.Text()
-		/*
-			print("AuthorityKeyId: ")
-			scanner.Scan()
-			authority, _ := hex.DecodeString(scanner.Text())
-		*/
+
 		print("Validity (in Days): ")
 		scanner.Scan()
 		validity := scanner.Text()
@@ -6430,10 +6415,7 @@ func GenerateRsaKey(bit int) error {
 	if err != nil {
 		return err
 	}
-	/*
-		fmt.Printf("Modulus=%X\n", public.N)
-		fmt.Printf("Exponent=%X\n", public.E)
-	*/
+
 	pubblock := pem.Block{Type: "PUBLIC KEY", Bytes: publicStream}
 	pubfile, err := os.Create(*pub)
 	if err != nil {
@@ -7196,22 +7178,7 @@ func csrToCrt2() error {
 
 	intVar, err := strconv.Atoi(validity)
 	NotAfter := time.Now().AddDate(0, 0, intVar)
-	/*
-		var spki struct {
-			Algorithm        pkix.AlgorithmIdentifier
-			SubjectPublicKey asn1.BitString
-		}
 
-		derBytes, err := x509.MarshalPKIXPublicKey(clientCSR.PublicKey)
-		if err != nil {
-			log.Fatal(err)
-		}
-		_, err = asn1.Unmarshal(derBytes, &spki)
-		if err != nil {
-			return err
-		}
-		skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
-	*/
 	hasher := gost34112012256.New()
 	if _, err = hasher.Write(clientCSR.PublicKey.(*gost3410.PublicKey).Raw()); err != nil {
 		log.Fatalln(err)
@@ -7323,7 +7290,7 @@ func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buff
 
 func PKCS7Padding(ciphertext []byte) []byte {
 	var padding int
-	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" {
+	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" {
 		padding = 16 - len(ciphertext)%16
 	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" {
 		padding = 8 - len(ciphertext)%8
