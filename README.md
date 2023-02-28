@@ -24,8 +24,11 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM2                 | O   |     | O   | O   | O        | O   |
 
 - **Supported ParamSets:**
-   - GOST R 34.10-2012 256-bit: A, B, C, D
-   - GOST R 34.10-2012 512-bit: A, B
+
+    |  Algorithm          |  A  |  B  |  C  |  D  |
+    |:--------------------|:---:|:---:|:---:|:---:|
+    | GOST R 34.10-2012 256-bit | O   | O   | O   | O   |
+    | GOST R 34.10-2012 512-bit | O   | O   | O   |     |
 
 ### Symmetric
 
@@ -189,7 +192,7 @@ Keying material is in general to include things like shared Diffie-Hellman secre
 
 ## Usage
 <pre> -algorithm string
-       Public key algorithm: RSA, ECDSA, Ed25519 or SM2. (default "RSA")
+       Public key algorithm: RSA, EC, Ed25519, GOST, SM2. (default "RSA")
  -bits int
        Key length. (for keypair generation and symmetric encryption)
  -cert string
@@ -199,13 +202,11 @@ Keying material is in general to include things like shared Diffie-Hellman secre
  -cipher string
        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
  -crypt string
-       Encrypt/Decrypt with bulk ciphers. [enc|dec]
+       Bulk Encryption with Stream and Block ciphers. [enc|dec]
  -digest
        Target file/wildcard to generate hashsum list. ('-' for STDIN)
  -hex string
        Encode binary string to hex format and vice-versa. [enc|dump|dec]
- -hkdf int
-       HMAC-based key derivation function with given bit length.
  -info string
        Additional info. (for HKDF command and AEAD bulk encryption)
  -ipport string
@@ -214,16 +215,18 @@ Keying material is in general to include things like shared Diffie-Hellman secre
        Iter. (for Password-based key derivation function) (default 1)
  -iv string
        Initialization Vector. (for symmetric encryption)
+ -kdf string
+       Key derivation function with given bit length. [pbkdf2|hkdf]
  -key string
        Asymmetric key, symmetric key or HMAC key, depending on operation.
  -mac string
-       Compute Hash-based message authentication code.
+       Compute Hash/Cipher-based message authentication code.
  -md string
        Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
  -mode string
-       Mode of operation: GCM, MGM, CBC, CFB, OCB, OFB. (default "CTR")
- -pbkdf2
-       Password-based key derivation function.
+       Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB. (default "CTR")
+ -paramset string
+       Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
  -pkey string
        Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
  -private string
@@ -236,6 +239,8 @@ Keying material is in general to include things like shared Diffie-Hellman secre
        Generate random cryptographic key with given bit length.
  -recursive
        Process directories recursively. (for DIGEST command only)
+ -root string
+       Root CA Certificate path.
  -salt string
        Salt. (for HKDF and PBKDF2 commands)
  -signature string
