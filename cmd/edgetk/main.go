@@ -4234,6 +4234,9 @@ func main() {
 			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
 			fmt.Printf("\nSKID: %x \n", skid)
 		*/
+
+		fmt.Printf("Curve: %s\n", publicKey.C.Name)
+
 		hasher := gost34112012256.New()
 		if _, err = hasher.Write(publicKey.Raw()); err != nil {
 			log.Fatalln(err)
@@ -4481,6 +4484,7 @@ func main() {
 			fmt.Printf("Public key:\n")
 			fmt.Printf("   X:%X\n", publicKey.X)
 			fmt.Printf("   Y:%X\n", publicKey.Y)
+			fmt.Printf("Curve: %s\n", publicKey.C.Name)
 		}
 	}
 
@@ -4777,9 +4781,11 @@ func main() {
 			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
 			printVersion(certa.Version, &buf2)
 			buf2.WriteString(fmt.Sprintf("%8sSerial Number : %x\n", "", certa.SerialNumber))
-			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Issuer.CommonName))
+			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Subject.CommonName))
 			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", certa.EmailAddresses))
 			buf2.WriteString(fmt.Sprintf("%8sIsCA          : %v \n", "", certa.IsCA))
+
+			buf2.WriteString(fmt.Sprintf("%8sCurve         : %s \n", "", certa.PublicKey.(*gost3410.PublicKey).C.Name))
 
 			buf2.WriteString(fmt.Sprintf("%8sIssuer\n            ", ""))
 			printName(certa.Issuer.Names, &buf2)
@@ -5460,6 +5466,9 @@ func main() {
 			printVersion(certa.Version, &buf2)
 			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Subject.CommonName))
 			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", certa.EmailAddresses))
+
+			buf2.WriteString(fmt.Sprintf("%8sCurve         : %s \n", "", certa.PublicKey.(*gost3410.PublicKey).C.Name))
+
 			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
 			printName(certa.Subject.Names, &buf2)
 
