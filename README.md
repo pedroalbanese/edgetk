@@ -139,18 +139,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
 
-### XOR
-
-XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
-
-- **exclusive or**
-
-    |x    |y    | x^y |
-    |:---:|:---:|:---:|
-    |0    |0    |0    |
-    |0    |1    |1    |
-    |1    |0    |1    |
-    |1    |1    |0    |
+### GOST (GOvernment STandard of Russian Federation)
+GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
 
 ### Key sizes
 - **Bit-length Equivalence**
@@ -166,11 +156,21 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 ### IKM (input key material value)
 Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
 
-### GOST (GOvernment STandard of Russian Federation)
-GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS)
-
 ### ShangMi (National secret SM2/SM3/SM4 algorithms)
 SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
+
+### XOR
+
+XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
+
+- **exclusive or**
+
+    |x    |y    | x^y |
+    |:---:|:---:|:---:|
+    |0    |0    |0    |
+    |0    |1    |1    |
+    |1    |0    |1    |
+    |1    |1    |0    |
 
 ## Features
 * **Cryptographic Functions:**
