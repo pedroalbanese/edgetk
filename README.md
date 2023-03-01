@@ -8,10 +8,6 @@
 
 Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2), shared key agreement (ECDH/VKO), digital signature (RSA/ECDSA/EdDSA) and TLS 1.3 for small or embedded systems. 
 
-GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS)
-
-ShangMi refers to National secret SM2/SM3/SM4 algorithms. SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
-
 ***Fully OpenSSL/LibreSSL/RHash/Mcrypt compliant***
 ## Command-line Integrated Security Suite
 
@@ -169,6 +165,12 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ### IKM (input key material value)
 Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
+
+### GOST (GOvernment STandard of Russian Federation)
+GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS)
+
+### ShangMi (National secret SM2/SM3/SM4 algorithms)
+SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
 
 ## Features
 * **Cryptographic Functions:**
