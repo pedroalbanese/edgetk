@@ -11,8 +11,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 ***Fully OpenSSL/LibreSSL/RHash/Mcrypt compliant***
 ## Command-line Integrated Security Suite
 
-![](EDGETk.gif)
-
 ### Asymmetric
 
 - **Public key algorithms:**  
@@ -257,6 +255,11 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
        Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
 
 ## Examples
+
+<details><summary><code>Video</code> Examples</summary><br><pre>
+![](EDGETk.gif)
+</pre></details>
+
 #### Asymmetric RSA keypair generation:
 ```sh
 ./edgetk -pkey keygen -bits 4096 [-pwd "pass"]
