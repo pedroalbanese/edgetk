@@ -256,9 +256,9 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ## Examples
 
-<details><summary><code>Video</code> Examples</summary><br><pre>
+<details><summary><code>Video</code> Examples</summary><br>
 ![](EDGETk.gif)
-</pre></details>
+</details>
 
 #### Asymmetric RSA keypair generation:
 ```sh
