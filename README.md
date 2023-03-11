@@ -11,6 +11,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 ***Fully OpenSSL/LibreSSL/RHash/Mcrypt compliant***
 ## Command-line Integrated Security Suite
 
+![](EDGETk.gif)
+
 ### Asymmetric
 
 - **Public key algorithms:**  
