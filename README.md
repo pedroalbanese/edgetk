@@ -256,10 +256,6 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ## Examples
 
-<details><summary><code>Video</code> Examples</summary><br>
-![](EDGETk.gif)
-</details>
-
 #### Asymmetric RSA keypair generation:
 ```sh
 ./edgetk -pkey keygen -bits 4096 [-pwd "pass"]
