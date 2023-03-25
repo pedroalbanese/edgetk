@@ -185,6 +185,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * HMAC (Hash-based message authentication code)
    * HKDF (HMAC-based key derivation function)
    * PBKDF2 (Password-based key derivation function)
+   * Scrypt (Password-based key derivation function)
    * TLS (Transport Layer Security 1.2 and 1.3)
    * TLCP (Transport Layer Cryptography Protocol)
    * PKCS12 (Personal Information Exchange Syntax v1.1)
