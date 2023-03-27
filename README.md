@@ -172,6 +172,26 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |1    |0    |1    |
     |1    |1    |0    |
 
+### Scrypt Itering
+
+- **Numbers power of 2**
+
+    |     |Iter |
+    |:---:|:---:|
+    |2^10|1.024     |
+    |2^11|2.048     |
+    |2^12 |4.096 (Recomended)|
+    |2^13|8.192     |
+    |2^14|16.384    |
+    |2^15|32.768    |
+    |2^16|65.536    |
+    |2^17|131.072   |
+    |2^18|262.144   |
+    |2^19|524.288   |
+    |2^20|1.048.576 |
+    |2^21|2.097.152 |
+
+
 ## Features
 * **Cryptographic Functions:**
 
