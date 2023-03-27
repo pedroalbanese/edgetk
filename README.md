@@ -317,7 +317,6 @@ echo $?
 ./edgetk -crypt enc -key $256bitkey < plaintext.ext > ciphertext.ext
 ./edgetk -crypt dec -key $256bitkey < ciphertext.ext > plaintext.ext
 ```
-
 #### Message digest:
 ```sh
 ./edgetk -digest [-recursive] "*.*" > hash.txt
@@ -325,7 +324,7 @@ echo $?
 echo $?
 or
 ./edgetk -check hash.txt|grep FAILED^|Not found!
-
+```
 #### HMAC:
 ```sh
 ./edgetk -mac hmac -key "secret" < file.ext
