@@ -132,11 +132,11 @@ import (
 )
 
 var (
-	alg       = flag.String("algorithm", "RSA", "Public key algorithm: RSA, EC, Ed25519, GOST, SM2.")
+	alg       = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
 	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
 	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
-	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec]")
+	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
 	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
@@ -149,8 +149,8 @@ var (
 	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
 	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
 	pkey      = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
-	priv      = flag.String("private", "Private.pem", "Private key path. (for keypair generation)")
-	pub       = flag.String("public", "Public.pem", "Public key path. (for keypair generation)")
+	priv      = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
+	pub       = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
 	pwd       = flag.String("pwd", "", "Password. (for Private key PEM encryption)")
 	random    = flag.Int("rand", 0, "Generate random cryptographic key with given bit length.")
 	recursive = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
@@ -204,6 +204,429 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Usage of", os.Args[0]+":")
 		flag.PrintDefaults()
 		os.Exit(1)
+	}
+
+	/*
+		List documentation args:
+	*/
+
+	if *crypt == "help" {
+		fmt.Println(`Syntax:
+  edgetk -crypt [enc|dec] [-cipher aes] [-iv "IV"] [-key "KEY"] FILE > OUTPUT
+
+Symmetric key generation (256-bit):
+  edgetk -rand 256
+
+PBKDF2 Subcommands:
+  [..] -kdf pbkdf2 [-md sha256] [-iter N] [-salt "SALT"] -key "PASSPHRASE" [..]
+
+  Example:
+  edgetk -crypt enc -kdf pbkdf2 -key "PASSPHRASE" FILE > OUTPUT
+
+AEAD Modes Subcommands:
+  [...] -mode gcm [-info "ADDITIONAL AUTHENTICATED DATA"] [...] 
+
+  Example:
+  edgetk -crypt enc -key "HEXKEY" -mode gcm -info "AAD" FILE > OUTPUT
+
+  Bulk encryption is a method  in which combined transmissions from
+  several data streams  are all encrypted together. This  is a more
+  secure way of encrypting large  amounts of data, making it almost
+  impossible for anyone without  the proper decryption algorithm to
+  read.
+
+  Authenticated  encryption   (AE)  and   authenticated  encryption
+  with  associated  data  (AEAD)  are  forms  of  encryption  which
+  simultaneously  assure the  confidentiality  and authenticity  of
+  data. Provides both authenticated encryption (confidentiality and
+  authentication)  and  the  ability  to check  the  integrity  and
+  authentication  of additional  authenticated data  (AAD) that  is
+  sent in the clear. AAD is used as an integrity check and can help
+  protect your data  from a confused deputy attack.  The AAD string
+  must be no larger than 64 KiB.`)
+		os.Exit(3)
+	}
+
+	if *mac == "help" {
+		fmt.Println(`Syntax:
+  edgetk -mac <method> [-md sha256] [-cipher aes] [-key <secret>] FILE
+
+Methods: 
+  cmac, pmac, hmac, chaskey, gost, poly1305, eia128/256, siphash, xoodyak
+
+HMAC:
+  edgetk -mac hmac [-md sha256] -key <secret> FILE
+  edgetk -mac hmac [-md sha256] -key <secret> -signature $256bitmac FILE
+  echo $?
+
+CMAC:
+  edgetk -mac cmac [-cipher aes] -key <secret> FILE
+  edgetk -mac cmac [-cipher aes] -key <secret> -signature $128bitmac FILE
+  echo $?
+
+  A message  authentication code (MAC) is  a cryptographic checksum
+  on data  that uses a  session key  to detect both  accidental and
+  intentional modifications of the data. A MAC requires two inputs:
+  a message  and a secret key  known only to the  originator of the
+  message and its intended recipient(s).`)
+		os.Exit(3)
+	}
+
+	if *kdf == "help" {
+		fmt.Println(`Syntax:
+  edgetk -kdf <method> [-md sha256] [-key <secret>] [-salt "SALT"]
+
+Methods: 
+  hkdf, pbkdf2, scrypt
+
+HKDF:
+  edgetk -kdf hkdf [-md sha256] [-salt "SALT"] [-info "AAD"] -key "IKM"
+
+PBKDF2:
+  edgetk -kdf pbkdf2 [-md sha256] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+
+Scrypt:
+  edgetk -kdf scrypt [-md sha256] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+
+  In   cryptography,  a   key  derivation   function  (KDF)   is  a
+  cryptographic algorithm that derives one or more secret keys from
+  a secret value such as a  master key, a password, or a passphrase
+  using a pseudorandom function. IKM  (input key material value) is
+  in general  to include things like  shared Diffie-Hellman secrets
+  (which  are not  suitable  as symmetric  keys),  which have  more
+  structure than normal keys.`)
+		os.Exit(3)
+	}
+
+	if *pkey == "help" {
+		fmt.Println(`Syntax:
+  edgetk -pkey <command> [-algorithm EC] [-key priv.pem] [-pub pub.pem] \
+  [-root cacert.pem] [-cert cert.pem] [-signature "SIGN"] [-bits N] FILE
+
+Subcommands: 
+  keygen, certgen, req, x509, pkcs12, sign, verify,
+  derive, x25519, vko, text, modulus, check 
+
+Public key algorithms: 
+  ec(ecdsa), ed25519, x25519, gost2012, sm2, rsa (default)
+
+  The  typical  process  for  configuring  an  external  client  to
+  authenticate using a certificate is as follows:
+
+  1)  the  client generates  an  asymmetric  key pair  (public  and
+  private  keys); 2)  the  client generates  a certificate  signing
+  request for  the public key  and sends it  to the server;  3) the
+  server  signs the  public  key and  returns  this signature  (the
+  "certificate") to  the client; 4)  the client stores  the private
+  key along with this certificate in pfx format.
+
+  Now, when the  client connects to the server,  the certificate is
+  presented and the client is authenticated.
+
+Keygen:
+  edgetk -pkey keygen [-algorithm EC] [-priv private.pem] [-pub public.pem]
+
+Generate Self-Signed Certificate:
+  edgetk -pkey certgen [-algorithm EC] -key private.pem -cert CA.pem 
+
+Generate Certificate Sign Request:
+  edgetk -pkey req [-algorithm EC] -key private.pem -cert cert.csr
+
+Sign the Certificate Sign Request:
+  edgetk -pkey x509 [-algorithm EC] -root CA.pem -key priv.pem -cert cert.csr
+
+Derive Shared Secret:
+  edgetk -pkey [derive|vko|x25519] -key private.pem -pub peerkey.pem
+
+Parse Keypair:
+  edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
+  edgetk -pkey [text|modulus|randomart] -key public.pem
+
+Parse Certificate:
+  edgetk -pkey [text|modulus] -cert certificate.pem
+  echo $?
+
+Validate Certificate:
+  edgetk -pkey check -cert cert.crt -key public.pem
+  echo $?
+
+Digital Signature:
+  edgetk -pkey sign [-algorithm EC] -key private.pem FILE.ext > sign.txt
+  sign=$(cat sign.txt|awk '{print $2}')
+  edgetk -pkey verify -key public.pem -signature $sign FILE.ext
+  echo $?
+
+  A  digital  signature  is  a mathematical  scheme  for  verifying
+  the  authenticity  of  digital  messages or  documents.  A  valid
+  digital signature, where the prerequisites are satisfied, gives a
+  recipient very high confidence that  the message was created by a
+  known sender (authenticity), and that the message was not altered
+  in transit (integrity).
+
+  Digital signatures  are a standard element  of most cryptographic
+  protocol suites, and are commonly used for software distribution,
+  financial  transactions,  contract  management software,  and  in
+  other cases where it is important to detect forgery or tampering.`)
+		os.Exit(3)
+	}
+
+	if *tcpip == "help" {
+		fmt.Println(`Syntax:
+  edgetk -tcp [server|client] [-cert cert.pem] [-key priv.pem] [-ipport "IP"]
+
+  Examples:
+  edgetk -tcp ip > MyExternalIP.txt
+  edgetk -tcp server -cert cert.pem -key priv.pem [-ipport "8081"]
+  edgetk -tcp client -cert cert.pem -key priv.pem [-ipport "127.0.0.1:8081"]
+
+  Transport  Layer  Security  (TLS)  is  a  cryptographic  protocol
+  designed  to  provide  communications security  over  a  computer
+  network.  The protocol  is widely  used in  applications such  as
+  email and instant messaging over  IP. EDGE Toolkit implements TLS
+  v1.2 and v1.3 (default).`)
+		os.Exit(3)
+	}
+
+	if *encode == "help" {
+		fmt.Println(`Syntax:
+  edgetk -hex [enc|dec|dump] FILE
+
+  Examples:
+  edgetk -hex enc file.ext > file.hex
+  edgetk -hex dec file.hex > file.ext
+  edgetk -hex dump file.ext`)
+		os.Exit(3)
+	}
+
+	if flag.Arg(0) == "/list" {
+		fmt.Println(`Public Key Algorithms:
+  ecdsa             ed25519           rsa (default)     sm2
+  gost2012          x25519
+
+Stream ciphers:
+  ascon             grain128aead      rabbit            skein
+  chacha20          hc128             rc4 [obsolete]    zuc128/eia128
+  chacha20poly1305  hc256             salsa20           zuc256/eia256
+  grain128a         kcipher2
+
+Modes of Operation:
+  eax (aead)        ocb3 (aead)       cfb               ecb
+  gcm (aead)        mgm (aead)        cfb8              ige
+  ocb (aead)        cbc               ctr (default)     ofb
+
+Block Ciphers:
+  3des              cast5             hight             rc2
+  aes (default)     camellia          idea              rc5
+  aria              des               lea               seed
+  anubis            gost89            misty1            sm4
+  blowfish          grasshopper       magma             twofish
+
+Message Digests:
+  blake2s128        keccak512         rmd256            siphash
+  blake2s256        lsh224            sha224            skein256
+  blake2b256        lsh256            sha256 (default)  skein512
+  blake2b512        lsh384            sha384            sm3
+  chaskey (MAC)     lsh512            sha512            streebog256
+  cubehash          md4 [obsolete]    sha3-224          streebog512
+  gost94            md5 [obsolete]    sha3-256          whirlpool
+  groestl           poly1305 (MAC)    sha3-384          xoodyak
+  jh                rmd128            sha3-512          zuc128
+  keccak256         rdm160            siphash64         zuc256`)
+		os.Exit(1)
+	}
+
+	if flag.Arg(0) == "/desc" {
+		fmt.Println(`Public Key Algorithms:
+  +------------+------+------+-------+--------+-------------+-----+
+  | ALGORITHM  | 256  | 512  | ECDH  | ECDSA  | ENCRYPTION  | TLS |
+  +------------+------+------+-------+--------+-------------+-----+
+  | ECDSA      | O    | O    | O     | O      | O           | O   |
+  | Ed25519    | O    |      | O     | O      |             | O   |
+  | GOST2012   | O    | O    | O     | O      |             | O   |
+  | RSA        |      |      |       | O      | O           | O   |
+  | SM2        | O    |      | O     | O      | O           | O   |
+  +------------+------+------+-------+--------+-------------+-----+
+
+Supported ParamSets:
+  +----------------------------+-----+-----+-----+-----+
+  |         ALGORITHM          |  A  |  B  |  C  |  D  |
+  +----------------------------+-----+-----+-----+-----+
+  | GOST R 34.10-2012 256-bit  |  O  |  O  |  O  |  O  |
+  | GOST R 34.10-2012 512-bit  |  O  |  O  |  O  |     |
+  +----------------------------+-----+-----+-----+-----+
+
+  EDGETk does not support Koblitz curves,  where A equals 0 and B =
+  7 (y^2=x^3+7).  Supports Weierstrass curves  (y^2=x^3+ax+b), such
+  as ECDSA, SM2, GOST R 34.10-2012 256-bit paramSet B, C and D, and
+  GOST R 34.10-2012 512-bit paramSet A and B; TwistedEdwards curves
+  (ax^2+y^2=1+dx^2y^2), such as Ed25519,  GOST R 34.10-2012 256-bit
+  paramSet  A and  GOST  R  34.10-2012 512-bit  paramSet  C; and  a
+  Montgomery curve (by^2=x^3+ax^2+x) which is function X25519.
+
+Bit-length Equivalence:
+  +---------------------+----------------------+------------------+
+  | SYMMETRIC KEY SIZE  |     RSA KEY SIZE     |   ECC KEY SIZE   |
+  +---------------------+----------------------+------------------+
+  |                 80  |                1024  |              160 |
+  |                112  |                2048  |              224 |
+  |                128  |                3072  |              256 |
+  |                192  |                7680  |              384 |
+  |                256  |               15360  |              512 |
+  +---------------------+----------------------+------------------+
+
+Stream Ciphers:
+  +----------------------+---------+---------+--------------------+
+  |        CIPHER        |   KEY   |   IV    |       MODES        |
+  +----------------------+---------+---------+--------------------+
+  | Ascon 1.2            |    128  |    128  | AEAD Stream Cipher |
+  | Grain128a            |    128  |  40-96  | AEAD Stream Cipher |
+  | Chacha20Poly1305     |    256  | 96/192  | AEAD Stream Cipher |
+  | HC-128               |    128  |    128  | XOR Stream         |
+  | HC-256               |    256  |    256  | XOR Stream         |
+  | KCipher-2            |    128  |    128  | XOR Stream         |
+  | Rabbit               |    128  |     64  | XOR Stream         |
+  | RC4 [Obsolete]       | 40/128  |      -  | XOR Stream         |
+  | Salsa20              |    256  | 64/192  | XOR Stream         |
+  | Skein512             |    256  |    256  | XOR Stream         |
+  | ZUC-128 Zu Chongzhi  |    128  |    128  | MAC + XOR Stream   |
+  | ZUC-256 Zu Chongzhi  |    256  |    184  | MAC + XOR Stream   |
+  +----------------------+---------+---------+--------------------+
+
+128-bit Block Ciphers:
+  +-----------------+-------+---------------+---------------------+
+  |     CIPHER      | BLOCK |     KEYS      |        MODES        |
+  +-----------------+-------+---------------+---------------------+
+  | AES (Rijndael)  |  128  |  128/192/256  | All modes supported |
+  | Anubis          |  128  |          128  | All modes supported |
+  | ARIA            |  128  |  128/192/256  | All modes supported |
+  | Camellia        |  128  |  128/192/256  | All modes supported |
+  | Kuznechik       |  128  |          256  | All modes supported |
+  | LEA             |  128  |  128/192/256  | All modes supported |
+  | SEED            |  128  |          128  | All modes supported |
+  | Serpent         |  128  |  128/192/256  | All modes supported |
+  | SM4             |  128  |          128  | All modes supported |
+  | Twofish         |  128  |  128/192/256  | All modes supported |
+  +-----------------+-------+---------------+---------------------+
+
+64-bit Block Ciphers:
+  +------------------+-------+--------+---------------------------+
+  |      CIPHER      | BLOCK |  KEYS  |           MODES           |
+  +------------------+-------+--------+---------------------------+
+  | DES [Obsolete]   |   64  |    64  | CBC, CFB-8, CTR, OFB, IGE |
+  | 3DES [Obsolete]  |   64  |   192  | CBC, CFB-8, CTR, OFB, IGE |
+  | Blowfish         |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  | CAST5            |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  | GOST89 (TC26)    |   64  |   256  | MGM, CFB-8, CTR, OFB, IGE |
+  | HIGHT            |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  | IDEA [Obsolete]  |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  | Magma            |   64  |   256  | MGM, CFB-8, CTR, OFB, IGE |
+  | MISTY1           |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  | RC2 [Obsolete]   |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  | RC5 [Obsolete]   |   64  |   128  | CBC, CFB-8, CTR, OFB, IGE |
+  +------------------+-------+--------+---------------------------+
+
+Modes of Operation for Block Ciphers:
+  +------+---------------------------------+--------+-------------+
+  | MODE |                                 | BLOCKS |    KEYS     |
+  +------+---------------------------------+--------+-------------+
+  | EAX  | Encrypt-Authenticate-Translate  | 128    | 128/192/256 |
+  | GCM  | Galois/Counter Mode (AEAD)      | 128    | 128/192/256 |
+  | OCB1 | Offset Codebook v1 (AEAD)       | 128    | 128/192/256 |
+  | OCB3 | Offset Codebook v3 (AEAD)       | 128    | 128/192/256 |
+  | MGM  | Multilinear Galois Mode (AEAD)  | All[*] | Any         |
+  | CBC  | Cipher-Block Chaining           | All    | Any         |
+  | CFB  | Cipher Feedback Mode            | All    | Any         |
+  | CFB8 | Cipher Feedback Mode 8-bit      | All    | Any         |
+  | CTR  | Counter Mode (default)          | All    | Any         |
+  | ECB  | Eletronic Codebook Mode         | All    | Any         |
+  | IGE  | Infinite Garble Extension       | All    | Any         |
+  | OFB  | Output Feedback Mode            | All    | Any         |
+  +------+---------------------------------+--------+-------------+
+  [*] All supported by this software (64 and 128-bit).
+
+Message Digest Algorithms:
+  +----------------------+------+------+------+------+------+-----+
+  |       ALGORITHM      | 128  | 160  | 192  | 256  | 512  | MAC |
+  +----------------------+------+------+------+------+------+-----+
+  | BLAKE-2B             |      |      |      | O    | O    | O   |
+  | BLAKE-2S             | O    |      |      | O    |      | O   |
+  | Chaskey              | O    |      |      |      |      | O   |
+  | Cubehash             |      |      |      |      | O    |     |
+  | GOST94 CryptoPro     |      |      |      | O    |      |     |
+  | Groestl              |      |      |      | O    |      |     |
+  | JH                   |      |      |      | O    |      |     |
+  | Legacy Keccak        |      |      |      | O    | O    |     |
+  | LSH                  |      |      |      | O    | O    |     |
+  | MD4 [Obsolete]       | O    |      |      |      |      |     |
+  | MD5 [Obsolete]       | O    |      |      |      |      |     |
+  | Poly1305             | O    |      |      |      |      | O   |
+  | RIPEMD               | O    | O    |      | O    |      |     |
+  | SHA1 [Obsolete]      |      | O    |      |      |      |     |
+  | SHA2                 |      |      |      | O    | O    |     |
+  | SHA3                 |      |      |      | O    | O    |     |
+  | SipHash              | O    |      |      |      |      | O   |
+  | Skein                |      |      |      | O    | O    | O   |
+  | SM3                  |      |      |      | O    |      |     |
+  | Streebog             |      |      |      | O    | O    |     |
+  | Tiger                |      |      | O    |      |      |     |
+  | Whirlpool            |      |      |      |      | O    |     |
+  | Xoodyak              |      |      |      | O    |      | O   |
+  | ZUC-256 Zu Chongzhi  | O    |      |      |      |      | O   |
+  +----------------------+------+------+------+------+------+-----+
+  MAC refers to keyed hash function, like HMAC.`)
+		os.Exit(3)
+	}
+
+	if flag.Arg(0) == "/docs" {
+		fmt.Println(`Main References:
+  Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
+  CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
+  Cubehash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
+  GB/T 32907-2016 - SM4 128-bit Block Cipher
+  GB/T 32918.4-2016 SM2 Elliptic Curve Asymmetric Encryption
+  GB/T 38636-2020 - Transport Layer Cryptography Protocol (TLCP)
+  GM/T 0001-2012 ZUC Zu Chongzhi Stream cipher 128/256-bit key
+  GM/T 0002-2012 SM4 Block cipher with 128-bit key
+  GM/T 0003-2012 SM2 Public key algorithm 256-bit
+  GM/T 0004-2012 SM3 Message digest algorithm 256-bit hash value
+  GOST 28147-89 64-bit block cipher (RFC 5830)
+  GOST R 34.10-2012 VKO key agreement function (RFC 7836)
+  GOST R 34.10-2012 public key signature function (RFC 7091)
+  GOST R 34.11-2012 Streebog hash function (RFC 6986)
+  GOST R 34.11-94 CryptoPro hash function (RFC 5831)
+  GOST R 34.12-2015 128-bit block cipher Kuznechik (RFC 7801)
+  GOST R 34.12-2015 64-bit block cipher Magma (RFC 8891)
+  GOST R 50.1.114-2016 GOST R 34.10-2012 and GOST R 34.11-2012 
+  HC-128 Stream Cipher simplified version of HC-256 (Wu, ESAT/COSIC) 
+  IGE (Infinite Garble Extension) Mode of Operation for Block ciphers
+  ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT/COSIC)
+  ISO/IEC 18033-3:2010 HIGHT, SEED, Camellia and MISTY1 Block ciphers
+  ISO/IEC 18033-4:2011 KCipher-2 stream cipher (RFC 7008)
+  KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
+  KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
+  NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
+  NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
+  RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+  RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+  RFC 4493: Cipher-based Message Authentication Code (CMAC)
+  RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+  RFC 4764: EAX Authenticated-Encryption Mode of Operation
+  RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+  RFC 5869: HMAC-based Key Derivation Function (HKDF)
+  RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
+  RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
+  RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
+  RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
+  RFC 7914: The Scrypt Password-Based Key Derivation Function
+  RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
+  RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
+  RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
+  RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+  TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+  TTAK.KO-12.0276 LSH Message digest algorithm
+  US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms 
+  US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)`)
+		os.Exit(3)
 	}
 
 	if *pkey == "keygen" && *pwd == "" {
@@ -428,7 +851,7 @@ func main() {
 		*length = 128
 	}
 
-	if *mac == "eia256" && (*length != 32 && *length != 64 && *length != 128) {
+	if (*mac == "eia256" || *mac == "zuc256") && (*length != 32 && *length != 64 && *length != 128) {
 		*length = 128
 	}
 
@@ -1159,7 +1582,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *mac == "eia256" {
+	if *mac == "eia256" || *mac == "zuc256" {
 		var keyHex string
 		var keyRaw []byte
 		keyHex = *key
@@ -1207,7 +1630,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *mac == "eia128" {
+	if *mac == "eia128" || *mac == "zuc128" {
 		var keyHex string
 		var keyRaw []byte
 		keyHex = *key
@@ -2225,6 +2648,19 @@ func main() {
 		h, _ := c.NewMAC(8, iv[:])
 		io.Copy(h, inputfile)
 
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
 		fmt.Println("MAC-GOST("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
@@ -7474,7 +7910,18 @@ func csrToCrt2() error {
 	if err != nil {
 		return err
 	}
-	pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: clientCRTRaw})
+	var output *os.File
+	if flag.Arg(0) == "" {
+		output = os.Stdout
+	} else {
+		file, err := os.Create(flag.Arg(0))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+		output = file
+	}
+	pem.Encode(output, &pem.Block{Type: "CERTIFICATE", Bytes: clientCRTRaw})
 	return err
 }
 
