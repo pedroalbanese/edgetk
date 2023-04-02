@@ -201,22 +201,52 @@ func main() {
 	flag.Parse()
 
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage of", os.Args[0]+":")
-		flag.PrintDefaults()
+		fmt.Println(`EDGE Toolkit - Command-line Unique Integrated Security Suite v1.2.19
+ALBANESE Research Lab - Campaign Manual, Apr 4 2023 Cotia-SP, Brazil
+
+  Multi-purpose cross-platform cryptography  tool for symmetric and
+  asymmetric encryption, cipher-based  message authentication code,
+  recursive  hash digest,  hash-based message  authentication code,
+  HMAC-based key derivation function, password-based key derivation
+  function, digital signature, shared key agreement and instant TLS
+  server for small or embedded systems.
+
+Main Commands:
+
+CRYPT (Bulk Encryption):
+  edgetk -crypt [enc|dec] [-cipher aes] [-iv "IV"] [-key "KEY"] FILE > OUTPUT
+
+KDF (Key Derivation Functions):
+  edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt "SALT"]
+
+DIGEST (Message Digest):
+  edgetk -digest [-md <hash>] [-recursive] FILES... > OUTPUT.hash
+  edgetk -check OUTPUT.hash
+  echo $?
+
+MAC (Message Authentication Code):
+  edgetk -mac <method> [-md <hash>] [-cipher <cipher>] [-key <secret>] FILE
+
+PKEY (Public Key Functions):
+  edgetk -pkey <command> [-algorithm <alg>] [-key <private>] [-pub <public>]
+  [-root <cacert>] [-cert <certificate>] [-signature "SIGN"] [-bits N] FILE
+
+TCP (Transmission Control Protocol):
+  edgetk -tcp [server|client] [-cert <cert>] [-key <private>] [-ipport "IP"]
+
+Print Summary:
+  edgetk /desc         / Description of the parameters of all algorithms
+  edgetk /docs         / Main references documentation
+  edgetk /list         / List aliases of all md, ciphers and public keys
+  edgetk -crypt help   / Describes bulk encryption usage and arguments
+  edgetk -kdf help     / Describes key derivation function usage
+  edgetk -mac help     / Describes message authentication code usage
+  edgetk -pkey help    / Describes public key cryptography usage
+  edgetk -tcp help     / Describes TLS 1.3 Protocol parameters and usage
+  edgetk -help,-h      / Full list of the flags and their defaults`)
+
 		os.Exit(1)
 	}
-
-	/*
-	List documentation:
-		"/desc"		/ Description of the parameters of all algorithms
-		"/docs"		/ Main references
-		"/list"		/ List aliases of all ciphers and public keys
-		"-crypt help"	/ Describes bulk encryption usage/arguments
-		"-kdf help"	/ Describes key derivation function usage
-		"-mac help"	/ Describes message authentication code usage
-		"-pkey help"	/ Describes public key cryptography usage
-		"-tcp help"	/ Describes tls protocol and usage
-	*/
 
 	if *crypt == "help" {
 		fmt.Println(`Syntax:
@@ -225,13 +255,13 @@ func main() {
 Symmetric key generation (256-bit):
   edgetk -rand 256
 
-PBKDF2 Subcommands:
-  [..] -kdf pbkdf2 [-md <hash>] [-iter N] [-salt <salt>] -key "PASSPHRASE" [..]
+PBKDF2 Subcommand Parameters:
+  [...] -kdf pbkdf2 [-md <hash>] [-iter N] [-salt <salt>] -key "PASS" [...]
 
   Example:
-  edgetk -crypt enc -kdf pbkdf2 -key "PASSPHRASE" FILE > OUTPUT
+  edgetk -crypt enc -kdf pbkdf2 -key "PASSPHRASE" -iter 32768 FILE > OUTPUT
 
-AEAD Modes Subcommands:
+AEAD Modes Subcommand Parameters:
   [...] -mode gcm [-info "ADDITIONAL AUTHENTICATED DATA"] [...] 
 
   Example:
@@ -296,7 +326,7 @@ PBKDF2:
 Scrypt [*]:
   edgetk -kdf scrypt [-bits N] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
 
-[*] Scrypt Iter must be greater than 1 a power of 2:
+[*] scrypt iter must be greater than 1 a power of 2:
   2^10 = 1.024
   2^11 = 2.048 
   2^12 = 4.096 (Minimum Recomended)
