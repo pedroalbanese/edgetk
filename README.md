@@ -219,7 +219,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ## Usage
 <pre> -algorithm string
-       Public key algorithm: RSA, EC, Ed25519, GOST, SM2. (default "RSA")
+       Public key algorithm: EC, Ed25519, GOST2012, SM2. (default "RSA")
  -bits int
        Key length. (for keypair generation and symmetric encryption)
  -cert string
@@ -229,7 +229,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
  -cipher string
        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
  -crypt string
-       Bulk Encryption with Stream and Block ciphers. [enc|dec]
+       Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
  -digest
        Target file/wildcard to generate hashsum list. ('-' for STDIN)
  -hex string
@@ -256,9 +256,9 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
        Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
  -pkey string
        Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
- -private string
+ -priv string
        Private key path. (for keypair generation) (default "Private.pem")
- -public string
+ -pub string
        Public key path. (for keypair generation) (default "Public.pem")
  -pwd string
        Password. (for Private key PEM encryption)
@@ -304,7 +304,7 @@ echo $?
 ```
 #### EC Diffie-Hellman:
 ```sh
-./edgetk -pkey derive -algorithm EC -key private.pem -public peerkey.pem
+./edgetk -pkey derive -algorithm EC -key private.pem -pub peerkey.pem
 ```
 #### Generate Self Signed Certificate:
 ```sh
