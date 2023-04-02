@@ -1,6 +1,6 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.19
+go 1.20
 
 require (
 	gitee.com/Trisia/gotlcp v1.3.1
