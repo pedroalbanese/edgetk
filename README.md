@@ -361,6 +361,18 @@ echo $?
 ./edgetk -hex dec < file.hex > file.ext
 ./edgetk -hex dump < file.ext
 ```
+#### Documentation:
+```sh
+./edgetk /desc        // Description of the parameters of all algorithms
+./edgetk /docs        // Main references
+./edgetk /list        // List aliases of all ciphers and public keys
+./edgetk -crypt help  // Describes bulk encryption usage/arguments
+./edgetk -kdf help    // Describes key derivation function usage
+./edgetk -mac help    // Describes message authentication code usage
+./edgetk -pkey help   // Describes public key cryptography usage
+./edgetk -tcp help    // Describes tls protocol and usage
+```
+
 ## Contribute
 **Use issues for everything**
 - You can help and get help by:
