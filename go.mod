@@ -1,11 +1,12 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.20
+go 1.19
 
 require (
+	gitee.com/Trisia/gotlcp v1.3.1
 	github.com/RyuaNerin/go-krypto v1.0.2
 	github.com/emmansun/certinfo v0.1.0
-	github.com/emmansun/gmsm v0.15.6
+	github.com/emmansun/gmsm v0.16.0
 	github.com/emmansun/go-pkcs12 v0.1.2
 	github.com/pedroalbanese/IGE-go v0.0.0-20140730194654-752bc7fd80fb
 	github.com/pedroalbanese/anubis v0.0.0-gama
@@ -27,7 +28,6 @@ require (
 	github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10
 	github.com/pedroalbanese/gogost v0.0.0-20220417104440-4d34dbc5957c
 	github.com/pedroalbanese/gopass v0.0.0-20210920133722-c8aef6fb66ef
-	github.com/pedroalbanese/gotlcp v0.0.0-20230213165646-bc8d4ca8f9c1
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d
 	github.com/pedroalbanese/jh v0.0.0-20230125164747-5f04dcadc65e
 	github.com/pedroalbanese/kuznechik v0.0.0
@@ -44,11 +44,11 @@ require (
 	github.com/pedroalbanese/tiger v0.0.0-20220128183340-a7e964767a9d
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
-	golang.org/x/crypto v0.6.0
+	golang.org/x/crypto v0.7.0
 )
 
 require (
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.5.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
+	golang.org/x/term v0.6.0 // indirect
 )
