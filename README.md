@@ -174,7 +174,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ### Scrypt Itering
 
-- **Numbers power of 2**
+- **numbers power of 2**
 
     |     |Iter |
     |:---:|:---:|
@@ -361,7 +361,7 @@ echo $?
 ./edgetk -hex dec < file.hex > file.ext
 ./edgetk -hex dump < file.ext
 ```
-#### Documentation:
+#### Print Documentation:
 ```sh
 ./edgetk /desc        // Description of the parameters of all algorithms
 ./edgetk /docs        // Main references
