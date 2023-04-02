@@ -73,6 +73,7 @@ import (
 	"unsafe"
 
 	"crypto/go.cypherpunks.ru/gogost/v5/gost3410"
+	"gitee.com/Trisia/gotlcp/tlcp"
 	"github.com/RyuaNerin/go-krypto/aria"
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
@@ -111,7 +112,6 @@ import (
 	"github.com/pedroalbanese/gogost/gost341264"
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/gopass"
-	"github.com/pedroalbanese/gotlcp/tlcp"
 	"github.com/pedroalbanese/groestl-1"
 	"github.com/pedroalbanese/jh"
 	"github.com/pedroalbanese/kuznechik"
@@ -207,15 +207,15 @@ func main() {
 	}
 
 	/*
-		List documentation args:
-			"/desc"		/ Description of the parameters of all algorithms
-			"/docs"		/ Main references
-			"/list"		/ List aliases of all ciphers and public keys
-			"-crypt help"	/ Describes bulk encryption usage/arguments
-			"-kdf help"	/ Describes key derivation function usage
-			"-mac help"	/ Describes message authentication code usage
-			"-pkey help"	/ Describes public key cryptography usage
-			"-tcp help"	/ Describes tls protocol and usage
+	List documentation:
+		"/desc"		/ Description of the parameters of all algorithms
+		"/docs"		/ Main references
+		"/list"		/ List aliases of all ciphers and public keys
+		"-crypt help"	/ Describes bulk encryption usage/arguments
+		"-kdf help"	/ Describes key derivation function usage
+		"-mac help"	/ Describes message authentication code usage
+		"-pkey help"	/ Describes public key cryptography usage
+		"-tcp help"	/ Describes tls protocol and usage
 	*/
 
 	if *crypt == "help" {
@@ -226,7 +226,7 @@ Symmetric key generation (256-bit):
   edgetk -rand 256
 
 PBKDF2 Subcommands:
-  [..] -kdf pbkdf2 [-md sha256] [-iter N] [-salt "SALT"] -key "PASSPHRASE" [..]
+  [..] -kdf pbkdf2 [-md <hash>] [-iter N] [-salt <salt>] -key "PASSPHRASE" [..]
 
   Example:
   edgetk -crypt enc -kdf pbkdf2 -key "PASSPHRASE" FILE > OUTPUT
@@ -257,7 +257,7 @@ AEAD Modes Subcommands:
 
 	if *mac == "help" {
 		fmt.Println(`Syntax:
-  edgetk -mac <method> [-md sha256] [-cipher aes] [-key <secret>] FILE
+  edgetk -mac <method> [-md <hash>] [-cipher <ciph>] [-key <secret>] FILE
 
 Methods: 
   cmac, pmac, hmac, chaskey, gost, poly1305, eia128/256, siphash, xoodyak
@@ -282,19 +282,33 @@ CMAC:
 
 	if *kdf == "help" {
 		fmt.Println(`Syntax:
-  edgetk -kdf <method> [-md sha256] [-key <secret>] [-salt "SALT"]
+  edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt "SALT"]
 
 Methods: 
   hkdf, pbkdf2, scrypt
 
 HKDF:
-  edgetk -kdf hkdf [-md sha256] [-salt "SALT"] [-info "AAD"] -key "IKM"
+  edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] -key "IKM"
 
 PBKDF2:
-  edgetk -kdf pbkdf2 [-md sha256] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+  edgetk -kdf pbkdf2 [-bits N] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
 
-Scrypt:
-  edgetk -kdf scrypt [-md sha256] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+Scrypt [*]:
+  edgetk -kdf scrypt [-bits N] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+
+[*] Scrypt Iter must be greater than 1 a power of 2:
+  2^10 = 1.024
+  2^11 = 2.048 
+  2^12 = 4.096 (Minimum Recomended)
+  2^13 = 8.192 
+  2^14 = 16.384 
+  2^15 = 32.768
+  2^16 = 65.536
+  2^17 = 131.072
+  2^18 = 262.144 
+  2^19 = 524.288
+  2^20 = 1.048.576 
+  2^21 = 2.097.152
 
   In   cryptography,  a   key  derivation   function  (KDF)   is  a
   cryptographic algorithm that derives one or more secret keys from
@@ -345,6 +359,13 @@ Sign the Certificate Sign Request:
 
 Derive Shared Secret:
   edgetk -pkey [derive|vko|x25519] -key private.pem -pub peerkey.pem
+
+  In the Diffie-Hellman key exchange scheme (shared key agreement),
+  each party  generates a  public/private key pair  and distributes
+  the public key. After obtaining an authentic copy of each other's
+  public keys, the parties can  compute a shared secret. The shared
+  secret can  be used,  for instance,  as the  key for  a symmetric
+  cipher.
 
 Parse Keypair:
   edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
@@ -881,6 +902,10 @@ Message Digest Algorithms:
 		}
 		keyRaw := pbkdf2.Key([]byte(*key), []byte(*salt), *iter, *length/8, myHash)
 		*key = hex.EncodeToString(keyRaw)
+		if *crypt == "" {
+			fmt.Println(*key)
+			os.Exit(0)
+		}
 	}
 
 	if *kdf == "scrypt" {
@@ -892,6 +917,10 @@ Message Digest Algorithms:
 			log.Fatal(err)
 		}
 		*key = hex.EncodeToString(keyRaw)
+		if *crypt == "" {
+			fmt.Println(*key)
+			os.Exit(0)
+		}
 	}
 
 	if *crypt != "" && (*cph == "rc4") {
