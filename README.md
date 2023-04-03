@@ -362,16 +362,16 @@ echo $?
 ./edgetk -hex dump < file.ext
 ```
 #### Print Documentation:
-```sh
-./edgetk /desc         / Description of the parameters of all algorithms
-./edgetk /docs         / Main references documentation
-./edgetk /list         / List aliases of all md, ciphers and public keys
-./edgetk -crypt help   / Describes bulk encryption usage and arguments
-./edgetk -kdf help     / Describes key derivation function usage
-./edgetk -mac help     / Describes message authentication code usage
-./edgetk -pkey help    / Describes public key cryptography usage
-./edgetk -tcp help     / Describes TLS 1.3 Protocol parameters and usage
-./edgetk -help,-h      / Full list of the flags and their defaults
+```
+./edgetk /desc         // Description of the parameters of all algorithms
+./edgetk /docs         // Main references documentation
+./edgetk /list         // List aliases of all md, ciphers and public keys
+./edgetk -crypt help   // Describes bulk encryption usage and arguments
+./edgetk -kdf help     // Describes key derivation function usage
+./edgetk -mac help     // Describes message authentication code usage
+./edgetk -pkey help    // Describes public key cryptography usage
+./edgetk -tcp help     // Describes TLS 1.3 Protocol parameters and usage
+./edgetk -help,-h      // Full list of the flags and their defaults
 ```
 
 ## Contribute
