@@ -201,7 +201,7 @@ func main() {
 	flag.Parse()
 
 	if len(os.Args) < 2 {
-		fmt.Println(`EDGE Toolkit - Command-line Unique Integrated Security Suite v1.2.19
+		fmt.Println(`EDGE Toolkit - Command-line Unique Integrated Security Suite v1.3.0a
 ALBANESE Research Lab - Campaign Manual, Apr 4 2023 Cotia-SP, Brazil
 
   Multi-purpose cross-platform cryptography  tool for symmetric and
@@ -214,14 +214,14 @@ ALBANESE Research Lab - Campaign Manual, Apr 4 2023 Cotia-SP, Brazil
 Main Commands:
 
 CRYPT (Bulk Encryption):
-  edgetk -crypt [enc|dec] [-cipher aes] [-iv "IV"] [-key "KEY"] FILE > OUTPUT
+  edgetk -crypt <enc|dec> [-cipher aes] [-iv <iv>] [-key <key>] FILE > OUTPUT
 
 KDF (Key Derivation Functions):
-  edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt "SALT"]
+  edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
 DIGEST (Message Digest):
   edgetk -digest [-md <hash>] [-recursive] FILES... > OUTPUT.hash
-  edgetk -check OUTPUT.hash
+  edgetk -check [-md <hash>] OUTPUT.hash
   echo $?
 
 MAC (Message Authentication Code):
@@ -229,10 +229,10 @@ MAC (Message Authentication Code):
 
 PKEY (Public Key Functions):
   edgetk -pkey <command> [-algorithm <alg>] [-key <private>] [-pub <public>]
-  [-root <cacert>] [-cert <certificate>] [-signature "SIGN"] [-bits N] FILE
+  [-root <cacert>] [-cert <certificate>] [-signature <sign>] [-bits N] FILE
 
 TCP (Transmission Control Protocol):
-  edgetk -tcp [server|client] [-cert <cert>] [-key <private>] [-ipport "IP"]
+  edgetk -tcp <server|client> [-cert <cert>] [-key <private>] [-ipport "IP"]
 
 Print Summary:
   edgetk /desc         / Description of the parameters of all algorithms
@@ -244,13 +244,12 @@ Print Summary:
   edgetk -pkey help    / Describes public key cryptography usage
   edgetk -tcp help     / Describes TLS 1.3 Protocol parameters and usage
   edgetk -help,-h      / Full list of the flags and their defaults`)
-
-		os.Exit(1)
+		os.Exit(3)
 	}
 
 	if *crypt == "help" {
 		fmt.Println(`Syntax:
-  edgetk -crypt [enc|dec] [-cipher aes] [-iv "IV"] [-key "KEY"] FILE > OUTPUT
+  edgetk -crypt <enc|dec> [-cipher aes] [-iv <iv>] [-key <key>] FILE > OUTPUT
 
 Symmetric key generation (256-bit):
   edgetk -rand 256
@@ -312,7 +311,7 @@ CMAC:
 
 	if *kdf == "help" {
 		fmt.Println(`Syntax:
-  edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt "SALT"]
+  edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
 Methods: 
   hkdf, pbkdf2, scrypt
@@ -329,7 +328,7 @@ Scrypt [*]:
 [*] scrypt iter must be greater than 1 a power of 2:
   2^10 = 1.024
   2^11 = 2.048 
-  2^12 = 4.096 (Minimum Recomended)
+  2^12 = 4.096 (Minimum Recommended)
   2^13 = 8.192 
   2^14 = 16.384 
   2^15 = 32.768
@@ -352,65 +351,47 @@ Scrypt [*]:
 
 	if *pkey == "help" {
 		fmt.Println(`Syntax:
-  edgetk -pkey <command> [-algorithm EC] [-key priv.pem] [-pub pub.pem] \
-  [-root cacert.pem] [-cert cert.pem] [-signature "SIGN"] [-bits N] FILE
+  edgetk -pkey <command> [-algorithm <alg>] [-key <private>] [-pub <public>]
+  [-root <cacert>] [-cert <certificate>] [-signature <sign>] [-bits N] FILE
 
 Subcommands: 
-  keygen, certgen, req, x509, pkcs12, sign, verify,
-  derive, x25519, vko, text, modulus, check 
-
-Public key algorithms: 
-  ec(ecdsa), ed25519, x25519, gost2012, sm2, rsa (default)
-
-  The  typical  process  for  configuring  an  external  client  to
-  authenticate using a certificate is as follows:
-
-  1)  the  client generates  an  asymmetric  key pair  (public  and
-  private  keys); 2)  the  client generates  a certificate  signing
-  request for  the public key  and sends it  to the server;  3) the
-  server  signs the  public  key and  returns  this signature  (the
-  "certificate") to  the client; 4)  the client stores  the private
-  key along with this certificate in pfx format.
-
-  Now, when the  client connects to the server,  the certificate is
-  presented and the client is authenticated.
+  keygen, certgen, req, x509, check, pkcs12, encrypt, decrypt
+  derive, x25519, vko, text, modulus, randomart, sign, verify
 
 Keygen:
-  edgetk -pkey keygen [-algorithm EC] [-priv private.pem] [-pub public.pem]
+  edgetk -pkey keygen [-algorithm <alg>] [-priv <private>] [-pub <public>]
 
 Generate Self-Signed Certificate:
-  edgetk -pkey certgen [-algorithm EC] -key private.pem -cert CA.pem 
+  edgetk -pkey certgen [-algorithm <alg>] [-key <priv>] [-cert <cacert>] 
 
 Generate Certificate Sign Request:
-  edgetk -pkey req [-algorithm EC] -key private.pem -cert cert.csr
+  edgetk -pkey req [-algorithm <alg>] [-key <private>] [-cert <cert.csr>]
 
 Sign the Certificate Sign Request:
-  edgetk -pkey x509 [-algorithm EC] -root CA.pem -key priv.pem -cert cert.csr
-
-Derive Shared Secret:
-  edgetk -pkey [derive|vko|x25519] -key private.pem -pub peerkey.pem
-
-  In the Diffie-Hellman key exchange scheme (shared key agreement),
-  each party  generates a  public/private key pair  and distributes
-  the public key. After obtaining an authentic copy of each other's
-  public keys, the parties can  compute a shared secret. The shared
-  secret can  be used,  for instance,  as the  key for  a symmetric
-  cipher.
+  edgetk -pkey x509 [-algorithm <alg>] [-root <cacert>] [-key <private>]
+  [-cert <certificate.csr>] CERTIFICATE.crt
 
 Parse Keypair:
-  edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
-  edgetk -pkey [text|modulus|randomart] -key public.pem
+  edgetk -pkey <text|modulus> [-pwd "pass"] [-key <private>]
+  edgetk -pkey <text|modulus|randomart> [-key <public>]
 
 Parse Certificate:
-  edgetk -pkey [text|modulus] -cert certificate.pem
+  edgetk -pkey <text|modulus> [-cert <certificate.pem>]
   echo $?
 
 Validate Certificate:
-  edgetk -pkey check -cert cert.crt -key public.pem
+  edgetk -pkey check [-cert <certificate.pem>] [-key <public>]
   echo $?
 
+Derive Shared Secret:
+  edgetk -pkey <derive|vko|x25519> [-key <private>] [-pub <peerkey>]
+
 Digital Signature:
-  edgetk -pkey sign [-algorithm EC] -key private.pem FILE.ext > sign.txt
+  edgetk -pkey <sign|verify> [-algorithm <alg>] [-key <private|public>]
+  [-signature <signature>] FILE.ext
+
+  Example:
+  edgetk -pkey sign -key private.pem FILE.ext > sign.txt
   sign=$(cat sign.txt|awk '{print $2}')
   edgetk -pkey verify -key public.pem -signature $sign FILE.ext
   echo $?
@@ -431,7 +412,7 @@ Digital Signature:
 
 	if *tcpip == "help" {
 		fmt.Println(`Syntax:
-  edgetk -tcp [server|client] [-cert cert.pem] [-key priv.pem] [-ipport "IP"]
+  edgetk -tcp <server|client> [-cert <cert>] [-key <priv>] [-ipport "IP"]
 
   Examples:
   edgetk -tcp ip > MyExternalIP.txt
@@ -448,7 +429,7 @@ Digital Signature:
 
 	if *encode == "help" {
 		fmt.Println(`Syntax:
-  edgetk -hex [enc|dec|dump] FILE
+  edgetk -hex <enc|dec|dump> FILE
 
   Examples:
   edgetk -hex enc file.ext > file.hex
@@ -462,10 +443,10 @@ Digital Signature:
   ecdsa             ed25519           rsa (default)     sm2
   gost2012          x25519
 
-Stream ciphers:
+Stream Ciphers:
   ascon             grain128aead      rabbit            skein
-  chacha20          hc128             rc4 [obsolete]    zuc128/eia128
-  chacha20poly1305  hc256             salsa20           zuc256/eia256
+  chacha20          hc128             rc4 [obsolete]    zuc128/eea128
+  chacha20poly1305  hc256             salsa20           zuc256/eea256
   grain128a         kcipher2
 
 Modes of Operation:
@@ -489,8 +470,8 @@ Message Digests:
   cubehash          md4 [obsolete]    sha3-224          streebog512
   gost94            md5 [obsolete]    sha3-256          whirlpool
   groestl           poly1305 (MAC)    sha3-384          xoodyak
-  jh                rmd128            sha3-512          zuc128
-  keccak256         rdm160            siphash64         zuc256`)
+  jh                rmd128            sha3-512          zuc128/eia128
+  keccak256         rdm160            siphash64         zuc256/eia256`)
 		os.Exit(1)
 	}
 
