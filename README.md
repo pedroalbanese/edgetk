@@ -180,7 +180,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |:---:|:---:|
     |2^10|1.024     |
     |2^11|2.048     |
-    |2^12 |4.096 (Recomended)|
+    |2^12 |4.096 (Recommended)|
     |2^13|8.192     |
     |2^14|16.384    |
     |2^15|32.768    |
