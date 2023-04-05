@@ -134,7 +134,7 @@ import (
 var (
 	alg       = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
 	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
-	check     = flag.String("check", "", "Check hashsum file. ('-' for STDIN)")
+	check     = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
 	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
@@ -212,25 +212,36 @@ ALBANESE Research Lab - Campaign Manual, Apr 4 2023 Cotia-SP, Brazil
   server for small or embedded systems.
 
 Main Commands:
+  check, crypt, digest, hex, kdf, mac, pkey, rand, tcp
 
-CRYPT (Bulk Encryption):
+Arguments:
+  algorithm, bits, cert, cipher, info, ipport, iter, iv, key, md, 
+  mode, paramset, priv, pub, pwd, recursive, root, salt, signature
+
+Syntax:
+
+ CRYPT (Bulk Encryption):
   edgetk -crypt <enc|dec> [-cipher aes] [-iv <iv>] [-key <key>] FILE > OUTPUT
 
-KDF (Key Derivation Functions):
+ KDF (Key Derivation Functions):
   edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
-DIGEST (Message Digest):
+ DIGEST (Message Digest):
   edgetk -digest [-md <hash>] [-recursive] FILES... > OUTPUT.hash
+  edgetk -check [-md <hash>] OUTPUT.hash
 
-MAC (Message Authentication Code):
+ MAC (Message Authentication Code):
   edgetk -mac <method> [-md <hash>] [-cipher <cipher>] [-key <secret>] FILE
 
-PKEY (Public Key Functions):
+ PKEY (Public Key Functions):
   edgetk -pkey <command> [-algorithm <alg>] [-key <private>] [-pub <public>]
   [-root <cacert>] [-cert <certificate>] [-signature <sign>] [-bits N] FILE
 
-TCP (Transmission Control Protocol):
-  edgetk -tcp <server|client> [-cert <cert>] [-key <private>] [-ipport "IP"]
+ RAND (Symmetric Key Generation):
+  edgetk -rand N
+
+ TCP (Transmission Control Protocol):
+  edgetk -tcp <server|client> [-cert <cert>] [-key <private>] [-ipport <IP>]
 
 Print Summary:
   edgetk /desc         / Description of the parameters of all algorithms
@@ -249,16 +260,13 @@ Print Summary:
 		fmt.Println(`Syntax:
   edgetk -crypt <enc|dec> [-cipher aes] [-iv <iv>] [-key <key>] FILE > OUTPUT
 
-Symmetric key generation (256-bit):
-  edgetk -rand 256
-
-PBKDF2 Subcommand Parameters:
+ PBKDF2 Subcommand Parameters:
   [...] -kdf pbkdf2 [-md <hash>] [-iter N] [-salt <salt>] -key "PASS" [...]
 
   Example:
   edgetk -crypt enc -kdf pbkdf2 -key "PASSPHRASE" -iter 32768 FILE > OUTPUT
 
-AEAD Modes Subcommand Parameters:
+ AEAD Modes Subcommand Parameters:
   [...] -mode gcm [-info "ADDITIONAL AUTHENTICATED DATA"] [...] 
 
   Example:
@@ -289,12 +297,12 @@ AEAD Modes Subcommand Parameters:
 Methods: 
   cmac, pmac, hmac, chaskey, gost, poly1305, eia128/256, siphash, xoodyak
 
-HMAC:
+ HMAC:
   edgetk -mac hmac [-md sha256] -key <secret> FILE
   edgetk -mac hmac [-md sha256] -key <secret> -signature $256bitmac FILE
   echo $?
 
-CMAC:
+ CMAC:
   edgetk -mac cmac [-cipher aes] -key <secret> FILE
   edgetk -mac cmac [-cipher aes] -key <secret> -signature $128bitmac FILE
   echo $?
@@ -314,16 +322,16 @@ CMAC:
 Methods: 
   hkdf, pbkdf2, scrypt
 
-HKDF:
-  edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] -key "IKM"
+ HKDF:
+  edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
 
-PBKDF2:
-  edgetk -kdf pbkdf2 [-bits N] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+ PBKDF2:
+  edgetk -kdf pbkdf2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
 
-Scrypt [*]:
-  edgetk -kdf scrypt [-bits N] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
+ Scrypt [*]:
+  edgetk -kdf scrypt [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
 
-[*] scrypt iter must be greater than 1 and a power of 2:
+ [*] scrypt iter must be greater than 1 and a power of 2:
   2^10 = 1.024
   2^11 = 2.048 
   2^12 = 4.096 (Minimum Recommended)
@@ -356,35 +364,35 @@ Subcommands:
   keygen, certgen, req, x509, check, pkcs12, encrypt, decrypt
   derive, x25519, vko, text, modulus, randomart, sign, verify
 
-Keygen:
+ Keygen:
   edgetk -pkey keygen [-algorithm <alg>] [-priv <private>] [-pub <public>]
 
-Generate Self-Signed Certificate:
+ Generate Self-Signed Certificate:
   edgetk -pkey certgen [-algorithm <alg>] [-key <priv>] [-cert <cacert>] 
 
-Generate Certificate Sign Request:
+ Generate Certificate Sign Request:
   edgetk -pkey req [-algorithm <alg>] [-key <private>] [-cert <cert.csr>]
 
-Sign the Certificate Sign Request:
+ Sign the Certificate Sign Request:
   edgetk -pkey x509 [-algorithm <alg>] [-root <cacert>] [-key <private>]
   [-cert <certificate.csr>] CERTIFICATE.crt
 
-Parse Keypair:
+ Parse Keypair:
   edgetk -pkey <text|modulus> [-pwd "pass"] [-key <private>]
   edgetk -pkey <text|modulus|randomart> [-key <public>]
 
-Parse Certificate:
+ Parse Certificate:
   edgetk -pkey <text|modulus> [-cert <certificate.pem>]
   echo $?
 
-Validate Certificate:
-  edgetk -pkey check [-cert <certificate.pem>] [-key <public>]
+ Validate Certificate:
+  edgetk -pkey check [-cert <certificate.pem>] [-key <public.pem>]
   echo $?
 
-Derive Shared Secret:
+ Derive Shared Secret:
   edgetk -pkey <derive|vko|x25519> [-key <private>] [-pub <peerkey>]
 
-Digital Signature:
+ Digital Signature:
   edgetk -pkey <sign|verify> [-algorithm <alg>] [-key <private|public>]
   [-signature <signature>] FILE.ext
 
@@ -2536,18 +2544,8 @@ Message Digest Algorithms:
 		}
 	}
 
-	if *check != "" {
-		var file io.Reader
-		var err error
-		if *check == "-" {
-			file = os.Stdin
-		} else {
-			file, err = os.Open(*check)
-			if err != nil {
-				log.Fatalf("failed opening file: %s", err)
-			}
-		}
-		scanner := bufio.NewScanner(file)
+	if *check {
+		scanner := bufio.NewScanner(inputfile)
 		scanner.Split(bufio.ScanLines)
 		var txtlines []string
 
