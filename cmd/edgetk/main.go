@@ -207,7 +207,7 @@ ALBANESE Research Lab - Campaign Manual, Apr 4 2023 Cotia-SP, Brazil
   Multi-purpose cross-platform cryptography  tool for symmetric and
   asymmetric encryption, cipher-based  message authentication code,
   recursive  hash digest,  hash-based message  authentication code,
-  HMAC-based key derivation function, password-based key derivation
+  hash-based key derivation function, password-based key derivation
   function, digital signature, shared key agreement and instant TLS
   server for small or embedded systems.
 
@@ -221,8 +221,6 @@ KDF (Key Derivation Functions):
 
 DIGEST (Message Digest):
   edgetk -digest [-md <hash>] [-recursive] FILES... > OUTPUT.hash
-  edgetk -check [-md <hash>] OUTPUT.hash
-  echo $?
 
 MAC (Message Authentication Code):
   edgetk -mac <method> [-md <hash>] [-cipher <cipher>] [-key <secret>] FILE
@@ -325,7 +323,7 @@ PBKDF2:
 Scrypt [*]:
   edgetk -kdf scrypt [-bits N] [-salt "SALT"] [-iter N] -key "PASSPHRASE"
 
-[*] scrypt iter must be greater than 1 a power of 2:
+[*] scrypt iter must be greater than 1 and a power of 2:
   2^10 = 1.024
   2^11 = 2.048 
   2^12 = 4.096 (Minimum Recommended)
