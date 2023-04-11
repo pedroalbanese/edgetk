@@ -189,7 +189,6 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |2^18|262.144   |
     |2^19|524.288   |
     |2^20|1.048.576 |
-    |2^21|2.097.152 |
 
 
 ## Features
@@ -361,11 +360,8 @@ echo $?
 ./edgetk -hex dec < file.hex > file.ext
 ./edgetk -hex dump < file.ext
 ```
-#### Print Documentation:
+#### Try:
 ```
-./edgetk /desc         // Description of the parameters of all algorithms
-./edgetk /docs         // Main references documentation
-./edgetk /list         // List aliases of all md, ciphers and public keys
 ./edgetk -crypt help   // Describes bulk encryption usage and arguments
 ./edgetk -kdf help     // Describes key derivation function usage
 ./edgetk -mac help     // Describes message authentication code usage
