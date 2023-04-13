@@ -135,6 +135,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Ascon 1.2     |  128 |  128 |NIST Lightweight AEAD Stream Cipher|
     | Grain128a     |  128 |40-96 |NIST Lightweight AEAD Stream Cipher|
     
+------------
+
 ### AEAD
 
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
@@ -197,6 +199,8 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Privacy-Enhanced Mail (PEM format)
    * RandomArt (OpenSSH-like)
 
+------------
+
 ## Usage
 <pre> -algorithm string
        Public key algorithm: EC, Ed25519, GOST2012, SM2. (default "RSA")
@@ -254,6 +258,8 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
        Input signature. (for VERIFY command and MAC verification)
  -tcp string
        Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
+
+------------
 
 ## Examples
 
@@ -351,6 +357,8 @@ echo $?
 ./edgetk -help,-h      // Full list of the flags and their defaults
 ```
 
+------------
+
 ## Contribute
 **Use issues for everything**
 - You can help and get help by:
@@ -359,6 +367,8 @@ echo $?
   - Reporting issues
   - Suggesting new features or enhancements
   - Improve/fix documentation
+
+------------
 
 ## License
 
