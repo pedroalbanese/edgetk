@@ -9,6 +9,9 @@
 Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2/Scrypt), shared key agreement (ECDH/VKO/X25519), digital signature (RSA/ECDSA/EdDSA/GOST) and TLS 1.3 for small or embedded systems. 
 
 ***Fully OpenSSL/LibreSSL/RHash/Mcrypt compliant***
+
+------------
+
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
@@ -173,6 +176,8 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |0    |1    |1    |
     |1    |0    |1    |
     |1    |1    |0    |
+
+------------
 
 ## Features
 * **Cryptographic Functions:**
