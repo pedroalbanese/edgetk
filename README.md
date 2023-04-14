@@ -255,8 +255,6 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
  -tcp string
        Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
 
-------------
-
 ## Examples
 
 #### Asymmetric RSA keypair generation:
@@ -352,8 +350,6 @@ echo $?
 ./edgetk -tcp help     // Describes TLS 1.3 Protocol parameters and usage
 ./edgetk -help,-h      // Full list of the flags and their defaults
 ```
-
-------------
 
 ## Contribute
 **Use issues for everything**
