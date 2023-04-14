@@ -134,8 +134,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Xoodyak       |  128 |  128 |Lightweight AEAD Permutation Cipher|
     | Ascon 1.2     |  128 |  128 |NIST Lightweight AEAD Stream Cipher|
     | Grain128a     |  128 |40-96 |NIST Lightweight AEAD Stream Cipher|
-    
-------------
 
 ### AEAD
 
@@ -174,8 +172,6 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |1    |0    |1    |
     |1    |1    |0    |
 
-------------
-
 ## Features
 * **Cryptographic Functions:**
 
@@ -200,8 +196,6 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Hex string encoder/dump/decoder (xxd-like)
    * Privacy-Enhanced Mail (PEM format)
    * RandomArt (OpenSSH-like)
-
-------------
 
 ## Usage
 <pre> -algorithm string
@@ -369,8 +363,6 @@ echo $?
   - Reporting issues
   - Suggesting new features or enhancements
   - Improve/fix documentation
-
-------------
 
 ## License
 
