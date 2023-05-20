@@ -189,7 +189,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * TLS (Transport Layer Security 1.2 and 1.3)
    * TLCP (Transport Layer Cryptography Protocol)
    * PKCS12 (Personal Information Exchange Syntax v1.1)
-   * X.509 CSRs and Certificates
+   * X.509 CSRs, CRLs and Certificates
   
 * **Non-cryptographic Functions:**
 
