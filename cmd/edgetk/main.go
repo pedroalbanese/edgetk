@@ -113,6 +113,7 @@ import (
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/gopass"
 	"github.com/pedroalbanese/groestl-1"
+	"github.com/pedroalbanese/haraka"
 	"github.com/pedroalbanese/jh"
 	"github.com/pedroalbanese/kuznechik"
 	"github.com/pedroalbanese/lwcrypto/ascon2"
@@ -133,7 +134,8 @@ import (
 
 var (
 	alg       = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
-	cert      = flag.String("cert", "Certificate.pem", "Certificate path.")
+	cert      = flag.String("cert", "", "Certificate path.")
+	crl       = flag.String("crl", "", "Certificate Revocation List path.")
 	check     = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
@@ -142,7 +144,7 @@ var (
 	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport     = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	iter      = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
-	kdf       = flag.String("kdf", "", "Key derivation function with given bit length. [pbkdf2|hkdf]")
+	kdf       = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt]")
 	key       = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
 	length    = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac       = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
@@ -238,13 +240,13 @@ Message Digests:
   gost94            md5 [obsolete]    sha3-256          whirlpool
   groestl           poly1305 (MAC)    sha3-384          xoodyak
   jh                rmd128            sha3-512          zuc128/eia128
-  keccak256         rdm160            siphash64         zuc256/eia256`)
+  keccak256         rmd160            siphash64         zuc256/eia256`)
 		os.Exit(3)
 	}
 
 	if *crypt == "help" {
 		fmt.Println(`Syntax:
-  edgetk -crypt <enc|dec> [-cipher aes] [-iv <iv>] [-key <key>] FILE > OUTPUT
+  edgetk -crypt <enc|dec> [-cipher <cipher>] [-iv <iv>] [-key <key>] FILE
 
  PBKDF2 Subcommand Parameters:
   [...] -kdf pbkdf2 [-md <hash>] [-iter N] [-salt <salt>] -key "PASS" [...]
@@ -333,8 +335,8 @@ Subcommands:
   [-cert <certificate.csr>] CERTIFICATE.crt
 
  Parse Keypair:
-  edgetk -pkey <text|modulus> [-pwd "passphrase"] [-key <private>]
-  edgetk -pkey <text|modulus|randomart> [-key <public>]
+  edgetk -pkey <text|modulus> [-pwd "passphrase"] [-key <private.pem>]
+  edgetk -pkey <text|modulus|randomart> [-key <public.pem>]
 
  Parse Certificate:
   edgetk -pkey <text|modulus> [-cert <certificate.pem>]
@@ -361,7 +363,7 @@ Subcommands:
 
 	if *tcpip == "help" {
 		fmt.Println(`Syntax:
-  edgetk -tcp <server|client> [-cert <cert>] [-key <priv>] [-ipport "IP"]
+  edgetk -tcp <server|client> [-cert <cert>] [-key <private>] [-ipport "IP"]
 
   Examples:
   edgetk -tcp ip > MyExternalIP.txt
@@ -377,7 +379,7 @@ Subcommands:
 		*pwd = scanner.Text()
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko") && *key != "" && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -1901,6 +1903,26 @@ Subcommands:
 				break
 			}
 		}
+		os.Exit(0)
+	}
+
+	if *digest && (*md == "haraka" || *md == "haraka256") {
+		xkey := new([32]byte)
+		gkey := new([32]byte)
+		b, _ := ioutil.ReadAll(inputfile)
+		copy(xkey[:], b)
+		haraka.Haraka256(gkey, xkey)
+		fmt.Printf("%x\n", gkey[:])
+		os.Exit(0)
+	}
+
+	if *digest && *md == "haraka512" {
+		xkey := new([64]byte)
+		gkey := new([32]byte)
+		b, _ := ioutil.ReadAll(inputfile)
+		copy(xkey[:], b)
+		haraka.Haraka512(gkey, xkey)
+		fmt.Printf("%x\n", gkey[:])
 		os.Exit(0)
 	}
 
@@ -3702,7 +3724,7 @@ Subcommands:
 
 	var PEM string
 	var b []byte
-	if *pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart" {
+	if (*pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart") && *crl == "" {
 		if *key != "" {
 			b, err = ioutil.ReadFile(*key)
 			if err != nil {
@@ -3951,7 +3973,7 @@ Subcommands:
 		}
 
 		template.IsCA = true
-		template.KeyUsage |= x509.KeyUsageCertSign
+		template.KeyUsage |= x509.KeyUsageCertSign | smx509.KeyUsageCRLSign
 
 		derBytes, err := x509.CreateCertificate(
 			rand.Reader,
@@ -5102,7 +5124,7 @@ Subcommands:
 		}
 	}
 
-	if *pkey == "check" {
+	if *pkey == "check" && *crl == "" {
 		var certPEM []byte
 		file, err := os.Open(*cert)
 		if err != nil {
@@ -5406,7 +5428,7 @@ Subcommands:
 		}
 
 		template.IsCA = true
-		template.KeyUsage |= smx509.KeyUsageCertSign
+		template.KeyUsage |= smx509.KeyUsageCertSign | smx509.KeyUsageCRLSign
 
 		if strings.ToUpper(*alg) == "RSA" {
 			if *md == "sha256" {
@@ -5629,6 +5651,193 @@ Subcommands:
 		}
 		csrBytes, _ := smx509.CreateCertificateRequest(rand.Reader, &template, keyBytes)
 		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+	}
+
+	if (*pkey == "crl") && *key != "" && *cert != "" {
+		revokedCerts := make([]pkix.RevokedCertificate, 0)
+
+		scanner := bufio.NewScanner(inputfile)
+		for scanner.Scan() {
+			serialStr := strings.TrimSpace(scanner.Text())
+			serialNumber, success := new(big.Int).SetString(serialStr, 16)
+			if !success {
+				log.Fatalf("Invalid serial number: %s", serialStr)
+			}
+			revocationTime := time.Now()
+
+			revokedCert := pkix.RevokedCertificate{
+				SerialNumber:   serialNumber,
+				RevocationTime: revocationTime,
+			}
+			revokedCerts = append(revokedCerts, revokedCert)
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Fatal("Failed to read serials.txt:", err)
+		}
+
+		if *crl != "" {
+			existingCRLData, err := ioutil.ReadFile(*crl)
+			if err != nil {
+				log.Fatal("Failed to read the existing CRL file:", err)
+			}
+			existingCRLBlock, _ := pem.Decode(existingCRLData)
+			if existingCRLBlock == nil {
+				log.Fatal("Failed to decode the PEM block of the existing CRL")
+			}
+			existingCRL, err := x509.ParseRevocationList(existingCRLBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse the existing CRL:", err)
+			}
+
+			revokedCerts = append(revokedCerts, existingCRL.RevokedCertificates...)
+		}
+
+		desiredLength := 80
+		randomNumber, err := rand.Int(rand.Reader, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(desiredLength)), nil))
+		if err != nil {
+			log.Fatal("Failed to generate a random number:", err)
+		}
+
+		revocationListTemplate := &x509.RevocationList{
+			RevokedCertificates: revokedCerts,
+			Number:              randomNumber,
+		}
+
+		issuerKeyPEM, err := os.ReadFile(*key)
+		if err != nil {
+			log.Fatal("Failed to read private key file:", err)
+		}
+
+		issuerCertPEM, err := os.ReadFile(*cert)
+		if err != nil {
+			log.Fatal("Failed to read certificate file:", err)
+		}
+
+		issuerKey, issuerCert, err := parsePrivateKeyAndCert(issuerKeyPEM, issuerCertPEM)
+		if err != nil {
+			log.Fatal("Failed to parse private key and certificate:", err)
+		}
+
+		var crlBytes []byte
+		if strings.ToUpper(*alg) == "GOST2012" {
+			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, &gost3410.PrivateKeyReverseDigest{Prv: issuerKey.(*gost3410.PrivateKey)})
+		} else {
+			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, issuerKey)
+		}
+		if err != nil {
+			log.Fatal("Failed to create new CRL:", err)
+		}
+
+		pemBlock := &pem.Block{
+			Type:  "X509 CRL",
+			Bytes: crlBytes,
+		}
+		pemData := pem.EncodeToMemory(pemBlock)
+
+		fmt.Print(string(pemData))
+	}
+
+	if *pkey == "validate" {
+		crlBytes, err := ioutil.ReadFile(*crl)
+		if err != nil {
+			log.Fatal("Failed to read CRL file:", err)
+		}
+
+		pemBlock, _ := pem.Decode(crlBytes)
+		if pemBlock == nil {
+			log.Fatal("Failed to decode CRL PEM block")
+		}
+		crl, err := x509.ParseDERCRL(pemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse CRL:", err)
+		}
+
+		certBytes, err := ioutil.ReadFile(*cert)
+		if err != nil {
+			log.Fatal("Failed to read certificate file:", err)
+		}
+
+		pemBlock, _ = pem.Decode(certBytes)
+		if pemBlock == nil {
+			log.Fatal("Failed to decode certificate PEM block")
+		}
+		cert, err := x509.ParseCertificate(pemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse certificate:", err)
+		}
+
+		isRevoked := isCertificateRevoked(cert, crl)
+		if isRevoked {
+			fmt.Println("The certificate is revoked")
+			os.Exit(1)
+		} else {
+			fmt.Println("The certificate is not revoked")
+			os.Exit(0)
+		}
+	}
+
+	if (*pkey == "check") && *crl != "" {
+		crlBytes, err := ioutil.ReadFile(*crl)
+		if err != nil {
+			log.Fatal("Failed to read CRL file:", err)
+		}
+
+		pemBlock, _ := pem.Decode(crlBytes)
+		if pemBlock == nil {
+			log.Fatal("Failed to decode CRL PEM block")
+		}
+
+		revocationList, err := x509.ParseDERCRL(pemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse CRL:", err)
+		}
+
+		issuerCertBytes, err := ioutil.ReadFile(*cert)
+		if err != nil {
+			log.Fatal("Failed to read issuer's certificate file:", err)
+		}
+
+		issuerCertBlock, _ := pem.Decode(issuerCertBytes)
+		if issuerCertBlock == nil {
+			log.Fatal("Failed to decode PEM block of issuer's certificate")
+		}
+
+		issuerCert, err := x509.ParseCertificate(issuerCertBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse issuer's certificate:", err)
+		}
+
+		err = issuerCert.CheckCRLSignature(revocationList)
+		if err != nil {
+			log.Fatal("Verified: false: ", err)
+		}
+
+		fmt.Println("Verified: true")
+	}
+
+	if (*pkey == "text") && *crl != "" {
+		pemData, err := ioutil.ReadFile(*crl)
+		if err != nil {
+			log.Fatal("Failed to read the CRL file:", err)
+		}
+
+		pemBlock, _ := pem.Decode(pemData)
+		if pemBlock == nil {
+			log.Fatal("Failed to decode the PEM block")
+		}
+
+		revocationList, err := x509.ParseRevocationList(pemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse the CRL:", err)
+		}
+
+		fmt.Println("CRL Number:", revocationList.Number)
+		fmt.Println("Revoked Certificates:")
+		for _, revokedCert := range revocationList.RevokedCertificates {
+			fmt.Println("  - Serial Number:", revokedCert.SerialNumber)
+			fmt.Println("    Revocation Time:", revokedCert.RevocationTime)
+		}
 	}
 
 	if (*pkey == "text" || *pkey == "modulus") && PEM == "CertificateRequest" {
@@ -7728,6 +7937,51 @@ func csrToCrt2() error {
 	}
 	pem.Encode(output, &pem.Block{Type: "CERTIFICATE", Bytes: clientCRTRaw})
 	return err
+}
+
+func parsePrivateKeyAndCert(keyPEM, certPEM []byte) (crypto.Signer, *x509.Certificate, error) {
+	keyBlock, _ := pem.Decode(keyPEM)
+	if keyBlock == nil {
+		return nil, nil, fmt.Errorf("Failed to decode private key")
+	}
+	var decryptedKeyBytes []byte
+	var err error
+	if x509.IsEncryptedPEMBlock(keyBlock) {
+		decryptedKeyBytes, err = DecryptPEMBlock(keyBlock, []byte(*pwd))
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to decrypt private key: %w", err)
+		}
+		keyBlock.Bytes = decryptedKeyBytes
+	}
+	key, err := x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		key, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to parse private key: %w", err)
+		}
+	}
+	signer, ok := key.(crypto.Signer)
+	if !ok {
+		return nil, nil, fmt.Errorf("Invalid private key type")
+	}
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil {
+		return nil, nil, fmt.Errorf("Failed to decode certificate")
+	}
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to parse certificate: %w", err)
+	}
+	return signer, cert, nil
+}
+
+func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) bool {
+	for _, revokedCert := range crl.TBSCertList.RevokedCertificates {
+		if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func printVersion(version int, buf *bytes.Buffer) {
