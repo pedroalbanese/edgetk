@@ -5657,11 +5657,16 @@ Subcommands:
 		revokedCerts := make([]pkix.RevokedCertificate, 0)
 
 		scanner := bufio.NewScanner(inputfile)
+		existingSerialNumbers := make(map[string]bool)
 		for scanner.Scan() {
 			serialStr := strings.TrimSpace(scanner.Text())
 			serialNumber, success := new(big.Int).SetString(serialStr, 16)
 			if !success {
 				log.Fatalf("Invalid serial number: %s", serialStr)
+			}
+			serialKey := serialNumber.String()
+			if existingSerialNumbers[serialKey] {
+				continue
 			}
 			revocationTime := time.Now()
 
@@ -5670,6 +5675,7 @@ Subcommands:
 				RevocationTime: revocationTime,
 			}
 			revokedCerts = append(revokedCerts, revokedCert)
+			existingSerialNumbers[serialKey] = true
 		}
 
 		if err := scanner.Err(); err != nil {
@@ -5689,8 +5695,14 @@ Subcommands:
 			if err != nil {
 				log.Fatal("Failed to parse the existing CRL:", err)
 			}
-
-			revokedCerts = append(revokedCerts, existingCRL.RevokedCertificates...)
+			for _, revokedCert := range existingCRL.RevokedCertificates {
+				serialKey := revokedCert.SerialNumber.String()
+				if existingSerialNumbers[serialKey] {
+					continue
+				}
+				revokedCerts = append(revokedCerts, revokedCert)
+				existingSerialNumbers[serialKey] = true
+			}
 		}
 
 		desiredLength := 80
@@ -5699,9 +5711,14 @@ Subcommands:
 			log.Fatal("Failed to generate a random number:", err)
 		}
 
+		issuanceTime := time.Now()
+		nextUpdateTime := time.Now().Add(time.Hour * 24 * 365)
+
 		revocationListTemplate := &x509.RevocationList{
 			RevokedCertificates: revokedCerts,
 			Number:              randomNumber,
+			ThisUpdate:          issuanceTime,
+			NextUpdate:          nextUpdateTime,
 		}
 
 		issuerKeyPEM, err := os.ReadFile(*key)
@@ -5767,9 +5784,10 @@ Subcommands:
 			log.Fatal("Failed to parse certificate:", err)
 		}
 
-		isRevoked := isCertificateRevoked(cert, crl)
+		isRevoked, revocationTime := isCertificateRevoked(cert, crl)
 		if isRevoked {
 			fmt.Println("The certificate is revoked")
+			fmt.Println("Revocation Time:", revocationTime)
 			os.Exit(1)
 		} else {
 			fmt.Println("The certificate is not revoked")
@@ -5832,8 +5850,31 @@ Subcommands:
 			log.Fatal("Failed to parse the CRL:", err)
 		}
 
-		fmt.Println("CRL Number:", revocationList.Number)
-		fmt.Println("Revoked Certificates:")
+		crl, err := x509.ParseDERCRL(pemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse the CRL:", err)
+		}
+
+		fmt.Println("CRL:")
+		fmt.Println("  Data:")
+		fmt.Println("    Number             :", revocationList.Number)
+		fmt.Println("    Last Update        :", crl.TBSCertList.ThisUpdate)
+		fmt.Println("    Next Update        :", crl.TBSCertList.NextUpdate)
+
+		fmt.Println("    Issuer")
+		fmt.Println("       ", crl.TBSCertList.Issuer)
+
+		fmt.Println("    Algorithm OID      :", crl.SignatureAlgorithm.Algorithm.String())
+
+		algoName := getAlgorithmName(crl.SignatureAlgorithm.Algorithm.String())
+		fmt.Println("    Signature Algorithm:", algoName)
+
+		splitz := SplitSubN(hex.EncodeToString(crl.SignatureValue.Bytes), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s            \n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+
+		fmt.Println("  Revoked Certificates:")
 		for _, revokedCert := range revocationList.RevokedCertificates {
 			fmt.Println("  - Serial Number:", revokedCert.SerialNumber)
 			fmt.Println("    Revocation Time:", revokedCert.RevocationTime)
@@ -7957,7 +7998,10 @@ func parsePrivateKeyAndCert(keyPEM, certPEM []byte) (crypto.Signer, *x509.Certif
 	if err != nil {
 		key, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to parse private key: %w", err)
+			key, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to parse private key: %w", err)
+			}
 		}
 	}
 	signer, ok := key.(crypto.Signer)
@@ -7975,6 +8019,7 @@ func parsePrivateKeyAndCert(keyPEM, certPEM []byte) (crypto.Signer, *x509.Certif
 	return signer, cert, nil
 }
 
+/*
 func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) bool {
 	for _, revokedCert := range crl.TBSCertList.RevokedCertificates {
 		if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
@@ -7982,6 +8027,26 @@ func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) boo
 		}
 	}
 	return false
+}
+*/
+func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) (bool, time.Time) {
+	for _, revokedCert := range crl.TBSCertList.RevokedCertificates {
+		if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+			return true, revokedCert.RevocationTime
+		}
+	}
+	return false, time.Time{}
+}
+
+var oidToAlgo = map[string]string{
+	"1.2.643.7.1.1.3.2":     "GOST R 34.11-2012 with GOST R 34.10-2012",
+	"1.2.643.7.1.1.3.3":     "GOST R 34.11-2012 with GOST R 34.10-2012 (512 bits)",
+	"1.2.840.113549.1.1.11": "RSA",
+	"1.3.101.112":           "Ed25519",
+	"1.2.840.10045.2.1":     "ECDSA (prime256v1)",
+	"1.2.840.10045.3.1.1":   "ECDSA (prime224v1)",
+	"1.2.840.10045.4.3.3":   "ECDSA (prime384v1)",
+	"1.2.840.10045.4.3.4":   "ECDSA (prime521v1)",
 }
 
 func printVersion(version int, buf *bytes.Buffer) {
@@ -8052,6 +8117,13 @@ func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buff
 		}
 	}
 	buf.WriteString("\n")
+}
+
+func getAlgorithmName(oid string) string {
+	if algo, ok := oidToAlgo[oid]; ok {
+		return algo
+	}
+	return "Unknown Algorithm"
 }
 
 func PKCS7Padding(ciphertext []byte) []byte {
