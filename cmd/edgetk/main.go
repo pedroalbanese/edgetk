@@ -5049,7 +5049,7 @@ Subcommands:
 			buf2.WriteString(fmt.Sprintf("Certificate:\n"))
 			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
 			printVersion(certa.Version, &buf2)
-			buf2.WriteString(fmt.Sprintf("%8sSerial Number : %x\n", "", certa.SerialNumber))
+			buf2.WriteString(fmt.Sprintf("%8sSerial Number : %d (%X)\n", "", certa.SerialNumber, certa.SerialNumber))
 			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Subject.CommonName))
 			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", certa.EmailAddresses))
 			buf2.WriteString(fmt.Sprintf("%8sIsCA          : %v \n", "", certa.IsCA))
@@ -5653,7 +5653,109 @@ Subcommands:
 		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
 	}
 
-	if (*pkey == "crl") && *key != "" && *cert != "" {
+	if (*pkey == "crl") && *key != "" && *cert != "" && strings.ToUpper(*alg) != "SM2" {
+		revokedCerts := make([]pkix.RevokedCertificate, 0)
+
+		scanner := bufio.NewScanner(inputfile)
+		existingSerialNumbers := make(map[string]bool)
+		for scanner.Scan() {
+			serialStr := strings.TrimSpace(scanner.Text())
+			serialNumber, success := new(big.Int).SetString(serialStr, 16)
+			if !success {
+				log.Fatalf("Invalid serial number: %s", serialStr)
+			}
+			serialKey := serialNumber.String()
+			if existingSerialNumbers[serialKey] {
+				continue
+			}
+			revocationTime := time.Now()
+
+			revokedCert := pkix.RevokedCertificate{
+				SerialNumber:   serialNumber,
+				RevocationTime: revocationTime,
+			}
+			revokedCerts = append(revokedCerts, revokedCert)
+			existingSerialNumbers[serialKey] = true
+		}
+
+		if err := scanner.Err(); err != nil {
+			log.Fatal("Failed to read serials.txt:", err)
+		}
+
+		if *crl != "" {
+			existingCRLData, err := ioutil.ReadFile(*crl)
+			if err != nil {
+				log.Fatal("Failed to read the existing CRL file:", err)
+			}
+			existingCRLBlock, _ := pem.Decode(existingCRLData)
+			if existingCRLBlock == nil {
+				log.Fatal("Failed to decode the PEM block of the existing CRL")
+			}
+			existingCRL, err := x509.ParseRevocationList(existingCRLBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse the existing CRL:", err)
+			}
+			for _, revokedCert := range existingCRL.RevokedCertificates {
+				serialKey := revokedCert.SerialNumber.String()
+				if existingSerialNumbers[serialKey] {
+					continue
+				}
+				revokedCerts = append(revokedCerts, revokedCert)
+				existingSerialNumbers[serialKey] = true
+			}
+		}
+
+		desiredLength := 80
+		randomNumber, err := rand.Int(rand.Reader, new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(desiredLength)), nil))
+		if err != nil {
+			log.Fatal("Failed to generate a random number:", err)
+		}
+
+		issuanceTime := time.Now()
+		nextUpdateTime := time.Now().Add(time.Hour * 24 * 365)
+
+		issuerKeyPEM, err := os.ReadFile(*key)
+		if err != nil {
+			log.Fatal("Failed to read private key file:", err)
+		}
+
+		issuerCertPEM, err := os.ReadFile(*cert)
+		if err != nil {
+			log.Fatal("Failed to read certificate file:", err)
+		}
+
+		issuerKey, issuerCert, err := parsePrivateKeyAndCert(issuerKeyPEM, issuerCertPEM)
+		if err != nil {
+			log.Fatal("Failed to parse private key and certificate:", err)
+		}
+
+		revocationListTemplate := &x509.RevocationList{
+			RevokedCertificates: revokedCerts,
+			Number:              randomNumber,
+			ThisUpdate:          issuanceTime,
+			NextUpdate:          nextUpdateTime,
+		}
+
+		var crlBytes []byte
+		if strings.ToUpper(*alg) == "GOST2012" {
+			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, &gost3410.PrivateKeyReverseDigest{Prv: issuerKey.(*gost3410.PrivateKey)})
+		} else {
+			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, issuerKey)
+		}
+		if err != nil {
+			log.Fatal("Failed to create new CRL:", err)
+		}
+
+		pemBlock := &pem.Block{
+			Type:  "X509 CRL",
+			Bytes: crlBytes,
+		}
+		pemData := pem.EncodeToMemory(pemBlock)
+
+		fmt.Print(string(pemData))
+	}
+
+	if (*pkey == "crl") && *key != "" && *cert != "" && strings.ToUpper(*alg) == "SM2" {
 		revokedCerts := make([]pkix.RevokedCertificate, 0)
 
 		scanner := bufio.NewScanner(inputfile)
@@ -5731,17 +5833,14 @@ Subcommands:
 			log.Fatal("Failed to read certificate file:", err)
 		}
 
-		issuerKey, issuerCert, err := parsePrivateKeyAndCert(issuerKeyPEM, issuerCertPEM)
+		issuerKey, issuerCert, err := parsePrivateKeyAndCertSM2(issuerKeyPEM, issuerCertPEM)
 		if err != nil {
 			log.Fatal("Failed to parse private key and certificate:", err)
 		}
 
 		var crlBytes []byte
-		if strings.ToUpper(*alg) == "GOST2012" {
-			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, &gost3410.PrivateKeyReverseDigest{Prv: issuerKey.(*gost3410.PrivateKey)})
-		} else {
-			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, issuerKey)
-		}
+		crlBytes, err = smx509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, issuerKey)
+
 		if err != nil {
 			log.Fatal("Failed to create new CRL:", err)
 		}
@@ -5779,9 +5878,22 @@ Subcommands:
 		if pemBlock == nil {
 			log.Fatal("Failed to decode certificate PEM block")
 		}
+
 		cert, err := x509.ParseCertificate(pemBlock.Bytes)
 		if err != nil {
-			log.Fatal("Failed to parse certificate:", err)
+			cert, err := smx509.ParseCertificate(pemBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse certificate:", err)
+			}
+			isRevoked, revocationTime := isCertificateRevokedSM2(cert, crl)
+			if isRevoked {
+				fmt.Println("The certificate is revoked")
+				fmt.Println("Revocation Time:", revocationTime)
+				os.Exit(1)
+			} else {
+				fmt.Println("The certificate is not revoked")
+				os.Exit(0)
+			}
 		}
 
 		isRevoked, revocationTime := isCertificateRevoked(cert, crl)
@@ -5823,7 +5935,18 @@ Subcommands:
 
 		issuerCert, err := x509.ParseCertificate(issuerCertBlock.Bytes)
 		if err != nil {
-			log.Fatal("Failed to parse issuer's certificate:", err)
+			issuerCert, err := smx509.ParseCertificate(issuerCertBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse issuer's certificate:", err)
+			}
+
+			err = issuerCert.CheckCRLSignature(revocationList)
+			if err != nil {
+				log.Fatal("Verified: false: ", err)
+			}
+
+			fmt.Println("Verified: true")
+			os.Exit(0)
 		}
 
 		err = issuerCert.CheckCRLSignature(revocationList)
@@ -5850,6 +5973,8 @@ Subcommands:
 			log.Fatal("Failed to parse the CRL:", err)
 		}
 
+		akid := getAuthorityKeyIdentifierFromCRL(revocationList)
+
 		crl, err := x509.ParseDERCRL(pemBlock.Bytes)
 		if err != nil {
 			log.Fatal("Failed to parse the CRL:", err)
@@ -5857,14 +5982,14 @@ Subcommands:
 
 		fmt.Println("CRL:")
 		fmt.Println("  Data:")
-		fmt.Println("    Number             :", revocationList.Number)
+		fmt.Printf("    Number             : %d (%X)\n", revocationList.Number, revocationList.Number)
 		fmt.Println("    Last Update        :", crl.TBSCertList.ThisUpdate)
 		fmt.Println("    Next Update        :", crl.TBSCertList.NextUpdate)
 
 		fmt.Println("    Issuer")
 		fmt.Println("       ", crl.TBSCertList.Issuer)
 
-		fmt.Println("    Algorithm OID      :", crl.SignatureAlgorithm.Algorithm.String())
+		fmt.Printf("    Authority Key ID   : %x\n", akid)
 
 		algoName := getAlgorithmName(crl.SignatureAlgorithm.Algorithm.String())
 		fmt.Println("    Signature Algorithm:", algoName)
@@ -8019,16 +8144,36 @@ func parsePrivateKeyAndCert(keyPEM, certPEM []byte) (crypto.Signer, *x509.Certif
 	return signer, cert, nil
 }
 
-/*
-func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) bool {
-	for _, revokedCert := range crl.TBSCertList.RevokedCertificates {
-		if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
-			return true
-		}
+func parsePrivateKeyAndCertSM2(keyPEM, certPEM []byte) (crypto.Signer, *smx509.Certificate, error) {
+	keyBlock, _ := pem.Decode(keyPEM)
+	if keyBlock == nil {
+		return nil, nil, fmt.Errorf("Failed to decode private key")
 	}
-	return false
+	var decryptedKeyBytes []byte
+	var err error
+	if x509.IsEncryptedPEMBlock(keyBlock) {
+		decryptedKeyBytes, err = DecryptPEMBlock(keyBlock, []byte(*pwd))
+		if err != nil {
+			return nil, nil, fmt.Errorf("Failed to decrypt private key: %w", err)
+		}
+		keyBlock.Bytes = decryptedKeyBytes
+	}
+	sm2key, err := smx509.ParseSM2PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to parse private key: %w", err)
+	}
+	var signer crypto.Signer = sm2key
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil {
+		return nil, nil, fmt.Errorf("Failed to decode certificate")
+	}
+	cert, err := smx509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to parse certificate: %w", err)
+	}
+	return signer, cert, nil
 }
-*/
+
 func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) (bool, time.Time) {
 	for _, revokedCert := range crl.TBSCertList.RevokedCertificates {
 		if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
@@ -8036,6 +8181,36 @@ func isCertificateRevoked(cert *x509.Certificate, crl *pkix.CertificateList) (bo
 		}
 	}
 	return false, time.Time{}
+}
+
+func isCertificateRevokedSM2(cert *smx509.Certificate, crl *pkix.CertificateList) (bool, time.Time) {
+	for _, revokedCert := range crl.TBSCertList.RevokedCertificates {
+		if revokedCert.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+			return true, revokedCert.RevocationTime
+		}
+	}
+	return false, time.Time{}
+}
+
+type authorityKeyIdentifier struct {
+	Raw                 asn1.RawContent
+	ID                  []byte `asn1:"optional,tag:0"`
+	KeyIdentifier       []byte `asn1:"optional,tag:1"`
+	AuthorityCertIssuer []byte `asn1:"optional,tag:2"`
+	AuthorityCertSerial []byte `asn1:"optional,tag:3"`
+}
+
+func getAuthorityKeyIdentifierFromCRL(crl *x509.RevocationList) []byte {
+	for _, extension := range crl.Extensions {
+		if extension.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 35}) {
+			var akid authorityKeyIdentifier
+			_, err := asn1.Unmarshal(extension.Value, &akid)
+			if err == nil {
+				return akid.ID
+			}
+		}
+	}
+	return nil
 }
 
 var oidToAlgo = map[string]string{
@@ -8047,6 +8222,7 @@ var oidToAlgo = map[string]string{
 	"1.2.840.10045.3.1.1":   "ECDSA (prime224v1)",
 	"1.2.840.10045.4.3.3":   "ECDSA (prime384v1)",
 	"1.2.840.10045.4.3.4":   "ECDSA (prime521v1)",
+	"1.2.156.10197.1.501":   "SM2 (sm2p256v1)",
 }
 
 func printVersion(version int, buf *bytes.Buffer) {
