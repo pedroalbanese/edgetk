@@ -334,16 +334,29 @@ Subcommands:
   edgetk -pkey x509 [-algorithm <alg>] [-root <cacert>] [-key <private>]
   [-cert <certificate.csr>] CERTIFICATE.crt
 
+ Generate Certificate Revocation List:
+  edgetk -pkey crl [-algorithm <alg>] [-cert <cacert>] [-key <private>]
+  [-crl <old.crl>] [serials.txt] NewCRL.crl
+
  Parse Keypair:
   edgetk -pkey <text|modulus> [-pwd "passphrase"] [-key <private.pem>]
   edgetk -pkey <text|modulus|randomart> [-key <public.pem>]
 
- Parse Certificate:
+ Parse Certificate/CRL:
   edgetk -pkey <text|modulus> [-cert <certificate.pem>]
+  edgetk -pkey <text> [-crl <crl.pem>]
   echo $?
 
- Validate Certificate:
-  edgetk -pkey check [-cert <certificate.pem>] [-key <public.pem>]
+ Check Certificate Signature:
+  edgetk -pkey check [-cert <certificate.pem>] [-key <capublic.pem>]
+  echo $?
+
+ Check CRL Authenticity:
+  edgetk -pkey check [-cert <cacert.pem>] [-crl <crl.pem>]
+  echo $?
+
+ Validate a Certificate against the CRL:
+  edgetk -pkey validate [-cert <certificate.pem>] [-crl <crl.pem>]
   echo $?
 
  Derive Shared Secret:
@@ -5679,7 +5692,7 @@ Subcommands:
 		}
 
 		if err := scanner.Err(); err != nil {
-			log.Fatal("Failed to read serials.txt:", err)
+			log.Fatal("Failed to read serials list:", err)
 		}
 
 		if *crl != "" {
@@ -5750,9 +5763,19 @@ Subcommands:
 			Type:  "X509 CRL",
 			Bytes: crlBytes,
 		}
-		pemData := pem.EncodeToMemory(pemBlock)
 
-		fmt.Print(string(pemData))
+		var output *os.File
+		if flag.Arg(1) == "" {
+			output = os.Stdout
+		} else {
+			file, err := os.Create(flag.Arg(1))
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close()
+			output = file
+		}
+		pem.Encode(output, pemBlock)
 	}
 
 	if (*pkey == "crl") && *key != "" && *cert != "" && strings.ToUpper(*alg) == "SM2" {
@@ -5849,9 +5872,19 @@ Subcommands:
 			Type:  "X509 CRL",
 			Bytes: crlBytes,
 		}
-		pemData := pem.EncodeToMemory(pemBlock)
 
-		fmt.Print(string(pemData))
+		var output *os.File
+		if flag.Arg(1) == "" {
+			output = os.Stdout
+		} else {
+			file, err := os.Create(flag.Arg(1))
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close()
+			output = file
+		}
+		pem.Encode(output, pemBlock)
 	}
 
 	if *pkey == "validate" {
