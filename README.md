@@ -203,11 +203,13 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
  -bits int
        Key length. (for keypair generation and symmetric encryption)
  -cert string
-       Certificate path. (default "Certificate.pem")
- -check string
+       Certificate path.
+ -check
        Check hashsum file. ('-' for STDIN)
  -cipher string
        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
+ -crl string
+       Certificate Revocation List path.
  -crypt string
        Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
  -digest
@@ -223,7 +225,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
  -iv string
        Initialization Vector. (for symmetric encryption)
  -kdf string
-       Key derivation function with given bit length. [pbkdf2|hkdf]
+       Key derivation function. [pbkdf2|hkdf|scrypt]
  -key string
        Asymmetric key, symmetric key or HMAC key, depending on operation.
  -mac string
