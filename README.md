@@ -296,10 +296,6 @@ echo $?
 ```sh
 ./edgetk -pkey req -key private.pem [-pwd "pass"] [-cert certificate.csr]
 ```
-#### Generate Certificate Revocation List:
-```sh
-./edgetk -pkey crl [-algorithm <alg>] [-cert <cacert>] [-key <private>] [-crl <old.crl>] [serials.txt] NewCRL.crl
-```
 #### Sign CSR with CA Certificate:
 ```sh
 ./edgetk -pkey x509 -key private.pem -root cacert.pem -cert cert.csr > cert.crt
@@ -307,6 +303,10 @@ echo $?
 #### Parse Certificate info:
 ```sh
 ./edgetk -pkey [text|modulus] -cert certificate.pem
+```
+#### Generate Certificate Revocation List:
+```sh
+./edgetk -pkey crl -cert cacert -key private.pem -crl old.crl serials.txt > NewCRL.crl
 ```
 #### TLS Layer (TCP/IP):
 ```sh
