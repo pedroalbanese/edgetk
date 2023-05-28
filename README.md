@@ -306,7 +306,7 @@ echo $?
 ```
 #### Generate Certificate Revocation List:
 ```sh
-./edgetk -pkey crl -cert cacert -key private.pem -crl old.crl serials.txt > NewCRL.crl
+./edgetk -pkey crl -cert cacert.pem -key private.pem -crl old.crl serials.txt > NewCRL.crl
 ```
 #### TLS Layer (TCP/IP):
 ```sh
