@@ -6034,7 +6034,7 @@ Subcommands:
 
 		fmt.Println("  Revoked Certificates:")
 		for _, revokedCert := range revocationList.RevokedCertificates {
-			fmt.Println("  - Serial Number:", revokedCert.SerialNumber)
+			fmt.Printf("  - Serial Number: %X\n", revokedCert.SerialNumber)
 			fmt.Println("    Revocation Time:", revokedCert.RevocationTime)
 		}
 	}
@@ -8252,6 +8252,7 @@ var oidToAlgo = map[string]string{
 	"1.2.840.113549.1.1.11": "RSA",
 	"1.3.101.112":           "Ed25519",
 	"1.2.840.10045.2.1":     "ECDSA (prime256v1)",
+	"1.2.840.10045.4.3.2":   "ECDSA (prime256v1)",
 	"1.2.840.10045.3.1.1":   "ECDSA (prime224v1)",
 	"1.2.840.10045.4.3.3":   "ECDSA (prime384v1)",
 	"1.2.840.10045.4.3.4":   "ECDSA (prime521v1)",
