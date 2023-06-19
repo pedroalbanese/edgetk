@@ -52,7 +52,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |      Cipher      | Block Size |  Key Size   |         Modes           |
     |:-----------------|:----------:|:-----------:|:-----------------------:|
     | AES (Rijndael)   |        128 | 128/192/256 | All modes supported     |
-    | Anubis           |        128 |         128 | All modes supported     |
+    | Anubis           |        128 |  128 to 320 | All modes supported     |
     | ARIA             |        128 | 128/192/256 | All modes supported     |
     | Camellia         |        128 | 128/192/256 | All modes supported     |
     | Kuznechik        |        128 |         256 | All modes supported     |
