@@ -44,6 +44,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/blowfish"
@@ -325,7 +326,7 @@ Subcommands:
   edgetk -pkey keygen [-algorithm <alg>] [-priv <private>] [-pub <public>]
 
  Generate Self-Signed Certificate:
-  edgetk -pkey certgen [-algorithm <alg>] [-key <priv>] [-cert <cacert>] 
+  edgetk -pkey certgen [-algorithm <alg>] [-key <priv>] [-cert <cert.crt>] 
 
  Generate Certificate Sign Request:
   edgetk -pkey req [-algorithm <alg>] [-key <private>] [-cert <cert.csr>]
@@ -590,7 +591,11 @@ Subcommands:
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+		*length = 128
+	}
+
+	if (*cph == "anubis") && *pkey != "keygen" && (*length < 128 || *length > 320) && *crypt != "" {
 		*length = 128
 	}
 
@@ -679,6 +684,7 @@ Subcommands:
 
 	if *crypt != "" && *cph == "rabbit" {
 		var keyHex string
+		keyHex = *key
 		var key []byte
 		var err error
 		if keyHex == "" {
@@ -1482,7 +1488,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -1516,7 +1522,7 @@ Subcommands:
 			ciph, err = krcrypt.NewSEED(key)
 			n = 16
 		} else if *cph == "anubis" {
-			ciph, err = anubis.New(key)
+			ciph, err = anubis.NewWithKeySize(key, len(key))
 			n = 16
 		} else if *cph == "magma" {
 			ciph = gost341264.NewCipher(key)
@@ -1598,7 +1604,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 8 {
+			if len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -1636,7 +1642,7 @@ Subcommands:
 			ciph, err = krcrypt.NewHIGHT(key)
 			n = 8
 		} else if *cph == "anubis" {
-			ciph, err = anubis.New(key)
+			ciph, err = anubis.NewWithKeySize(key, len(key))
 			n = 16
 		} else if *cph == "magma" {
 			ciph = gost341264.NewCipher(key)
@@ -1742,7 +1748,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -1836,7 +1842,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 16 && len(key) != 24 {
+			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 24 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -1864,7 +1870,7 @@ Subcommands:
 			ciph, err = krcrypt.NewHIGHT(key)
 			iv = make([]byte, 8)
 		} else if *cph == "anubis" {
-			ciph, err = anubis.New(key)
+			ciph, err = anubis.NewWithKeySize(key, len(key))
 			iv = make([]byte, 16)
 		} else if *cph == "rc2" {
 			ciph, err = rc2.NewCipher(key)
@@ -1916,6 +1922,28 @@ Subcommands:
 				break
 			}
 		}
+		os.Exit(0)
+	}
+
+	if *digest && (*md == "bcrypt") && !*check {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(*key), *iter)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(hashedPassword))
+		os.Exit(0)
+	}
+
+	if *digest && (*md == "bcrypt") && *check {
+		hashedPassword, err := ioutil.ReadAll(os.Stdin)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(*key))
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Verify: true")
 		os.Exit(0)
 	}
 
@@ -2591,10 +2619,10 @@ Subcommands:
 			}
 			c = gost28147.NewCipher([]byte(*key), &gost28147.SboxIdtc26gost28147paramZ)
 		} else if *cph == "anubis" {
-			if len(*key) != 16 {
+			if len(*key) != 16 && len(*key) != 24 && len(*key) != 32 && len(*key) != 40 {
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
 			}
-			c, err = anubis.New([]byte(*key))
+			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -2641,10 +2669,10 @@ Subcommands:
 		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			c, err = kuznechik.NewCipher([]byte(*key))
 		} else if *cph == "anubis" {
-			if len(*key) != 16 {
+			if len(*key) != 16 && len(*key) != 24 && len(*key) != 32 && len(*key) != 40 {
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
 			}
-			c, err = anubis.New([]byte(*key))
+			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3973,10 +4001,12 @@ Subcommands:
 			NotBefore: time.Now(),
 			NotAfter:  NotAfter,
 
-			KeyUsage:              keyUsage,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-			BasicConstraintsValid: true,
-			IsCA:                  true,
+			KeyUsage:                    keyUsage,
+			ExtKeyUsage:                 []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+			BasicConstraintsValid:       true,
+			IsCA:                        true,
+			PermittedDNSDomainsCritical: true,
+			DNSNames:                    []string{name},
 
 			/*
 				PermittedDNSDomainsCritical: true,
@@ -3986,7 +4016,7 @@ Subcommands:
 		}
 
 		template.IsCA = true
-		template.KeyUsage |= x509.KeyUsageCertSign | smx509.KeyUsageCRLSign
+		template.KeyUsage |= x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
 
 		derBytes, err := x509.CreateCertificate(
 			rand.Reader,
@@ -5433,7 +5463,7 @@ Subcommands:
 			NotAfter:  NotAfter,
 
 			KeyUsage:              keyUsage,
-			ExtKeyUsage:           []smx509.ExtKeyUsage{smx509.ExtKeyUsageServerAuth},
+			ExtKeyUsage:           []smx509.ExtKeyUsage{smx509.ExtKeyUsageClientAuth, smx509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
 			IsCA:                  true,
 
@@ -5441,7 +5471,7 @@ Subcommands:
 		}
 
 		template.IsCA = true
-		template.KeyUsage |= smx509.KeyUsageCertSign | smx509.KeyUsageCRLSign
+		template.KeyUsage |= smx509.KeyUsageCertSign | smx509.KeyUsageCRLSign | x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment | x509.KeyUsageKeyAgreement
 
 		if strings.ToUpper(*alg) == "RSA" {
 			if *md == "sha256" {
@@ -6207,7 +6237,7 @@ Subcommands:
 				NotAfter:  NotAfter,
 
 				KeyUsage:              keyUsage,
-				ExtKeyUsage:           []smx509.ExtKeyUsage{smx509.ExtKeyUsageServerAuth},
+				ExtKeyUsage:           []smx509.ExtKeyUsage{smx509.ExtKeyUsageClientAuth, smx509.ExtKeyUsageServerAuth},
 				BasicConstraintsValid: true,
 				IsCA:                  true,
 
@@ -8109,7 +8139,7 @@ func csrToCrt2() error {
 		EmailAddresses: clientCSR.EmailAddresses,
 		NotBefore:      time.Now(),
 		NotAfter:       NotAfter,
-		KeyUsage:       x509.KeyUsageDigitalSignature,
+		KeyUsage:       x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 	}
 
