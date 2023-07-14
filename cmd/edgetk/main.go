@@ -8475,7 +8475,7 @@ func PKCS7Padding(ciphertext []byte) []byte {
 		padding = 32 - len(ciphertext)%32
 	} else if *cph == "threefish512" {
 		padding = 64 - len(ciphertext)%64
-	} else if *cph == "threefish2014" {
+	} else if *cph == "threefish1024" {
 		padding = 128 - len(ciphertext)%128
 	}
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
