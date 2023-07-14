@@ -128,6 +128,7 @@ import (
 	"github.com/pedroalbanese/siphash"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
+	"github.com/pedroalbanese/threefish"
 	"github.com/pedroalbanese/tiger"
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
@@ -438,6 +439,8 @@ Subcommands:
 		myHash = sha512.New384
 	} else if *md == "sha512" {
 		myHash = sha512.New
+	} else if *md == "sha512-256" {
+		myHash = sha512.New512_256
 	} else if *md == "sha1" {
 		myHash = sha1.New
 	} else if *md == "rmd160" {
@@ -446,6 +449,8 @@ Subcommands:
 		myHash = ripemd.New128
 	} else if *md == "rmd256" {
 		myHash = ripemd.New256
+	} else if *md == "rmd320" {
+		myHash = ripemd.New320
 	} else if *md == "sha3-224" {
 		myHash = sha3.New224
 	} else if *md == "sha3-256" {
@@ -462,6 +467,8 @@ Subcommands:
 		myHash = lsh256.New224
 	} else if *md == "lsh" || *md == "lsh256" {
 		myHash = lsh256.New
+	} else if *md == "lsh512-256" {
+		myHash = lsh512.New256
 	} else if *md == "lsh384" {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
@@ -597,6 +604,18 @@ Subcommands:
 
 	if (*cph == "anubis") && *pkey != "keygen" && (*length < 128 || *length > 320) && *crypt != "" {
 		*length = 128
+	}
+
+	if (*cph == "threefish" || *cph == "threefish256") && *pkey != "keygen" && (*length != 256) && *crypt != "" {
+		*length = 256
+	}
+
+	if (*cph == "threefish512") && *pkey != "keygen" && (*length != 512) && *crypt != "" {
+		*length = 512
+	}
+
+	if (*cph == "threefish1024") && *pkey != "keygen" && (*length != 256) && *crypt != "" {
+		*length = 1024
 	}
 
 	if (*mac == "eia256" || *mac == "zuc256") && (*length != 32 && *length != 64 && *length != 128) {
@@ -1604,13 +1623,15 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 8 {
+			if len(key) != 128 && len(key) != 64 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
 
 		var ciph cipher.Block
 		var n int
+		var tweak []byte
+		tweak = make([]byte, 16)
 		if *cph == "aes" {
 			ciph, err = aes.NewCipher(key)
 			n = 16
@@ -1674,6 +1695,24 @@ Subcommands:
 		} else if *cph == "misty1" {
 			ciph, err = misty1.New(key)
 			n = 8
+		} else if *cph == "threefish256" || *cph == "threefish" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			n = 32
+			ciph, err = threefish.New256(key, tweak)
+		} else if *cph == "threefish512" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			n = 64
+			ciph, err = threefish.New512(key, tweak)
+		} else if *cph == "threefish1024" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			n = 128
+			ciph, err = threefish.New1024(key, tweak)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -1730,7 +1769,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -1754,6 +1793,8 @@ Subcommands:
 		}
 		var ciph cipher.Block
 		var iv []byte
+		var tweak []byte
+		tweak = make([]byte, 16)
 		if *cph == "aes" {
 			ciph, err = aes.NewCipher(key)
 			iv = make([]byte, 16)
@@ -1781,6 +1822,24 @@ Subcommands:
 		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			ciph, err = kuznechik.NewCipher(key)
 			iv = make([]byte, 16)
+		} else if *cph == "threefish256" || *cph == "threefish" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			iv = make([]byte, 32)
+			ciph, err = threefish.New256(key, tweak)
+		} else if *cph == "threefish512" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			iv = make([]byte, 64)
+			ciph, err = threefish.New512(key, tweak)
+		} else if *cph == "threefish1024" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			iv = make([]byte, 128)
+			ciph, err = threefish.New1024(key, tweak)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -1975,6 +2034,8 @@ Subcommands:
 			h = sha256.New()
 		} else if *md == "sha384" {
 			h = sha512.New384()
+		} else if *md == "sha512-256" {
+			h = sha512.New512_256()
 		} else if *md == "sha512" {
 			h = sha512.New()
 		} else if *md == "sha1" {
@@ -1985,6 +2046,8 @@ Subcommands:
 			h = ripemd.New128()
 		} else if *md == "rmd256" {
 			h = ripemd.New256()
+		} else if *md == "rmd320" {
+			h = ripemd.New320()
 		} else if *md == "sha3-224" {
 			h = sha3.New224()
 		} else if *md == "sha3-256" {
@@ -1997,6 +2060,8 @@ Subcommands:
 			h = lsh256.New224()
 		} else if *md == "lsh" || *md == "lsh256" {
 			h = lsh256.New()
+		} else if *md == "lsh512-256" {
+			h = lsh512.New256()
 		} else if *md == "lsh384" {
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
@@ -2069,6 +2134,8 @@ Subcommands:
 					h = sha256.New224()
 				} else if *md == "sha256" {
 					h = sha256.New()
+				} else if *md == "sha512-256" {
+					h = sha512.New512_256()
 				} else if *md == "sha384" {
 					h = sha512.New384()
 				} else if *md == "sha512" {
@@ -2081,6 +2148,8 @@ Subcommands:
 					h = ripemd.New128()
 				} else if *md == "rmd256" {
 					h = ripemd.New256()
+				} else if *md == "rmd320" {
+					h = ripemd.New320()
 				} else if *md == "sha3-224" {
 					h = sha3.New224()
 				} else if *md == "sha3-256" {
@@ -2093,6 +2162,8 @@ Subcommands:
 					h = lsh256.New224()
 				} else if *md == "lsh" || *md == "lsh256" {
 					h = lsh256.New()
+				} else if *md == "lsh512-256" {
+					h = lsh512.New256()
 				} else if *md == "lsh384" {
 					h = lsh512.New384()
 				} else if *md == "lsh512" {
@@ -2191,6 +2262,8 @@ Subcommands:
 								h = sha256.New224()
 							} else if *md == "sha256" {
 								h = sha256.New()
+							} else if *md == "sha512-256" {
+								h = sha512.New512_256()
 							} else if *md == "sha384" {
 								h = sha512.New384()
 							} else if *md == "sha512" {
@@ -2203,6 +2276,8 @@ Subcommands:
 								h = ripemd.New128()
 							} else if *md == "rmd256" {
 								h = ripemd.New256()
+							} else if *md == "rmd320" {
+								h = ripemd.New320()
 							} else if *md == "sha3-224" {
 								h = sha3.New224()
 							} else if *md == "sha3-256" {
@@ -2215,6 +2290,8 @@ Subcommands:
 								h = lsh256.New224()
 							} else if *md == "lsh" || *md == "lsh256" {
 								h = lsh256.New()
+							} else if *md == "lsh512-256" {
+								h = lsh512.New256()
 							} else if *md == "lsh384" {
 								h = lsh512.New384()
 							} else if *md == "lsh512" {
@@ -2306,6 +2383,8 @@ Subcommands:
 					h = sha256.New224()
 				} else if *md == "sha256" {
 					h = sha256.New()
+				} else if *md == "sha512-256" {
+					h = sha512.New512_256()
 				} else if *md == "sha384" {
 					h = sha512.New384()
 				} else if *md == "sha512" {
@@ -2318,6 +2397,8 @@ Subcommands:
 					h = ripemd.New128()
 				} else if *md == "rmd256" {
 					h = ripemd.New256()
+				} else if *md == "rmd320" {
+					h = ripemd.New320()
 				} else if *md == "sha3-224" {
 					h = sha3.New224()
 				} else if *md == "sha3-256" {
@@ -2330,6 +2411,8 @@ Subcommands:
 					h = lsh256.New224()
 				} else if *md == "lsh" || *md == "lsh256" {
 					h = lsh256.New()
+				} else if *md == "lsh512-256" {
+					h = lsh512.New256()
 				} else if *md == "lsh384" {
 					h = lsh512.New384()
 				} else if *md == "lsh512" {
@@ -7344,6 +7427,10 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sha256.New
 	} else if *md == "sha512" {
 		myHash = sha512.New
+	} else if *md == "sha512-256" {
+		myHash = sha512.New512_256
+	} else if *md == "sha384" {
+		myHash = sha512.New384
 	} else if *md == "sha1" {
 		myHash = sha1.New
 	} else if *md == "rmd160" {
@@ -7352,6 +7439,8 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = ripemd.New128
 	} else if *md == "rmd256" {
 		myHash = ripemd.New256
+	} else if *md == "rmd320" {
+		myHash = ripemd.New320
 	} else if *md == "sha3-256" {
 		myHash = sha3.New256
 	} else if *md == "sha3-512" {
@@ -7364,6 +7453,8 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = lsh256.New224
 	} else if *md == "lsh" || *md == "lsh256" {
 		myHash = lsh256.New
+	} else if *md == "lsh512-256" {
+		myHash = lsh512.New256
 	} else if *md == "lsh384" {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
@@ -7433,6 +7524,10 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = sha256.New
 	} else if *md == "sha512" {
 		myHash = sha512.New
+	} else if *md == "sha512-256" {
+		myHash = sha512.New512_256
+	} else if *md == "sha384" {
+		myHash = sha512.New384
 	} else if *md == "sha1" {
 		myHash = sha1.New
 	} else if *md == "rmd160" {
@@ -7441,6 +7536,8 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = ripemd.New128
 	} else if *md == "rmd256" {
 		myHash = ripemd.New256
+	} else if *md == "rmd320" {
+		myHash = ripemd.New320
 	} else if *md == "sha3-256" {
 		myHash = sha3.New256
 	} else if *md == "sha3-512" {
@@ -7453,6 +7550,8 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = lsh256.New224
 	} else if *md == "lsh" || *md == "lsh256" {
 		myHash = lsh256.New
+	} else if *md == "lsh512-256" {
+		myHash = lsh512.New256
 	} else if *md == "lsh384" {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
@@ -8372,6 +8471,12 @@ func PKCS7Padding(ciphertext []byte) []byte {
 		padding = 16 - len(ciphertext)%16
 	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" {
 		padding = 8 - len(ciphertext)%8
+	} else if *cph == "threefish" || *cph == "threefish256" {
+		padding = 32 - len(ciphertext)%32
+	} else if *cph == "threefish512" {
+		padding = 64 - len(ciphertext)%64
+	} else if *cph == "threefish2014" {
+		padding = 128 - len(ciphertext)%128
 	}
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(ciphertext, padtext...)
