@@ -47,6 +47,14 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
+- **256-bit> block ciphers:**
+
+    |      Cipher      | Block Size |  Key Size   |         Modes            |
+    |:-----------------|:----------:|:-----------:|:------------------------:|
+    | Threefish256     |        256 |         256 | CBC, CFB-8, CTR, OFB, IGE|
+    | Threefish512     |        512 |         512 | CBC, CFB-8, CTR, OFB, IGE|
+    | Threefish256     |       1024 |        1024 | CBC, CFB-8, CTR, OFB, IGE|
+  
 - **128-bit block ciphers:**
 
     |      Cipher      | Block Size |  Key Size   |         Modes           |
