@@ -8761,8 +8761,12 @@ func calculateFingerprint(key []byte) string {
 }
 
 func calculateFingerprintGOST(key []byte) string {
-	hash := sha256.Sum256(key)
-	fingerprint := base64.StdEncoding.EncodeToString(hash[:])
+	hasher := gost34112012256.New()
+	if _, err := hasher.Write(key); err != nil {
+		log.Fatalln(err)
+	}
+	hash := hasher.Sum(nil)
+	fingerprint := base64.StdEncoding.EncodeToString(hash)
 	return fingerprint
 }
 
