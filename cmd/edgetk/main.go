@@ -3830,7 +3830,7 @@ Subcommands:
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
-		fingerprint := calculateFingerprint(buf)
+		fingerprint := calculateFingerprintGOST(buf)
 		print("Fingerprint: ")
 		println(fingerprint)
 		printKeyDetails(pubblock)
@@ -4837,7 +4837,20 @@ Subcommands:
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
-		fingerprint := calculateFingerprint(buf)
+		block, _ := pem.Decode(buf)
+		publicInterface, err := smx509.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			publicInterface, err = x509.ParsePKIXPublicKey(block.Bytes)
+		}
+		var fingerprint string
+		switch publicInterface.(type) {
+		case *rsa.PublicKey, *ecdsa.PublicKey, *ecdh.PublicKey, ed25519.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case *gost3410.PublicKey:
+			fingerprint = calculateFingerprintGOST(buf)
+		default:
+			log.Fatal("unknown type of public key")
+		}
 		print("Fingerprint= ")
 		println(fingerprint)
 	}
@@ -8742,6 +8755,12 @@ func byte8(s []byte) (a *[8]byte) {
 }
 
 func calculateFingerprint(key []byte) string {
+	hash := sha256.Sum256(key)
+	fingerprint := base64.StdEncoding.EncodeToString(hash[:])
+	return fingerprint
+}
+
+func calculateFingerprintGOST(key []byte) string {
 	hash := sha256.Sum256(key)
 	fingerprint := base64.StdEncoding.EncodeToString(hash[:])
 	return fingerprint
