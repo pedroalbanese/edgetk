@@ -38,6 +38,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/pem"
@@ -388,10 +389,9 @@ Subcommands:
 	}
 
 	if *pkey == "keygen" && *pwd == "" {
-		scanner := bufio.NewScanner(os.Stdin)
 		print("Passphrase: ")
-		scanner.Scan()
-		*pwd = scanner.Text()
+		pass, _ := gopass.GetPasswdMasked()
+		*pwd = string(pass)
 	}
 
 	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
@@ -2844,6 +2844,39 @@ Subcommands:
 
 		pubpem, _ := EncodePublicKey(&pubkey)
 		ioutil.WriteFile(*pub, pubpem, 0644)
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err := os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, _ := pem.Decode(pubpem)
+		if block == nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(block)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
 		os.Exit(0)
 	}
 
@@ -2918,6 +2951,39 @@ Subcommands:
 
 		pubpem, _ := EncodePublicKey(&pubkey)
 		ioutil.WriteFile(*pub, pubpem, 0644)
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err := os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, _ := pem.Decode(pubpem)
+		if block == nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(block)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
 		os.Exit(0)
 	}
 
@@ -3063,6 +3129,34 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err = os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(pubblock)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
 	}
 
 	if *pkey == "sign" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "SM2") {
@@ -3517,6 +3611,35 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err = os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(pubblock)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
 		os.Exit(0)
 	}
 
@@ -3685,6 +3808,34 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err = os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(pubblock)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
 	}
 
 	if (*pkey == "derive" && strings.ToUpper(*alg) == "GOST2012") || strings.ToUpper(*pkey) == "VKO" {
@@ -3848,7 +3999,7 @@ Subcommands:
 
 	var PEM string
 	var b []byte
-	if (*pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart") && *crl == "" {
+	if (*pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart" || *pkey == "fingerprint") && *crl == "" {
 		if *key != "" {
 			b, err = ioutil.ReadFile(*key)
 			if err != nil {
@@ -4673,6 +4824,22 @@ Subcommands:
 			log.Fatal("unknown type of public key")
 		}
 		fmt.Println(randomart.FromString(strings.ReplaceAll(string(buf), "\r\n", "\n")))
+	}
+
+	if (*pkey == "fingerprint") && PEM == "Public" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint= ")
+		println(fingerprint)
 	}
 
 	if (*pkey == "text" || *pkey == "modulus") && PEM == "Public" {
@@ -7201,6 +7368,34 @@ func GenerateRsaKey(bit int) error {
 	if err != nil {
 		return err
 	}
+
+	absPrivPath, err := filepath.Abs(*priv)
+	if err != nil {
+		log.Fatal("Failed to get absolute path for private key:", err)
+	}
+	absPubPath, err := filepath.Abs(*pub)
+	if err != nil {
+		log.Fatal("Failed to get absolute path for public key:", err)
+	}
+	println("Private key saved to:", absPrivPath)
+	println("Public key saved to:", absPubPath)
+
+	file, err = os.Open(*pub)
+	if err != nil {
+		log.Fatal(err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+	buf := make([]byte, info.Size())
+	file.Read(buf)
+	fingerprint := calculateFingerprint(buf)
+	print("Fingerprint: ")
+	println(fingerprint)
+	printKeyDetails(&pubblock)
+	randomArt := randomart.FromString(string(buf))
+	println(randomArt)
 	return nil
 }
 
@@ -8544,6 +8739,36 @@ func byte8(s []byte) (a *[8]byte) {
 		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
 	}
 	return a
+}
+
+func calculateFingerprint(key []byte) string {
+	hash := sha256.Sum256(key)
+	fingerprint := base64.StdEncoding.EncodeToString(hash[:])
+	return fingerprint
+}
+
+func printKeyDetails(block *pem.Block) {
+	publicInterface, err := smx509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		publicInterface, err = x509.ParsePKIXPublicKey(block.Bytes)
+	}
+	switch publicInterface.(type) {
+	case *rsa.PublicKey:
+		publicKey := publicInterface.(*rsa.PublicKey)
+		fmt.Fprintf(os.Stderr, "RSA (%v-bit)\n", publicKey.N.BitLen())
+	case *ecdsa.PublicKey:
+		publicKey := publicInterface.(*ecdsa.PublicKey)
+		fmt.Fprintf(os.Stderr, "ECDSA (%v-bit)\n", publicKey.Curve.Params().BitSize)
+	case *ecdh.PublicKey:
+		fmt.Fprintln(os.Stderr, "X25519 (256-bit)")
+	case ed25519.PublicKey:
+		fmt.Fprintln(os.Stderr, "Ed25519 (256-bit)")
+	case *gost3410.PublicKey:
+		publicKey := publicInterface.(*gost3410.PublicKey)
+		fmt.Fprintf(os.Stderr, "GOST2012 (%v-bit)\n", len(publicKey.Raw())*4)
+	default:
+		log.Fatal("unknown type of public key")
+	}
 }
 
 type PEMCipher int
