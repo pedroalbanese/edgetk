@@ -28,6 +28,7 @@ KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
 NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
 RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
 RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
 RFC 4493: Cipher-based Message Authentication Code (CMAC)
 RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
