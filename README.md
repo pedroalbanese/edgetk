@@ -91,6 +91,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |Mode |                                | Blocks     |  Keys     |
     |:---:|:-------------------------------|:----------:|:---------:|
+    | CCM | Counter with CBC-MAC Mode      |128         |128/192/256|
     | EAX | Encrypt-Authenticate-Translate |128         |128/192/256|
     | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256|
     | OCB1| Offset Codebook v1 (AEAD)      |128         |128/192/256|
