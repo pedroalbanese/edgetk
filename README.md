@@ -165,6 +165,12 @@ GOST refers to a set of technical standards maintained by the Euro-Asian Council
 ### IKM (input key material value)
 Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
 
+### MAC
+MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
+
+### PBKDF2
+PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic function designed to derive secure cryptographic keys from weak passwords or passphrases. It applies a pseudorandom function, such as HMAC-SHA1, HMAC-SHA256, or HMAC-SHA512, multiple times in a loop, with a salt and a user-defined number of iterations, effectively increasing the computational cost of key generation. This technique enhances the resilience against brute-force attacks, making it more difficult and time-consuming for attackers to obtain the original password from the derived key.
+
 ### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
 SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
 
