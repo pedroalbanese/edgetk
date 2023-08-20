@@ -111,6 +111,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|
     | BLAKE-2B        |     |     |     | O   | O   | O   |
     | BLAKE-2S        | O   |     |     | O   |     | O   |
+    | BLAKE-3         |     |     |     | O   |     |     |
     | Chaskey         | O   |     |     |     |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
