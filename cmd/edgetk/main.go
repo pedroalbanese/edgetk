@@ -91,6 +91,7 @@ import (
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast5"
+	"github.com/pedroalbanese/ccm"
 	"github.com/pedroalbanese/cfb8"
 	"github.com/pedroalbanese/cmac"
 	"github.com/pedroalbanese/crypto/hc128"
@@ -133,14 +134,15 @@ import (
 	"github.com/pedroalbanese/tiger"
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
+	"github.com/zeebo/blake3"
 )
 
 var (
 	alg       = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
 	cert      = flag.String("cert", "", "Certificate path.")
-	crl       = flag.String("crl", "", "Certificate Revocation List path.")
 	check     = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
+	crl       = flag.String("crl", "", "Certificate Revocation List path.")
 	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
 	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
@@ -153,6 +155,7 @@ var (
 	mac       = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
 	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
 	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
+	paramset  = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
 	pkey      = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
 	priv      = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
 	pub       = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
@@ -164,7 +167,6 @@ var (
 	sig       = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	tcpip     = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector    = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
-	paramset  = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -213,8 +215,8 @@ func main() {
   mac               pkey              rand              tcp
 
 Public Key Algorithms:
-  ecdsa             ed25519           rsa (default)     sm2
-  gost2012          x25519
+  ecdsa             ed25519           x25519            sm2
+  gost2012          ed25519ph         rsa (default)
 
 Stream Ciphers:
   ascon             hc128             rabbit            skein
@@ -227,23 +229,24 @@ Modes of Operation:
   ocb (aead)        cbc               ctr (default)     ofb
 
 Block Ciphers:
-  3des              cast5             hight             rc2
-  aes (default)     camellia          idea              rc5
-  aria              des               lea               seed
-  anubis            gost89            misty1            sm4
-  blowfish          kuznechik         magma             twofish
+  3des              cast5             idea              rc5
+  aes (default)     camellia          lea               seed
+  aria              gost89            misty1            sm4
+  anubis            grasshopper       magma             threefish
+  blowfish          hight             rc2               twofish
 
 Message Digests:
-  blake2s128        keccak512         rmd256            siphash
-  blake2s256        lsh224            sha224            skein256
-  blake2b256        lsh256            sha256 (default)  skein512
-  blake2b512        lsh384            sha384            sm3
-  chaskey (MAC)     lsh512            sha512            streebog256
-  cubehash          md4 [obsolete]    sha3-224          streebog512
-  gost94            md5 [obsolete]    sha3-256          whirlpool
-  groestl           poly1305 (MAC)    sha3-384          xoodyak
-  jh                rmd128            sha3-512          zuc128/eia128
-  keccak256         rmd160            siphash64         zuc256/eia256`)
+  blake2b256        keccak512         rmd256            siphash
+  blake2b512        lsh224            rmd320            siphash64
+  blake2s128        lsh256            sha224            skein256
+  blake2s256        lsh384            sha256 (default)  skein512
+  blake3            lsh512            sha384            sm3
+  chaskey (MAC)     lsh512-256        sha512            streebog256
+  cubehash          md4 [obsolete]    sha512-256        streebog512
+  gost94            md5 [obsolete]    sha3-224          whirlpool
+  groestl           poly1305 (MAC)    sha3-256          xoodyak
+  jh                rmd128            sha3-384          zuc128/eia128
+  keccak256         rmd160            sha3-512          zuc256/eia256`)
 		os.Exit(3)
 	}
 
@@ -481,6 +484,10 @@ Subcommands:
 		myHash = crypto.BLAKE2b_512.New
 	} else if *md == "blake2s256" {
 		myHash = crypto.BLAKE2s_256.New
+	} else if *md == "blake3" {
+		myHash = func() hash.Hash {
+			return blake3.New()
+		}
 	} else if *md == "md5" {
 		myHash = md5.New
 	} else if *md == "gost94" {
@@ -500,15 +507,13 @@ Subcommands:
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
 	} else if *md == "skein" || *md == "skein256" {
-		g := func() hash.Hash {
+		myHash = func() hash.Hash {
 			return skein.New256(nil)
 		}
-		myHash = g
 	} else if *md == "skein512" {
-		g := func() hash.Hash {
+		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-		myHash = g
 	} else if *md == "jh" {
 		myHash = jh.New256
 	} else if *md == "groestl" {
@@ -614,7 +619,7 @@ Subcommands:
 		*length = 512
 	}
 
-	if (*cph == "threefish1024") && *pkey != "keygen" && (*length != 256) && *crypt != "" {
+	if (*cph == "threefish1024") && *pkey != "keygen" && (*length != 1024) && *crypt != "" {
 		*length = 1024
 	}
 
@@ -1490,7 +1495,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -1565,6 +1570,8 @@ Subcommands:
 			aead, err = ocb3.New(ciph)
 		} else if strings.ToUpper(*mode) == "EAX" {
 			aead, err = eax.NewEAX(ciph)
+		} else if strings.ToUpper(*mode) == "CCM" {
+			aead, err = ccm.NewCCM(ciph, 16, 12)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -1993,7 +2000,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *digest && (*md == "bcrypt") && *check {
+	if *md == "bcrypt" && *check {
 		hashedPassword, err := ioutil.ReadAll(os.Stdin)
 		if err != nil {
 			log.Fatal(err)
@@ -2004,6 +2011,23 @@ Subcommands:
 		}
 		fmt.Println("Verify: true")
 		os.Exit(0)
+	}
+
+	var maxPlainTextSizeInBits int
+	if *md == "haraka" || *md == "haraka256" || *md == "haraka512" {
+		if *md == "haraka512" {
+			maxPlainTextSizeInBits = 512
+		} else {
+			maxPlainTextSizeInBits = 256
+		}
+		plainTextBytes, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		plainTextSizeInBits := len(plainTextBytes) * 8
+		if plainTextSizeInBits > maxPlainTextSizeInBits {
+			println("Alert: The plain text exceeds 256 bits!")
+		}
 	}
 
 	if *digest && (*md == "haraka" || *md == "haraka256") {
@@ -2080,6 +2104,8 @@ Subcommands:
 			h, _ = blake2s.New128([]byte(*key))
 		} else if *md == "blake2s256" {
 			h, _ = blake2s.New256([]byte(*key))
+		} else if *md == "blake3" {
+			h = blake3.New()
 		} else if *md == "md5" {
 			h = md5.New()
 		} else if *md == "gost94" {
@@ -2118,7 +2144,7 @@ Subcommands:
 			h = tiger.New2()
 		}
 		io.Copy(h, os.Stdin)
-		fmt.Println(hex.EncodeToString(h.Sum(nil)))
+		fmt.Println(hex.EncodeToString(h.Sum(nil)), "(stdin)")
 		os.Exit(0)
 	}
 
@@ -2182,6 +2208,8 @@ Subcommands:
 					h, _ = blake2s.New128([]byte(*key))
 				} else if *md == "blake2s256" {
 					h, _ = blake2s.New256([]byte(*key))
+				} else if *md == "blake3" {
+					h = blake3.New()
 				} else if *md == "md5" {
 					h = md5.New()
 				} else if *md == "gost94" {
@@ -2310,6 +2338,8 @@ Subcommands:
 								h, _ = blake2s.New128([]byte(*key))
 							} else if *md == "blake2s256" {
 								h, _ = blake2s.New256([]byte(*key))
+							} else if *md == "blake3" {
+								h = blake3.New()
 							} else if *md == "md5" {
 								h = md5.New()
 							} else if *md == "gost94" {
@@ -2431,6 +2461,8 @@ Subcommands:
 					h, _ = blake2s.New128([]byte(*key))
 				} else if *md == "blake2s256" {
 					h, _ = blake2s.New256([]byte(*key))
+				} else if *md == "blake3" {
+					h = blake3.New()
 				} else if *md == "md5" {
 					h = md5.New()
 				} else if *md == "gost94" {
@@ -3182,6 +3214,22 @@ Subcommands:
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
 			h = sha3.NewLegacyKeccak512()
+		} else if *md == "lsh224" {
+			h = lsh256.New224()
+		} else if *md == "lsh" || *md == "lsh256" {
+			h = lsh256.New()
+		} else if *md == "lsh512-256" {
+			h = lsh512.New256()
+		} else if *md == "lsh384" {
+			h = lsh512.New384()
+		} else if *md == "lsh512" {
+			h = lsh512.New()
+		} else if *md == "gost94" {
+			h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
+		} else if *md == "streebog" || *md == "streebog256" {
+			h = gost34112012256.New()
+		} else if *md == "streebog512" {
+			h = gost34112012512.New()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "sm3" {
@@ -3194,6 +3242,14 @@ Subcommands:
 			h = jh.New256()
 		} else if *md == "groestl" {
 			h = groestl.New256()
+		} else if *md == "blake2b256" {
+			h = crypto.BLAKE2b_256.New()
+		} else if *md == "blake2b512" {
+			h = crypto.BLAKE2b_512.New()
+		} else if *md == "blake2s256" {
+			h = crypto.BLAKE2s_256.New()
+		} else if *md == "blake3" {
+			h = blake3.New()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -3237,6 +3293,22 @@ Subcommands:
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
 			h = sha3.NewLegacyKeccak512()
+		} else if *md == "lsh224" {
+			h = lsh256.New224()
+		} else if *md == "lsh" || *md == "lsh256" {
+			h = lsh256.New()
+		} else if *md == "lsh512-256" {
+			h = lsh512.New256()
+		} else if *md == "lsh384" {
+			h = lsh512.New384()
+		} else if *md == "lsh512" {
+			h = lsh512.New()
+		} else if *md == "gost94" {
+			h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
+		} else if *md == "streebog" || *md == "streebog256" {
+			h = gost34112012256.New()
+		} else if *md == "streebog512" {
+			h = gost34112012512.New()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "sm3" {
@@ -3249,6 +3321,14 @@ Subcommands:
 			h = jh.New256()
 		} else if *md == "groestl" {
 			h = groestl.New256()
+		} else if *md == "blake2b256" {
+			h = crypto.BLAKE2b_256.New()
+		} else if *md == "blake2b512" {
+			h = crypto.BLAKE2b_512.New()
+		} else if *md == "blake2s256" {
+			h = crypto.BLAKE2s_256.New()
+		} else if *md == "blake3" {
+			h = blake3.New()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -3312,6 +3392,8 @@ Subcommands:
 			h = jh.New256()
 		} else if *md == "groestl" {
 			h = groestl.New256()
+		} else if *md == "blake3" {
+			h = blake3.New()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -3395,6 +3477,8 @@ Subcommands:
 			h = jh.New256()
 		} else if *md == "groestl" {
 			h = groestl.New256()
+		} else if *md == "blake3" {
+			h = blake3.New()
 		}
 		if _, err := io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
@@ -4851,8 +4935,8 @@ Subcommands:
 		default:
 			log.Fatal("unknown type of public key")
 		}
-		print("Fingerprint= ")
-		println(fingerprint)
+		fmt.Print("Fingerprint= ")
+		fmt.Println(fingerprint)
 	}
 
 	if (*pkey == "text" || *pkey == "modulus") && PEM == "Public" {
@@ -7675,6 +7759,10 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = crypto.BLAKE2b_512.New
 	} else if *md == "blake2s256" {
 		myHash = crypto.BLAKE2s_256.New
+	} else if *md == "blake3" {
+		myHash = func() hash.Hash {
+			return blake3.New()
+		}
 	} else if *md == "md4" {
 		myHash = md4.New
 	} else if *md == "md5" {
@@ -7694,15 +7782,13 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
 	} else if *md == "skein" || *md == "skein256" {
-		g := func() hash.Hash {
+		myHash = func() hash.Hash {
 			return skein.New256(nil)
 		}
-		myHash = g
 	} else if *md == "skein512" {
-		g := func() hash.Hash {
+		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-		myHash = g
 	} else if *md == "jh" {
 		myHash = jh.New256
 	} else if *md == "groestl" {
@@ -7772,6 +7858,10 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = crypto.BLAKE2b_512.New
 	} else if *md == "blake2s256" {
 		myHash = crypto.BLAKE2s_256.New
+	} else if *md == "blake3" {
+		myHash = func() hash.Hash {
+			return blake3.New()
+		}
 	} else if *md == "md4" {
 		myHash = md4.New
 	} else if *md == "md5" {
@@ -7791,15 +7881,13 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
 	} else if *md == "skein" || *md == "skein256" {
-		g := func() hash.Hash {
+		myHash = func() hash.Hash {
 			return skein.New256(nil)
 		}
-		myHash = g
 	} else if *md == "skein512" {
-		g := func() hash.Hash {
+		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-		myHash = g
 	} else if *md == "jh" {
 		myHash = jh.New256
 	} else if *md == "groestl" {
