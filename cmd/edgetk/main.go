@@ -80,6 +80,7 @@ import (
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
+	"github.com/cheggaaa/pb/v3"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -224,9 +225,9 @@ Stream Ciphers:
   grain             kcipher2          salsa20           zuc256/eea256
 
 Modes of Operation:
-  eax (aead)        ocb3 (aead)       cfb               ecb
-  gcm (aead)        mgm (aead)        cfb8              ige
-  ocb (aead)        cbc               ctr (default)     ofb
+  eax (aead)        ocb3 (aead)       cbc               ecb
+  gcm (aead)        mgm (aead)        cfb/cfb8          ige
+  ocb (aead)        ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
   3des              cast5             idea              rc5
@@ -4647,7 +4648,16 @@ Subcommands:
 	}
 
 	if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
-		GenerateRsaKey(*length)
+		bar := pb.StartNew(*length)
+		go func() {
+			GenerateRsaKey(*length)
+			os.Exit(0)
+		}()
+		for i := 0; i < *length; i++ {
+			time.Sleep(time.Millisecond * 3)
+			bar.Increment()
+		}
+		select {}
 		os.Exit(0)
 	}
 
@@ -7474,6 +7484,7 @@ func GenerateRsaKey(bit int) error {
 	if err != nil {
 		log.Fatal("Failed to get absolute path for public key:", err)
 	}
+	print("\n")
 	println("Private key saved to:", absPrivPath)
 	println("Public key saved to:", absPubPath)
 
