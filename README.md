@@ -6,7 +6,7 @@
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pedroalbanese/edgetk)](https://golang.org)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pedroalbanese/edgetk)](https://github.com/pedroalbanese/edgetk/releases)
 
-Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), Password-based key derivation function (PBKDF2/Scrypt), Password hash function (Bcrypt), shared key agreement (ECDH/VKO/X25519), digital signature (RSA/ECDSA/EdDSA/GOST), X.509 CSRs, CRLs and Certificates, and TLS 1.3 for small or embedded systems. 
+Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), password-based key derivation function (PBKDF2/Scrypt), password hash function (Bcrypt), shared key agreement (ECDH/VKO/X25519), digital signature (RSA/ECDSA/EdDSA/GOST), X.509 CSRs, CRLs and Certificates, and TLS 1.3 for small or embedded systems. 
 
 ***Fully OpenSSL/LibreSSL/RHash/Mcrypt compliant***
 ## Command-line Integrated Security Suite
@@ -43,7 +43,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Rabbit           | 128        |   64 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | Salsa20          | 256        | 64/192 | XOR Stream            |
-    | Skein512         | 256        |  256 | XOR Stream            |
+    | Skein512         | 256        |  256 | MAC + XOR Stream      |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -282,12 +282,12 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 #### Asymmetric RSA keypair generation:
 ```sh
-./edgetk -pkey keygen -bits 4096 [-pwd "pass"]
+./edgetk -pkey keygen -bits 4096 [-pwd "pass"] [-priv Private.pem] [-pub Public.pem]
 ```
 #### Parse keys info:
 ```sh
 ./edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
-./edgetk -pkey [text|modulus|randomart] -key public.pem
+./edgetk -pkey [text|modulus|randomart|fingerprint] -key public.pem
 ```
 #### Digital signature:
 ```sh
