@@ -2,14 +2,25 @@
 
 # Create a new window
 wm title . "EDGE MAC/HMAC/CMAC Calculation Tool written in TCL/TK"
-wm geometry . 610x440
+
+# Create a frame for the top section with a gray background
+frame .topFrame -background gray90 -bd 1 -relief solid
+grid .topFrame -row 0 -column 0 -rowspan 5 -columnspan 4 -sticky "nsew"
+
+# Create a frame for the top section with a gray background2
+frame .topFrame2 -background gray90 -bd 1 -relief solid
+grid .topFrame2 -row 5 -column 0 -rowspan 2 -columnspan 4 -sticky "nsew"
+
+# Create a frame for the top section with a gray background3
+frame .topFrame3 -background gray90 -bd 1 -relief solid
+grid .topFrame3 -row 7 -column 0 -rowspan 2 -columnspan 4 -sticky "nsew"
 
 # Create Algorithm label
 label .algorithmLabel -text "Algorithm:"
 grid .algorithmLabel -row 0 -column 0 -sticky e -padx 10 -pady 5
 
 # Create Algorithm ComboBox with "HMAC" as the default value
-set macAlgorithms {"hmac" "cmac" "chaskey" "gost" "poly1305" "siphash" "skein" "xoodyak" "eia128" "eia256"}
+set macAlgorithms {"hmac" "cmac" "pmac" "chaskey" "gost" "poly1305" "siphash" "skein" "xoodyak" "eia128" "eia256"}
 ttk::combobox .algorithmCombo -values $macAlgorithms -width 30 -state readonly
 .algorithmCombo set "hmac"
 grid .algorithmCombo -row 0 -column 1 -sticky w -padx 10 -pady 5
@@ -72,14 +83,14 @@ label .messageLabel -text "Message:"
 grid .messageLabel -row 5 -column 0 -sticky e -padx 10 -pady 5
 
 # Create Message input box with vertical scrollbar
-text .messageBox -width 60 -height 5 -wrap word
+text .messageBox -width 70 -height 8 -wrap word
 scrollbar .messageScrollbar -command {.messageBox yview}
 .messageBox configure -yscrollcommand {.messageScrollbar set}
 grid .messageBox -row 5 -column 1 -columnspan 2 -padx 10 -pady 5 -sticky "nsew"
 grid .messageScrollbar -row 5 -column 3 -sticky "ns"
 
 # Create Calculate button
-button .calculateButton -text "Calculate" -command {calculateMAC}
+button .calculateButton -text "Calculate" -background gray80 -command {calculateMAC}
 grid .calculateButton -row 6 -column 1 -columnspan 2 -padx 10 -pady 10 -sticky "ew"
 
 # Create Result label
@@ -87,11 +98,11 @@ label .resultLabel -text "Result:"
 grid .resultLabel -row 7 -column 0 -sticky e -padx 10 -pady 5
 
 # Create Result text box
-text .resultBox -width 60 -height 5 -wrap word -state disabled
+text .resultBox -width 60 -height 5 -state disabled
 grid .resultBox -row 7 -column 1 -columnspan 2 -padx 10 -pady 5 -sticky "nsew"
 
 # Create Copy button
-button .copyButton -text "Copy" -command {copyResult}
+button .copyButton -text "Copy" -background gray80 -command {copyResult}
 grid .copyButton -row 8 -column 1 -columnspan 2 -padx 10 -pady 10 -sticky "ew"
 
 # Function to copy the result to the clipboard
@@ -117,7 +128,7 @@ proc calculateMAC {} {
         }
         set hash [.hmacHashCombo get]
         set result [exec edgetk -mac hmac -md $hash -key $key << $message]
-    } elseif {$algorithm == "cmac"} {
+    } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
         set cipher [.cmacCipherCombo get]
 
         # Check if the key is empty
@@ -158,7 +169,14 @@ proc calculateMAC {} {
             .keyEntry delete 0 end
             .keyEntry insert 0 $key
         }
-        set result [exec edgetk -mac cmac -cipher $cipher -key $key << $message]
+        if {[string length $key] != 32 && $algorithm == "pmac"} {
+            .resultBox configure -state normal
+            .resultBox delete 1.0 end
+            .resultBox insert 1.0 "Error: PMAC requires a 128-bit (16-byte) block cipher."
+            .resultBox configure -state disabled
+            return
+        }
+        set result [exec edgetk -mac $algorithm -cipher $cipher -key $key << $message]
     } else {
         set keySize 0
         switch $algorithm {

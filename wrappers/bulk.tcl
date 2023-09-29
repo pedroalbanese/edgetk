@@ -2,7 +2,23 @@
 
 # Create a new window
 wm title . "EDGE Bulk Encryption Tool written in TCL/TK"
-wm geometry . 880x580
+#wm geometry . 880x580
+
+# Create a frame for the top section with a gray background
+frame .topFrame2 -background gray90 -bd 1 -relief solid
+grid .topFrame2 -row 0 -column 2 -rowspan 2 -columnspan 6 -sticky "nsew"
+
+# Create a frame for the top section with a gray background2
+frame .topFrame -background gray90 -bd 1 -relief solid
+grid .topFrame -row 0 -column 0 -rowspan 2 -columnspan 2 -sticky "nsew"
+
+# Create a frame for the top section with a gray background3
+frame .topFrame3 -background gray90 -bd 1 -relief solid
+grid .topFrame3 -row 2 -column 0 -rowspan 4 -columnspan 8 -sticky "nsew"
+
+# Create a frame for the botton section with a gray background2
+frame .bottonFrame -background gray90 -bd 1 -relief solid
+grid .bottonFrame -row 6 -column 0 -rowspan 2 -columnspan 8 -sticky "nsew"
 
 # Create Algorithm label
 label .algorithmLabel -text "Algorithm:"
@@ -14,7 +30,7 @@ ttk::combobox .algorithmCombo -values {"3des" "aes" "anubis" "aria" "blowfish" "
 grid .algorithmCombo -row 0 -column 1 -sticky w -padx 10 -pady 5
 
 # Create KDF checkbox for Algorithm
-checkbutton .kdfAlgorithmCheckbox -text "Use KDF (pbkdf2)" -variable ::useKDFAlgorithm
+checkbutton .kdfAlgorithmCheckbox -background gray90 -text "Use KDF (pbkdf2)" -variable ::useKDFAlgorithm
 grid .kdfAlgorithmCheckbox -row 0 -column 4 -sticky w -padx 10 -pady 5
 
 # Create Mode label
@@ -63,9 +79,9 @@ scrollbar .plaintextScroll -command {.plaintextBox yview}
 .plaintextBox configure -yscrollcommand {.plaintextScroll set}
 grid .plaintextBox -row 2 -column 0 -columnspan 6 -padx 10 -pady 10 -sticky "nsew"
 grid .plaintextScroll -row 2 -column 7 -sticky "ns"
-button .copyPlaintextButton -text "Copy" -command {clipboard clear; clipboard append [.plaintextBox get 1.0 end]}
+button .copyPlaintextButton -text "Copy" -background gray80 -command {clipboard clear; clipboard append [.plaintextBox get 1.0 end]}
 grid .copyPlaintextButton -row 3 -column 0 -columnspan 2 -padx 10 -pady 5 -sticky "ew"
-button .pastePlaintextButton -text "Paste" -command {pasteText .plaintextBox}
+button .pastePlaintextButton -text "Paste" -background gray80 -command {pasteText .plaintextBox}
 grid .pastePlaintextButton -row 3 -column 4 -columnspan 3 -padx 10 -pady 5 -sticky "ew"
 
 # Create ciphertext text box with a vertical scrollbar and Copy/Paste buttons
@@ -74,9 +90,9 @@ scrollbar .ciphertextScroll -command {.ciphertextBox yview}
 .ciphertextBox configure -yscrollcommand {.ciphertextScroll set}
 grid .ciphertextBox -row 4 -column 0 -columnspan 6 -padx 10 -pady 10 -sticky "nsew"
 grid .ciphertextScroll -row 4 -column 7 -sticky "ns"
-button .copyCiphertextButton -text "Copy" -command {clipboard clear; clipboard append [.ciphertextBox get 1.0 end]}
+button .copyCiphertextButton -text "Copy" -background gray80 -command {clipboard clear; clipboard append [.ciphertextBox get 1.0 end]}
 grid .copyCiphertextButton -row 5 -column 0 -columnspan 2 -padx 10 -pady 5 -sticky "ew"
-button .pasteCiphertextButton -text "Paste" -command {pasteText .ciphertextBox}
+button .pasteCiphertextButton -text "Paste" -background gray80 -command {pasteText .ciphertextBox}
 grid .pasteCiphertextButton -row 5 -column 4 -columnspan 3 -padx 10 -pady 5 -sticky "ew"
 
 
@@ -97,11 +113,11 @@ entry .ivBox -width 90
 grid .ivBox -row 7 -column 1 -columnspan 4 -sticky w -padx 10 -pady 5
 
 # Create Encrypt button
-button .encryptButton -text "Encrypt" -command {encrypt}
+button .encryptButton -text "Encrypt" -background gray80 -command {encrypt}
 grid .encryptButton -row 7 -column 4 -sticky e -padx 10 -pady 5
 
 # Create Decrypt button
-button .decryptButton -text "Decrypt" -command {decrypt}
+button .decryptButton -text "Decrypt" -background gray80 -command {decrypt}
 grid .decryptButton -row 7 -column 5 -sticky e -padx 10 -pady 5
 
 proc updateKeyEntryDisplay {} {
@@ -109,7 +125,7 @@ proc updateKeyEntryDisplay {} {
 
     if {$useKDFAlgorithm == 1} {
         # Se o checkbox KDF estiver marcado, mostre bullets
-        .keyBox configure -show "•"
+        .keyBox configure -show "*"
     } else {
         # Caso contrário, mostre os caracteres reais
         .keyBox configure -show ""

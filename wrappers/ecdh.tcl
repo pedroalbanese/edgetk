@@ -77,13 +77,29 @@ proc executeHKDF {} {
 
 # Cria a janela principal
 wm title . "EDGE Diffie-Hellman Tool"
-wm geometry . 620x450
+#wm geometry . 620x450
+
+# Create a frame for the top section with a gray background
+frame .topFrame -background gray90 -bd 1 -relief solid
+grid .topFrame -row 0 -column 0 -rowspan 3 -columnspan 4 -sticky "nsew"
+
+# Create a frame for the top section with a gray background2
+frame .topFrame2 -background gray90 -bd 1 -relief solid
+grid .topFrame2 -row 3 -column 0 -rowspan 2 -columnspan 4 -sticky "nsew"
+
+# Create a frame for the top section with a gray background3
+frame .topFrame3 -background gray90 -bd 1 -relief solid
+grid .topFrame3 -row 5 -column 0 -rowspan 3 -columnspan 4 -sticky "nsew"
+
+# Create a frame for the top section with a gray background4
+frame .topFrame4 -background gray90 -bd 1 -relief solid
+grid .topFrame4 -row 8 -column 0 -rowspan 4 -columnspan 4 -sticky "nsew"
 
 # Cria as caixas de entrada de texto
 entry .privateKeyInput -textvariable ::privateKeyInput
 entry .publicKeyInput -textvariable ::publicKeyInput
 entry .peerKeyInput -textvariable ::peerKeyInput
-text .outputArea
+text .outputArea -width 60 -height 7
 entry .saltInput
 
 # Posiciona as caixas de entrada de texto
@@ -91,7 +107,7 @@ grid .privateKeyInput -row 0 -column 1 -sticky "ew"
 grid .publicKeyInput -row 1 -column 1 -sticky "ew"
 grid .peerKeyInput -row 2 -column 1 -sticky "ew"
 grid .outputArea -row 3 -column 1 -columnspan 1 -sticky "nsew"
-grid .saltInput -row 4 -column 1 -sticky "ew"
+grid .saltInput -row 10 -column 1 -sticky "ew"
 
 # Cria os rótulos
 label .privateKeyLabel -text "Private Key:"
@@ -103,7 +119,7 @@ label .saltLabel -text "Salt:"
 grid .privateKeyLabel -row 0 -column 0 -sticky "e"
 grid .publicKeyLabel -row 1 -column 0 -sticky "e"
 grid .peerKeyLabel -row 2 -column 0 -sticky "e"
-grid .saltLabel -row 4 -column 0 -sticky "e"
+grid .saltLabel -row 10 -column 0 -sticky "e"
 
 # Cria os ComboBoxes para seleção de algoritmo, bits, paramset e tamanho da chave de saída
 set ::algorithmComboData {"ecdsa" "sm2" "gost2012" "x25519"}
@@ -134,9 +150,9 @@ ttk::combobox .hashAlgorithmCombo -values $::hashAlgorithmComboData -state reado
 .hashAlgorithmCombo set "sha256"
 
 # Cria os rótulos para os ComboBoxes
-label .algorithmLabel -text "Algorithm:   "
-label .bitsLabel -text "Bits:   "
-label .paramsetLabel -text "Paramset:   "
+label .algorithmLabel -text "Algorithm:"
+label .bitsLabel -text "Bits:"
+label .paramsetLabel -text "Paramset:"
 label .outputKeySizeLabel -text "Output Key Size:"
 label .hashAlgorithmLabel -text "Hash Algorithm:"
 
@@ -153,19 +169,19 @@ grid .hashAlgorithmLabel -row 9 -column 0 -sticky "e"
 grid .hashAlgorithmCombo -row 9 -column 1 -sticky "ew"
 
 # Cria os botões
-button .generateButton -text "Generate" -command {generateKey}
-button .openPublicKeyButton -text "Open" -command {openPublicKey}
-button .openPeerKeyButton -text "Open" -command {openPeerKey}
-button .deriveButton -text "Derive" -command {deriveKey}
-button .copyOutputButton -text "Copy" -command {copyText [.outputArea get 1.0 end]}
-button .executeHKDFButton -text "Execute HKDF" -command {executeHKDF}
+button .generateButton -text "Generate" -background gray80 -command {generateKey}
+button .openPublicKeyButton -text "Open" -background gray80 -command {openPublicKey}
+button .openPeerKeyButton -text "Open" -background gray80 -command {openPeerKey}
+button .deriveButton -text "Derive" -background gray80 -command {deriveKey}
+button .copyOutputButton -text "Copy" -background gray80 -command {copyText [.outputArea get 1.0 end]}
+button .executeHKDFButton -text "Execute HKDF" -background gray80 -command {executeHKDF}
 
 # Posiciona os botões
 grid .generateButton -row 0 -column 2 -sticky "ew"
 grid .openPublicKeyButton -row 1 -column 2 -sticky "ew"
 grid .openPeerKeyButton -row 2 -column 2 -sticky "ew"
 grid .deriveButton -row 3 -column 2 -sticky "ew"
-grid .copyOutputButton -row 10 -column 1 -sticky "ew"
+grid .copyOutputButton -row 4 -column 1 -sticky "ew"
 grid .executeHKDFButton -row 11 -column 1 -sticky "ew"
 
 # Configura margens
@@ -191,6 +207,11 @@ grid configure .outputKeySizeLabel -padx 10 -pady 5
 grid configure .outputKeySizeCombo -padx 10 -pady 5
 grid configure .hashAlgorithmLabel -padx 10 -pady 5
 grid configure .hashAlgorithmCombo -padx 10 -pady 5
+grid configure .algorithmLabel -padx 10 -pady 5
+grid configure .bitsLabel -padx 10 -pady 5
+grid configure .paramsetLabel -padx 10 -pady 5
+grid configure .outputKeySizeLabel -padx 10 -pady 5
+grid configure .hashAlgorithmLabel -padx 10 -pady 5
 
 # Configure o redimensionamento das células da grade
 grid columnconfigure . 1 -weight 1
