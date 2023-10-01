@@ -116,6 +116,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
+    | HAS-160         |     | O   |     |     |     |     |
     | JH              |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
