@@ -46,8 +46,11 @@ RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
 RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
 RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
 RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
 TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-TTAK.KO-12.0276 LSH Message digest algorithm
+TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
 US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms 
 US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 ```
