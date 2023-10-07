@@ -355,7 +355,7 @@ or
 ```
 #### Bcrypt:
 ```sh
-./edgetk -digest -md bcrypt -key "yourkey" > key.bcrypt
+./edgetk -digest -md bcrypt -key "yourkey" [-iter 10] > key.bcrypt
 ./edgetk -check -md bcrypt -key "yourkey" < key.bcrypt
 echo $?
 ```
