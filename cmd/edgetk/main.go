@@ -77,10 +77,10 @@ import (
 	"crypto/go.cypherpunks.ru/gogost/v5/gost3410"
 	"gitee.com/Trisia/gotlcp/tlcp"
 	"github.com/RyuaNerin/go-krypto/aria"
+	"github.com/RyuaNerin/go-krypto/has160"
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
-	"github.com/cheggaaa/pb/v3"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -140,6 +140,8 @@ import (
 
 var (
 	alg       = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
+	cacert    = flag.String("cacert", "", "CA Certificate path. (for TLCP Protocol)")
+	cakey     = flag.String("cakey", "", "CA Private key. (for TLCP Protocol)")
 	cert      = flag.String("cert", "", "Certificate path.")
 	check     = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
 	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
@@ -477,6 +479,8 @@ Subcommands:
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
 		myHash = lsh512.New
+	} else if *md == "has160" {
+		myHash = has160.New
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
@@ -2091,6 +2095,8 @@ Subcommands:
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
 			h = lsh512.New()
+		} else if *md == "has160" {
+			h = has160.New()
 		} else if *md == "keccak" || *md == "keccak256" {
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
@@ -2195,6 +2201,8 @@ Subcommands:
 					h = lsh512.New384()
 				} else if *md == "lsh512" {
 					h = lsh512.New()
+				} else if *md == "has160" {
+					h = has160.New()
 				} else if *md == "keccak" || *md == "keccak256" {
 					h = sha3.NewLegacyKeccak256()
 				} else if *md == "keccak512" {
@@ -2325,6 +2333,8 @@ Subcommands:
 								h = lsh512.New384()
 							} else if *md == "lsh512" {
 								h = lsh512.New()
+							} else if *md == "has160" {
+								h = has160.New()
 							} else if *md == "keccak" || *md == "keccak256" {
 								h = sha3.NewLegacyKeccak256()
 							} else if *md == "keccak512" {
@@ -2448,6 +2458,8 @@ Subcommands:
 					h = lsh512.New384()
 				} else if *md == "lsh512" {
 					h = lsh512.New()
+				} else if *md == "has160" {
+					h = has160.New()
 				} else if *md == "keccak" || *md == "keccak256" {
 					h = sha3.NewLegacyKeccak256()
 				} else if *md == "keccak512" {
@@ -3225,6 +3237,8 @@ Subcommands:
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
 			h = lsh512.New()
+		} else if *md == "has160" {
+			h = has160.New()
 		} else if *md == "gost94" {
 			h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
 		} else if *md == "streebog" || *md == "streebog256" {
@@ -3304,6 +3318,8 @@ Subcommands:
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
 			h = lsh512.New()
+		} else if *md == "has160" {
+			h = has160.New()
 		} else if *md == "gost94" {
 			h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
 		} else if *md == "streebog" || *md == "streebog256" {
@@ -4646,18 +4662,23 @@ Subcommands:
 		}
 		os.Exit(0)
 	}
-
-	if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
-		bar := pb.StartNew(*length)
-		go func() {
-			GenerateRsaKey(*length)
+	/*
+		if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
+			bar := pb.StartNew(*length)
+			go func() {
+				GenerateRsaKey(*length)
+				os.Exit(0)
+			}()
+			for i := 0; i < *length; i++ {
+				time.Sleep(time.Millisecond * 3)
+				bar.Increment()
+			}
+			select {}
 			os.Exit(0)
-		}()
-		for i := 0; i < *length; i++ {
-			time.Sleep(time.Millisecond * 3)
-			bar.Increment()
 		}
-		select {}
+	*/
+	if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
+		GenerateRsaKey(*length)
 		os.Exit(0)
 	}
 
@@ -6842,6 +6863,8 @@ Subcommands:
 	if (*tcpip == "server" || *tcpip == "client") && strings.ToUpper(*alg) == "SM2" && *root != "" {
 		var certPEM []byte
 		var privPEM []byte
+		var cert2PEM []byte
+		var priv2PEM []byte
 		var rootPEM []byte
 
 		file, err := os.Open(*key)
@@ -6885,6 +6908,48 @@ Subcommands:
 		file.Read(buf)
 		certPEM = buf
 
+		if *tcpip == "server" {
+			file, err = os.Open(*cakey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err = file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = make([]byte, info.Size())
+			file.Read(buf)
+
+			block, _ = pem.Decode(buf)
+
+			if block == nil {
+				errors.New("no valid private key found")
+			}
+
+			var privKeyBytes2 []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes2, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				priv2PEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes2})
+			} else {
+				priv2PEM = buf
+			}
+
+			file, err = os.Open(*cacert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err = file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = make([]byte, info.Size())
+			file.Read(buf)
+			cert2PEM = buf
+		}
+
 		file, err = os.Open(*root)
 		if err != nil {
 			log.Fatal(err)
@@ -6899,7 +6964,9 @@ Subcommands:
 
 		if *tcpip == "server" {
 			var cert tlcp.Certificate
+			var certtwo tlcp.Certificate
 			cert, err = tlcp.X509KeyPair(certPEM, privPEM)
+			certtwo, err = tlcp.X509KeyPair(cert2PEM, priv2PEM)
 
 			rootCert, err := smx509.ParseCertificatePEM([]byte(rootPEM))
 			if err != nil {
@@ -6909,7 +6976,7 @@ Subcommands:
 			pool.AddCert(rootCert)
 
 			cfg := tlcp.Config{
-				Certificates: []tlcp.Certificate{cert, cert},
+				Certificates: []tlcp.Certificate{cert, certtwo},
 				ClientAuth:   tlcp.RequireAndVerifyClientCert,
 				ClientCAs:    pool,
 				CipherSuites: []uint16{
@@ -7008,12 +7075,11 @@ Subcommands:
 				log.Fatal(err)
 			}
 
-			certa := conn.ConnectionState().PeerCertificates[0]
-			fmt.Printf("Issuer: \n\t%s\n", certa.Issuer)
-			fmt.Printf("Subject: \n\t%s\n", certa.Subject)
-			fmt.Printf("Expiry: %s \n", certa.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
-			if err != nil {
-				log.Fatal(err)
+			certa := conn.ConnectionState().PeerCertificates
+			for _, cert := range certa {
+				fmt.Printf("Issuer: \n\t%s\n", cert.Issuer)
+				fmt.Printf("Subject: \n\t%s\n", cert.Subject)
+				fmt.Printf("Expiry: %s \n", cert.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
 			}
 
 			defer conn.Close()
@@ -7026,12 +7092,14 @@ Subcommands:
 			}
 
 			var b bytes.Buffer
-			err = pem.Encode(&b, &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: conn.ConnectionState().PeerCertificates[0].Raw,
-			})
-			if err != nil {
-				log.Fatal(err)
+			for _, cert := range conn.ConnectionState().PeerCertificates {
+				err := pem.Encode(&b, &pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: cert.Raw,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 			fmt.Println(b.String())
 
@@ -7484,7 +7552,6 @@ func GenerateRsaKey(bit int) error {
 	if err != nil {
 		log.Fatal("Failed to get absolute path for public key:", err)
 	}
-	print("\n")
 	println("Private key saved to:", absPrivPath)
 	println("Public key saved to:", absPubPath)
 
@@ -7762,6 +7829,8 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
 		myHash = lsh512.New
+	} else if *md == "has160" {
+		myHash = has160.New
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
@@ -7861,6 +7930,8 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
 		myHash = lsh512.New
+	} else if *md == "has160" {
+		myHash = has160.New
 	} else if *md == "whirlpool" {
 		myHash = whirlpool.New
 	} else if *md == "blake2b256" {
