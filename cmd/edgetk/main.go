@@ -7126,30 +7126,16 @@ Subcommands:
 
 	if (*tcpip == "server" || *tcpip == "client") && strings.ToUpper(*alg) == "SM2" && *root == "" {
 		if *tcpip == "server" {
-			/*
-				var certa tlcp.Certificate
-				var certb tlcp.Certificate
-				split1 := strings.Split(*key, ";")
-				split2 := strings.Split(*cert, ";")
-				println(split1[0], split2[0])
-				println(split1[1], split2[1])
-				if len(split1) > 0 {
-					certa, err = tlcp.LoadX509KeyPair(split2[0], split1[0])
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
-				if len(split2) > 0 {
-					certb, err = tlcp.LoadX509KeyPair(split2[1], split1[1])
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
-				cfg := tlcp.Config{Certificates: []tlcp.Certificate{certb, certa}}
-			*/
 			cert, err := tlcp.LoadX509KeyPair(*cert, *key)
-			cfg := tlcp.Config{Certificates: []tlcp.Certificate{cert, cert}}
+			certtwo, err := tlcp.LoadX509KeyPair(*cacert, *cakey)
 
+			cfg := tlcp.Config{
+				Certificates: []tlcp.Certificate{cert, certtwo},
+				CipherSuites: []uint16{
+					tlcp.ECC_SM4_GCM_SM3,
+					tlcp.ECC_SM4_CBC_SM3,
+				},
+			}
 			cfg.Rand = rand.Reader
 
 			port := "8081"
@@ -7225,12 +7211,11 @@ Subcommands:
 				log.Fatal(err)
 			}
 
-			certa := conn.ConnectionState().PeerCertificates[0]
-			fmt.Printf("Issuer: \n\t%s\n", certa.Issuer)
-			fmt.Printf("Subject: \n\t%s\n", certa.Subject)
-			fmt.Printf("Expiry: %s \n", certa.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
-			if err != nil {
-				log.Fatal(err)
+			certa := conn.ConnectionState().PeerCertificates
+			for _, cert := range certa {
+				fmt.Printf("Issuer: \n\t%s\n", cert.Issuer)
+				fmt.Printf("Subject: \n\t%s\n", cert.Subject)
+				fmt.Printf("Expiry: %s \n", cert.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
 			}
 
 			defer conn.Close()
@@ -7243,12 +7228,14 @@ Subcommands:
 			}
 
 			var b bytes.Buffer
-			err = pem.Encode(&b, &pem.Block{
-				Type:  "CERTIFICATE",
-				Bytes: conn.ConnectionState().PeerCertificates[0].Raw,
-			})
-			if err != nil {
-				log.Fatal(err)
+			for _, cert := range conn.ConnectionState().PeerCertificates {
+				err := pem.Encode(&b, &pem.Block{
+					Type:  "CERTIFICATE",
+					Bytes: cert.Raw,
+				})
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 			fmt.Println(b.String())
 
