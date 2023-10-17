@@ -6861,10 +6861,10 @@ Subcommands:
 	}
 
 	if (*tcpip == "server" || *tcpip == "client") && strings.ToUpper(*alg) == "SM2" && *root != "" {
-		var certPEM []byte
-		var privPEM []byte
-		var cert2PEM []byte
-		var priv2PEM []byte
+		var sigcertPEM []byte
+		var sigprivPEM []byte
+		var enccertPEM []byte
+		var encprivPEM []byte
 		var rootPEM []byte
 
 		file, err := os.Open(*key)
@@ -6891,9 +6891,9 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
+			sigprivPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
 		} else {
-			privPEM = buf
+			sigprivPEM = buf
 		}
 
 		file, err = os.Open(*cert)
@@ -6906,7 +6906,7 @@ Subcommands:
 		}
 		buf = make([]byte, info.Size())
 		file.Read(buf)
-		certPEM = buf
+		sigcertPEM = buf
 
 		if *tcpip == "server" {
 			file, err = os.Open(*cakey)
@@ -6932,9 +6932,9 @@ Subcommands:
 				if err != nil {
 					log.Fatal(err)
 				}
-				priv2PEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes2})
+				encprivPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes2})
 			} else {
-				priv2PEM = buf
+				encprivPEM = buf
 			}
 
 			file, err = os.Open(*cacert)
@@ -6947,7 +6947,7 @@ Subcommands:
 			}
 			buf = make([]byte, info.Size())
 			file.Read(buf)
-			cert2PEM = buf
+			enccertPEM = buf
 		}
 
 		file, err = os.Open(*root)
@@ -6963,10 +6963,10 @@ Subcommands:
 		rootPEM = buf
 
 		if *tcpip == "server" {
-			var cert tlcp.Certificate
-			var certtwo tlcp.Certificate
-			cert, err = tlcp.X509KeyPair(certPEM, privPEM)
-			certtwo, err = tlcp.X509KeyPair(cert2PEM, priv2PEM)
+			var sigcert tlcp.Certificate
+			var enccert tlcp.Certificate
+			sigcert, err = tlcp.X509KeyPair(sigcertPEM, sigprivPEM)
+			enccert, err = tlcp.X509KeyPair(enccertPEM, encprivPEM)
 
 			rootCert, err := smx509.ParseCertificatePEM([]byte(rootPEM))
 			if err != nil {
@@ -6976,7 +6976,7 @@ Subcommands:
 			pool.AddCert(rootCert)
 
 			cfg := tlcp.Config{
-				Certificates: []tlcp.Certificate{cert, certtwo},
+				Certificates: []tlcp.Certificate{sigcert, enccert},
 				ClientAuth:   tlcp.RequireAndVerifyClientCert,
 				ClientCAs:    pool,
 				CipherSuites: []uint16{
@@ -7047,7 +7047,7 @@ Subcommands:
 
 		if *tcpip == "client" {
 			var cert tlcp.Certificate
-			cert, err = tlcp.X509KeyPair(certPEM, privPEM)
+			cert, err = tlcp.X509KeyPair(sigcertPEM, sigprivPEM)
 
 			rootCert, err := smx509.ParseCertificatePEM([]byte(rootPEM))
 			if err != nil {
@@ -7126,11 +7126,11 @@ Subcommands:
 
 	if (*tcpip == "server" || *tcpip == "client") && strings.ToUpper(*alg) == "SM2" && *root == "" {
 		if *tcpip == "server" {
-			cert, err := tlcp.LoadX509KeyPair(*cert, *key)
-			certtwo, err := tlcp.LoadX509KeyPair(*cacert, *cakey)
+			sigcert, err := tlcp.LoadX509KeyPair(*cert, *key)
+			enccert, err := tlcp.LoadX509KeyPair(*cacert, *cakey)
 
 			cfg := tlcp.Config{
-				Certificates: []tlcp.Certificate{cert, certtwo},
+				Certificates: []tlcp.Certificate{sigcert, enccert},
 				CipherSuites: []uint16{
 					tlcp.ECC_SM4_GCM_SM3,
 					tlcp.ECC_SM4_CBC_SM3,
