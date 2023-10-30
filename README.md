@@ -202,6 +202,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Recursive Hash Digest + Check
    * ECDH (Shared Key Agreement)
    * CMAC (Cipher-based message authentication code)
+   * GMAC (Galois message authentication code)
    * PMAC (Parallelizable message authentication code)
    * HMAC (Hash-based message authentication code)
    * HKDF (HMAC-based key derivation function)
