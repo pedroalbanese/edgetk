@@ -204,6 +204,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * CMAC (Cipher-based message authentication code)
    * GMAC (Galois message authentication code)
    * PMAC (Parallelizable message authentication code)
+   * VMAC (Variable message authentication code)
    * HMAC (Hash-based message authentication code)
    * HKDF (HMAC-based key derivation function)
    * PBKDF2 (Password-based key derivation function)
