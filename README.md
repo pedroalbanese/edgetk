@@ -47,6 +47,14 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
+- **Experimental:**
+
+    |     Cipher    |  Key |  IV  |         Mode          |
+    |:--------------|:----:|:----:|:---------------------:|
+    | Xoodyak       |  128 |  128 |Lightweight AEAD Permutation Cipher|
+    | Ascon 1.2     |  128 |  128 |NIST Lightweight AEAD Stream Cipher|
+    | Grain128a     |  128 |40-96 |NIST Lightweight AEAD Stream Cipher|
+
 - **256-bit> block ciphers:**
 
     |      Cipher      | Block Size |  Key Size   |          Modes           |
@@ -138,14 +146,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     
     - MAC refers to keyed hash function, like HMAC. 
 
-- **Experimental:**
-
-    |     Cipher    |  Key |  IV  |         Mode          |
-    |:--------------|:----:|:----:|:---------------------:|
-    | Xoodyak       |  128 |  128 |Lightweight AEAD Permutation Cipher|
-    | Ascon 1.2     |  128 |  128 |NIST Lightweight AEAD Stream Cipher|
-    | Grain128a     |  128 |40-96 |NIST Lightweight AEAD Stream Cipher|
-
 ### AEAD
 
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
@@ -212,8 +212,8 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Bcrypt (Password-hashing scheme)
    * Makwa (Password-hashing scheme)
    * Argon2 (Password-hashing scheme and KDF)
-   * TLS (Transport Layer Security 1.2 and 1.3)
-   * TLCP (Transport Layer Cryptography Protocol)
+   * TLS (Transport Layer Security v1.2 and 1.3)
+   * TLCP (Transport Layer Cryptography Protocol v1.1)
    * PKCS12 (Personal Information Exchange Syntax v1.1)
    * X.509 CSRs, CRLs and Certificates
   
