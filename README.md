@@ -179,7 +179,7 @@ PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic
 - **Security Level**
 
     |Name           | Function      |pre-quantum    | post-quantum   |
-    |:-------------:|:-------------:|:-------------:|:--------------:|
+    |:--------------|:--------------|:-------------:|:--------------:|
     |AES-128        | block cipher  | 128           | 64 (Grover)    |
     |AES-256        | block cipher  | 256           | 128 (Grover)   |
     |Salsa20        | stream cipher | 256           | 128 (Grover)   |
