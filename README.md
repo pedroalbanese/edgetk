@@ -15,7 +15,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Public key algorithms:**  
 
-    |  Algorithm          | 256 | 512 |ECDH | DSA |Encryption| TLS |
+    |  Algorithm          | 256 | 512 |ECDH |Sign |Encryption| TLS |
     |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O   | O        | O   |
     | Ed25519             | O   |     | O   | O   |          | O   |
