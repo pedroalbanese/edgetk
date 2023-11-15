@@ -183,14 +183,12 @@ PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic
     |AES-128        | block cipher  | 128           | 64 (Grover)    |
     |AES-256        | block cipher  | 256           | 128 (Grover)   |
     |Salsa20        | stream cipher | 256           | 128 (Grover)   |
-    |GMAC           | MAC           | 128           | 128 (no impact)|
-    |Poly1305       | MAC           | 128           | 128 (no impact)|
+    |GMAC           | MAC           | 128           | 128            |
+    |Poly1305       | MAC           | 128           | 128            |
     |SHA-256        | hash function | 256           | 128 (Grover)   |
     |SHA-3          | hash function | 256           | 128 (Grover)   |
     |RSA-3072       | encryption    | 128           | broken (Shor)  |
     |RSA-3072       | signature     | 128           | broken (Shor)  |
-    |DH-3072        | key exchange  | 128           | broken (Shor)  |
-    |DSA-3072       | signature     | 128           | broken (Shor)  |
     |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
     |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
 
