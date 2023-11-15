@@ -174,11 +174,30 @@ MAC (Message Authentication Code) is a cryptographic function used to ensure the
 ### PBKDF2
 PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic function designed to derive secure cryptographic keys from weak passwords or passphrases. It applies a pseudorandom function, such as HMAC-SHA1, HMAC-SHA256, or HMAC-SHA512, multiple times in a loop, with a salt and a user-defined number of iterations, effectively increasing the computational cost of key generation. This technique enhances the resilience against brute-force attacks, making it more difficult and time-consuming for attackers to obtain the original password from the derived key.
 
+### Post-Quantum Cryptography (PQC)
+
+- **Security Level**
+
+    |Name           | Function      |pre-quantum    | post-quantum   |
+    |:-------------:|:-------------:|:-------------:|:--------------:|
+    |AES-128        | block cipher  | 128           | 64 (Grover)    |
+    |AES-256        | block cipher  | 256           | 128 (Grover)   |
+    |Salsa20        | stream cipher | 256           | 128 (Grover)   |
+    |GMAC           | MAC           | 128           | 128 (no impact)|
+    |Poly1305       | MAC           | 128           | 128 (no impact)|
+    |SHA-256        | hash function | 256           | 128 (Grover)   |
+    |SHA-3          | hash function | 256           | 128 (Grover)   |
+    |RSA-3072       | encryption    | 128           | broken (Shor)  |
+    |RSA-3072       | signature     | 128           | broken (Shor)  |
+    |DH-3072        | key exchange  | 128           | broken (Shor)  |
+    |DSA-3072       | signature     | 128           | broken (Shor)  |
+    |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
+    |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
+
 ### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
 SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
 
 ### XOR
-
 XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
 
 - **exclusive or**
