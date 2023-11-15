@@ -126,6 +126,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
     | HAS-160         |     | O   |     |     |     |     |
+    | Haraka v2       |     |     |     | O   |     |     |
     | JH              |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
