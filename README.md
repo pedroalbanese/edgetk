@@ -44,7 +44,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Rabbit           | 128        |   64 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | Salsa20          | 256        | 64/192 | XOR Stream            |
-    | Skein512         | 256        |  256 | MAC + XOR Stream      |
+    | Skein512         | Any        |  Any | MAC + XOR Stream      |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -125,8 +125,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Cubehash        |     |     |     |     | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
-    | HAS-160         |     | O   |     |     |     |     |
     | Haraka v2       |     |     |     | O   |     |     |
+    | HAS-160         |     | O   |     |     |     |     |
     | JH              |     |     |     | O   |     |     |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
