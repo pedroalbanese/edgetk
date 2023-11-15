@@ -45,6 +45,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/blake2s"
@@ -88,6 +89,8 @@ import (
 	"github.com/emmansun/gmsm/smx509"
 	"github.com/emmansun/gmsm/zuc"
 	"github.com/emmansun/go-pkcs12"
+	"github.com/kasperdi/SPHINCSPLUS-golang/parameters"
+	"github.com/kasperdi/SPHINCSPLUS-golang/sphincs"
 	"github.com/pedroalbanese/IGE-go/ige"
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
@@ -101,6 +104,7 @@ import (
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
+	"github.com/pedroalbanese/gmac"
 	"github.com/pedroalbanese/go-chaskey"
 	"github.com/pedroalbanese/go-external-ip"
 	"github.com/pedroalbanese/go-idea"
@@ -122,6 +126,7 @@ import (
 	"github.com/pedroalbanese/kuznechik"
 	"github.com/pedroalbanese/lwcrypto/ascon2"
 	"github.com/pedroalbanese/lwcrypto/grain"
+	"github.com/pedroalbanese/makwa-go"
 	"github.com/pedroalbanese/ocb"
 	"github.com/pedroalbanese/ocb3"
 	"github.com/pedroalbanese/pmac"
@@ -133,43 +138,48 @@ import (
 	skeincipher "github.com/pedroalbanese/skein-1"
 	"github.com/pedroalbanese/threefish"
 	"github.com/pedroalbanese/tiger"
+	"github.com/pedroalbanese/vmac"
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
 )
 
 var (
-	alg       = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
-	cacert    = flag.String("cacert", "", "CA Certificate path. (for TLCP Protocol)")
-	cakey     = flag.String("cakey", "", "CA Private key. (for TLCP Protocol)")
-	cert      = flag.String("cert", "", "Certificate path.")
-	check     = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
-	cph       = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
-	crl       = flag.String("crl", "", "Certificate Revocation List path.")
-	crypt     = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
-	digest    = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
-	encode    = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
-	info      = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
-	iport     = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
-	iter      = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
-	kdf       = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt]")
-	key       = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
-	length    = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
-	mac       = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
-	md        = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
-	mode      = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
-	paramset  = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
-	pkey      = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
-	priv      = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
-	pub       = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
-	pwd       = flag.String("pwd", "", "Password. (for Private key PEM encryption)")
-	random    = flag.Int("rand", 0, "Generate random cryptographic key with given bit length.")
-	recursive = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
-	root      = flag.String("root", "", "Root CA Certificate path.")
-	salt      = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
-	sig       = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
-	tcpip     = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
-	vector    = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
+	alg        = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
+	cacert     = flag.String("cacert", "", "CA Certificate path. (for TLCP Protocol)")
+	cakey      = flag.String("cakey", "", "CA Private key. (for TLCP Protocol)")
+	cert       = flag.String("cert", "", "Certificate path.")
+	check      = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
+	cph        = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
+	crl        = flag.String("crl", "", "Certificate Revocation List path.")
+	crypt      = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
+	digest     = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
+	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
+	factorPStr = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
+	factorQStr = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
+	info       = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
+	iport      = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
+	iter       = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
+	kdf        = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt]")
+	key        = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
+	length     = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
+	mac        = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
+	md         = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
+	mode       = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
+	modulusStr = flag.String("modulus", "", "Makwa modulus. (Makwa hash Public Parameter)")
+	paramset   = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
+	pkey       = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
+	priv       = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
+	pub        = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
+	pwd        = flag.String("pwd", "", "Password. (for Private key PEM encryption)")
+	random     = flag.Int("rand", 0, "Generate random cryptographic key with given bit length.")
+	recover    = flag.Bool("recover", false, "Recover Passphrase from Makwa hash with Private Parameters.")
+	recursive  = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
+	root       = flag.String("root", "", "Root CA Certificate path.")
+	salt       = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
+	sig        = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
+	tcpip      = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
+	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -219,7 +229,7 @@ func main() {
 
 Public Key Algorithms:
   ecdsa             ed25519           x25519            sm2
-  gost2012          ed25519ph         rsa (default)
+  gost2012          ed25519ph         rsa (default)     sphincs
 
 Stream Ciphers:
   ascon             hc128             rabbit            skein
@@ -227,7 +237,7 @@ Stream Ciphers:
   grain             kcipher2          salsa20           zuc256/eea256
 
 Modes of Operation:
-  eax (aead)        ocb3 (aead)       cbc               ecb
+  eax (aead)        ocb3 (aead)       cbc               ecb [obsolete]
   gcm (aead)        mgm (aead)        cfb/cfb8          ige
   ocb (aead)        ccm (aead)        ctr (default)     ofb
 
@@ -238,18 +248,26 @@ Block Ciphers:
   anubis            grasshopper       magma             threefish
   blowfish          hight             rc2               twofish
 
+Key Derivation Functions:
+  hkdf              pbkdf2            scrypt            bcrypt (phs)
+  argon2 (phs/kdf)  makwa (phs)
+
+Message Athentication Codes:
+  hmac              cmac              gmac              pmac
+  vmac              poly1305          zuc128/eia128     zuc256/eia256 
+  gost              chaskey           siphash           xoodyak
+
 Message Digests:
-  blake2b256        keccak512         rmd256            siphash
-  blake2b512        lsh224            rmd320            siphash64
-  blake2s128        lsh256            sha224            skein256
-  blake2s256        lsh384            sha256 (default)  skein512
-  blake3            lsh512            sha384            sm3
-  chaskey (MAC)     lsh512-256        sha512            streebog256
-  cubehash          md4 [obsolete]    sha512-256        streebog512
-  gost94            md5 [obsolete]    sha3-224          whirlpool
-  groestl           poly1305 (MAC)    sha3-256          xoodyak
-  jh                rmd128            sha3-384          zuc128/eia128
-  keccak256         rmd160            sha3-512          zuc256/eia256`)
+  blake2b256        keccak512         rmd256            sha3-512
+  blake2b512        lsh224            rmd320            siphash
+  blake2s128 (MAC)  lsh256            sha224            siphash64
+  blake2s256        lsh384            sha256 (default)  skein256
+  blake3            lsh512            sha384            skein512
+  cubehash          lsh512-256        sha512            sm3
+  gost94            md4 [obsolete]    sha512-256        streebog256
+  groestl           md5 [obsolete]    sha3-224          streebog512
+  jh                rmd128            sha3-256          whirlpool
+  keccak256         rmd160            sha3-384          xoodyak`)
 		os.Exit(3)
 	}
 
@@ -295,15 +313,18 @@ Methods:
   edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
 Methods: 
-  hkdf, pbkdf2, scrypt
+  hkdf, pbkdf2, scrypt, argon2
 
  HKDF:
   edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
 
+ Argon2:
+  edgetk -kdf argon2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
+
  PBKDF2:
   edgetk -kdf pbkdf2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
 
- Scrypt [*]:
+ Scrypt[*]:
   edgetk -kdf scrypt [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
 
  [*] scrypt iter must be greater than 1 and a power of 2:
@@ -394,13 +415,13 @@ Subcommands:
 		os.Exit(3)
 	}
 
-	if *pkey == "keygen" && *pwd == "" {
+	if *pkey == "keygen" && *pwd == "" && *alg != "sphincs" {
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" && *alg != "sphincs" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -640,8 +661,24 @@ Subcommands:
 		*length = 2048
 	}
 
+	if strings.ToUpper(*alg) == "MAKWA" && *length == 0 {
+		*length = 2048
+	}
+
+	if strings.ToUpper(*alg) == "MAKWA" && *iter == 1 {
+		*iter = 4096
+	}
+
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2") && *length == 0 {
+		*length = 256
+	}
+
 	if (strings.ToUpper(*alg) == "GOST2012" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && *pkey == "keygen" && *length == 0 {
 		*length = 256
+	}
+
+	if strings.ToUpper(*mac) == "VMAC" && *length == 0 {
+		*length = 128
 	}
 
 	if *kdf == "pbkdf2" {
@@ -668,6 +705,16 @@ Subcommands:
 		if *crypt == "" {
 			fmt.Println(*key)
 			os.Exit(0)
+		}
+	}
+
+	if *kdf == "argon2" {
+		hash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
+		*key = hex.EncodeToString(hash)
+
+		if *crypt == "" {
+			fmt.Println(*key)
+			return
 		}
 	}
 
@@ -2006,7 +2053,7 @@ Subcommands:
 	}
 
 	if *md == "bcrypt" && *check {
-		hashedPassword, err := ioutil.ReadAll(os.Stdin)
+		hashedPassword, err := ioutil.ReadAll(inputfile)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -2018,27 +2065,163 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	var maxPlainTextSizeInBits int
-	if *md == "haraka" || *md == "haraka256" || *md == "haraka512" {
-		if *md == "haraka512" {
-			maxPlainTextSizeInBits = 512
-		} else {
-			maxPlainTextSizeInBits = 256
-		}
-		plainTextBytes, err := ioutil.ReadAll(inputfile)
+	if *digest && *md == "argon2" && !*check {
+		hash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
+		fmt.Println(hex.EncodeToString(hash))
+		os.Exit(0)
+	}
+
+	if *md == "argon2" && *check {
+		hashedPassword, err := ioutil.ReadAll(inputfile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		plainTextSizeInBits := len(plainTextBytes) * 8
-		if plainTextSizeInBits > maxPlainTextSizeInBits {
-			println("Alert: The plain text exceeds 256 bits!")
+		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+		computedHash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
+		computedHashString := hex.EncodeToString(computedHash)
+
+		if computedHashString == hashedPasswordString {
+			fmt.Println("Verify: true")
+		} else {
+			fmt.Println("Verify: false")
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if *digest && *alg == "makwa" && !*check {
+		var params makwa.PublicParameters
+		bits := *length
+		privateParams, err := makwa.GenerateParameters(bits)
+		if err != nil {
+			log.Fatal(err)
+		}
+		params.N = privateParams.N
+		params.Hash = myHash
+		fmt.Fprintln(os.Stderr, "Modulus=", params.N)
+		fmt.Fprintln(os.Stderr, "FactorP=", privateParams.P)
+		fmt.Fprintln(os.Stderr, "FactorQ=", privateParams.Q)
+
+		digest, err := makwa.Hash(params, []byte(*key), []byte(*salt), *iter, false, 0)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(digest)
+		os.Exit(0)
+	}
+
+	if *alg == "makwa" && *check {
+		var params makwa.PublicParameters
+		hashedPassword, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+		modulus := new(big.Int)
+		_, success := modulus.SetString(*modulusStr, 10)
+		if !success {
+			log.Fatal("Failed to parse modulus")
+		}
+
+		params.N = modulus
+		params.Hash = myHash
+
+		digest := &makwa.Digest{}
+		err = digest.UnmarshalText([]byte(hashedPasswordString))
+		if err != nil {
+			log.Fatal(err)
+		}
+		isValid := makwa.CheckPassword(params, digest, []byte(*key))
+		if isValid == nil {
+			fmt.Println("Verify: true")
+			os.Exit(0)
+		} else {
+			fmt.Println("Verify: false")
+			os.Exit(1)
 		}
 	}
 
+	if *recover {
+		hashedPassword, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+		modulus := new(big.Int)
+		_, success := modulus.SetString(*modulusStr, 10)
+		if !success {
+			log.Fatal("Failed to parse modulus")
+		}
+		factor1 := new(big.Int)
+		factor1, success = factor1.SetString(*factorPStr, 10)
+		if !success {
+			log.Fatal("Failed to parse factor1")
+		}
+		factor2 := new(big.Int)
+		factor2, success = factor2.SetString(*factorQStr, 10)
+		if !success {
+			log.Fatal("Failed to parse factor2")
+		}
+		digest := &makwa.Digest{}
+		err = digest.UnmarshalText([]byte(hashedPasswordString))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		params := makwa.PrivateParameters{
+			PublicParameters: makwa.PublicParameters{
+				N:    modulus,
+				Hash: myHash,
+			},
+			P: factor1,
+			Q: factor2,
+		}
+
+		originalKey, err := makwa.Recover(params, digest)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s\n", originalKey)
+		os.Exit(0)
+	}
+
+	if *alg == "sphincs" && *pkey == "keygen" {
+		generateKeyPair()
+	}
+	if *alg == "sphincs" && *pkey == "sign" {
+		signMessage(inputfile)
+	}
+	if *alg == "sphincs" && *pkey == "verify" {
+		verifySignature(inputfile)
+	}
+	/*
+		var maxPlainTextSizeInBits int
+		if *md == "haraka" || *md == "haraka256" || *md == "haraka512" {
+			if *md == "haraka512" {
+				maxPlainTextSizeInBits = 512
+			} else {
+				maxPlainTextSizeInBits = 256
+			}
+			plainTextBytes, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			plainTextSizeInBits := len(plainTextBytes) * 8
+			if plainTextSizeInBits > maxPlainTextSizeInBits {
+				println("Alert: The plain text exceeds 256 bits!")
+			}
+		}
+	*/
 	if *digest && (*md == "haraka" || *md == "haraka256") {
 		xkey := new([32]byte)
 		gkey := new([32]byte)
-		b, _ := ioutil.ReadAll(inputfile)
+		b, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(b)*8 > 256 {
+			fmt.Fprintf(os.Stderr, "Alert: The plain text exceeds 256 bits!\n")
+		}
 		copy(xkey[:], b)
 		haraka.Haraka256(gkey, xkey)
 		fmt.Printf("%x\n", gkey[:])
@@ -2048,7 +2231,13 @@ Subcommands:
 	if *digest && *md == "haraka512" {
 		xkey := new([64]byte)
 		gkey := new([32]byte)
-		b, _ := ioutil.ReadAll(inputfile)
+		b, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(b)*8 > 512 {
+			fmt.Fprintf(os.Stderr, "Alert: The plain text exceeds 256 bits!\n")
+		}
 		copy(xkey[:], b)
 		haraka.Haraka512(gkey, xkey)
 		fmt.Printf("%x\n", gkey[:])
@@ -2671,6 +2860,51 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *mac == "hmac" && *md == "haraka" {
+		key := []byte(*key)
+		b, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(b)*8 > 512 {
+			fmt.Fprintf(os.Stderr, "Alert: The plain text exceeds 512 bits!\n")
+		}
+
+		if len(key) > 64 {
+			log.Fatal("Key length exceeds 64 bytes")
+		}
+		if len(key) < 32 {
+			padKey := make([]byte, 32)
+			copy(padKey, key)
+			key = padKey
+		}
+
+		innerPad := make([]byte, 32)
+		outerPad := make([]byte, 32)
+
+		for i := 0; i < 32; i++ {
+			innerPad[i] = key[i] ^ 0x36
+			outerPad[i] = key[i] ^ 0x5C
+		}
+
+		var innerHashInput [64]byte
+		copy(innerHashInput[:], innerPad)
+		copy(innerHashInput[0:], b)
+
+		var innerHash [32]byte
+		haraka.Haraka512(&innerHash, &innerHashInput)
+
+		var outerInput [64]byte
+		copy(outerInput[:32], outerPad)
+		copy(outerInput[32:], innerHash[:])
+
+		var outerHash [32]byte
+		haraka.Haraka512(&outerHash, &outerInput)
+
+		fmt.Println("HMAC-HARAKA("+inputdesc+")=", hex.EncodeToString(outerHash[:]))
+		os.Exit(0)
+	}
+
 	if *mac == "hmac" {
 		var err error
 		h := hmac.New(myHash, []byte(*key))
@@ -2822,6 +3056,162 @@ Subcommands:
 			}
 		}
 		fmt.Println("PMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "gmac" {
+		var c cipher.Block
+		var err error
+
+		key := []byte(*key)
+
+		if *cph == "sm4" {
+			c, err = sm4.NewCipher(key)
+		} else if *cph == "seed" {
+			c, err = krcrypt.NewSEED(key)
+		} else if *cph == "aes" {
+			c, err = aes.NewCipher(key)
+		} else if *cph == "twofish" {
+			c, err = twofish.NewCipher(key)
+		} else if *cph == "aria" {
+			c, err = aria.NewCipher(key)
+		} else if *cph == "lea" {
+			c, err = lea.NewCipher(key)
+		} else if *cph == "camellia" {
+			c, err = camellia.NewCipher(key)
+		} else if *cph == "serpent" {
+			c, err = serpent.NewCipher(key)
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+			c, err = kuznechik.NewCipher(key)
+		} else if *cph == "anubis" {
+			c, err = anubis.NewWithKeySize(key, len(key))
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		message, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce = []byte(*vector)
+		} else {
+			nonce = []byte("0000000000000000")
+			fmt.Fprintln(os.Stderr, "IV= 0000000000000000")
+		}
+		h, err := gmac.New(c, nonce, message)
+		if err != nil {
+			log.Fatal(err)
+		}
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h)
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("GMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h))
+		os.Exit(0)
+	}
+
+	if *mac == "vmac" {
+		var c cipher.Block
+		var err error
+		if *cph == "blowfish" {
+			c, err = blowfish.NewCipher([]byte(*key))
+		} else if *cph == "idea" {
+			c, err = idea.NewCipher([]byte(*key))
+		} else if *cph == "cast5" {
+			c, err = cast5.NewCipher([]byte(*key))
+		} else if *cph == "rc5" {
+			c, err = rc5.New([]byte(*key))
+		} else if *cph == "sm4" {
+			c, err = sm4.NewCipher([]byte(*key))
+		} else if *cph == "seed" {
+			c, err = krcrypt.NewSEED([]byte(*key))
+		} else if *cph == "hight" {
+			c, err = krcrypt.NewHIGHT([]byte(*key))
+		} else if *cph == "rc2" {
+			c, err = rc2.NewCipher([]byte(*key))
+		} else if *cph == "des" {
+			c, err = des.NewCipher([]byte(*key))
+		} else if *cph == "3des" {
+			c, err = des.NewTripleDESCipher([]byte(*key))
+		} else if *cph == "aes" {
+			c, err = aes.NewCipher([]byte(*key))
+		} else if *cph == "twofish" {
+			c, err = twofish.NewCipher([]byte(*key))
+		} else if *cph == "aria" {
+			c, err = aria.NewCipher([]byte(*key))
+		} else if *cph == "lea" {
+			c, err = lea.NewCipher([]byte(*key))
+		} else if *cph == "camellia" {
+			c, err = camellia.NewCipher([]byte(*key))
+		} else if *cph == "serpent" {
+			c, err = serpent.NewCipher([]byte(*key))
+		} else if *cph == "misty1" {
+			c, err = misty1.New([]byte(*key))
+		} else if *cph == "magma" {
+			if len(*key) != 32 {
+				log.Fatal("MAGMA invalid key size ", len(*key))
+			}
+			c = gost341264.NewCipher([]byte(*key))
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+			if len(*key) != 32 {
+				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
+			}
+			c, err = kuznechik.NewCipher([]byte(*key))
+		} else if *cph == "gost89" {
+			if len(*key) != 32 {
+				log.Fatal("GOST89: invalid key size ", len(*key))
+			}
+			c = gost28147.NewCipher([]byte(*key), &gost28147.SboxIdtc26gost28147paramZ)
+		} else if *cph == "anubis" {
+			if len(*key) != 16 && len(*key) != 24 && len(*key) != 32 && len(*key) != 40 {
+				log.Fatal("ANUBIS: invalid key size ", len(*key))
+			}
+			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
+		} else if *cph == "threefish256" || *cph == "threefish" {
+			var tweak []byte
+			tweak = make([]byte, 16)
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			c, err = threefish.New256([]byte(*key), tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		h, err := vmac.New(c, []byte(*key), []byte(*vector), *length/8)
+		if err != nil {
+			log.Fatal(err)
+		}
+		io.Copy(h, inputfile)
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum())
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("VMAC-"+strings.ToUpper(*cph)+"("+inputdesc+")=", hex.EncodeToString(h.Sum()))
 		os.Exit(0)
 	}
 
@@ -8948,6 +9338,103 @@ func printKeyDetails(block *pem.Block) {
 		fmt.Fprintf(os.Stderr, "GOST2012 (%v-bit)\n", len(publicKey.Raw())*4)
 	default:
 		log.Fatal("unknown type of public key")
+	}
+}
+
+func generateKeyPair() {
+	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+	sk, pk := sphincs.Spx_keygen(params)
+
+	serializedSK, err := sk.SerializeSK()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	serializedPK, err := pk.SerializePK()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Private= %x\n", serializedSK)
+	fmt.Printf("Public= %x\n", serializedPK)
+}
+
+func signMessage(input io.Reader) {
+	messageBytes, err := ioutil.ReadAll(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+
+	var sk *sphincs.SPHINCS_SK
+	if *key != "" {
+		privateParamBytes, _ := hex.DecodeString(*key)
+		deserializedSK, err := sphincs.DeserializeSK(params, privateParamBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sk = deserializedSK
+	} else {
+		log.Fatal("Please provide a private parameter using the -key flag for signing.")
+	}
+
+	signature := sphincs.Spx_sign(params, messageBytes, sk)
+
+	serializedSignature, err := signature.SerializeSignature()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	base64Signature := base64.StdEncoding.EncodeToString(serializedSignature)
+	fmt.Printf("%s\n", base64Signature)
+}
+
+func verifySignature(input io.Reader) {
+	messageBytes, err := ioutil.ReadAll(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+
+	var pk *sphincs.SPHINCS_PK
+	if *key != "" {
+		publicKeyBytes, err := hex.DecodeString(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		deserializedPK, err := sphincs.DeserializePK(params, publicKeyBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pk = deserializedPK
+	} else {
+		log.Fatal("Please provide a public key using the -key flag for verification.")
+	}
+
+	signatureBytes, err := ioutil.ReadFile(*sig)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	decodedSignature, err := base64.StdEncoding.DecodeString(string(signatureBytes))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	deserializedSignature, err := sphincs.DeserializeSignature(params, decodedSignature)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	signature := deserializedSignature
+
+	if sphincs.Spx_verify(params, messageBytes, signature, pk) {
+		fmt.Println("Verified: true")
+	} else {
+		fmt.Println("Verified: false")
+		os.Exit(1)
 	}
 }
 
