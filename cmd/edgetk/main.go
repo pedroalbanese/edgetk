@@ -253,21 +253,23 @@ Key Derivation Functions:
   argon2 (phs/kdf)  makwa (phs)
 
 Message Athentication Codes:
-  hmac              cmac              gmac              pmac
-  vmac              poly1305          zuc128/eia128     zuc256/eia256 
-  gost              chaskey           siphash           xoodyak
+  chaskey           hmac              siphash64         xoodyak
+  cmac              pmac              skein             zuc128/eia128
+  gmac              poly1305          vmac              zuc256/eia256
+  gost              siphash
 
 Message Digests:
-  blake2b256        keccak512         rmd256            sha3-512
-  blake2b512        lsh224            rmd320            siphash
-  blake2s128 (MAC)  lsh256            sha224            siphash64
-  blake2s256        lsh384            sha256 (default)  skein256
-  blake3            lsh512            sha384            skein512
-  cubehash          lsh512-256        sha512            sm3
-  gost94            md4 [obsolete]    sha512-256        streebog256
-  groestl           md5 [obsolete]    sha3-224          streebog512
-  jh                rmd128            sha3-256          whirlpool
-  keccak256         rmd160            sha3-384          xoodyak`)
+  blake2b256        jh                rmd160            sha3-384
+  blake2b512        keccak256         rmd256            sha3-512
+  blake2s128 (MAC)  keccak512         rmd320            siphash
+  blake2s256        lsh224            sha1 [obsolete]   siphash64
+  blake3            lsh256            sha224            skein256
+  cubehash          lsh384            sha256 (default)  skein512
+  gost94            lsh512            sha384            sm3
+  groestl           lsh512-256        sha512            streebog256
+  haraka256         md4 [obsolete]    sha512-256        streebog512
+  haraka512         md5 [obsolete]    sha3-224          whirlpool
+  has160            rmd128            sha3-256          xoodyak`)
 		os.Exit(3)
 	}
 
@@ -625,6 +627,10 @@ Subcommands:
 		*length = 256
 	}
 
+	if *mac == "skein" && *length == 0 {
+		*length = 256
+	}
+
 	if *cph == "3des" && *pkey != "keygen" && *length != 192 && *crypt != "" {
 		*length = 192
 	}
@@ -658,7 +664,7 @@ Subcommands:
 	}
 
 	if strings.ToUpper(*alg) == "RSA" && *pkey == "keygen" && *length == 0 {
-		*length = 2048
+		*length = 3072
 	}
 
 	if strings.ToUpper(*alg) == "MAKWA" && *length == 0 {
@@ -2194,24 +2200,7 @@ Subcommands:
 	if *alg == "sphincs" && *pkey == "verify" {
 		verifySignature(inputfile)
 	}
-	/*
-		var maxPlainTextSizeInBits int
-		if *md == "haraka" || *md == "haraka256" || *md == "haraka512" {
-			if *md == "haraka512" {
-				maxPlainTextSizeInBits = 512
-			} else {
-				maxPlainTextSizeInBits = 256
-			}
-			plainTextBytes, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			plainTextSizeInBits := len(plainTextBytes) * 8
-			if plainTextSizeInBits > maxPlainTextSizeInBits {
-				println("Alert: The plain text exceeds 256 bits!")
-			}
-		}
-	*/
+
 	if *digest && (*md == "haraka" || *md == "haraka256") {
 		xkey := new([32]byte)
 		gkey := new([32]byte)
@@ -2236,7 +2225,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		if len(b)*8 > 512 {
-			fmt.Fprintf(os.Stderr, "Alert: The plain text exceeds 256 bits!\n")
+			fmt.Fprintf(os.Stderr, "Alert: The plain text exceeds 512 bits!\n")
 		}
 		copy(xkey[:], b)
 		haraka.Haraka512(gkey, xkey)
@@ -2839,7 +2828,7 @@ Subcommands:
 
 	if *mac == "skein" {
 		var err error
-		h := skeincipher.NewMAC(32, []byte(*key))
+		h := skeincipher.NewMAC(uint64(*length/8), []byte(*key))
 		if _, err = io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
@@ -3186,6 +3175,26 @@ Subcommands:
 				tweak = []byte(*info)
 			}
 			c, err = threefish.New256([]byte(*key), tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish512" {
+			var tweak []byte
+			tweak = make([]byte, 16)
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			c, err = threefish.New512([]byte(*key), tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish1024" {
+			var tweak []byte
+			tweak = make([]byte, 16)
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			c, err = threefish.New1024([]byte(*key), tweak)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -5052,21 +5061,7 @@ Subcommands:
 		}
 		os.Exit(0)
 	}
-	/*
-		if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
-			bar := pb.StartNew(*length)
-			go func() {
-				GenerateRsaKey(*length)
-				os.Exit(0)
-			}()
-			for i := 0; i < *length; i++ {
-				time.Sleep(time.Millisecond * 3)
-				bar.Increment()
-			}
-			select {}
-			os.Exit(0)
-		}
-	*/
+
 	if *pkey == "keygen" && strings.ToUpper(*alg) == "RSA" {
 		GenerateRsaKey(*length)
 		os.Exit(0)
