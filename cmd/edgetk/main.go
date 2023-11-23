@@ -136,6 +136,7 @@ import (
 	"github.com/pedroalbanese/siphash"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
+	"github.com/pedroalbanese/spritz"
 	"github.com/pedroalbanese/threefish"
 	"github.com/pedroalbanese/tiger"
 	"github.com/pedroalbanese/vmac"
@@ -211,11 +212,11 @@ var (
 	oidStepCertificateAuthority     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
 )
 
-func handleConnection(c net.Conn) {
+func handleConnectionTLS(c net.Conn) {
 	log.Printf("Client(TLS) %v connected via secure channel.", c.RemoteAddr())
 }
 
-func handleConnection2(c net.Conn) {
+func handleConnectionTLCP(c net.Conn) {
 	log.Printf("Client(TLCP) %v connected via secure channel.", c.RemoteAddr())
 }
 
@@ -259,17 +260,18 @@ Message Athentication Codes:
   gost              siphash
 
 Message Digests:
-  blake2b256        jh                rmd160            sha3-384
-  blake2b512        keccak256         rmd256            sha3-512
-  blake2s128 (MAC)  keccak512         rmd320            siphash
-  blake2s256        lsh224            sha1 [obsolete]   siphash64
-  blake3            lsh256            sha224            skein256
-  cubehash          lsh384            sha256 (default)  skein512
-  gost94            lsh512            sha384            sm3
-  groestl           lsh512-256        sha512            streebog256
-  haraka256         md4 [obsolete]    sha512-256        streebog512
-  haraka512         md5 [obsolete]    sha3-224          whirlpool
-  has160            rmd128            sha3-256          xoodyak`)
+  blake2b256        keccak256         rmd256            shake128
+  blake2b512        keccak512         rmd320            shake256
+  blake2s128        lsh224            sha1 [obsolete]   siphash
+  blake2s256        lsh256            sha224            siphash64
+  blake3            lsh384            sha256 (default)  skein256
+  cubehash          lsh512            sha384            skein512
+  gost94            lsh512-224        sha512            sm3
+  groestl           lsh512-256        sha512-256        streebog256
+  haraka256         md4 [obsolete]    sha3-224          streebog512
+  haraka512         md5 [obsolete]    sha3-256          whirlpool
+  has160 [obsolete] rmd128            sha3-384          xoodyak
+  jh                rmd160            sha3-512`)
 		os.Exit(3)
 	}
 
@@ -417,13 +419,13 @@ Subcommands:
 		os.Exit(3)
 	}
 
-	if *pkey == "keygen" && *pwd == "" && *alg != "sphincs" {
+	if *pkey == "keygen" && *pwd == "" {
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" && *alg != "sphincs" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -439,7 +441,7 @@ Subcommands:
 		if block == nil {
 			errors.New("no valid private key found")
 		}
-		if IsEncryptedPEMBlock(block) {
+		if IsEncryptedPEMBlock(block) || block.Type == "SPHINCS ENCRYPTED PRIVATE KEY" {
 			print("Passphrase: ")
 			pass, _ := gopass.GetPasswd()
 			*pwd = string(pass)
@@ -492,13 +494,23 @@ Subcommands:
 		myHash = sha3.NewLegacyKeccak256
 	} else if *md == "keccak512" {
 		myHash = sha3.NewLegacyKeccak512
-	} else if *md == "lsh224" {
+	} else if *md == "shake128" {
+		myHash = func() hash.Hash {
+			return sha3.NewShake128()
+		}
+	} else if *md == "shake256" {
+		myHash = func() hash.Hash {
+			return sha3.NewShake256()
+		}
+	} else if *md == "lsh224" || *md == "lsh256-224" {
 		myHash = lsh256.New224
-	} else if *md == "lsh" || *md == "lsh256" {
+	} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 		myHash = lsh256.New
 	} else if *md == "lsh512-256" {
 		myHash = lsh512.New256
-	} else if *md == "lsh384" {
+	} else if *md == "lsh512-224" {
+		myHash = lsh512.New224
+	} else if *md == "lsh384" || *md == "lsh512-384" {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
 		myHash = lsh512.New
@@ -598,6 +610,14 @@ Subcommands:
 		io.Copy(buf, data)
 		b := strings.TrimSuffix(string(buf.Bytes()), "\r\n")
 		b = strings.TrimSuffix(string(b), "\n")
+		if !isHexDump(b) {
+			data, err := decodeHexDump(b)
+			if err != nil {
+				log.Fatal(err)
+			}
+			os.Stdout.Write(data)
+			os.Exit(0)
+		}
 		if len(b) == 0 {
 			os.Exit(0)
 		}
@@ -675,7 +695,15 @@ Subcommands:
 		*iter = 4096
 	}
 
-	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2") && *length == 0 {
+	if *digest && *md == "spritz" && *length == 0 {
+		*length = 256
+	}
+
+	if *pkey == "keygen" && *alg == "sphincs" && *iter == 1 {
+		*iter = 1048576
+	}
+
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF") && *length == 0 {
 		*length = 256
 	}
 
@@ -761,6 +789,76 @@ Subcommands:
 				break
 			}
 		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && *cph == "spritz" {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		var nonce []byte
+		if *vector != "" {
+			nonce, _ = hex.DecodeString(*vector)
+		} else {
+			nonce = make([]byte, 32)
+			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+		}
+
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		if flag.NArg() > 0 {
+			file, err := os.Open(flag.Arg(0))
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer file.Close()
+			inputfile = file
+		} else {
+			inputfile = os.Stdin
+		}
+
+		if *crypt == "enc" {
+			out := spritz.EncryptWithIV(key, []byte(*vector), msg)
+			fmt.Printf("%s", out)
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			out := spritz.DecryptWithIV(key, []byte(*vector), msg)
+			fmt.Printf("%s", out)
+			os.Exit(0)
+		}
+		os.Exit(0)
+	}
+
+	if *digest && *md == "spritz" {
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		out := spritz.Hash(msg, byte(*length/8))
+		fmt.Printf("%x\n", out)
 		os.Exit(0)
 	}
 
@@ -2104,15 +2202,16 @@ Subcommands:
 		}
 		params.N = privateParams.N
 		params.Hash = myHash
-		fmt.Fprintln(os.Stderr, "Modulus=", params.N)
-		fmt.Fprintln(os.Stderr, "FactorP=", privateParams.P)
-		fmt.Fprintln(os.Stderr, "FactorQ=", privateParams.Q)
+
+		fmt.Println("Modulus=", params.N)
+		fmt.Println("FactorP=", privateParams.P)
+		fmt.Println("FactorQ=", privateParams.Q)
 
 		digest, err := makwa.Hash(params, []byte(*key), []byte(*salt), *iter, false, 0)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(digest)
+		fmt.Println("Digest=", digest)
 		os.Exit(0)
 	}
 
@@ -2191,16 +2290,6 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *alg == "sphincs" && *pkey == "keygen" {
-		generateKeyPair()
-	}
-	if *alg == "sphincs" && *pkey == "sign" {
-		signMessage(inputfile)
-	}
-	if *alg == "sphincs" && *pkey == "verify" {
-		verifySignature(inputfile)
-	}
-
 	if *digest && (*md == "haraka" || *md == "haraka256") {
 		xkey := new([32]byte)
 		gkey := new([32]byte)
@@ -2263,13 +2352,19 @@ Subcommands:
 			h = sha3.New384()
 		} else if *md == "sha3-512" {
 			h = sha3.New512()
-		} else if *md == "lsh224" {
+		} else if *md == "shake128" {
+			h = sha3.NewShake128()
+		} else if *md == "shake256" {
+			h = sha3.NewShake256()
+		} else if *md == "lsh224" || *md == "lsh256-224" {
 			h = lsh256.New224()
-		} else if *md == "lsh" || *md == "lsh256" {
+		} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 			h = lsh256.New()
+		} else if *md == "lsh512-224" {
+			h = lsh512.New224()
 		} else if *md == "lsh512-256" {
 			h = lsh512.New256()
-		} else if *md == "lsh384" {
+		} else if *md == "lsh384" || *md == "lsh512-384" {
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
 			h = lsh512.New()
@@ -2369,13 +2464,19 @@ Subcommands:
 					h = sha3.New384()
 				} else if *md == "sha3-512" {
 					h = sha3.New512()
-				} else if *md == "lsh224" {
+				} else if *md == "shake128" {
+					h = sha3.NewShake128()
+				} else if *md == "shake256" {
+					h = sha3.NewShake256()
+				} else if *md == "lsh224" || *md == "lsh256-224" {
 					h = lsh256.New224()
-				} else if *md == "lsh" || *md == "lsh256" {
+				} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 					h = lsh256.New()
+				} else if *md == "lsh512-224" {
+					h = lsh512.New224()
 				} else if *md == "lsh512-256" {
 					h = lsh512.New256()
-				} else if *md == "lsh384" {
+				} else if *md == "lsh384" || *md == "lsh512-384" {
 					h = lsh512.New384()
 				} else if *md == "lsh512" {
 					h = lsh512.New()
@@ -2501,13 +2602,19 @@ Subcommands:
 								h = sha3.New384()
 							} else if *md == "sha3-512" {
 								h = sha3.New512()
-							} else if *md == "lsh224" {
+							} else if *md == "shake128" {
+								h = sha3.NewShake128()
+							} else if *md == "shake256" {
+								h = sha3.NewShake256()
+							} else if *md == "lsh224" || *md == "lsh256-224" {
 								h = lsh256.New224()
-							} else if *md == "lsh" || *md == "lsh256" {
+							} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 								h = lsh256.New()
+							} else if *md == "lsh512-224" {
+								h = lsh512.New224()
 							} else if *md == "lsh512-256" {
 								h = lsh512.New256()
-							} else if *md == "lsh384" {
+							} else if *md == "lsh384" || *md == "lsh512-384" {
 								h = lsh512.New384()
 							} else if *md == "lsh512" {
 								h = lsh512.New()
@@ -2626,13 +2733,19 @@ Subcommands:
 					h = sha3.New384()
 				} else if *md == "sha3-512" {
 					h = sha3.New512()
-				} else if *md == "lsh224" {
+				} else if *md == "shake128" {
+					h = sha3.NewShake128()
+				} else if *md == "shake256" {
+					h = sha3.NewShake256()
+				} else if *md == "lsh224" || *md == "lsh256-224" {
 					h = lsh256.New224()
-				} else if *md == "lsh" || *md == "lsh256" {
+				} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 					h = lsh256.New()
+				} else if *md == "lsh512-224" {
+					h = lsh512.New224()
 				} else if *md == "lsh512-256" {
 					h = lsh512.New256()
-				} else if *md == "lsh384" {
+				} else if *md == "lsh384" || *md == "lsh512-384" {
 					h = lsh512.New384()
 				} else if *md == "lsh512" {
 					h = lsh512.New()
@@ -3626,13 +3739,13 @@ Subcommands:
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
 			h = sha3.NewLegacyKeccak512()
-		} else if *md == "lsh224" {
+		} else if *md == "lsh224" || *md == "lsh256-224" {
 			h = lsh256.New224()
-		} else if *md == "lsh" || *md == "lsh256" {
+		} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 			h = lsh256.New()
 		} else if *md == "lsh512-256" {
 			h = lsh512.New256()
-		} else if *md == "lsh384" {
+		} else if *md == "lsh384" || *md == "lsh512-384" {
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
 			h = lsh512.New()
@@ -3644,6 +3757,10 @@ Subcommands:
 			h = gost34112012256.New()
 		} else if *md == "streebog512" {
 			h = gost34112012512.New()
+		} else if *md == "shake128" {
+			h = sha3.NewShake128()
+		} else if *md == "shake256" {
+			h = sha3.NewShake256()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "sm3" {
@@ -3707,13 +3824,13 @@ Subcommands:
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
 			h = sha3.NewLegacyKeccak512()
-		} else if *md == "lsh224" {
+		} else if *md == "lsh224" || *md == "lsh256-224" {
 			h = lsh256.New224()
-		} else if *md == "lsh" || *md == "lsh256" {
+		} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 			h = lsh256.New()
 		} else if *md == "lsh512-256" {
 			h = lsh512.New256()
-		} else if *md == "lsh384" {
+		} else if *md == "lsh384" || *md == "lsh512-384" {
 			h = lsh512.New384()
 		} else if *md == "lsh512" {
 			h = lsh512.New()
@@ -3725,6 +3842,10 @@ Subcommands:
 			h = gost34112012256.New()
 		} else if *md == "streebog512" {
 			h = gost34112012512.New()
+		} else if *md == "shake128" {
+			h = sha3.NewShake128()
+		} else if *md == "shake256" {
+			h = sha3.NewShake256()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "sm3" {
@@ -3792,6 +3913,10 @@ Subcommands:
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
 			h = sha3.NewLegacyKeccak512()
+		} else if *md == "shake128" {
+			h = sha3.NewShake128()
+		} else if *md == "shake256" {
+			h = sha3.NewShake256()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "whirlpool" {
@@ -3877,6 +4002,10 @@ Subcommands:
 			h = sha3.NewLegacyKeccak256()
 		} else if *md == "keccak512" {
 			h = sha3.NewLegacyKeccak512()
+		} else if *md == "shake128" {
+			h = sha3.NewShake128()
+		} else if *md == "shake256" {
+			h = sha3.NewShake256()
 		} else if *md == "sha1" {
 			h = sha1.New()
 		} else if *md == "whirlpool" {
@@ -4530,88 +4659,109 @@ Subcommands:
 			*alg = "GOST2012"
 		} else if strings.Contains(s, "X25519 PRIVATE") {
 			*alg = "X25519"
+		} else if strings.Contains(s, "SPHINCS") {
+			*alg = "SPHINCS"
 		} else if strings.Contains(s, "PRIVATE") {
 			*alg = "ED25519"
 		}
 	}
-	/*
-		if (*pkey == "modulus" || *pkey == "text" || *pkey == "info") && PEM == "Certificate" && strings.ToUpper(*alg) == "GOST2012" {
-			var certPEM []byte
-			file, err := os.Open(*cert)
-			if err != nil {
-				log.Println(err)
-			}
-			info, err := file.Stat()
-			if err != nil {
-				log.Println(err)
-			}
-			buf := make([]byte, info.Size())
-			file.Read(buf)
-			certPEM = buf
-			var certPemBlock, _ = pem.Decode([]byte(certPEM))
-			var certa, _ = x509.ParseCertificate(certPemBlock.Bytes)
 
-			if *pkey == "modulus" {
-				var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
-				fmt.Printf("Public.X=%X\n", certaPublicKey.X)
-				fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
-				os.Exit(0)
-			}
+	if strings.ToUpper(*alg) == "SPHINCS" && *pkey == "keygen" {
+		generateKeyPair(*priv, *pub)
+	}
 
-			var buf2 bytes.Buffer
-			buf2.Grow(4096)
+	if strings.ToUpper(*alg) == "SPHINCS" && *pkey == "sign" {
+		signMessage(inputfile, *key)
+	}
 
-			buf2.WriteString(fmt.Sprintf("Certificate:\n"))
-			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
-			printVersion(certa.Version, &buf2)
-			buf2.WriteString(fmt.Sprintf("%8sSerial Number : %x\n", "", certa.SerialNumber))
-			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Issuer.CommonName))
-			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", certa.EmailAddresses))
-			buf2.WriteString(fmt.Sprintf("%8sIsCA          : %v \n", "", certa.IsCA))
+	if strings.ToUpper(*alg) == "SPHINCS" && *pkey == "verify" {
+		verifySignature(inputfile, *key, *sig)
+	}
 
-			buf2.WriteString(fmt.Sprintf("%8sIssuer\n            ", ""))
-			printName(certa.Issuer.Names, &buf2)
-			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
-			printName(certa.Subject.Names, &buf2)
-
-			buf2.WriteString(fmt.Sprintf("%8sValidity\n", ""))
-			buf2.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", certa.NotBefore.Format("Jan 2 15:04:05 2006 MST")))
-			buf2.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", certa.NotAfter.Format("Jan 2 15:04:05 2006 MST")))
-
-			var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
-			x := certaPublicKey.X.Bytes()
-			c := []byte{}
-			c = append(c, x...)
-			buf2.WriteString(fmt.Sprintf("%8sPub.X\n", ""))
-			splitz := SplitSubN(hex.EncodeToString(c), 2)
-			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
-			}
-			y := certaPublicKey.Y.Bytes()
-			c = []byte{}
-			c = append(c, y...)
-			buf2.WriteString(fmt.Sprintf("%8sPub.Y\n", ""))
-			splitz = SplitSubN(hex.EncodeToString(c), 2)
-			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
-			}
-
-			buf2.WriteString(fmt.Sprintf("%8sSubjectKeyId  : %x \n", "", certa.SubjectKeyId))
-			buf2.WriteString(fmt.Sprintf("%8sAuthorityKeyId: %x \n", "", certa.AuthorityKeyId))
-
-			printSignature(certa.SignatureAlgorithm, certa.Signature, &buf2)
-			fmt.Print(buf2.String())
-
-			ok := time.Now().Before(certa.NotAfter)
-			fmt.Println("IsValid:", ok)
-
-			if ok {
-				os.Exit(0)
-			} else {
-				os.Exit(1)
-			}
+	if *pkey == "modulus" && strings.ToUpper(*alg) == "SPHINCS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
 		}
-	*/
+		defer file.Close()
+
+		pemData, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		block, _ := pem.Decode(pemData)
+		if block == nil {
+			log.Fatal("failed to parse PEM block containing the key")
+		}
+
+		isPrivateKey := block.Type == "SPHINCS SECRET KEY" || block.Type == "SPHINCS ENCRYPTED SECRET KEY"
+
+		loadedKeyBytes, err := loadPEMKey(*key, *pwd)
+		if err := printKeyParams(loadedKeyBytes, isPrivateKey); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *pkey == "text" && strings.ToUpper(*alg) == "SPHINCS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		pemData, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		block, _ := pem.Decode(pemData)
+		if block == nil {
+			log.Fatal("failed to parse PEM block containing the key")
+		}
+
+		isPrivateKey := block.Type == "SPHINCS SECRET KEY" || block.Type == "SPHINCS ENCRYPTED SECRET KEY"
+
+		loadedKeyBytes, err := loadPEMKey(*key, *pwd)
+		if err := printKeyParamsFull(loadedKeyBytes, isPrivateKey); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *pkey == "randomart" && strings.ToUpper(*alg) == "SPHINCS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		println("SPHINCS+ (512-bit)")
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+		os.Exit(0)
+	}
+
+	if *pkey == "fingerprint" && strings.ToUpper(*alg) == "SPHINCS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint= ")
+		println(fingerprint)
+		os.Exit(0)
+	}
+
 	if *pkey == "certgen" && strings.ToUpper(*alg) == "GOST2012" {
 		file, err := os.Open(*key)
 		if err != nil {
@@ -4983,7 +5133,7 @@ Subcommands:
 				fmt.Printf("%s\n", pubPEM)
 			}
 
-			go handleConnection(conn)
+			go handleConnectionTLS(conn)
 			fmt.Println("Connection accepted")
 
 			for {
@@ -7108,7 +7258,7 @@ Subcommands:
 				fmt.Printf("%s\n", pubPEM)
 			}
 
-			go handleConnection(conn)
+			go handleConnectionTLS(conn)
 			fmt.Println("Connection accepted")
 
 			for {
@@ -7408,7 +7558,7 @@ Subcommands:
 				fmt.Printf("%s\n", pubPEM)
 			}
 
-			go handleConnection2(conn)
+			go handleConnectionTLCP(conn)
 			fmt.Println("Connection accepted")
 
 			for {
@@ -7560,7 +7710,7 @@ Subcommands:
 				fmt.Printf("%s\n", pubPEM)
 			}
 
-			go handleConnection2(conn)
+			go handleConnectionTLCP(conn)
 			fmt.Println("Connection accepted")
 
 			for {
@@ -8191,13 +8341,23 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = sha3.NewLegacyKeccak256
 	} else if *md == "keccak512" {
 		myHash = sha3.NewLegacyKeccak512
-	} else if *md == "lsh224" {
+	} else if *md == "shake128" {
+		myHash = func() hash.Hash {
+			return sha3.NewShake128()
+		}
+	} else if *md == "shake256" {
+		myHash = func() hash.Hash {
+			return sha3.NewShake256()
+		}
+	} else if *md == "lsh224" || *md == "lsh256-224" {
 		myHash = lsh256.New224
-	} else if *md == "lsh" || *md == "lsh256" {
+	} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 		myHash = lsh256.New
+	} else if *md == "lsh512-224" {
+		myHash = lsh512.New224
 	} else if *md == "lsh512-256" {
 		myHash = lsh512.New256
-	} else if *md == "lsh384" {
+	} else if *md == "lsh384" || *md == "lsh512-384" {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
 		myHash = lsh512.New
@@ -8292,13 +8452,23 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = sha3.NewLegacyKeccak256
 	} else if *md == "keccak512" {
 		myHash = sha3.NewLegacyKeccak512
-	} else if *md == "lsh224" {
+	} else if *md == "shake128" {
+		myHash = func() hash.Hash {
+			return sha3.NewShake128()
+		}
+	} else if *md == "shake256" {
+		myHash = func() hash.Hash {
+			return sha3.NewShake256()
+		}
+	} else if *md == "lsh224" || *md == "lsh256-224" {
 		myHash = lsh256.New224
-	} else if *md == "lsh" || *md == "lsh256" {
+	} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
 		myHash = lsh256.New
+	} else if *md == "lsh512-224" {
+		myHash = lsh512.New224
 	} else if *md == "lsh512-256" {
 		myHash = lsh512.New256
-	} else if *md == "lsh384" {
+	} else if *md == "lsh384" || *md == "lsh512-384" {
 		myHash = lsh512.New384
 	} else if *md == "lsh512" {
 		myHash = lsh512.New
@@ -9336,7 +9506,266 @@ func printKeyDetails(block *pem.Block) {
 	}
 }
 
-func generateKeyPair() {
+func savePEMKey(filename string, keyBytes []byte, blockType string) error {
+	block := &pem.Block{
+		Type:  blockType,
+		Bytes: keyBytes,
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return pem.Encode(file, block)
+}
+
+func savePEMPublicKey(filename string, keyBytes []byte) error {
+	return savePEMKey(filename, keyBytes, "SPHINCS PUBLIC KEY")
+}
+
+/*
+func savePEMPrivateKey(filename string, keyBytes []byte, passphrase string) error {
+	var blockType string
+	if passphrase != "" {
+		encryptedSK, err := encryptKey(keyBytes, passphrase)
+		if err != nil {
+			return err
+		}
+		keyBytes = encryptedSK
+		blockType = "SPHINCS ENCRYPTED SECRET KEY"
+	} else {
+		blockType = "SPHINCS SECRET KEY"
+	}
+
+	return savePEMKey(filename, keyBytes, blockType)
+}
+*/
+
+func savePEMPrivateKey(filename string, keyBytes []byte, passphrase string, tweak string) error {
+	encryptedSK, err := encryptKey(keyBytes, passphrase)
+	if err != nil {
+		return err
+	}
+	headers := map[string]string{
+		"Proc-Type":      "4,ENCRYPTED",
+		"Hash-Algorithm": strings.ToUpper(*md),
+		"Scrypt-Itering": strconv.Itoa(*iter),
+	}
+
+	if strings.ToUpper(*cph) == "THREEFISH256" {
+		headers["DEK-Info"] = fmt.Sprintf("THREEFISH256-CFB,TWEAK,%s", tweak)
+	} else if strings.ToUpper(*cph) == "THREEFISH512" {
+		headers["DEK-Info"] = fmt.Sprintf("THREEFISH512-CFB,TWEAK,%s", tweak)
+	} else if strings.ToUpper(*cph) == "THREEFISH1024" {
+		headers["DEK-Info"] = fmt.Sprintf("THREEFISH1024-CFB,TWEAK,%s", tweak)
+	} else if strings.ToUpper(*cph) == "ANUBIS" {
+		headers["DEK-Info"] = fmt.Sprintf("ANUBIS-CFB")
+	} else if strings.ToUpper(*cph) == "AES" {
+		headers["DEK-Info"] = fmt.Sprintf("AES-CFB")
+	}
+
+	privKeyInfo := &pem.Block{
+		Type:    "SPHINCS ENCRYPTED SECRET KEY",
+		Headers: headers,
+		Bytes:   encryptedSK,
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return pem.Encode(file, privKeyInfo)
+}
+
+func loadPEMKey(filename string, passphrase string) ([]byte, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	pemData, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse PEM block containing the key")
+	}
+
+	if block.Type != "SPHINCS ENCRYPTED SECRET KEY" {
+		return block.Bytes, nil
+	}
+
+	dekInfo := block.Headers["DEK-Info"]
+	tweak := ""
+	if dekInfo != "" {
+		parts := strings.Split(dekInfo, ",")
+		if len(parts) == 3 && parts[1] == "TWEAK" {
+			tweak = parts[2]
+		}
+		*info = tweak
+		*cph = strings.TrimSuffix(strings.ToLower(parts[0]), "-cfb")
+	}
+	*md = strings.ToLower(block.Headers["Hash-Algorithm"])
+	*iter, err = strconv.Atoi(block.Headers["Scrypt-Itering"])
+	if err != nil {
+		return nil, err
+	}
+
+	decryptedKey, err := decryptKey(block.Bytes, passphrase)
+	if err != nil {
+		return nil, err
+	}
+
+	return decryptedKey, nil
+}
+
+func deriveKey(passphrase string, salt []byte) ([]byte, error) {
+	key, err := Scrypt([]byte(passphrase), salt, *iter, 8, 1, 128)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+func encryptKey(key []byte, passphrase string) ([]byte, error) {
+	salt := make([]byte, 16)
+	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
+		return nil, err
+	}
+
+	derivedKey, err := deriveKey(passphrase, salt)
+	if err != nil {
+		return nil, err
+	}
+
+	var tweak []byte
+	tweak = make([]byte, 16)
+	if *info != "" {
+		tweak = []byte(*info)
+	}
+	/*
+		block, err := threefish.New512(derivedKey, tweak)
+		if err != nil {
+			return nil, err
+		}
+	*/
+	var n int
+	var block cipher.Block
+	if *cph == "threefish256" {
+		block, err = threefish.New256(derivedKey[:32], tweak)
+		if err != nil {
+			return nil, err
+		}
+		n = 32
+	} else if *cph == "threefish512" {
+		block, err = threefish.New512(derivedKey[:64], tweak)
+		if err != nil {
+			return nil, err
+		}
+		n = 64
+	} else if *cph == "threefish1024" {
+		block, err = threefish.New1024(derivedKey, tweak)
+		if err != nil {
+			return nil, err
+		}
+		n = 128
+	} else if *cph == "anubis" {
+		block, err = anubis.NewWithKeySize(derivedKey, 40)
+		if err != nil {
+			return nil, err
+		}
+		n = 16
+	} else if *cph == "aes" {
+		block, err = aes.NewCipher(derivedKey[:32])
+		if err != nil {
+			return nil, err
+		}
+		n = 16
+	}
+
+	ciphertext := make([]byte, n+len(key))
+	iv := ciphertext[:n]
+	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+		return nil, err
+	}
+
+	stream := cipher.NewCFBEncrypter(block, iv)
+	stream.XORKeyStream(ciphertext[n:], key)
+
+	return append(salt, ciphertext...), nil
+}
+
+func decryptKey(ciphertext []byte, passphrase string) ([]byte, error) {
+	salt := ciphertext[:16]
+	encryptedKey := ciphertext[16:]
+
+	derivedKey, err := deriveKey(passphrase, salt)
+	if err != nil {
+		return nil, err
+	}
+
+	var tweak []byte
+	tweak = make([]byte, 16)
+	if *info != "" {
+		tweak = []byte(*info)
+	}
+	/*
+		block, err := threefish.New512(derivedKey, tweak)
+		if err != nil {
+			return nil, err
+		}
+	*/
+	var n int
+	var block cipher.Block
+	if *cph == "threefish256" {
+		block, err = threefish.New256(derivedKey[:32], tweak)
+		if err != nil {
+			return nil, err
+		}
+		n = 32
+	} else if *cph == "threefish512" {
+		block, err = threefish.New512(derivedKey[:64], tweak)
+		if err != nil {
+			return nil, err
+		}
+		n = 64
+	} else if *cph == "threefish1024" {
+		block, err = threefish.New1024(derivedKey, tweak)
+		if err != nil {
+			return nil, err
+		}
+		n = 128
+	} else if *cph == "anubis" {
+		block, err = anubis.NewWithKeySize(derivedKey, 40)
+		if err != nil {
+			return nil, err
+		}
+		n = 16
+	} else if *cph == "aes" {
+		block, err = aes.NewCipher(derivedKey[:32])
+		if err != nil {
+			return nil, err
+		}
+		n = 16
+	}
+
+	iv := encryptedKey[:n]
+	encryptedKey = encryptedKey[n:]
+
+	stream := cipher.NewCFBDecrypter(block, iv)
+	stream.XORKeyStream(encryptedKey, encryptedKey)
+
+	return encryptedKey, nil
+}
+
+func generateKeyPair(privPath, pubPath string) {
 	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
 	sk, pk := sphincs.Spx_keygen(params)
 
@@ -9344,81 +9773,139 @@ func generateKeyPair() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	serializedPK, err := pk.SerializePK()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Printf("Private= %x\n", serializedSK)
-	fmt.Printf("Public= %x\n", serializedPK)
-}
-
-func signMessage(input io.Reader) {
-	messageBytes, err := ioutil.ReadAll(input)
+	err = savePEMPrivateKey(privPath, serializedSK, *pwd, *info)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
-
-	var sk *sphincs.SPHINCS_SK
-	if *key != "" {
-		privateParamBytes, _ := hex.DecodeString(*key)
-		deserializedSK, err := sphincs.DeserializeSK(params, privateParamBytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		sk = deserializedSK
-	} else {
-		log.Fatal("Please provide a private parameter using the -key flag for signing.")
+	err = savePEMPublicKey(pubPath, serializedPK)
+	if err != nil {
+		log.Fatal(err)
 	}
 
+	absPrivPath, err := filepath.Abs(*priv)
+	if err != nil {
+		log.Fatal("Failed to get absolute path for private key:", err)
+	}
+	absPubPath, err := filepath.Abs(*pub)
+	if err != nil {
+		log.Fatal("Failed to get absolute path for public key:", err)
+	}
+	println("Private key saved to:", absPrivPath)
+	println("Public key saved to:", absPubPath)
+
+	file, err := os.Open(*pub)
+	if err != nil {
+		log.Fatal(err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+	buf := make([]byte, info.Size())
+	file.Read(buf)
+	fingerprint := calculateFingerprint(buf)
+	print("Fingerprint: ")
+	println(fingerprint)
+	println("SPHINCS+ (512-bit)")
+	randomArt := randomart.FromString(string(buf))
+	println(randomArt)
+}
+
+func signMessage(input io.Reader, keyPath string) {
+	messageBytes, err := ioutil.ReadAll(input)
+	if err != nil {
+		log.Fatal(err)
+	}
+	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+
+	privateKeyBytes, err := loadPEMKey(keyPath, *pwd)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	deserializedSK, err := sphincs.DeserializeSK(params, privateKeyBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	sk := deserializedSK
 	signature := sphincs.Spx_sign(params, messageBytes, sk)
 
 	serializedSignature, err := signature.SerializeSignature()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	base64Signature := base64.StdEncoding.EncodeToString(serializedSignature)
-	fmt.Printf("%s\n", base64Signature)
+	/*
+		if *sig != "" {
+			base64Signature := base64.StdEncoding.EncodeToString(serializedSignature)
+			err = ioutil.WriteFile(*sig, []byte(base64Signature), 0644)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Signature saved to %s\n", *sig)
+		} else {
+			base64Signature := base64.StdEncoding.EncodeToString(serializedSignature)
+			fmt.Printf("%s\n", base64Signature)
+		}
+	*/
+	block := &pem.Block{
+		Type:  "SPHINCS SIGNATURE",
+		Bytes: serializedSignature,
+	}
+	pemSignature := pem.EncodeToMemory(block)
+	if *sig != "" {
+		err = ioutil.WriteFile(*sig, []byte(pemSignature), 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Signature saved to %s\n", *sig)
+	} else {
+		fmt.Printf("%s\n", pemSignature)
+	}
 }
 
-func verifySignature(input io.Reader) {
+func verifySignature(input io.Reader, keyPath, sigPath string) {
 	messageBytes, err := ioutil.ReadAll(input)
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
 
-	var pk *sphincs.SPHINCS_PK
-	if *key != "" {
-		publicKeyBytes, err := hex.DecodeString(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		deserializedPK, err := sphincs.DeserializePK(params, publicKeyBytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-		pk = deserializedPK
-	} else {
-		log.Fatal("Please provide a public key using the -key flag for verification.")
-	}
-
-	signatureBytes, err := ioutil.ReadFile(*sig)
+	publicKeyBytes, err := loadPEMKey(keyPath, "")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	decodedSignature, err := base64.StdEncoding.DecodeString(string(signatureBytes))
+	deserializedPK, err := sphincs.DeserializePK(params, publicKeyBytes)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	deserializedSignature, err := sphincs.DeserializeSignature(params, decodedSignature)
+	pk := deserializedPK
+
+	signatureBytes, err := ioutil.ReadFile(sigPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	/*
+		decodedSignature, err := base64.StdEncoding.DecodeString(string(signatureBytes))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		deserializedSignature, err := sphincs.DeserializeSignature(params, decodedSignature)
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
+	decodedSignature, _ := pem.Decode(signatureBytes)
+	deserializedSignature, err := sphincs.DeserializeSignature(params, decodedSignature.Bytes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -9431,6 +9918,150 @@ func verifySignature(input io.Reader) {
 		fmt.Println("Verified: false")
 		os.Exit(1)
 	}
+}
+
+func printPublicKeyParams(pk *sphincs.SPHINCS_PK) {
+	fmt.Printf("PKseed=%X\n", pk.PKseed)
+	fmt.Printf("PKroot=%X\n", pk.PKroot)
+}
+
+func printPrivateKeyParams(sk *sphincs.SPHINCS_SK) {
+	fmt.Printf("PKseed=%X\n", sk.PKseed)
+	fmt.Printf("PKroot=%X\n", sk.PKroot)
+}
+
+func printKeyParams(keyBytes []byte, isPrivateKey bool) error {
+	var (
+		pk *sphincs.SPHINCS_PK
+		sk *sphincs.SPHINCS_SK
+	)
+	var params = parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+
+	if isPrivateKey {
+		var err error
+		sk, err = sphincs.DeserializeSK(params, keyBytes)
+		if err != nil {
+			return err
+		}
+		printPrivateKeyParams(sk)
+		os.Exit(0)
+	} else {
+		var err error
+		pk, err = sphincs.DeserializePK(params, keyBytes)
+		if err != nil {
+			return err
+		}
+		printPublicKeyParams(pk)
+		os.Exit(0)
+	}
+
+	return nil
+}
+
+func printPublicKeyParamsFull(pk *sphincs.SPHINCS_PK) {
+	serializedPK, err := pk.SerializePK()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	block := &pem.Block{
+		Type:  "SPHINCS PUBLIC KEY",
+		Bytes: serializedPK,
+	}
+	pem.Encode(os.Stdout, block)
+
+	fmt.Printf("PublicKey: (512-bit)\n")
+
+	fmt.Printf("PK: \n")
+	splitz := SplitSubN(hex.EncodeToString(serializedPK), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	fmt.Printf("PKseed: \n")
+	splitz = SplitSubN(hex.EncodeToString(pk.PKseed), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	fmt.Printf("PKroot: \n")
+	splitz = SplitSubN(hex.EncodeToString(pk.PKroot), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	skid := sha3.Sum256(serializedPK)
+	fmt.Printf("\nKeyID: %x \n", skid[:20])
+}
+
+func printPrivateKeyParamsFull(sk *sphincs.SPHINCS_SK) {
+	serializedSK, err := sk.SerializeSK()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	block := &pem.Block{
+		Type:  "SPHINCS SECRET KEY",
+		Bytes: serializedSK,
+	}
+	pem.Encode(os.Stdout, block)
+
+	fmt.Printf("SecretKey: (512-bit)\n")
+	/*
+		fmt.Printf("SK: \n")
+		splitz := SplitSubN(hex.EncodeToString(serializedSK), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+	*/
+	fmt.Printf("SKseed: \n")
+	splitz := SplitSubN(hex.EncodeToString(sk.SKseed), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	fmt.Printf("SKprf: \n")
+	splitz = SplitSubN(hex.EncodeToString(sk.SKprf), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	fmt.Printf("PKseed: \n")
+	splitz = SplitSubN(hex.EncodeToString(sk.PKseed), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	fmt.Printf("PKroot: \n")
+	splitz = SplitSubN(hex.EncodeToString(sk.PKroot), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	c := append(sk.PKseed, sk.PKroot...)
+	skid := sha3.Sum256(c)
+	fmt.Printf("\nKeyID: %x \n", skid[:20])
+}
+
+func printKeyParamsFull(keyBytes []byte, isPrivateKey bool) error {
+	var (
+		pk *sphincs.SPHINCS_PK
+		sk *sphincs.SPHINCS_SK
+	)
+	var params = parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+
+	if isPrivateKey {
+		var err error
+		sk, err = sphincs.DeserializeSK(params, keyBytes)
+		if err != nil {
+			return err
+		}
+		printPrivateKeyParamsFull(sk)
+		os.Exit(0)
+	} else {
+		var err error
+		pk, err = sphincs.DeserializePK(params, keyBytes)
+		if err != nil {
+			return err
+		}
+		printPublicKeyParamsFull(pk)
+		os.Exit(0)
+	}
+
+	return nil
 }
 
 type PEMCipher int
@@ -9748,6 +10379,38 @@ func cipherByKey(key PEMCipher) *rfc1423Algo {
 		}
 	}
 	return nil
+}
+
+func isHexDump(input string) bool {
+	if strings.Contains(input, "|") {
+		return false
+	} else {
+		return true
+	}
+}
+
+func decodeHexDump(input string) ([]byte, error) {
+	var decoded []byte
+	var buffer bytes.Buffer
+
+	lines := strings.Split(input, "\n")
+
+	for _, line := range lines {
+		if len(line) < 59 {
+			continue
+		}
+
+		hexCharsInLine := line[9:58]
+		hexCharsInLine = strings.ReplaceAll(hexCharsInLine, " ", "")
+		buffer.WriteString(hexCharsInLine)
+	}
+
+	decoded, err := hex.DecodeString(buffer.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return decoded, nil
 }
 
 func zeroByteSlice() []byte {
