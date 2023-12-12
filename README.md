@@ -394,6 +394,55 @@ echo $?
 ```sh
 ./edgetk -kdf hkdf -bits 128 -key "IKM" [-salt "salt"] [-info "AD"]
 ```
+
+#### SM9 (Chinese IBE Standard)
+##### Private Key Generation:
+
+- Generate a master key
+```sh
+./edgetk -pkey setup -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"]
+```
+- Generate a private key and a UID (User ID) and an HID (Hierarchy ID), if applicable, to this key.
+```sh
+./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-priv "Private.pem"] [-id "uid"] [-hierarchy 1]
+```
+
+##### Message Encryption:
+
+- To encrypt a message:
+  - Use the master public key.
+  - Include the UID and HID associated with the private key.
+  - Perform the encryption process.
+```sh
+./edgetk -pkey encrypt -algorithm sm9encrypt [-key "Public.pem"] [-id "uid"] [-hierarchy 1] < FILE
+```
+##### Message Decryption:
+
+- To decrypt a message:
+  - Use the associated private key.
+  - Use the corresponding UID.
+  - Perform the decryption process.
+```sh
+./edgetk -pkey decrypt -algorithm sm9encrypt [-key "Private.pem"] [-id "uid"] < FILE
+```
+##### Digital Signature:
+
+- To sign a message:
+  - Use the private key.
+  - Include the UID and HID associated with the private key.
+  - Perform the signature process.
+```sh
+./edgetk -pkey decrypt -algorithm sm9sign [-key "Private.pem"] < FILE
+```
+##### Digital Signature Verification:
+
+- To verify the signature of a message:
+  - Use the master public key.
+  - Use the UID and HID associated with the private key that performed the signature.
+  - Perform the signature verification process.
+```sh
+./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hierarchy 1] < FILE
+```
 #### Hex Encoder/Decoder:
 ```sh
 ./edgetk -hex enc < file.ext > file.hex
