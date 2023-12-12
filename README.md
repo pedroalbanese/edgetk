@@ -403,7 +403,7 @@ echo $?
 
 - Generate a master key
 ```sh
-./edgetk -pkey setup -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"]
+./edgetk -pkey setup -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-pub "Public.pem"]
 ```
 - Generate a private key and a UID (User ID) and an HID (Hierarchy ID), if applicable, to this key.
 ```sh
@@ -431,8 +431,7 @@ echo $?
 ##### Digital Signature:
 
 - To sign a message:
-  - Use the private key.
-  - Include the UID and HID associated with the private key.
+  - Use the private key (UID and HID are associated).
   - Perform the signature process.
 ```sh
 ./edgetk -pkey decrypt -algorithm sm9sign [-key "Private.pem"] < FILE
