@@ -405,7 +405,7 @@ echo $?
 ```sh
 ./edgetk -pkey setup -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-pub "Public.pem"]
 ```
-- Generate a private key and a UID (User ID) and an HID (Hierarchy ID), if applicable, to this key.
+- Generate a private key and a UID (User ID) and an HID (Hierarchy ID).
 ```sh
 ./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-priv "Private.pem"] [-id "uid"] [-hierarchy 1]
 ```
@@ -434,7 +434,7 @@ echo $?
   - Use the private key (UID and HID are associated).
   - Perform the signature process.
 ```sh
-./edgetk -pkey decrypt -algorithm sm9sign [-key "Private.pem"] < FILE
+./edgetk -pkey sign -algorithm sm9sign [-key "Private.pem"] < FILE
 ```
 ##### Digital Signature Verification:
 
