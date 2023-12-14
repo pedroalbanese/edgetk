@@ -446,7 +446,26 @@ echo $?
 ./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hierarchy 1] < FILE
 ```
 #### SM9 Key Management System (KMS)
-
+<pre>  +---------------------------------------------------------------+
+  |                  SM9 Key Management System                    |
+  |      +---------------------------+  +-------------------+     |
+  |      |  Private Key Generation   |--|                   |     |
+  |      |      Center (PKG)         |  |                   |     |
+  |      +---------------------------+  |                   |     |
+  |                  |  Revoke/Update   |                   |     |
+  |                  |                  |                   |     |
+  |      +---------------------------+  |      Public       |     |
+  |      |       Registration        |  |     Parameter     |     |
+  |      |       Service (RA)        |  |      Service      |     |
+  |      +---------------------------+  |       (PPS)       |     |
+  |                  |  Registration    |                   |     |
+  |                  |  Application     |                   |     |
+  |      +---------------------------+  |                   |     |
+  |      |         Terminal          |  |                   |     |
+  |      |    Entity (User/Client)   |--|                   |     |
+  |      +---------------------------+  +-------------------+     |
+  +---------------------------------------------------------------+</pre>
+  
 The **SM9's Key Management System (KMS)** consists of the **Private Key Generator (PKG)**, **Registration Agency (RA)**, **Public Parameter Server (PPS)**, and **User Terminal Entity (User/Client)**. The system architecture is illustrated in **Figure 1**. The functions of each entity are described below.
 
 ##### 1. **Private Key Generation Center (PKG):**
