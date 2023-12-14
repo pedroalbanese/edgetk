@@ -167,57 +167,10 @@ GOST refers to a set of technical standards maintained by the Euro-Asian Council
     | 192                 | 7680                  | 384            | 
     | 256                 | 15360                 | 512            |  
 
-### IKM (input key material value)
-Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
-
-### MAC
-MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
-
-### PBKDF2
-PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic function designed to derive secure cryptographic keys from weak passwords or passphrases. It applies a pseudorandom function, such as HMAC-SHA1, HMAC-SHA256, or HMAC-SHA512, multiple times in a loop, with a salt and a user-defined number of iterations, effectively increasing the computational cost of key generation. This technique enhances the resilience against brute-force attacks, making it more difficult and time-consuming for attackers to obtain the original password from the derived key.
-
-### Post-Quantum Cryptography (PQC)
-Quantum computing is in an early stage of development and faces significant challenges, including the control and correction of quantum errors. Predictions vary, but many experts agree that we are still several years, or even decades, away from having the ability to build a quantum computer large enough to threaten public key cryptography algorithms currently considered secure. Scalable, sufficiently powerful quantum computers have not yet been constructed. Therefore, post-quantum cryptography is more of a precautionary measure, as classical algorithms remain secure for most everyday applications. Understand which algorithms have been compromised with the advent of quantum algorithms like Shor and Grover:
-
-- **Security Level**
-
-    |Name           | Function      |pre-quantum    | post-quantum   |
-    |:--------------|:--------------|:-------------:|:--------------:|
-    |AES-128        | block cipher  | 128           | 64 (Grover)    |
-    |AES-256        | block cipher  | 256           | 128 (Grover)   |
-    |Salsa20        | stream cipher | 256           | 128 (Grover)   |
-    |GMAC           | MAC           | 128           | 128            |
-    |Poly1305       | MAC           | 128           | 128            |
-    |SHA-256        | hash function | 256           | 128 (Grover)   |
-    |SHA-3          | hash function | 256           | 128 (Grover)   |
-    |RSA-3072       | encryption    | 128           | broken (Shor)  |
-    |RSA-3072       | signature     | 128           | broken (Shor)  |
-    |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
-    |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
-
-### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
-SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
-
-### XOR
-XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
-
-- **exclusive or**
-
-    |x    |y    | x^y |
-    |:---:|:---:|:---:|
-    |0    |0    |0    |
-    |0    |1    |1    |
-    |1    |0    |1    |
-    |1    |1    |0    |
-
-### ZUC (Zu Chongzhi cipher)
-
-  The ZUC-256 cipher is a symmetric key encryption algorithm widely used in 5G communication technologies, providing robust and efficient security. The ZUC-256 algorithm is based on the original ZUC cipher, developed by the Chinese Academy of Sciences and adopted by the 3rd Generation Partnership Project (3GPP) standard to ensure data integrity and confidentiality in fifth-generation mobile networks. Its name pays tribute to Zu Chongzhi, a 5th-century Chinese mathematician and astronomer, renowned for his contributions to mathematics, astronomy, and hydraulic engineering. His remarkable approximation of the value of π (pi) enabled more precise calculations in various scientific fields. 
-
 ### IBE
 Identity-Based Encryption (IBE) is a cryptographic scheme that enables users to encrypt and decrypt messages using easily memorable and publicly known information, such as an email address or user identity, as the public key. In IBE, the sender encrypts a message with the recipient's identity, and the recipient, possessing a private key generated by a trusted authority known as Key Generation Authority (KGA), can decrypt the message. Unlike traditional public-key cryptography, IBE eliminates the need for a centralized public key directory, as the user's identity itself serves as the public key. This convenience in key management makes IBE particularly suitable for secure communication in decentralized or large-scale systems, where distributing and managing individual public keys may be impractical.
 
-<details><summary>SM9 Key Management System (KMS)</summary>
+<details><summary>SM9 Key Management System (KMS)</summary>  
 #### SM9 Key Management System (KMS)
 <pre> +---------------------------------------------------------------+
  |                  SM9 Key Management System                    |
@@ -264,6 +217,53 @@ The **SM9's Key Management System (KMS)** consists of the **Private Key Generato
 
 **Summary:**
 The architecture of the SM9 Key Management System ensures secure generation of private keys by PKG, tasks of key registration and application are carried out by RA, public parameters are provided by PPS, and users interact with the system through the User/Client terminal. Secure channels facilitate the transfer and download of keys between these entities, ensuring the overall security of the key management system.</details>
+
+### IKM (input key material value)
+Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
+
+### MAC
+MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
+
+### PBKDF2
+PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic function designed to derive secure cryptographic keys from weak passwords or passphrases. It applies a pseudorandom function, such as HMAC-SHA1, HMAC-SHA256, or HMAC-SHA512, multiple times in a loop, with a salt and a user-defined number of iterations, effectively increasing the computational cost of key generation. This technique enhances the resilience against brute-force attacks, making it more difficult and time-consuming for attackers to obtain the original password from the derived key.
+
+### Post-Quantum Cryptography (PQC)
+Quantum computing is in an early stage of development and faces significant challenges, including the control and correction of quantum errors. Predictions vary, but many experts agree that we are still several years, or even decades, away from having the ability to build a quantum computer large enough to threaten public key cryptography algorithms currently considered secure. Scalable, sufficiently powerful quantum computers have not yet been constructed. Therefore, post-quantum cryptography is more of a precautionary measure, as classical algorithms remain secure for most everyday applications. Understand which algorithms have been compromised with the advent of quantum algorithms like Shor and Grover:
+
+- **Security Level**
+
+    |Name           | Function      |pre-quantum    | post-quantum   |
+    |:--------------|:--------------|:-------------:|:--------------:|
+    |AES-128        | block cipher  | 128           | 64 (Grover)    |
+    |AES-256        | block cipher  | 256           | 128 (Grover)   |
+    |Salsa20        | stream cipher | 256           | 128 (Grover)   |
+    |GMAC           | MAC           | 128           | 128            |
+    |Poly1305       | MAC           | 128           | 128            |
+    |SHA-256        | hash function | 256           | 128 (Grover)   |
+    |SHA-3          | hash function | 256           | 128 (Grover)   |
+    |RSA-3072       | encryption    | 128           | broken (Shor)  |
+    |RSA-3072       | signature     | 128           | broken (Shor)  |
+    |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
+    |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
+
+### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
+SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
+
+### XOR
+XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
+
+- **exclusive or**
+
+    |x    |y    | x^y |
+    |:---:|:---:|:---:|
+    |0    |0    |0    |
+    |0    |1    |1    |
+    |1    |0    |1    |
+    |1    |1    |0    |
+
+### ZUC (Zu Chongzhi cipher)
+
+  The ZUC-256 cipher is a symmetric key encryption algorithm widely used in 5G communication technologies, providing robust and efficient security. The ZUC-256 algorithm is based on the original ZUC cipher, developed by the Chinese Academy of Sciences and adopted by the 3rd Generation Partnership Project (3GPP) standard to ensure data integrity and confidentiality in fifth-generation mobile networks. Its name pays tribute to Zu Chongzhi, a 5th-century Chinese mathematician and astronomer, renowned for his contributions to mathematics, astronomy, and hydraulic engineering. His remarkable approximation of the value of π (pi) enabled more precise calculations in various scientific fields. 
 
 ## Features
 * **Cryptographic Functions:**
