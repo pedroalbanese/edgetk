@@ -173,9 +173,9 @@ Identity-Based Encryption (IBE) is a cryptographic scheme that enables users to 
 
 <details><summary>IBE Key Management System (KMS)</summary>  
     
-**Figure 1**
+**Figure 1** 
 <pre> +---------------------------------------------------------------+
- |                  SM9 Key Management System                    |
+ |                  IBE Key Management System                    |
  |      +---------------------------+  +-------------------+     |
  |      |  Private Key Generation   |--|                   |     |
  |      |      Center (PKG)         |  |                   |     |
