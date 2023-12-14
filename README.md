@@ -445,6 +445,34 @@ echo $?
 ```sh
 ./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hierarchy 1] < FILE
 ```
+#### SM9 Key Management System (KMS)
+
+The **SM9's Key Management System (KMS)** consists of the **Private Key Generator (PKG)**, **Registration Agency (RA)**, **Public Parameter Server (PPS)**, and **User Terminal Entity (User/Client)**. The system architecture is illustrated in **Figure 1**. The functions of each entity are described below.
+
+##### 1. **Private Key Generation Center (PKG):**
+   - **Function:** Uses the system master key and related parameters to generate private keys for users. Provides related management and query services.
+
+##### 2. **Registration Service (RA):**
+   - **Functions:**
+     - Undertakes tasks related to user key application registration, authentication, management, and business communication with PKG.
+     - Provides symmetric, asymmetric, and hash cryptographic services.
+     - Receives key data returned by PKG and writes it into the key carrier of the terminal entity.
+
+##### 3. **Public Parameter Service (PPS):**
+   - **Function:** A user-oriented information service system, providing publicly accessible addresses for secure query and distribution of public parameters and policies. Public parameters include password parameters and user ID status directories that can be shared publicly.
+
+##### 4. **User Terminal Entity (User/Client):**
+   - **Functions:**
+     - Terminal application system of the user information service system.
+     - Applies for keys directly from PKG or through a local agent.
+     - Realizes the storage and use of its own private keys.
+
+**SM9 Key Management System Architecture:**
+- **Secure Channels:** The generation and distribution of user keys mainly involve entities such as PKG, RA, and User/Client. This is achieved by establishing secure channels between PKG and RA, and between RA and User/Client, ensuring secure transfer and download of keys.
+
+**Summary:**
+The architecture of the SM9 Key Management System ensures secure generation of private keys by PKG, tasks of key registration and application are carried out by RA, public parameters are provided by PPS, and users interact with the system through the User/Client terminal. Secure channels facilitate the transfer and download of keys between these entities, ensuring the overall security of the key management system.
+
 #### Hex Encoder/Decoder:
 ```sh
 ./edgetk -hex enc < file.ext > file.hex
