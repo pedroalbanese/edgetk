@@ -138,6 +138,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SHA1 [Obsolete] |     | O   |     |     |     |     |
     | SHA2 (default)  |     |     |     | O   | O   |     | 
     | SHA3            |     |     |     | O   | O   |     |
+    | SHAKE           |     |     |     | O   | O   |     |
     | SipHash         | O   |     |     |     |     | O   |
     | Skein           |     |     |     | O   | O   | O   | 
     | SM3             |     |     |     | O   |     |     |
@@ -195,19 +196,19 @@ Identity-Based Encryption (IBE) is a cryptographic scheme that enables users to 
   
 The **SM9's Key Management System (KMS)** consists of the **Private Key Generator (PKG)**, **Registration Agency (RA)**, **Public Parameter Server (PPS)**, and **User Terminal Entity (User/Client)**. The system architecture is illustrated in **Figure 1**. The functions of each entity are described below.
 
-##### 1. **Private Key Generation Center (PKG):**
+#### 1. **Private Key Generation Center (PKG):**
    - **Function:** Uses the system master key and related parameters to generate private keys for users. Provides related management and query services.
 
-##### 2. **Registration Service (RA):**
+#### 2. **Registration Service (RA):**
    - **Functions:**
      - Undertakes tasks related to user key application registration, authentication, management, and business communication with PKG.
      - Provides symmetric, asymmetric, and hash cryptographic services.
      - Receives key data returned by PKG and writes it into the key carrier of the terminal entity.
 
-##### 3. **Public Parameter Service (PPS):**
+#### 3. **Public Parameter Service (PPS):**
    - **Function:** A user-oriented information service system, providing publicly accessible addresses for secure query and distribution of public parameters and policies. Public parameters include password parameters and user ID status directories that can be shared publicly.
 
-##### 4. **User Terminal Entity (User/Client):**
+#### 4. **User Terminal Entity (User/Client):**
    - **Functions:**
      - Terminal application system of the user information service system.
      - Applies for keys directly from PKG or through a local agent.
