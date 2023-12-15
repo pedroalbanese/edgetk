@@ -23,7 +23,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | RSA                 |     |     |     | O   | O        | O   |
     | SM2                 | O   |     | O   | O   | O        | O   |
     | SM9                 | O   |     | O   | O   | O        |     |
-    | SPHINCS+            |     | O   |     | O   |          |     |
+    | SPHINCS+            | O   |     |     | O   |          |     |
 
 - **Supported ParamSets:**
 
