@@ -87,6 +87,7 @@ import (
 	"github.com/emmansun/gmsm/sm3"
 	"github.com/emmansun/gmsm/sm4"
 	"github.com/emmansun/gmsm/sm9"
+	"github.com/emmansun/gmsm/sm9/bn256"
 	"github.com/emmansun/gmsm/smx509"
 	"github.com/emmansun/gmsm/zuc"
 	"github.com/emmansun/go-pkcs12"
@@ -159,26 +160,26 @@ var (
 	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	factorPStr = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
+	hierarchy  = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for SM9 User Private Key)")
+	id         = flag.String("id", "", "User Identifier. (for SM9 User Private Key operations)")
+	id2        = flag.String("peerid", "", "Remote's side User Identifier. (for SM9 Key Agreement)")
 	info       = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
-	id1        = flag.String("id", "", "Unique Identifier 1. (for SM9 public key algorithm)")
-	id2        = flag.String("id2", "", "Unique Identifier 2. (for SM9 Diffie-Hellman function)")
-	hierarchy  = flag.Uint("hierarchy", 0x01, "Hierarchy level. (for SM9 Encryption/Signature)")
 	iport      = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	iter       = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
 	kdf        = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt|argon2]")
 	key        = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
 	length     = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac        = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
+	master     = flag.String("master", "Master.pem", "Master key path. (for sm9 setup)")
 	md         = flag.String("md", "sha256", "Hash algorithm: sha256, sha3-256 or whirlpool.")
 	mode       = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
 	modulusStr = flag.String("modulus", "", "Makwa modulus. (Makwa hash Public Parameter)")
 	paramset   = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
 	pkey       = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
-	master     = flag.String("master", "Master.pem", "Master key path. (for sm9 setup)")
 	priv       = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
 	pub        = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
-	pwd        = flag.String("pwd", "", "Password. (for Private key PEM encryption)")
-	pwd2       = flag.String("pwd2", "", "User Password. (for SM9 Private Key PEM encryption)")
+	pwd        = flag.String("pass", "", "Password/Passphrase. (for Private key PEM encryption)")
+	pwd2       = flag.String("passout", "", "User Password. (for SM9 User Private Key PEM encryption)")
 	random     = flag.Int("rand", 0, "Generate random cryptographic key with given bit length.")
 	recover    = flag.Bool("recover", false, "Recover Passphrase from Makwa hash with Private Parameters.")
 	recursive  = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
@@ -474,7 +475,7 @@ Subcommands:
 		*pwd2 = string(pass)
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -632,7 +633,7 @@ Subcommands:
 	if Files == "-" || Files == "" || strings.Contains(Files, "*") {
 		inputfile = os.Stdin
 		inputdesc = "stdin"
-	} else if *pkey != "x509" && *pkey != "req" {
+	} else if *pkey != "x509" && *pkey != "req" && *pkey != "wrapkey" {
 		inputfile, err = os.Open(flag.Arg(0))
 		if err != nil {
 			log.Fatalf("failed opening file: %s", err)
@@ -774,6 +775,14 @@ Subcommands:
 
 	if *pkey == "keygen" && *alg == "sphincs" && *iter == 1 {
 		*iter = 1048576
+	}
+
+	if (*pkey == "wrapkey" || *pkey == "unwrapkey") && *length == 0 {
+		*length = 128
+	}
+
+	if (*pkey == "derivea" || *pkey == "deriveb") && *length == 0 {
+		*length = 128
 	}
 
 	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF") && *length == 0 {
@@ -4201,7 +4210,7 @@ Subcommands:
 			log.Fatal("Invalid private key type. Expected sm9.EncryptMasterPrivateKey.")
 		}
 
-		userKey, err := masterKey.GenerateUserKey([]byte(*id1), byte(*hierarchy))
+		userKey, err := masterKey.GenerateUserKey([]byte(*id), byte(*hierarchy))
 		if err != nil {
 			fmt.Println("Error generating SM9 user key:", err)
 			return
@@ -4306,7 +4315,7 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		ciphertext, err := sm9.EncryptASN1(rand.Reader, pubKey, []byte(*id1), byte(*hierarchy), plaintext, sm9.DefaultEncrypterOpts)
+		ciphertext, err := sm9.EncryptASN1(rand.Reader, pubKey, []byte(*id), byte(*hierarchy), plaintext, sm9.DefaultEncrypterOpts)
 		if err != nil {
 			fmt.Println("Error encrypting the message:", err)
 			return
@@ -4361,12 +4370,223 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		decryptedText, err := encryptPrivateKey.DecryptASN1([]byte(*id1), ciphertext)
+		decryptedText, err := encryptPrivateKey.DecryptASN1([]byte(*id), ciphertext)
 		if err != nil {
 			fmt.Println("Error decrypting the message:", err)
 			return
 		}
 		fmt.Printf("%s", decryptedText)
+	}
+
+	if *pkey == "wrapkey" && (strings.ToUpper(*alg) == "SM9ENCRYPT") {
+		fileContent, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println("Erro ao ler o arquivo:", err)
+			return
+		}
+
+		block, _ := pem.Decode(fileContent)
+		if block == nil {
+			fmt.Println("Failed to decode PEM block containing the public key.")
+			return
+		}
+
+		pubKey := new(sm9.EncryptMasterPublicKey)
+		err = pubKey.UnmarshalASN1(block.Bytes)
+		if err != nil {
+			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
+			return
+		}
+		keyPackage, err := pubKey.WrapKeyASN1(rand.Reader, []byte(*id), byte(*hierarchy), *length/8)
+		if err != nil {
+			log.Fatal(err)
+		}
+		key, cipher, err := sm9.UnmarshalSM9KeyPackage(keyPackage)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		cipherMarshaled := cipher.Marshal()
+
+		fmt.Printf("Cipher= %x\n", cipherMarshaled)
+		fmt.Printf("Shared= %x\n", key)
+	}
+
+	if *pkey == "unwrapkey" && (strings.ToUpper(*alg) == "SM9ENCRYPT") {
+		var privPEM []byte
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fileinfo, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, fileinfo.Size())
+		file.Read(buf)
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			errors.New("no valid private key found")
+		}
+		var privKeyBytes []byte
+		if IsEncryptedPEMBlock(block) {
+			privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+			if err != nil {
+				log.Fatal(err)
+			}
+			privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
+		} else {
+			privPEM = buf
+		}
+
+		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
+
+		var privKey, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		encryptPrivateKey, ok := privKey.(*sm9.EncryptPrivateKey)
+		if !ok {
+			fmt.Println("Invalid private key type. Expected sm9.EncryptPrivateKey.")
+			os.Exit(1)
+		}
+
+		cipherHexString := strings.Replace(*cph, "\r\n", "", -1)
+		cipherHexString = strings.Replace(string(cipherHexString), "\n", "", -1)
+		cipherHexString = strings.Replace(string(cipherHexString), " ", "", -1)
+
+		cipherMarshaled, err := hex.DecodeString(cipherHexString)
+
+		var cipher bn256.G1
+		_, err = cipher.Unmarshal(cipherMarshaled)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		key, err := sm9.UnwrapKey(encryptPrivateKey, []byte(*id), &cipher, *length/8)
+		if err != nil {
+			os.Exit(1)
+		}
+		fmt.Printf("Shared= %x\n", key)
+	}
+
+	if (*pkey == "derivea" || *pkey == "deriveb") && (strings.ToUpper(*alg) == "SM9ENCRYPT") {
+		var privPEM []byte
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fileinfo, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, fileinfo.Size())
+		file.Read(buf)
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			errors.New("no valid private key found")
+		}
+		var privKeyBytes []byte
+		if IsEncryptedPEMBlock(block) {
+			privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+			if err != nil {
+				log.Fatal(err)
+			}
+			privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
+		} else {
+			privPEM = buf
+		}
+
+		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
+
+		var privKey, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		encryptPrivateKey, ok := privKey.(*sm9.EncryptPrivateKey)
+		if !ok {
+			fmt.Println("Invalid private key type. Expected sm9.EncryptPrivateKey.")
+			os.Exit(1)
+		}
+
+		if *pkey == "derivea" {
+			aExchange := sm9.NewKeyExchange(encryptPrivateKey, []byte(*id), []byte(*id2), *length/8, true)
+			defer func() {
+				aExchange.Destroy()
+			}()
+			rA, err := aExchange.InitKeyExchange(rand.Reader, byte(*hierarchy))
+			if err != nil {
+				log.Fatal("Error during key exchange A: ", err)
+			}
+
+			fmt.Println("rA=", hex.EncodeToString(rA.Marshal()))
+
+			var rB, signB string
+			fmt.Print("Enter rB: ")
+			fmt.Scanln(&rB)
+			fmt.Print("Enter signB: ")
+			fmt.Scanln(&signB)
+
+			rBBytes, err := hex.DecodeString(rB)
+			if err != nil {
+				log.Fatal("Error decoding rB: ", err)
+			}
+
+			signBBytes, err := hex.DecodeString(signB)
+			if err != nil {
+				log.Fatal("Error decoding signB: ", err)
+			}
+
+			var g1RB bn256.G1
+			_, err = g1RB.Unmarshal(rBBytes)
+			if err != nil {
+				log.Fatal("Error unmarshalling rB:", err)
+			}
+
+			key1, _, err := aExchange.ConfirmResponder(&g1RB, signBBytes)
+			if err != nil {
+				log.Fatal("Error during confirmation A: ", err)
+			}
+
+			fmt.Println("Shared=", hex.EncodeToString(key1))
+		} else if *pkey == "deriveb" {
+			var rA string
+			fmt.Print("Enter rA: ")
+			fmt.Scanln(&rA)
+
+			rABytes, err := hex.DecodeString(rA)
+			if err != nil {
+				log.Fatal("Error decoding rA:", err)
+			}
+
+			bExchange := sm9.NewKeyExchange(encryptPrivateKey, []byte(*id), []byte(*id2), *length/8, true)
+			defer func() {
+				bExchange.Destroy()
+			}()
+			var g1RA bn256.G1
+			_, err = g1RA.Unmarshal(rABytes)
+			if err != nil {
+				log.Fatal("Error unmarshalling rA: ", err)
+			}
+
+			rB, sigB, err := bExchange.RepondKeyExchange(rand.Reader, byte(*hierarchy), &g1RA)
+			if err != nil {
+				log.Fatal("Error during key exchange B: ", err)
+			}
+
+			key2, err := bExchange.ConfirmInitiator(nil)
+			if err != nil {
+				log.Fatal("Error during confirmation B: ", err)
+			}
+
+			fmt.Println("rB=", hex.EncodeToString(rB.Marshal()))
+			fmt.Println("signB=", hex.EncodeToString(sigB))
+			fmt.Println("Shared=", hex.EncodeToString(key2))
+		}
 	}
 
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "SM9SIGN") {
@@ -4412,7 +4632,7 @@ Subcommands:
 			log.Fatal("Invalid private key type. Expected sm9.SignMasterPrivateKey.")
 		}
 
-		userKey, err := masterKey.GenerateUserKey([]byte(*id1), byte(*hierarchy))
+		userKey, err := masterKey.GenerateUserKey([]byte(*id), byte(*hierarchy))
 		if err != nil {
 			fmt.Println("Error generating SM9 user key:", err)
 			return
@@ -4543,7 +4763,7 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		fmt.Printf("Signature: %x\n", signature)
+		fmt.Printf("SM9Sign(%s)= %x\n", inputdesc, signature)
 	}
 
 	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM9SIGN") {
@@ -4578,92 +4798,11 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		if sm9.VerifyASN1(pubKey, []byte(*id1), byte(*hierarchy), hashed, signature) {
+		if sm9.VerifyASN1(pubKey, []byte(*id), byte(*hierarchy), hashed, signature) {
 			fmt.Println("Signature verified successfully!")
 		} else {
 			fmt.Println("Signature verification failed.")
 		}
-	}
-
-	if *pkey == "derive" && (strings.ToUpper(*alg) == "SM9ENCRYPT") {
-		var privPEM []byte
-		file, err := os.Open(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		info, err := file.Stat()
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := make([]byte, info.Size())
-		file.Read(buf)
-		var block *pem.Block
-		block, _ = pem.Decode(buf)
-		if block == nil {
-			errors.New("no valid private key found")
-		}
-		var privKeyBytes []byte
-		if IsEncryptedPEMBlock(block) {
-			privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
-			if err != nil {
-				log.Fatal(err)
-			}
-			privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
-		} else {
-			privPEM = buf
-		}
-
-		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
-
-		var privKey1, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var privPEM2 []byte
-		file, err = os.Open(*pub)
-		if err != nil {
-			log.Fatal(err)
-		}
-		info, err = file.Stat()
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf = make([]byte, info.Size())
-		file.Read(buf)
-		var block2 *pem.Block
-		block2, _ = pem.Decode(buf)
-		if block2 == nil {
-			errors.New("no valid private key found")
-		}
-		var privKeyBytes2 []byte
-		if IsEncryptedPEMBlock(block2) {
-			print("Passphrase2: ")
-			pass, _ := gopass.GetPasswd()
-			privKeyBytes2, err = DecryptPEMBlock(block2, pass)
-			if err != nil {
-				log.Fatal(err)
-			}
-			privPEM2 = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes2})
-		} else {
-			privPEM2 = buf
-		}
-
-		var privateKeyPemBlock2, _ = pem.Decode([]byte(privPEM2))
-
-		var privKey2, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock2.Bytes)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		sharedKey, err := performKeyExchange(privKey1.(*sm9.EncryptPrivateKey), privKey2.(*sm9.EncryptPrivateKey), *id1, *id2)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		println("Key exchange successful!")
-		fmt.Println("Shared=", hex.EncodeToString(sharedKey))
-		os.Exit(0)
 	}
 
 	if *pkey == "sign" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "SM2") {
@@ -5832,7 +5971,7 @@ Subcommands:
 			} else if PEM == "Master" && strings.ToUpper(*alg) == "SM9SIGN" {
 				privPEM = pem.EncodeToMemory(&pem.Block{Type: "SM9 SIGN MASTER KEY", Bytes: privKeyBytes})
 			} else if PEM == "Private" && strings.ToUpper(*alg) == "SM9ENCRYPT" {
-				privPEM = pem.EncodeToMemory(&pem.Block{Type: "SM9 ENCRYPT PRIVATE KEY", Bytes: privKeyBytes})
+				privPEM = pem.EncodeToMemory(&pem.Block{Type: "SM9 ENC PRIVATE KEY", Bytes: privKeyBytes})
 			} else if PEM == "Private" && strings.ToUpper(*alg) == "SM9SIGN" {
 				privPEM = pem.EncodeToMemory(&pem.Block{Type: "SM9 SIGN PRIVATE KEY", Bytes: privKeyBytes})
 			}
@@ -11622,42 +11761,6 @@ func EncryptPEMBlock(rand io.Reader, blockType string, data, password []byte, al
 		},
 		Bytes: encrypted,
 	}, nil
-}
-
-func performKeyExchange(initiatorKey *sm9.EncryptPrivateKey, responderKey *sm9.EncryptPrivateKey, initiatorLabel, responderLabel string) ([]byte, error) {
-	initiatorExchange := sm9.NewKeyExchange(initiatorKey, []byte(initiatorLabel), []byte(responderLabel), 16, true)
-	responderExchange := sm9.NewKeyExchange(responderKey, []byte(responderLabel), []byte(initiatorLabel), 16, true)
-
-	defer func() {
-		initiatorExchange.Destroy()
-		responderExchange.Destroy()
-	}()
-
-	rInitiator, err := initiatorExchange.InitKeyExchange(rand.Reader, byte(*hierarchy))
-	if err != nil {
-		return nil, fmt.Errorf("Error during key exchange (Initiator): %v", err)
-	}
-
-	rResponder, sigResponder, err := responderExchange.RepondKeyExchange(rand.Reader, byte(*hierarchy), rInitiator)
-	if err != nil {
-		return nil, fmt.Errorf("Error during key exchange (Responder): %v", err)
-	}
-
-	keyInitiator, sigInitiator, err := initiatorExchange.ConfirmResponder(rResponder, sigResponder)
-	if err != nil {
-		return nil, fmt.Errorf("Error during confirmation (Initiator): %v", err)
-	}
-
-	keyResponder, err := responderExchange.ConfirmInitiator(sigInitiator)
-	if err != nil {
-		return nil, fmt.Errorf("Error during confirmation (Responder): %v", err)
-	}
-
-	if hex.EncodeToString(keyInitiator) != hex.EncodeToString(keyResponder) {
-		return nil, fmt.Errorf("Error: Shared keys do not match.")
-	}
-
-	return keyInitiator, nil
 }
 
 func cipherByName(name string) *rfc1423Algo {
