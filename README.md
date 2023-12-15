@@ -457,7 +457,7 @@ echo $?
 ```
 - Generate a private key and a UID (User ID) and an HID (Hierarchy ID).
 ```sh
-./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-priv "Private.pem"] [-id "uid"] [-hierarchy 1]
+./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-priv "Private.pem"] [-id "uid"] [-hid 1]
 ```
 
 ##### Message Encryption:
@@ -467,7 +467,7 @@ echo $?
   - Include the UID and HID associated with the private key.
   - Perform the encryption process.
 ```sh
-./edgetk -pkey encrypt -algorithm sm9encrypt [-key "Public.pem"] [-id "uid"] [-hierarchy 1] < FILE
+./edgetk -pkey encrypt -algorithm sm9encrypt [-key "Public.pem"] [-id "uid"] [-hid 1] < FILE
 ```
 ##### Message Decryption:
 
@@ -493,7 +493,7 @@ echo $?
   - Use the UID and HID associated with the private key that performed the signature.
   - Perform the signature verification process.
 ```sh
-./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hierarchy 1] < FILE
+./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hid 1] < FILE
 ```
 #### Hex Encoder/Decoder:
 ```sh
