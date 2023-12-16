@@ -298,79 +298,101 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * RandomArt (OpenSSH-like)
 
 ## Usage
-<pre> -algorithm string
-       Public key algorithm: EC, Ed25519, GOST2012, SM2. (default "RSA")
- -bits int
-       Key length. (for keypair generation and symmetric encryption)
- -cert string
-       Certificate path.
- -check
-       Check hashsum file. ('-' for STDIN)
- -cipher string
-       Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
- -crl string
-       Certificate Revocation List path.
- -crypt string
-       Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
- -digest
-       Target file/wildcard to generate hashsum list. ('-' for STDIN)
- -hex string
-       Encode binary string to hex format and vice-versa. [enc|dump|dec]
- -info string
-       Additional info. (for HKDF command and AEAD bulk encryption)
- -ipport string
-       Local Port/remote's side Public IP:Port.
- -iter int
-       Iter. (for Password-based key derivation function) (default 1)
- -iv string
-       Initialization Vector. (for symmetric encryption)
- -kdf string
-       Key derivation function. [pbkdf2|hkdf|scrypt]
- -key string
-       Asymmetric key, symmetric key or HMAC key, depending on operation.
- -mac string
-       Compute Hash/Cipher-based message authentication code.
- -md string
-       Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
- -mode string
-       Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB. (default "CTR")
- -paramset string
-       Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
- -pkey string
-       Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
- -priv string
-       Private key path. (for keypair generation) (default "Private.pem")
- -pub string
-       Public key path. (for keypair generation) (default "Public.pem")
- -pwd string
-       Password. (for Private key PEM encryption)
- -rand int
-       Generate random cryptographic key with given bit length.
- -recursive
-       Process directories recursively. (for DIGEST command only)
- -root string
-       Root CA Certificate path.
- -salt string
-       Salt. (for HKDF and PBKDF2 commands)
- -signature string
-       Input signature. (for VERIFY command and MAC verification)
- -tcp string
-       Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
+<pre>  -algorithm string
+        Public key algorithm: EC, Ed25519, GOST2012, SM2. (default "RSA")
+  -bits int
+        Key length. (for keypair generation and symmetric encryption)
+  -cacert string
+        CA Certificate path. (for TLCP Protocol)
+  -cakey string
+        CA Private key. (for TLCP Protocol)
+  -cert string
+        Certificate path.
+  -check
+        Check hashsum file. ('-' for STDIN)
+  -cipher string
+        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
+  -crl string
+        Certificate Revocation List path.
+  -crypt string
+        Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
+  -digest
+        Target file/wildcard to generate hashsum list. ('-' for STDIN)
+  -factorp string
+        Makwa private Factor P. (for Makwa Password-hashing Scheme)
+  -factorq string
+        Makwa private Factor Q. (for Makwa Password-hashing Scheme)
+  -hex string
+        Encode binary string to hex format and vice-versa. [enc|dump|dec]
+  -hid uint
+        Hierarchy Identifier. (for SM9 User Private Key) (default 1)
+  -id string
+        User Identifier. (for SM9 User Private Key operations)
+  -info string
+        Additional info. (for HKDF command and AEAD bulk encryption)
+  -ipport string
+        Local Port/remote's side Public IP:Port.
+  -iter int
+        Iter. (for Password-based key derivation function) (default 1)
+  -iv string
+        Initialization Vector. (for symmetric encryption)
+  -kdf string
+        Key derivation function. [pbkdf2|hkdf|scrypt|argon2]
+  -key string
+        Asymmetric key, symmetric key or HMAC key, depending on operation.
+  -mac string
+        Compute Hash/Cipher-based message authentication code.
+  -master string
+        Master key path. (for sm9 setup) (default "Master.pem")
+  -md string
+        Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
+  -mode string
+        Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB. (default "CTR")
+  -modulus string
+        Makwa modulus. (Makwa hash Public Parameter)
+  -paramset string
+        Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
+  -pass string
+        Password/Passphrase. (for Private key PEM encryption)
+  -passout string
+        User Password. (for SM9 User Private Key PEM encryption)
+  -peerid string
+        Remote's side User Identifier. (for SM9 Key Exchange)
+  -pkey string
+        Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
+  -priv string
+        Private key path. (for keypair generation) (default "Private.pem")
+  -pub string
+        Public key path. (for keypair generation) (default "Public.pem")
+  -rand int
+        Generate random cryptographic key with given bit length.
+  -recover
+        Recover Passphrase from Makwa hash with Private Parameters.
+  -recursive
+        Process directories recursively. (for DIGEST command only)
+  -root string
+        Root CA Certificate path.
+  -salt string
+        Salt. (for HKDF and PBKDF2 commands)
+  -signature string
+        Input signature. (for VERIFY command and MAC verification)
+  -tcp string
+        Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
 
 ## Examples
 
 #### Asymmetric RSA keypair generation:
 ```sh
-./edgetk -pkey keygen -bits 4096 [-pwd "pass"] [-priv Private.pem] [-pub Public.pem]
+./edgetk -pkey keygen -bits 4096 [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
 ```
 #### Parse keys info:
 ```sh
-./edgetk -pkey [text|modulus] [-pwd "pass"] -key private.pem
+./edgetk -pkey [text|modulus] [-pass "passphrase"] -key private.pem
 ./edgetk -pkey [text|modulus|randomart|fingerprint] -key public.pem
 ```
 #### Digital signature:
 ```sh
-./edgetk -pkey sign -key private.pem [-pwd "pass"] < file.ext > sign.txt
+./edgetk -pkey sign -key private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
 ./edgetk -pkey verify -key public.pem -signature $sign < file.ext
 echo $?
@@ -382,7 +404,7 @@ echo $?
 ```
 #### Asymmetric EC keypair generation (256-bit):
 ```sh
-./edgetk -pkey keygen -bits 256 -algorithm EC [-pwd "pass"]
+./edgetk -pkey keygen -bits 256 -algorithm EC [-pass "passphrase"]
 ```
 #### EC Diffie-Hellman:
 ```sh
@@ -390,11 +412,11 @@ echo $?
 ```
 #### Generate Self Signed Certificate:
 ```sh
-./edgetk -pkey certgen -key private.pem [-pwd "pass"] [-cert "output.crt"]
+./edgetk -pkey certgen -key private.pem [-pass "passphrase"] [-cert "output.crt"]
 ```
 #### Generate Certificate Signing Request:
 ```sh
-./edgetk -pkey req -key private.pem [-pwd "pass"] [-cert certificate.csr]
+./edgetk -pkey req -key private.pem [-pass "passphrase"] [-cert certificate.csr]
 ```
 #### Sign CSR with CA Certificate:
 ```sh
