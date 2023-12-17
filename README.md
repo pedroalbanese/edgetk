@@ -533,6 +533,13 @@ echo $?
 ./edgetk -help,-h      // Full list of the flags and their defaults
 ```
 
+## Acknoledgments
+
+- [Sergey Matveev](http://www.cypherpunks.ru/) (GoGOST Library Author)
+- [RyuaNerin](http://github.com/RyuaNerin) (go-krypto Library Author)
+- [Chenxu](https://github.com/czdsdo) (GMSM Library Author)
+- [Damian Gryski](https://github.com/dgryski) (Anubis, SipHash, Misty1 Libraries Author)
+
 ## Contribute
 **Use issues for everything**
 - You can help and get help by:
