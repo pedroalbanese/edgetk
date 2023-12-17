@@ -537,7 +537,7 @@ echo $?
 
 - [Sergey Matveev](http://www.cypherpunks.ru/) (GoGOST Library Author)
 - [RyuaNerin](http://github.com/RyuaNerin) (go-krypto Library Author)
-- [Chenxu](https://github.com/czdsdo) (GMSM Library Author)
+- [Sun Yimin](https://github.com/emmansun)) (GMSM Library Author)
 - [Damian Gryski](https://github.com/dgryski) (Anubis, SipHash, Misty1 Libraries Author)
 
 ## Contribute
