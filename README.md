@@ -11,7 +11,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 ***Fully OpenSSL/LibreSSL/GmSSL/RHash/Mcrypt compliant***
 
 <details><summary>Implements</summary> 
-
+    
+```
 Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
 CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
 CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
@@ -72,7 +73,7 @@ TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
 US FIPS 197 Advanced Encryption Standard (AES)
 US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms 
 US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
-
+```
 </details>
 
 ## Command-line Integrated Security Suite
