@@ -9,6 +9,7 @@
 Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC/PMAC/GMAC/VMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), password-based key derivation function (PBKDF2/Argon2/Scrypt), password-hashing scheme (Bcrypt/Argon2/Makwa), shared key agreement (ECDH/VKO/X25519), digital signature (RSA/ECDSA/EdDSA/GOST/SPHINCS+), X.509 CSRs, CRLs and Certificates, and TCP instant server with TLS 1.3 and TLCP encryption layers for small or embedded systems. 
 
 ***Fully OpenSSL/LibreSSL/GmSSL/RHash/Mcrypt compliant***
+
 <details><summary>Implements</summary> 
 
 Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
@@ -72,7 +73,8 @@ US FIPS 197 Advanced Encryption Standard (AES)
 US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms 
 US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
-</details>details>
+</details>
+
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
