@@ -90,6 +90,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM2                 | O   |     | O   | O   | O        | O   |
     | SM9                 | O   |     | O   | O   | O        |     |
     | ElGamal             |     | O   |     |     | O        |     |
+    | EC-ElGamal          | O   |     |     |     | O        |     |
     | SPHINCS+            | O   |     |     | O   |          |     |
 
 - **Supported ParamSets:**
