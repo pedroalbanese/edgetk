@@ -622,4 +622,4 @@ echo $?
 
 This project is licensed under the ISC License.
 
-#### Copyright (c) 2020-2023 Pedro F. Albanese - ALBANESE Research Lab.
+#### Copyright (c) 2020-2024 Pedro F. Albanese - ALBANESE Research Lab.
