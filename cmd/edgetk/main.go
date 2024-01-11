@@ -1,6 +1,6 @@
 /*
    EDGE Toolkit -- Pure Go Command-line Unique Integrated Security Suite
-   Copyright (C) 2020-2023 Pedro F. Albanese <pedroalbanese@hotmail.com>
+   Copyright (C) 2020-2024 Pedro F. Albanese <pedroalbanese@hotmail.com>
 
    This program is free software: you can redistribute it and/or modify it
    under the terms of the ISC License.
@@ -40,6 +40,7 @@ import (
 	"encoding/asn1"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/gob"
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
@@ -145,6 +146,9 @@ import (
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
+
+	"github.com/pedroalbanese/kryptology/pkg/core/curves"
+	"github.com/pedroalbanese/kryptology/pkg/verenc/elgamal"
 )
 
 var (
@@ -156,13 +160,14 @@ var (
 	cph        = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crl        = flag.String("crl", "", "Certificate Revocation List path.")
 	crypt      = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
+	curveFlag  = flag.String("curve", "ecdsa", "Subjacent curve (Koblitz, ECDSA, BLS12381G1/2.)")
 	digest     = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	factorPStr = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
 	hierarchy  = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for SM9 User Private Key)")
 	id         = flag.String("id", "", "User Identifier. (for SM9 User Private Key operations)")
-	id2        = flag.String("peerid", "", "Remote's side User Identifier. (for SM9 Key Agreement)")
+	id2        = flag.String("peerid", "", "Remote's side User Identifier. (for SM9 Key Exchange)")
 	info       = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport      = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	iter       = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
@@ -175,6 +180,7 @@ var (
 	mode       = flag.String("mode", "CTR", "Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB.")
 	modulusStr = flag.String("modulus", "", "Makwa modulus. (Makwa hash Public Parameter)")
 	paramset   = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
+	params     = flag.String("params", "", "ElGamal Public Parameters path.")
 	pkey       = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
 	priv       = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
 	pub        = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
@@ -243,9 +249,9 @@ Public Key Subcommands:
   crl               decrypt           verify            setup
 
 Public Key Algorithms:
-  ecdsa             gost2012          sm9encrypt        sphincs
-  ed25519           rsa (default)     sm9sign           x25519
-  ed25519ph         sm2
+  ecdsa             elgamal           sm2               gost2012
+  ed25519           ec-elgamal        sm9encrypt        sphincs
+  ed25519ph         rsa (default)     sm9sign           x25519
 
 Stream Ciphers:
   ascon             hc128             rabbit            skein
@@ -440,7 +446,7 @@ Subcommands:
 		*pwd = string(pass)
 	}
 
-	if (*pkey == "setup") && *pwd == "" {
+	if (*pkey == "setup") && *pwd == "" && strings.ToUpper(*alg) != "ELGAMAL" {
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
@@ -475,7 +481,7 @@ Subcommands:
 		*pwd2 = string(pass)
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && *key != "" && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "vko" || *pkey == "crl") && (*key != "") && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -769,12 +775,16 @@ Subcommands:
 		*iter = 4096
 	}
 
+	if (strings.ToUpper(*alg) == "ELGAMAL" && *pkey != "wrapkey" && *pkey != "unwrapkey") && *length != 256 && *length != 512 && *length != 768 && *length != 1024 && *length != 2048 && *length != 3072 && *length != 4096 && *length != 7680 {
+		*length = 3072
+	}
+
 	if *digest && *md == "spritz" && *length == 0 {
 		*length = 256
 	}
 
-	if *pkey == "keygen" && *alg == "sphincs" && *iter == 1 {
-		*iter = 1048576
+	if *pkey == "keygen" && strings.ToUpper(*alg) == "SPHINCS" && *iter == 1 {
+		*iter = 16384
 	}
 
 	if (*pkey == "wrapkey" || *pkey == "unwrapkey") && *length == 0 {
@@ -4763,7 +4773,7 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		fmt.Printf("SM9Sign(%s)= %x\n", inputdesc, signature)
+		fmt.Printf("PureSM9(%s)= %x\n", inputdesc, signature)
 	}
 
 	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM9SIGN") {
@@ -4799,13 +4809,15 @@ Subcommands:
 		}
 
 		if sm9.VerifyASN1(pubKey, []byte(*id), byte(*hierarchy), hashed, signature) {
-			fmt.Println("Signature verified successfully!")
+			fmt.Println("Verified: true")
+			os.Exit(0)
 		} else {
-			fmt.Println("Signature verification failed.")
+			fmt.Println("Verified: false")
+			os.Exit(1)
 		}
 	}
 
-	if *pkey == "sign" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "SM2") {
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") {
 		var privatekey *ecdsa.PrivateKey
 		var h hash.Hash
 		if *md == "sha224" {
@@ -4891,7 +4903,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "verify" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "SM2") {
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") {
 		var h hash.Hash
 		if *md == "sha224" {
 			h = sha256.New224()
@@ -4970,6 +4982,58 @@ Subcommands:
 		}
 		sig, _ := hex.DecodeString(*sig)
 		verifystatus := ecdsa.VerifyASN1(public, h.Sum(nil), sig)
+		if verifystatus == true {
+			fmt.Printf("Verified: %v\n", verifystatus)
+			os.Exit(0)
+		} else {
+			fmt.Printf("Verified: %v\n", verifystatus)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "SM2") {
+		var privatekey *sm2.PrivateKey
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeSM2PrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		inputBytes, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		signature, err := privatekey.Sign(rand.Reader, inputBytes, sm2.DefaultSM2SignerOpts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("PureSM2("+inputdesc+")=", hex.EncodeToString(signature))
+		os.Exit(0)
+	}
+
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM2") {
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		public, err = DecodePublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		inputBytes, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sigBytes, err := hex.DecodeString(*sig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		verifystatus := sm2.VerifyASN1WithSM2(public, nil, inputBytes, sigBytes)
 		if verifystatus == true {
 			fmt.Printf("Verified: %v\n", verifystatus)
 			os.Exit(0)
@@ -5717,7 +5781,7 @@ Subcommands:
 
 	var PEM string
 	var b []byte
-	if (*pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart" || *pkey == "fingerprint" || *pkey == "info") && *crl == "" {
+	if (*pkey == "text" || *pkey == "modulus" || *pkey == "check" || *pkey == "randomart" || *pkey == "fingerprint" || *pkey == "info") && *crl == "" && *params == "" {
 		if *key != "" {
 			b, err = ioutil.ReadFile(*key)
 			if err != nil {
@@ -5756,6 +5820,10 @@ Subcommands:
 			*alg = "SM9SIGN"
 		} else if strings.Contains(s, "SPHINCS") {
 			*alg = "SPHINCS"
+		} else if strings.Contains(s, "EC-ELGAMAL") {
+			*alg = "EC-ELGAMAL"
+		} else if strings.Contains(s, "ELGAMAL") {
+			*alg = "ELGAMAL"
 		} else if strings.Contains(s, "PRIVATE") {
 			*alg = "ED25519"
 		}
@@ -5834,7 +5902,7 @@ Subcommands:
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
-		println("SPHINCS+ (512-bit)")
+		println("SPHINCS+ (256-bit)")
 		randomArt := randomart.FromString(string(buf))
 		println(randomArt)
 		os.Exit(0)
@@ -5855,6 +5923,641 @@ Subcommands:
 		print("Fingerprint= ")
 		println(fingerprint)
 		os.Exit(0)
+	}
+
+	if (strings.ToUpper(*alg) == "ELGAMAL" && strings.ToUpper(*alg) != "EC-ELGAMAL" || *params != "") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
+		if *pkey == "setup" {
+			setParams, err := generateSchnorrGroup()
+			err = saveSchnorrParamsToPEM(*params, setParams)
+			if err != nil {
+				log.Fatal("Error saving Schnorr parameters to PEM file:", err)
+				return
+			}
+			os.Exit(0)
+		}
+		var blockType string
+		if *key != "" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				return
+			}
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				fmt.Println("Error decoding PEM block")
+				return
+			}
+			blockType = block.Type
+		}
+		if *pkey == "text" && *key != "" && blockType == "ELGAMAL PRIVATE KEY" {
+			priv, err := readPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				return
+			}
+			privPEM := &PrivateKey{
+				X: priv.X,
+				P: priv.P,
+				G: priv.G,
+			}
+
+			privBytes, err := encodePrivateKeyPEM(privPEM)
+			if err != nil {
+				return
+			}
+			pemBlock := &pem.Block{
+				Type:  "ELGAMAL PRIVATE KEY",
+				Bytes: privBytes,
+			}
+
+			pemData := pem.EncodeToMemory(pemBlock)
+			fmt.Print(string(pemData))
+			xval := new(big.Int).Set(priv.X)
+			fmt.Println("PrivateKey(x):")
+			x := fmt.Sprintf("%x", xval)
+			splitz := SplitSubN(x, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Prime(p):")
+			p := fmt.Sprintf("%x", priv.P)
+			splitz = SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Generator(g):")
+			g := fmt.Sprintf("%x", priv.G)
+			splitz = SplitSubN(g, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("PublicKey(Y):")
+			publicKey := setup(priv.X, priv.G, priv.P)
+			pub := fmt.Sprintf("%x", publicKey)
+			splitz = SplitSubN(pub, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		}
+		if *pkey == "text" && *key != "" && blockType == "ELGAMAL PUBLIC KEY" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				return
+			}
+			fmt.Print(string(pemData))
+			publicKeyVal, err := readPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error: Invalid public key value")
+				return
+			}
+			fmt.Println("Public Key Parameters:")
+			fmt.Println("Prime(p):")
+			p := fmt.Sprintf("%x", publicKeyVal.P)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Generator(g):")
+			g := fmt.Sprintf("%x", publicKeyVal.G)
+			splitz = SplitSubN(g, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("PublicKey(Y):")
+			y := fmt.Sprintf("%x", publicKeyVal.Y)
+			splitz = SplitSubN(y, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			return
+		}
+		if *pkey == "modulus" && blockType == "ELGAMAL PRIVATE KEY" {
+			privKey, err := readPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				return
+			}
+			publicKey := setup(privKey.X, privKey.G, privKey.P)
+			fmt.Printf("Y=%X\n", publicKey)
+			return
+		}
+		if *pkey == "modulus" && blockType == "ELGAMAL PUBLIC KEY" {
+			publicKey, err := readPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading public key:", err)
+				return
+			}
+			fmt.Printf("Y=%X\n", publicKey.Y)
+			return
+		}
+		if *pkey == "wrapkey" {
+			publicKeyVal, err := readPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error: Invalid public key value")
+				return
+			}
+
+			pub := &PublicKey{
+				G: publicKeyVal.G,
+				P: publicKeyVal.P,
+				Y: publicKeyVal.Y,
+			}
+
+			messageBytes := make([]byte, *length/8)
+			_, err = rand.Read(messageBytes)
+			if err != nil {
+				fmt.Println("Error generating random key:", err)
+				return
+			}
+			c, err := encrypt(rand.Reader, pub, messageBytes)
+			if err != nil {
+				fmt.Println("Error encrypting message:", err)
+				return
+			}
+
+			fmt.Printf("Cipher= %s\n", c)
+			fmt.Printf("Shared= %x\n", messageBytes)
+			os.Exit(0)
+		}
+		if *pkey == "unwrapkey" {
+			if *key == "" {
+				fmt.Println("Error: Private key file not provided for unwrapping.")
+				return
+			}
+
+			priv, err := readPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				return
+			}
+
+			ciphertext := *cph
+			message, err := decrypt(priv, ciphertext)
+			if err != nil {
+				fmt.Println("Error decrypting message:", err)
+				return
+			}
+			fmt.Printf("Shared= %x\n", message)
+		}
+		if *pkey == "text" {
+			readParams, err := readSchnorrParamsFromPEM(*params)
+			if err != nil {
+				fmt.Println("Error reading Schnorr parameters from PEM file:", err)
+				return
+			}
+
+			pemData, err := ioutil.ReadFile(*params)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				return
+			}
+			fmt.Print(string(pemData))
+			fmt.Println("Schnorr Parameters:")
+			fmt.Println("Prime(p):")
+			p := fmt.Sprintf("%x", readParams.P)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Order(q):")
+			q := fmt.Sprintf("%x", readParams.Q)
+			splitz = SplitSubN(q, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Generator(g):")
+			g := fmt.Sprintf("%x", readParams.G)
+			splitz = SplitSubN(g, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		}
+		if *pkey == "keygen" {
+			var xval *big.Int
+			var path string
+
+			readParams, err := readSchnorrParamsFromPEM(*params)
+			if err != nil {
+				log.Fatal("Error reading Schnorr parameters from PEM file:", err)
+				return
+			}
+
+			if *key == "" {
+				xval, err = generateRandomX(readParams.P)
+				if err != nil {
+					log.Fatal("Error generating x:", err)
+					return
+				}
+				path, err = filepath.Abs(*priv)
+				privateKey := &PrivateKey{
+					X: xval,
+					P: readParams.P,
+					G: readParams.G,
+				}
+				if err := savePrivateKeyToPEM(*priv, privateKey); err != nil {
+					log.Fatal("Error saving private key:", err)
+					return
+				}
+				fmt.Fprintf(os.Stderr, "Private Key save to: %s\n", path)
+			} else {
+				priv, err := readPrivateKeyFromPEM(*key)
+				if err != nil {
+					log.Fatal("Error reading private key:", err)
+					return
+				}
+				xval = new(big.Int).Set(priv.X)
+			}
+
+			publicKey := setup(xval, readParams.G, readParams.P)
+
+			path, err = filepath.Abs(*pub)
+			fmt.Fprintf(os.Stderr, "Public Key save to: %s\n", path)
+			if err := savePublicKeyToPEM(*pub, &PublicKey{Y: publicKey, G: readParams.G, P: readParams.P}); err != nil {
+				log.Fatal("Error saving public key:", err)
+				return
+			}
+
+			fingerprint := calculateFingerprint(publicKey.Bytes())
+			fmt.Fprintf(os.Stderr, "Fingerprint: %s\n", fingerprint)
+
+			primeBitLength := readParams.P.BitLen()
+			fmt.Fprintf(os.Stderr, "ElGamal (%d-bits)\n", primeBitLength)
+
+			file, err := os.Open(*pub)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			info, err := file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			buf := make([]byte, info.Size())
+			file.Read(buf)
+			randomArt := randomart.FromString(string(buf))
+			fmt.Fprintln(os.Stderr, randomArt)
+
+			return
+		}
+		if *pkey == "sign" {
+			message, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading file:", err)
+				return
+			}
+
+			priv, err := readPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				return
+			}
+
+			sign, err := sign(priv, message, myHash)
+			if err != nil {
+				log.Fatal("Error signing message:", err)
+				return
+			}
+
+			fmt.Println("EG-"+strings.ToUpper(*md)+"("+inputdesc+")=", sign)
+		}
+		if *pkey == "verify" {
+			message, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading file:", err)
+				return
+			}
+
+			if *key == "" {
+				fmt.Println("Error: Public key file not provided for verification.")
+				return
+			}
+
+			publicKeyVal, err := readPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error: Invalid public key value")
+				return
+			}
+
+			pub := &PublicKey{
+				G: publicKeyVal.G,
+				P: publicKeyVal.P,
+				Y: publicKeyVal.Y,
+			}
+
+			isValid := verify(pub, message, *sig, myHash)
+			fmt.Println("Verified:", isValid)
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "EC-ELGAMAL") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "fingerprint" || *pkey == "randomart") {
+		var blockType string
+		if *key != "" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				return
+			}
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				fmt.Println("Error decoding PEM block")
+				return
+			}
+			blockType = block.Type
+		}
+		if *pkey == "text" && *key != "" && blockType == "EC-ELGAMAL ENCRYPTION KEY" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+			pubKeyPEM := pem.Block{Type: "EC-ELGAMAL ENCRYPTION KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("EncryptionKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		} else if *pkey == "text" && *key != "" && blockType == "EC-ELGAMAL DECRYPTION KEY" {
+			keyBytes, err := ioutil.ReadFile(*key)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			block, _ := pem.Decode(keyBytes)
+			if block == nil {
+				log.Fatal(err)
+			}
+
+			curve, ok := block.Headers["Curve"]
+			if !ok {
+				fmt.Println("Curve not found in headers.")
+			}
+
+			keyBytes, err = readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+			privKeyPEM := pem.Block{
+				Type:  "EC-ELGAMAL DECRYPTION KEY",
+				Bytes: keyBytes,
+				Headers: map[string]string{
+					"Curve": curve,
+				},
+			}
+			keyPEMText := string(pem.EncodeToMemory(&privKeyPEM))
+			fmt.Print(keyPEMText)
+
+			dk := new(elgamal.DecryptionKey)
+
+			err = dk.UnmarshalBinary(keyBytes)
+			if err != nil {
+				fmt.Println("Error decoding private key:", err)
+				return
+			}
+			ek := dk.EncryptionKey()
+			pubBytes, _ := ek.MarshalBinary()
+
+			fmt.Println("DecryptionKey:")
+			prv := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(prv, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("EncryptionKey:")
+			pub := fmt.Sprintf("%x", pubBytes)
+			splitz = SplitSubN(pub, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		}
+		if *pkey == "modulus" && *key != "" && blockType == "EC-ELGAMAL ENCRYPTION KEY" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+			fmt.Printf("Pub=%x\n", keyBytes)
+			os.Exit(0)
+		}
+		if *pkey == "modulus" && *key != "" && blockType == "EC-ELGAMAL DECRYPTION KEY" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+			dk := new(elgamal.DecryptionKey)
+			err = dk.UnmarshalBinary(keyBytes)
+			if err != nil {
+				fmt.Println("Error decoding private key:", err)
+				return
+			}
+			ek := dk.EncryptionKey()
+			pubBytes, _ := ek.MarshalBinary()
+			fmt.Printf("Pub=%x\n", pubBytes)
+			os.Exit(0)
+		}
+		if *pkey == "fingerprint" && *key != "" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+			os.Exit(0)
+		}
+		if *pkey == "randomart" && *key != "" {
+			fmt.Printf("EC-ElGamal (256-bit)\n")
+
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				return
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				return
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+			os.Exit(0)
+		}
+		if *pkey == "keygen" {
+			var curve *curves.Curve
+			switch strings.ToUpper(*curveFlag) {
+			case "BLS12381G1":
+				curve = curves.BLS12381G1()
+			case "BLS12381G2":
+				curve = curves.BLS12381G2()
+			case "P256", "ECDSA", "EC", "SECP256R1":
+				curve = curves.P256()
+			case "K256", "KOBLITZ", "SECP256K1":
+				curve = curves.K256()
+			default:
+				fmt.Println("Unsupported curve:", *curveFlag)
+				return
+			}
+			ek, dk, _ := elgamal.NewKeys(curve)
+
+			privBytes, _ := dk.MarshalBinary()
+			pubBytes, _ := ek.MarshalBinary()
+
+			privKeyPEM := pem.Block{Type: "EC-ELGAMAL DECRYPTION KEY", Bytes: privBytes}
+			privKeyPEM.Headers = map[string]string{"Curve": strings.ToUpper(*curveFlag)}
+
+			pubKeyPEM := pem.Block{Type: "EC-ELGAMAL ENCRYPTION KEY", Bytes: pubBytes}
+
+			savePEMToFile(*priv, &privKeyPEM, true)
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				return
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+
+			savePEMToFile(*pub, &pubKeyPEM, false)
+			pubPath, err := filepath.Abs(*pub)
+			if err != nil {
+				fmt.Println("Error getting absolute path for public key:", err)
+				return
+			}
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+
+			fingerprint := calculateFingerprint(pubBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+
+			fmt.Printf("EC-ElGamal (256-bit)\n")
+
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				return
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				return
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+
+			os.Exit(0)
+		} else {
+			if *pkey == "unwrapkey" {
+				if *key == "" {
+					fmt.Println("A key is required for decryption.")
+					return
+				}
+
+				keyBytes, err := readKeyFromPEM(*key, true)
+				if err != nil {
+					fmt.Println("Error reading key from PEM:", err)
+					return
+				}
+
+				domain := []byte(*id)
+				dk := new(elgamal.DecryptionKey)
+
+				err = dk.UnmarshalBinary(keyBytes)
+				if err != nil {
+					fmt.Println("Error decoding private key:", err)
+					return
+				}
+
+				ciphertextBytes, err := hex.DecodeString(*cph)
+				if err != nil {
+					fmt.Println("Error decoding ciphertext:", err)
+					return
+				}
+
+				cs := new(elgamal.CipherText)
+
+				err = cs.UnmarshalBinary(ciphertextBytes)
+				if err != nil {
+					fmt.Println("Error decoding ciphertext:", err)
+					return
+				}
+
+				dbytes, _, err := dk.VerifiableDecryptWithDomain(domain, cs)
+				if err != nil {
+					fmt.Println("Error decrypting:", err)
+					return
+				}
+				fmt.Printf("Shared= %x\n", dbytes)
+				os.Exit(0)
+			} else {
+				if *key == "" {
+					fmt.Println("A key is required for encryption.")
+					return
+				}
+
+				keyBytes, err := readKeyFromPEM(*key, false)
+				if err != nil {
+					fmt.Println("Error reading key from PEM:", err)
+					return
+				}
+
+				domain := []byte(*id)
+				ek := new(elgamal.EncryptionKey)
+
+				err = ek.UnmarshalBinary(keyBytes)
+				if err != nil {
+					fmt.Println("Error decoding public key:", err)
+					return
+				}
+
+				msgBytes := make([]byte, *length/8)
+				_, err = rand.Read(msgBytes)
+				if err != nil {
+					return
+				}
+
+				cs, proof, err := ek.VerifiableEncrypt(msgBytes, &elgamal.EncryptParams{
+					Domain:          domain,
+					MessageIsHashed: true,
+					GenProof:        true,
+					ProofNonce:      domain,
+				})
+
+				if err != nil {
+					fmt.Println("Error encrypting:", err)
+					return
+				}
+
+				res3, _ := cs.MarshalBinary()
+
+				fmt.Fprint(os.Stderr, "Verified: ")
+				rtn := ek.VerifyDomainEncryptProof(domain, cs, proof)
+				if rtn == nil {
+					fmt.Fprintln(os.Stderr, "true")
+				} else {
+					fmt.Fprintln(os.Stderr, "false")
+				}
+				fmt.Printf("Cipher= %x\n", res3)
+				fmt.Printf("Shared= %x\n", msgBytes)
+				os.Exit(0)
+			}
+		}
 	}
 
 	if *pkey == "modulus" && (strings.ToUpper(*alg) == "SM9SIGN" || strings.ToUpper(*alg) == "SM9ENCRYPT") && (PEM == "Master" || PEM == "Private") {
@@ -6831,6 +7534,44 @@ Subcommands:
 		spki := hasher.Sum(nil)
 		spki = spki[:20]
 		fmt.Printf("\nKeyID: %x \n", spki)
+		os.Exit(0)
+	}
+
+	if *pkey == "fingerprint" && (strings.ToUpper(*alg) == "ELGAMAL") && (PEM == "Public") {
+		publicKeyVal, err := readPublicKeyFromPEM(*key)
+		if err != nil {
+			fmt.Println("Error reading PEM file:", err)
+			return
+		}
+
+		fingerprint := calculateFingerprint(publicKeyVal.Y.Bytes())
+		fmt.Println("Fingerprint=", fingerprint)
+		os.Exit(0)
+	}
+	if *pkey == "randomart" && (strings.ToUpper(*alg) == "ELGAMAL") && (PEM == "Public") {
+		publicKeyVal, err := readPublicKeyFromPEM(*key)
+		if err != nil {
+			fmt.Println("Error reading PEM file:", err)
+			return
+		}
+
+		primeBitLength := publicKeyVal.P.BitLen()
+		fmt.Fprintf(os.Stderr, "ElGamal (%d-bits)\n", primeBitLength)
+
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		randomArt := randomart.FromString(string(buf))
+		fmt.Println(randomArt)
 		os.Exit(0)
 	}
 
@@ -10958,16 +11699,10 @@ func savePEMPrivateKey(filename string, keyBytes []byte, passphrase string, twea
 			"Scrypt-Itering": strconv.Itoa(*iter),
 		}
 
-		if strings.ToUpper(*cph) == "THREEFISH256" {
-			headers["DEK-Info"] = fmt.Sprintf("THREEFISH256-CFB,TWEAK,%s", tweak)
-		} else if strings.ToUpper(*cph) == "THREEFISH512" {
-			headers["DEK-Info"] = fmt.Sprintf("THREEFISH512-CFB,TWEAK,%s", tweak)
-		} else if strings.ToUpper(*cph) == "THREEFISH1024" {
-			headers["DEK-Info"] = fmt.Sprintf("THREEFISH1024-CFB,TWEAK,%s", tweak)
-		} else if strings.ToUpper(*cph) == "ANUBIS" {
-			headers["DEK-Info"] = fmt.Sprintf("ANUBIS-CFB")
+		if strings.ToUpper(*cph) == "ANUBIS" {
+			headers["DEK-Info"] = fmt.Sprintf("ANUBIS")
 		} else if strings.ToUpper(*cph) == "AES" {
-			headers["DEK-Info"] = fmt.Sprintf("AES-CFB")
+			headers["DEK-Info"] = fmt.Sprintf("AES")
 		}
 
 		privKeyInfo := &pem.Block{
@@ -11010,13 +11745,8 @@ func loadPEMKey(filename string, passphrase string) ([]byte, error) {
 	}
 
 	dekInfo := block.Headers["DEK-Info"]
-	tweak := ""
 	if dekInfo != "" {
 		parts := strings.Split(dekInfo, ",")
-		if len(parts) == 3 && parts[1] == "TWEAK" {
-			tweak = parts[2]
-		}
-		*info = tweak
 		*cph = strings.TrimSuffix(strings.ToLower(parts[0]), "-cfb")
 	}
 	*md = strings.ToLower(block.Headers["Hash-Algorithm"])
@@ -11052,123 +11782,78 @@ func encryptKey(key []byte, passphrase string) ([]byte, error) {
 		return nil, err
 	}
 
-	var tweak []byte
-	tweak = make([]byte, 16)
-	if *info != "" {
-		tweak = []byte(*info)
-	}
-
-	var n int
 	var block cipher.Block
-	if *cph == "threefish256" {
-		block, err = threefish.New256(derivedKey[:32], tweak)
+	if *cph == "aes" {
+		block, err = aes.NewCipher(derivedKey[:32])
 		if err != nil {
 			return nil, err
 		}
-		n = 32
-	} else if *cph == "threefish512" {
-		block, err = threefish.New512(derivedKey[:64], tweak)
-		if err != nil {
-			return nil, err
-		}
-		n = 64
-	} else if *cph == "threefish1024" {
-		block, err = threefish.New1024(derivedKey, tweak)
-		if err != nil {
-			return nil, err
-		}
-		n = 128
 	} else if *cph == "anubis" {
 		block, err = anubis.NewWithKeySize(derivedKey, 40)
 		if err != nil {
 			return nil, err
 		}
-		n = 16
-	} else if *cph == "aes" {
-		block, err = aes.NewCipher(derivedKey[:32])
-		if err != nil {
-			return nil, err
-		}
-		n = 16
+	} else {
+		return nil, fmt.Errorf("Unsupported cipher")
 	}
 
-	ciphertext := make([]byte, n+len(key))
-	iv := ciphertext[:n]
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
 		return nil, err
 	}
 
-	stream := cipher.NewCFBEncrypter(block, iv)
-	stream.XORKeyStream(ciphertext[n:], key)
+	nonce := make([]byte, aesGCM.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
 
-	return append(salt, ciphertext...), nil
+	ciphertext := aesGCM.Seal(nil, nonce, key, nil)
+
+	return append(salt, append(nonce, ciphertext...)...), nil
 }
 
 func decryptKey(ciphertext []byte, passphrase string) ([]byte, error) {
 	salt := ciphertext[:16]
-	encryptedKey := ciphertext[16:]
+	nonce := ciphertext[16 : 16+12]
+	encryptedKey := ciphertext[16+12:]
 
 	derivedKey, err := deriveKey(passphrase, salt)
 	if err != nil {
 		return nil, err
 	}
 
-	var tweak []byte
-	tweak = make([]byte, 16)
-	if *info != "" {
-		tweak = []byte(*info)
-	}
-	/*
-		block, err := threefish.New512(derivedKey, tweak)
-		if err != nil {
-			return nil, err
-		}
-	*/
-	var n int
 	var block cipher.Block
-	if *cph == "threefish256" {
-		block, err = threefish.New256(derivedKey[:32], tweak)
+	if *cph == "aes" {
+		block, err = aes.NewCipher(derivedKey[:32])
 		if err != nil {
 			return nil, err
 		}
-		n = 32
-	} else if *cph == "threefish512" {
-		block, err = threefish.New512(derivedKey[:64], tweak)
-		if err != nil {
-			return nil, err
-		}
-		n = 64
-	} else if *cph == "threefish1024" {
-		block, err = threefish.New1024(derivedKey, tweak)
-		if err != nil {
-			return nil, err
-		}
-		n = 128
 	} else if *cph == "anubis" {
 		block, err = anubis.NewWithKeySize(derivedKey, 40)
 		if err != nil {
 			return nil, err
 		}
-		n = 16
-	} else if *cph == "aes" {
-		block, err = aes.NewCipher(derivedKey[:32])
-		if err != nil {
-			return nil, err
-		}
-		n = 16
+	} else {
+		return nil, fmt.Errorf("unsupported cipher")
 	}
 
-	iv := encryptedKey[:n]
-	encryptedKey = encryptedKey[n:]
+	aesGCM, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
 
-	stream := cipher.NewCFBDecrypter(block, iv)
-	stream.XORKeyStream(encryptedKey, encryptedKey)
+	decryptedKey, err := aesGCM.Open(nil, nonce, encryptedKey, nil)
+	if err != nil {
+		return nil, err
+	}
 
-	return encryptedKey, nil
+	return decryptedKey, nil
 }
 
 func generateKeyPair(privPath, pubPath string) {
 	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+	fmt.Printf("SPHINCS+ Parameters\nN=%d, W=%d, Hprime=%d, H=%d, D=%d, K=%d, T=%d, LogT=%d, A=%d\n", params.N, params.W, params.Hprime,
+		params.H, params.D, params.K, params.T, params.LogT, params.A)
 	sk, pk := sphincs.Spx_keygen(params)
 
 	serializedSK, err := sk.SerializeSK()
@@ -11214,7 +11899,7 @@ func generateKeyPair(privPath, pubPath string) {
 	fingerprint := calculateFingerprint(buf)
 	print("Fingerprint: ")
 	println(fingerprint)
-	println("SPHINCS+ (512-bit)")
+	println("SPHINCS+ (256-bit)")
 	randomArt := randomart.FromString(string(buf))
 	println(randomArt)
 }
@@ -11372,7 +12057,7 @@ func printPublicKeyParamsFull(pk *sphincs.SPHINCS_PK) {
 	}
 	pem.Encode(os.Stdout, block)
 
-	fmt.Printf("PublicKey: (512-bit)\n")
+	fmt.Printf("PublicKey: (256-bit)\n")
 
 	fmt.Printf("PK: \n")
 	splitz := SplitSubN(hex.EncodeToString(serializedPK), 2)
@@ -11405,7 +12090,7 @@ func printPrivateKeyParamsFull(sk *sphincs.SPHINCS_SK) {
 	}
 	pem.Encode(os.Stdout, block)
 
-	fmt.Printf("SecretKey: (512-bit)\n")
+	fmt.Printf("SecretKey: (256-bit)\n")
 	/*
 		fmt.Printf("SK: \n")
 		splitz := SplitSubN(hex.EncodeToString(serializedSK), 2)
@@ -11781,6 +12466,790 @@ func cipherByKey(key PEMCipher) *rfc1423Algo {
 		}
 	}
 	return nil
+}
+
+func setup(privateKey *big.Int, g, p *big.Int) *big.Int {
+	publicKey := new(big.Int).Exp(g, privateKey, p)
+	return publicKey
+}
+
+type PublicKey struct {
+	G, P, Y *big.Int
+}
+
+type PrivateKey struct {
+	PublicKey
+	P *big.Int
+	G *big.Int
+	X *big.Int
+}
+
+func encrypt(random io.Reader, pub *PublicKey, msg []byte) (ciphertext string, err error) {
+	k, err := rand.Int(random, pub.P)
+	if err != nil {
+		return "", err
+	}
+
+	m := new(big.Int).SetBytes(msg)
+
+	a := new(big.Int).Exp(pub.G, k, pub.P)
+	s := new(big.Int).Exp(pub.Y, k, pub.P)
+	b := s.Mul(s, m)
+	b.Mod(b, pub.P)
+
+	aHex := fmt.Sprintf("%0*x", (pub.P.BitLen())/4, a)
+	bHex := fmt.Sprintf("%0*x", (pub.P.BitLen())/4, b)
+
+	ciphertext = aHex + bHex
+
+	return ciphertext, nil
+}
+
+func decrypt(priv *PrivateKey, ciphertext string) (msg []byte, err error) {
+	if len(ciphertext)%2 != 0 {
+		return nil, fmt.Errorf("invalid ciphertext format")
+	}
+
+	halfLen := len(ciphertext) / 2
+	aHex := ciphertext[:halfLen]
+	bHex := ciphertext[halfLen:]
+
+	a, successA := new(big.Int).SetString(aHex, 16)
+	b, successB := new(big.Int).SetString(bHex, 16)
+	if !successA || !successB {
+		return nil, fmt.Errorf("invalid ciphertext format")
+	}
+
+	s := new(big.Int).Exp(a, priv.X, priv.P)
+	s.ModInverse(s, priv.P)
+	s.Mul(s, b)
+	s.Mod(s, priv.P)
+	em := s.Bytes()
+
+	return em, nil
+}
+
+func sign(privateKey *PrivateKey, message []byte, hashFunc func() hash.Hash) (signature string, err error) {
+	for {
+		k, err := rand.Int(rand.Reader, new(big.Int).Sub(privateKey.P, big.NewInt(2)))
+		if err != nil {
+			return "", fmt.Errorf("failed to generate random number: %v", err)
+		}
+
+		if k.Sign() == 0 {
+			k = big.NewInt(1)
+		}
+
+		if new(big.Int).GCD(nil, nil, k, new(big.Int).Sub(privateKey.P, big.NewInt(1))).Cmp(big.NewInt(1)) == 0 {
+			rBigInt := new(big.Int).Exp(privateKey.G, k, privateKey.P)
+			rBigInt.Mod(rBigInt, privateKey.P)
+			rHex := fmt.Sprintf("%x", rBigInt)
+
+			h := hashFunc()
+			h.Write(message)
+			hash := h.Sum(nil)
+			hashInt := new(big.Int).SetBytes(hash)
+
+			kInv := new(big.Int).ModInverse(k, new(big.Int).Sub(privateKey.P, big.NewInt(1)))
+			if kInv == nil {
+				return "", errors.New("failed to calculate modular inverse: k is not invertible")
+			}
+
+			sBigInt := new(big.Int).Mul(kInv, new(big.Int).Sub(hashInt, new(big.Int).Mul(privateKey.X, rBigInt)))
+			sBigInt.Mod(sBigInt, new(big.Int).Sub(privateKey.P, big.NewInt(1)))
+			sHex := fmt.Sprintf("%x", sBigInt)
+
+			rHex = strings.TrimLeft(rHex, "0")
+			sHex = strings.TrimLeft(sHex, "0")
+			paddingLen := len(fmt.Sprintf("%x", privateKey.P))
+			rPadded := fmt.Sprintf("%0*s", paddingLen, rHex)
+			sPadded := fmt.Sprintf("%0*s", paddingLen, sHex)
+
+			signature = rPadded + sPadded
+			return signature, nil
+		}
+	}
+}
+
+func verify(publicKey *PublicKey, message []byte, signature string, hashFunc func() hash.Hash) bool {
+	pLength := len(fmt.Sprintf("%X", publicKey.P))
+	if len(signature) != 2*pLength {
+		return false
+	}
+
+	rHex := signature[:pLength]
+	sHex := signature[pLength:]
+
+	r, ok := new(big.Int).SetString(rHex, 16)
+	if !ok {
+		fmt.Println("Error converting R string to big.Int")
+		return false
+	}
+
+	s, ok := new(big.Int).SetString(sHex, 16)
+	if !ok {
+		fmt.Println("Error converting S string to big.Int")
+		return false
+	}
+
+	if r.Cmp(big.NewInt(1)) == -1 || r.Cmp(new(big.Int).Sub(publicKey.P, big.NewInt(1))) == 1 {
+		return false
+	}
+	if s.Cmp(big.NewInt(1)) == -1 || s.Cmp(new(big.Int).Sub(publicKey.P, big.NewInt(1))) == 1 {
+		return false
+	}
+
+	h := hashFunc()
+	h.Write(message)
+	hash := h.Sum(nil)
+	hashInt := new(big.Int).SetBytes(hash)
+	ghash := new(big.Int).Exp(publicKey.G, hashInt, publicKey.P)
+
+	yr := new(big.Int).Exp(publicKey.Y, r, publicKey.P)
+	rs := new(big.Int).Exp(r, s, publicKey.P)
+	yrrs := new(big.Int).Mul(yr, rs)
+	yrrs.Mod(yrrs, publicKey.P)
+
+	return ghash.Cmp(yrrs) == 0
+}
+
+func savePrivateKeyToPEM(fileName string, privKey *PrivateKey) error {
+	privPEM := &PrivateKey{
+		X: privKey.X,
+		P: privKey.P,
+		G: privKey.G,
+	}
+
+	privBytes, err := encodePrivateKeyPEM(privPEM)
+	if err != nil {
+		return err
+	}
+
+	block := &pem.Block{
+		Type:  "ELGAMAL PRIVATE KEY",
+		Bytes: privBytes,
+	}
+
+	return savePEMToFile(fileName, block, *pwd != "")
+}
+
+func encodePrivateKeyPEM(privPEM *PrivateKey) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(privPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func readPrivateKeyFromPEM(fileName string) (*PrivateKey, error) {
+	pemData, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	if block.Type != "ELGAMAL PRIVATE KEY" {
+		return nil, errors.New("unexpected PEM block type")
+	}
+
+	if block.Headers["Proc-Type"] == "4,ENCRYPTED" {
+		if *pwd == "" {
+			return nil, fmt.Errorf("private key is encrypted, but no decryption key provided")
+		}
+
+		privBytes, err := decryptBlock(block, deriveKeyFromPassword(*pwd))
+		if err != nil {
+			return nil, err
+		}
+
+		var privKey PrivateKey
+		buf := bytes.NewReader(privBytes)
+		dec := gob.NewDecoder(buf)
+		err = dec.Decode(&privKey)
+		if err != nil {
+			return nil, err
+		}
+
+		return &privKey, nil
+	}
+
+	var privKey PrivateKey
+	buf := bytes.NewReader(block.Bytes)
+	dec := gob.NewDecoder(buf)
+	err = dec.Decode(&privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	return &privKey, nil
+}
+
+func savePublicKeyToPEM(fileName string, pub *PublicKey) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	pubBytes, err := publicKeyToBytes(pub)
+	if err != nil {
+		return err
+	}
+
+	block := &pem.Block{
+		Type:  "ELGAMAL PUBLIC KEY",
+		Bytes: pubBytes,
+	}
+
+	err = pem.Encode(file, block)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readPublicKeyFromPEM(fileName string) (*PublicKey, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	pemData, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	pub, err := bytesToPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return pub, nil
+}
+
+func publicKeyToBytes(pub *PublicKey) ([]byte, error) {
+	if pub == nil {
+		return nil, errors.New("cannot encode nil PublicKey pointer")
+	}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(pub)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func bytesToPublicKey(data []byte) (*PublicKey, error) {
+	var pub PublicKey
+	dec := gob.NewDecoder(bytes.NewReader(data))
+
+	err := dec.Decode(&pub)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pub, nil
+}
+
+func generateRandomX(p *big.Int) (*big.Int, error) {
+	x, err := rand.Int(rand.Reader, new(big.Int).Sub(p, big.NewInt(2)))
+	if err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+func isPrime(n *big.Int) bool {
+	return n.ProbablyPrime(20)
+}
+
+func generatePrime(length int) (*big.Int, error) {
+	for {
+		randomBits := make([]byte, length/8)
+		_, err := rand.Read(randomBits)
+		if err != nil {
+			return nil, err
+		}
+
+		randomBits[0] |= 1
+		randomBits[len(randomBits)-1] |= 1
+
+		prime := new(big.Int).SetBytes(randomBits)
+
+		prime.SetBit(prime, length-1, 1)
+
+		if isPrime(prime) && prime.BitLen() == length {
+			return prime, nil
+		}
+
+		print(".")
+	}
+}
+
+func generateSchnorrGroup() (*SchnorrParams, error) {
+	qSize := *length - 1
+
+	q, err := generatePrime(256)
+	if err != nil {
+		return nil, fmt.Errorf("error generating q: %v", err)
+	}
+
+	if q.BitLen() != 256 {
+		return nil, errors.New("generated q does not have the desired length")
+	}
+
+	p, err := generatePrime(qSize + 1)
+	if err != nil {
+		return nil, fmt.Errorf("error generating p: %v", err)
+	}
+
+	if p.BitLen() != (qSize + 1) {
+		return nil, errors.New("generated p does not have the desired length")
+	}
+
+	r := new(big.Int).Div(new(big.Int).Sub(p, big.NewInt(1)), q)
+
+	var h *big.Int
+	for {
+		h, _ = rand.Int(rand.Reader, new(big.Int).Sub(p, big.NewInt(2)))
+		h.Add(h, big.NewInt(1))
+		if h.Cmp(big.NewInt(1)) == 1 && h.Cmp(p) == -1 {
+			break
+		}
+	}
+
+	g := new(big.Int).Exp(h, r, p)
+
+	return &SchnorrParams{
+		P: p,
+		Q: q,
+		G: g,
+	}, nil
+}
+
+type SchnorrParams struct {
+	P *big.Int
+	Q *big.Int
+	G *big.Int
+}
+
+func init() {
+	gob.Register(&SchnorrParams{})
+}
+
+func paramsToBytes(params *SchnorrParams) ([]byte, error) {
+	if params == nil {
+		return nil, errors.New("cannot encode nil SchnorrParams pointer")
+	}
+
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	err := enc.Encode(params)
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func bytesToParams(data []byte) (*SchnorrParams, error) {
+	var params SchnorrParams
+	dec := gob.NewDecoder(bytes.NewReader(data))
+
+	err := dec.Decode(&params)
+	if err != nil {
+		return nil, err
+	}
+
+	return &params, nil
+}
+
+func saveSchnorrParamsToPEM(fileName string, params *SchnorrParams) error {
+	var file *os.File
+	var err error
+
+	print("\n")
+	if fileName == "" {
+		file = os.Stdout
+	} else {
+		file, err = os.Create(fileName)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+	}
+
+	paramsBytes, err := paramsToBytes(params)
+	if err != nil {
+		return err
+	}
+
+	err = pem.Encode(file, &pem.Block{
+		Type:  "SCHNORR PARAMETERS",
+		Bytes: paramsBytes,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readSchnorrParamsFromPEM(fileName string) (*SchnorrParams, error) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	pemData, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(pemData)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	return bytesToParams(block.Bytes)
+}
+
+/*
+func savePEMToFile(fileName string, block *pem.Block) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	err = pem.Encode(file, block)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readKeyFromPEM(fileName string) ([]byte, error) {
+	fileData, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(fileData)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	return block.Bytes, nil
+}
+*/
+
+func savePEMToFile(fileName string, block *pem.Block, isPrivateKey bool) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	if isPrivateKey && *pwd != "" {
+		key := deriveKeyFromPassword(*pwd)
+		encryptedBlock := encryptBlock(block, key)
+		block = encryptedBlock
+	}
+
+	err = pem.Encode(file, block)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func readKeyFromPEM(fileName string, isPrivateKey bool) ([]byte, error) {
+	fileData, err := ioutil.ReadFile(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(fileData)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	if isPrivateKey && *pwd != "" {
+		key := deriveKeyFromPassword(*pwd)
+		bytes, err := decryptBlock(block, key)
+		if err != nil {
+			return nil, err
+		}
+		return bytes, nil
+	}
+
+	return block.Bytes, nil
+}
+
+func deriveKeyFromPassword(password string) []byte {
+	key := pbkdf2.Key([]byte(password), []byte(*salt), 1048576, 32, sha256.New)
+	return key
+}
+
+/*
+func encryptBlock(block *pem.Block, key []byte) *pem.Block {
+	blockBytes := block.Bytes
+
+	var blockCipher cipher.Block
+	var err error
+
+	switch strings.ToUpper(*cph) {
+	case "AES":
+		blockCipher, err = aes.NewCipher(key)
+		if err != nil {
+			panic(err.Error())
+		}
+	case "ANUBIS":
+		blockCipher, err = anubis.New(key)
+		if err != nil {
+			panic(err.Error())
+		}
+	default:
+		log.Fatal("cipher not supported")
+	}
+
+	gcm, _ := cipher.NewGCM(blockCipher)
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		panic(err.Error())
+	}
+
+	nonceHex := hex.EncodeToString(nonce)
+	encryptedBytes := gcm.Seal(nil, nonce, blockBytes, nil)
+
+	newBlock := &pem.Block{
+		Type:  block.Type,
+		Bytes: encryptedBytes,
+		Headers: map[string]string{
+			"Proc-Type": "4,ENCRYPTED",
+			"DEK-Info":  fmt.Sprintf("%s,%s", strings.ToUpper(*cph), nonceHex),
+		},
+	}
+
+	if strings.ToUpper(*alg) == "EC-ELGAMAL" {
+		newBlock.Headers["Curve"] = strings.ToUpper(*curveFlag)
+	}
+
+	return newBlock
+}
+
+func decryptBlock(block *pem.Block, key []byte) ([]byte, error) {
+	blockBytes := block.Bytes
+
+	dekInfo, ok := block.Headers["DEK-Info"]
+	if !ok {
+		return nil, fmt.Errorf("missing DEK-Info in PEM block header")
+	}
+
+	dekInfoParts := strings.Split(dekInfo, ",")
+	if len(dekInfoParts) != 2 {
+		return nil, fmt.Errorf("invalid DEK-Info format")
+	}
+
+	cipherName := strings.ToUpper(dekInfoParts[0])
+
+	var blockCipher cipher.Block
+	var err error
+
+	switch cipherName {
+	case "AES":
+		blockCipher, err = aes.NewCipher(key)
+		if err != nil {
+			return nil, err
+		}
+	case "ANUBIS":
+		blockCipher, err = anubis.New(key)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("cipher not supported")
+	}
+
+	gcm, _ := cipher.NewGCM(blockCipher)
+
+	nonceHex := dekInfoParts[1]
+	nonce, err := hex.DecodeString(nonceHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode nonce: %v", err)
+	}
+
+	decryptedBytes, err := gcm.Open(nil, nonce, blockBytes, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt PEM block: %v", err)
+	}
+
+	return decryptedBytes, nil
+}
+*/
+
+func encryptBlock(block *pem.Block, key []byte) *pem.Block {
+	blockBytes := block.Bytes
+
+	var blockCipher cipher.Block
+	var aead cipher.AEAD
+	var err error
+
+	switch strings.ToUpper(*cph) {
+	case "AES":
+		blockCipher, err = aes.NewCipher(key)
+		if err != nil {
+			panic(err.Error())
+		}
+	case "ANUBIS":
+		blockCipher, err = anubis.New(key)
+		if err != nil {
+			panic(err.Error())
+		}
+	default:
+		log.Fatal("cipher not supported")
+	}
+
+	switch strings.ToUpper(*mode) {
+	case "GCM":
+		aead, err = cipher.NewGCM(blockCipher)
+	case "MGM":
+		aead, err = mgm.NewMGM(blockCipher, 16)
+	case "OCB", "OCB1":
+		aead, err = ocb.NewOCB(blockCipher)
+	case "OCB3":
+		aead, err = ocb3.New(blockCipher)
+	case "EAX":
+		aead, err = eax.NewEAX(blockCipher)
+	case "CCM":
+		aead, err = ccm.NewCCM(blockCipher, 16, 12)
+	default:
+		log.Fatal("mode not supported")
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		panic(err.Error())
+	}
+
+	nonceHex := hex.EncodeToString(nonce)
+	encryptedBytes := aead.Seal(nil, nonce, blockBytes, nil)
+
+	newBlock := &pem.Block{
+		Type:  block.Type,
+		Bytes: encryptedBytes,
+		Headers: map[string]string{
+			"Proc-Type": "4,ENCRYPTED",
+			"DEK-Info":  fmt.Sprintf("%s-%s,%s", strings.ToUpper(*cph), strings.ToUpper(*mode), nonceHex),
+		},
+	}
+
+	if strings.ToUpper(*alg) == "EC-ELGAMAL" {
+		newBlock.Headers["Curve"] = strings.ToUpper(*curveFlag)
+	}
+
+	return newBlock
+}
+
+func decryptBlock(block *pem.Block, key []byte) ([]byte, error) {
+	blockBytes := block.Bytes
+
+	dekInfo, ok := block.Headers["DEK-Info"]
+	if !ok {
+		return nil, fmt.Errorf("missing DEK-Info in PEM block header")
+	}
+
+	dekInfoParts := strings.Split(dekInfo, ",")
+	if len(dekInfoParts) != 2 {
+		return nil, fmt.Errorf("invalid DEK-Info format")
+	}
+
+	cipherModeParts := strings.Split(dekInfoParts[0], "-")
+	if len(cipherModeParts) != 2 {
+		return nil, fmt.Errorf("invalid cipher mode format in DEK-Info")
+	}
+	cipherName := cipherModeParts[0]
+	mode := cipherModeParts[1]
+
+	var blockCipher cipher.Block
+	var err error
+
+	switch cipherName {
+	case "AES":
+		blockCipher, err = aes.NewCipher(key)
+		if err != nil {
+			return nil, err
+		}
+	case "ANUBIS":
+		blockCipher, err = anubis.New(key)
+		if err != nil {
+			return nil, err
+		}
+	default:
+		return nil, fmt.Errorf("cipher not supported")
+	}
+
+	var aead cipher.AEAD
+
+	switch strings.ToUpper(mode) {
+	case "GCM":
+		aead, err = cipher.NewGCM(blockCipher)
+	case "MGM":
+		aead, err = mgm.NewMGM(blockCipher, 16)
+	case "OCB", "OCB1":
+		aead, err = ocb.NewOCB(blockCipher)
+	case "OCB3":
+		aead, err = ocb3.New(blockCipher)
+	case "EAX":
+		aead, err = eax.NewEAX(blockCipher)
+	case "CCM":
+		aead, err = ccm.NewCCM(blockCipher, 16, 12)
+	default:
+		log.Fatal("mode not supported")
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	nonceHex := dekInfoParts[1]
+	nonce, err := hex.DecodeString(nonceHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode nonce: %v", err)
+	}
+
+	decryptedBytes, err := aead.Open(nil, nonce, blockBytes, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt PEM block: %v", err)
+	}
+
+	return decryptedBytes, nil
 }
 
 func isHexDump(input string) bool {
