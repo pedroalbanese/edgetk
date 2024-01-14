@@ -454,8 +454,8 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 #### Asymmetric EG keypair generation:
 ```sh
-./edgetk -pkey setup -algorithm elgamal [-bits 4096] > ShnorrParams.pem
-./edgetk -pkey keygen -algorithm elgamal -params ShnorrParams.pem [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
+./edgetk -pkey setup -algorithm elgamal [-bits 4096] > SchnorrParams.pem
+./edgetk -pkey keygen -algorithm elgamal -params SchnorrParams.pem [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
 ```
 #### Digital EG signature:
 ```sh
