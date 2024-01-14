@@ -90,7 +90,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | RSA                 |     |     |     | O   | O        | O   |
     | SM2                 | O   |     | O   | O   | O        | O   |
     | SM9                 | O   |     | O   | O   | O        |     |
-    | ElGamal             |     | O   |     | O   | O        |     |
+    | ElGamal             |     |     |     | O   | O        |     |
     | EC-ElGamal          | O   |     |     |     | O        |     |
     | SPHINCS+            | O   |     |     | O   |          |     |
 
@@ -363,6 +363,8 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 * **Non-cryptographic Functions:**
 
    * Hex string encoder/dump/decoder (xxd-like)
+   * Base32 encoder/decoder
+   * Base64 encoder/decoder
    * Privacy-Enhanced Mail (PEM format)
    * RandomArt (OpenSSH-like)
 
@@ -450,6 +452,18 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ## Examples
 
+#### Asymmetric EG keypair generation:
+```sh
+./edgetk -pkey setup -algorithm elgamal [-bits 4096] > ShnorrParams.pem
+./edgetk -pkey keygen -algorithm elgamal -params ShnorrParams.pem [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
+```
+#### Digital EG signature:
+```sh
+./edgetk -pkey sign -algorithm elgamal -key private.pem [-pass "passphrase"] < file.ext > sign.txt
+sign=$(cat sign.txt|awk '{print $2}')
+./edgetk -pkey verify -algorithm elgamal -key public.pem -signature $sign < file.ext
+echo $?
+```
 #### Asymmetric RSA keypair generation:
 ```sh
 ./edgetk -pkey keygen -bits 4096 [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
@@ -591,6 +605,11 @@ echo $?
 ./edgetk -hex enc < file.ext > file.hex
 ./edgetk -hex dec < file.hex > file.ext
 ./edgetk -hex dump < file.ext
+```
+#### Base32/64 Encoder/Decoder:
+```sh
+./edgetk -base32 enc [-wrap 0] [-nopad] < file.ext > file.b32
+./edgetk -base32 dec [-nopad] < file.b32 > file.ext
 ```
 #### Try:
 ```
