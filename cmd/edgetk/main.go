@@ -38,6 +38,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/gob"
@@ -107,6 +108,8 @@ import (
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
+	"github.com/pedroalbanese/ecka-eg/core/curves"
+	"github.com/pedroalbanese/ecka-eg/elgamal"
 	"github.com/pedroalbanese/gmac"
 	"github.com/pedroalbanese/go-chaskey"
 	"github.com/pedroalbanese/go-external-ip"
@@ -146,9 +149,6 @@ import (
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
-
-	"github.com/pedroalbanese/kryptology/pkg/core/curves"
-	"github.com/pedroalbanese/kryptology/pkg/verenc/elgamal"
 )
 
 var (
@@ -163,6 +163,8 @@ var (
 	curveFlag  = flag.String("curve", "ecdsa", "Subjacent curve (Koblitz, ECDSA, BLS12381G1/2.)")
 	digest     = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
+	b64        = flag.String("base64", "", "Encode binary string to Base64 format and vice-versa. [enc|dec]")
+	b32        = flag.String("base32", "", "Encode binary string to Base32 format and vice-versa. [enc|dec]")
 	factorPStr = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
 	hierarchy  = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for SM9 User Private Key)")
@@ -194,6 +196,8 @@ var (
 	sig        = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	tcpip      = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
+	col        = flag.Int("wrap", 64, "Wrap lines after N columns. (For Base64/32 encoding)")
+	pad        = flag.Bool("nopad", false, "No padding. (For Base64 and Base32 encoding)")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -723,6 +727,158 @@ Subcommands:
 		fmt.Println(strings.ToLower(join))
 	}
 
+	if *b64 == "enc" || *b64 == "dec" {
+		if *col == 0 && len(flag.Args()) > 0 {
+			inputFile := flag.Arg(0)
+
+			data, err := ioutil.ReadFile(inputFile)
+			if err != nil {
+				fmt.Println("Error reading the file:", err)
+				os.Exit(1)
+			}
+
+			inputData := string(data)
+
+			if *b64 == "enc" && *pad == false {
+				sEnc := base64.StdEncoding.EncodeToString([]byte(inputData))
+				fmt.Println(sEnc)
+			} else if *b64 == "enc" && *pad == true {
+				sEnc := base64.StdEncoding.WithPadding(-1).EncodeToString([]byte(inputData))
+				fmt.Println(sEnc)
+			}
+		} else {
+			var inputData string
+
+			if len(flag.Args()) == 0 {
+				data, _ := ioutil.ReadAll(os.Stdin)
+				inputData = string(data)
+			} else {
+				inputFile := flag.Arg(0)
+
+				data, err := ioutil.ReadFile(inputFile)
+				if err != nil {
+					fmt.Println("Error reading the file:", err)
+					os.Exit(1)
+				}
+				inputData = string(data)
+			}
+
+			if *col != 0 {
+				if *b64 == "enc" && *pad == false {
+					sEnc := base64.StdEncoding.EncodeToString([]byte(inputData))
+					for _, chunk := range split(sEnc, *col) {
+						fmt.Println(chunk)
+					}
+				} else if *b64 == "dec" && *pad == false {
+					sDec, _ := base64.StdEncoding.DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+
+				if *b64 == "enc" && *pad == true {
+					sEnc := base64.StdEncoding.WithPadding(-1).EncodeToString([]byte(inputData))
+					for _, chunk := range split(sEnc, *col) {
+						fmt.Println(chunk)
+					}
+				} else if *b64 == "dec" && *pad == true {
+					sDec, _ := base64.StdEncoding.WithPadding(-1).DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+			} else {
+				if *b64 == "enc" && *pad == false {
+					sEnc := base64.StdEncoding.EncodeToString([]byte(inputData))
+					fmt.Println(sEnc)
+				} else if *b64 == "dec" && *pad == false {
+					sDec, _ := base64.StdEncoding.DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+
+				if *b64 == "enc" && *pad == true {
+					sEnc := base64.StdEncoding.WithPadding(-1).EncodeToString([]byte(inputData))
+					fmt.Println(sEnc)
+				} else if *b64 == "dec" && *pad == true {
+					sDec, _ := base64.StdEncoding.WithPadding(-1).DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+			}
+		}
+	}
+
+	if *b32 == "enc" || *b32 == "dec" {
+		if *col == 0 && len(flag.Args()) > 0 {
+			inputFile := flag.Arg(0)
+
+			data, err := ioutil.ReadFile(inputFile)
+			if err != nil {
+				fmt.Println("Error reading the file:", err)
+				os.Exit(1)
+			}
+
+			inputData := string(data)
+
+			if *b32 == "enc" && *pad == false {
+				sEnc := base32.StdEncoding.EncodeToString([]byte(inputData))
+				fmt.Println(sEnc)
+			} else if *b32 == "enc" && *pad == true {
+				sEnc := base32.StdEncoding.WithPadding(-1).EncodeToString([]byte(inputData))
+				fmt.Println(sEnc)
+			}
+		} else {
+			var inputData string
+
+			if len(flag.Args()) == 0 {
+				data, _ := ioutil.ReadAll(os.Stdin)
+				inputData = string(data)
+			} else {
+				inputFile := flag.Arg(0)
+
+				data, err := ioutil.ReadFile(inputFile)
+				if err != nil {
+					fmt.Println("Error reading the file:", err)
+					os.Exit(1)
+				}
+				inputData = string(data)
+			}
+
+			if *col != 0 {
+				if *b32 == "enc" && *pad == false {
+					sEnc := base32.StdEncoding.EncodeToString([]byte(inputData))
+					for _, chunk := range split(sEnc, *col) {
+						fmt.Println(chunk)
+					}
+				} else if *b32 == "dec" && *pad == false {
+					sDec, _ := base32.StdEncoding.DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+
+				if *b32 == "enc" && *pad == true {
+					sEnc := base32.StdEncoding.WithPadding(-1).EncodeToString([]byte(inputData))
+					for _, chunk := range split(sEnc, *col) {
+						fmt.Println(chunk)
+					}
+				} else if *b32 == "dec" && *pad == true {
+					sDec, _ := base32.StdEncoding.WithPadding(-1).DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+			} else {
+				if *b32 == "enc" && *pad == false {
+					sEnc := base32.StdEncoding.EncodeToString([]byte(inputData))
+					fmt.Println(sEnc)
+				} else if *b32 == "dec" && *pad == false {
+					sDec, _ := base32.StdEncoding.DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+
+				if *b32 == "enc" && *pad == true {
+					sEnc := base32.StdEncoding.WithPadding(-1).EncodeToString([]byte(inputData))
+					fmt.Println(sEnc)
+				} else if *b32 == "dec" && *pad == true {
+					sDec, _ := base32.StdEncoding.WithPadding(-1).DecodeString(inputData)
+					os.Stdout.Write(sDec)
+				}
+			}
+		}
+	}
+
 	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
@@ -775,8 +931,12 @@ Subcommands:
 		*iter = 4096
 	}
 
-	if (strings.ToUpper(*alg) == "ELGAMAL" && *pkey != "wrapkey" && *pkey != "unwrapkey") && *length != 256 && *length != 512 && *length != 768 && *length != 1024 && *length != 2048 && *length != 3072 && *length != 4096 && *length != 7680 {
+	if (strings.ToUpper(*alg) == "ELGAMAL" && *pkey != "wrapkey" && *pkey != "unwrapkey") && *length == 0 {
 		*length = 3072
+	}
+
+	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EC-ELGAMAL") && strings.ToUpper(*mode) == "CTR" {
+		*mode = "GCM"
 	}
 
 	if *digest && *md == "spritz" && *length == 0 {
@@ -2284,7 +2444,104 @@ Subcommands:
 		}
 		os.Exit(0)
 	}
+	/*
+		if *digest && *alg == "makwa" && !*check {
+			var params makwa.PublicParameters
+			bits := *length
+			privateParams, err := makwa.GenerateParameters(bits)
+			if err != nil {
+				log.Fatal(err)
+			}
+			params.N = privateParams.N
+			params.Hash = myHash
 
+			fmt.Println("Modulus=", params.N)
+			fmt.Println("FactorP=", privateParams.P)
+			fmt.Println("FactorQ=", privateParams.Q)
+
+			digest, err := makwa.Hash(params, []byte(*key), []byte(*salt), *iter, false, 0)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Println("Digest=", digest)
+			os.Exit(0)
+		}
+
+		if *alg == "makwa" && *check {
+			var params makwa.PublicParameters
+			hashedPassword, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+			modulus := new(big.Int)
+			_, success := modulus.SetString(*modulusStr, 10)
+			if !success {
+				log.Fatal("Failed to parse modulus")
+			}
+
+			params.N = modulus
+			params.Hash = myHash
+
+			digest := &makwa.Digest{}
+			err = digest.UnmarshalText([]byte(hashedPasswordString))
+			if err != nil {
+				log.Fatal(err)
+			}
+			isValid := makwa.CheckPassword(params, digest, []byte(*key))
+			if isValid == nil {
+				fmt.Println("Verified: true")
+				os.Exit(0)
+			} else {
+				fmt.Println("Verified: false")
+				os.Exit(1)
+			}
+		}
+
+		if *recover {
+			hashedPassword, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+			hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+			modulus := new(big.Int)
+			_, success := modulus.SetString(*modulusStr, 10)
+			if !success {
+				log.Fatal("Failed to parse modulus")
+			}
+			factor1 := new(big.Int)
+			factor1, success = factor1.SetString(*factorPStr, 10)
+			if !success {
+				log.Fatal("Failed to parse factor1")
+			}
+			factor2 := new(big.Int)
+			factor2, success = factor2.SetString(*factorQStr, 10)
+			if !success {
+				log.Fatal("Failed to parse factor2")
+			}
+			digest := &makwa.Digest{}
+			err = digest.UnmarshalText([]byte(hashedPasswordString))
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			params := makwa.PrivateParameters{
+				PublicParameters: makwa.PublicParameters{
+					N:    modulus,
+					Hash: myHash,
+				},
+				P: factor1,
+				Q: factor2,
+			}
+
+			originalKey, err := makwa.Recover(params, digest)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s\n", originalKey)
+			os.Exit(0)
+		}
+	*/
 	if *digest && *alg == "makwa" && !*check {
 		var params makwa.PublicParameters
 		bits := *length
@@ -2295,9 +2552,9 @@ Subcommands:
 		params.N = privateParams.N
 		params.Hash = myHash
 
-		fmt.Println("Modulus=", params.N)
-		fmt.Println("FactorP=", privateParams.P)
-		fmt.Println("FactorQ=", privateParams.Q)
+		fmt.Printf("Modulus= %x\n", params.N)
+		fmt.Printf("FactorP= %x\n", privateParams.P)
+		fmt.Printf("FactorQ= %x\n", privateParams.Q)
 
 		digest, err := makwa.Hash(params, []byte(*key), []byte(*salt), *iter, false, 0)
 		if err != nil {
@@ -2315,7 +2572,7 @@ Subcommands:
 		}
 		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
 		modulus := new(big.Int)
-		_, success := modulus.SetString(*modulusStr, 10)
+		_, success := modulus.SetString(*modulusStr, 16)
 		if !success {
 			log.Fatal("Failed to parse modulus")
 		}
@@ -2330,10 +2587,10 @@ Subcommands:
 		}
 		isValid := makwa.CheckPassword(params, digest, []byte(*key))
 		if isValid == nil {
-			fmt.Println("Verify: true")
+			fmt.Println("Verified: true")
 			os.Exit(0)
 		} else {
-			fmt.Println("Verify: false")
+			fmt.Println("Verified: false")
 			os.Exit(1)
 		}
 	}
@@ -2345,17 +2602,17 @@ Subcommands:
 		}
 		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
 		modulus := new(big.Int)
-		_, success := modulus.SetString(*modulusStr, 10)
+		_, success := modulus.SetString(*modulusStr, 16)
 		if !success {
 			log.Fatal("Failed to parse modulus")
 		}
 		factor1 := new(big.Int)
-		factor1, success = factor1.SetString(*factorPStr, 10)
+		factor1, success = factor1.SetString(*factorPStr, 16)
 		if !success {
 			log.Fatal("Failed to parse factor1")
 		}
 		factor2 := new(big.Int)
-		factor2, success = factor2.SetString(*factorQStr, 10)
+		factor2, success = factor2.SetString(*factorQStr, 16)
 		if !success {
 			log.Fatal("Failed to parse factor2")
 		}
@@ -5940,12 +6197,12 @@ Subcommands:
 			pemData, err := ioutil.ReadFile(*key)
 			if err != nil {
 				fmt.Println("Error reading PEM file:", err)
-				return
+				os.Exit(1)
 			}
 			block, _ := pem.Decode(pemData)
 			if block == nil {
 				fmt.Println("Error decoding PEM block")
-				return
+				os.Exit(1)
 			}
 			blockType = block.Type
 		}
@@ -5963,7 +6220,7 @@ Subcommands:
 
 			privBytes, err := encodePrivateKeyPEM(privPEM)
 			if err != nil {
-				return
+				log.Fatal(err)
 			}
 			pemBlock := &pem.Block{
 				Type:  "ELGAMAL PRIVATE KEY",
@@ -6004,13 +6261,13 @@ Subcommands:
 			pemData, err := ioutil.ReadFile(*key)
 			if err != nil {
 				fmt.Println("Error reading PEM file:", err)
-				return
+				os.Exit(1)
 			}
 			fmt.Print(string(pemData))
 			publicKeyVal, err := readPublicKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error: Invalid public key value")
-				return
+				os.Exit(1)
 			}
 			fmt.Println("Public Key Parameters:")
 			fmt.Println("Prime(p):")
@@ -6037,7 +6294,7 @@ Subcommands:
 			privKey, err := readPrivateKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading private key:", err)
-				return
+				os.Exit(1)
 			}
 			publicKey := setup(privKey.X, privKey.G, privKey.P)
 			fmt.Printf("Y=%X\n", publicKey)
@@ -6047,7 +6304,7 @@ Subcommands:
 			publicKey, err := readPublicKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading public key:", err)
-				return
+				os.Exit(1)
 			}
 			fmt.Printf("Y=%X\n", publicKey.Y)
 			return
@@ -6056,7 +6313,7 @@ Subcommands:
 			publicKeyVal, err := readPublicKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error: Invalid public key value")
-				return
+				os.Exit(1)
 			}
 
 			pub := &PublicKey{
@@ -6069,12 +6326,12 @@ Subcommands:
 			_, err = rand.Read(messageBytes)
 			if err != nil {
 				fmt.Println("Error generating random key:", err)
-				return
+				os.Exit(1)
 			}
 			c, err := encrypt(rand.Reader, pub, messageBytes)
 			if err != nil {
 				fmt.Println("Error encrypting message:", err)
-				return
+				os.Exit(1)
 			}
 
 			fmt.Printf("Cipher= %s\n", c)
@@ -6084,20 +6341,20 @@ Subcommands:
 		if *pkey == "unwrapkey" {
 			if *key == "" {
 				fmt.Println("Error: Private key file not provided for unwrapping.")
-				return
+				os.Exit(1)
 			}
 
 			priv, err := readPrivateKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading private key:", err)
-				return
+				os.Exit(1)
 			}
 
 			ciphertext := *cph
 			message, err := decrypt(priv, ciphertext)
 			if err != nil {
 				fmt.Println("Error decrypting message:", err)
-				return
+				os.Exit(1)
 			}
 			fmt.Printf("Shared= %x\n", message)
 		}
@@ -6105,13 +6362,13 @@ Subcommands:
 			readParams, err := readSchnorrParamsFromPEM(*params)
 			if err != nil {
 				fmt.Println("Error reading Schnorr parameters from PEM file:", err)
-				return
+				os.Exit(1)
 			}
 
 			pemData, err := ioutil.ReadFile(*params)
 			if err != nil {
 				fmt.Println("Error reading PEM file:", err)
-				return
+				os.Exit(1)
 			}
 			fmt.Print(string(pemData))
 			fmt.Println("Schnorr Parameters:")
@@ -6142,14 +6399,14 @@ Subcommands:
 			readParams, err := readSchnorrParamsFromPEM(*params)
 			if err != nil {
 				log.Fatal("Error reading Schnorr parameters from PEM file:", err)
-				return
+				os.Exit(1)
 			}
 
 			if *key == "" {
 				xval, err = generateRandomX(readParams.P)
 				if err != nil {
 					log.Fatal("Error generating x:", err)
-					return
+					os.Exit(1)
 				}
 				path, err = filepath.Abs(*priv)
 				privateKey := &PrivateKey{
@@ -6159,14 +6416,14 @@ Subcommands:
 				}
 				if err := savePrivateKeyToPEM(*priv, privateKey); err != nil {
 					log.Fatal("Error saving private key:", err)
-					return
+					os.Exit(1)
 				}
 				fmt.Fprintf(os.Stderr, "Private Key save to: %s\n", path)
 			} else {
 				priv, err := readPrivateKeyFromPEM(*key)
 				if err != nil {
 					log.Fatal("Error reading private key:", err)
-					return
+					os.Exit(1)
 				}
 				xval = new(big.Int).Set(priv.X)
 			}
@@ -6177,7 +6434,7 @@ Subcommands:
 			fmt.Fprintf(os.Stderr, "Public Key save to: %s\n", path)
 			if err := savePublicKeyToPEM(*pub, &PublicKey{Y: publicKey, G: readParams.G, P: readParams.P}); err != nil {
 				log.Fatal("Error saving public key:", err)
-				return
+				os.Exit(1)
 			}
 
 			fingerprint := calculateFingerprint(publicKey.Bytes())
@@ -6207,19 +6464,19 @@ Subcommands:
 			message, err := ioutil.ReadAll(inputfile)
 			if err != nil {
 				fmt.Println("Error reading file:", err)
-				return
+				os.Exit(1)
 			}
 
 			priv, err := readPrivateKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading private key:", err)
-				return
+				os.Exit(1)
 			}
 
 			sign, err := sign(priv, message, myHash)
 			if err != nil {
 				log.Fatal("Error signing message:", err)
-				return
+				os.Exit(1)
 			}
 
 			fmt.Println("EG-"+strings.ToUpper(*md)+"("+inputdesc+")=", sign)
@@ -6228,18 +6485,18 @@ Subcommands:
 			message, err := ioutil.ReadAll(inputfile)
 			if err != nil {
 				fmt.Println("Error reading file:", err)
-				return
+				os.Exit(1)
 			}
 
 			if *key == "" {
 				fmt.Println("Error: Public key file not provided for verification.")
-				return
+				os.Exit(3)
 			}
 
 			publicKeyVal, err := readPublicKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error: Invalid public key value")
-				return
+				os.Exit(1)
 			}
 
 			pub := &PublicKey{
@@ -6250,6 +6507,11 @@ Subcommands:
 
 			isValid := verify(pub, message, *sig, myHash)
 			fmt.Println("Verified:", isValid)
+			if isValid {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
 		}
 	}
 
@@ -6259,12 +6521,12 @@ Subcommands:
 			pemData, err := ioutil.ReadFile(*key)
 			if err != nil {
 				fmt.Println("Error reading PEM file:", err)
-				return
+				os.Exit(1)
 			}
 			block, _ := pem.Decode(pemData)
 			if block == nil {
 				fmt.Println("Error decoding PEM block")
-				return
+				os.Exit(1)
 			}
 			blockType = block.Type
 		}
@@ -6272,7 +6534,7 @@ Subcommands:
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
-				return
+				os.Exit(1)
 			}
 			pubKeyPEM := pem.Block{Type: "EC-ELGAMAL ENCRYPTION KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
@@ -6303,7 +6565,7 @@ Subcommands:
 			keyBytes, err = readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
-				return
+				os.Exit(1)
 			}
 			privKeyPEM := pem.Block{
 				Type:  "EC-ELGAMAL DECRYPTION KEY",
@@ -6320,7 +6582,7 @@ Subcommands:
 			err = dk.UnmarshalBinary(keyBytes)
 			if err != nil {
 				fmt.Println("Error decoding private key:", err)
-				return
+				os.Exit(1)
 			}
 			ek := dk.EncryptionKey()
 			pubBytes, _ := ek.MarshalBinary()
@@ -6343,33 +6605,33 @@ Subcommands:
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
-				return
+				os.Exit(1)
 			}
-			fmt.Printf("Pub=%x\n", keyBytes)
+			fmt.Printf("Public=%x\n", keyBytes)
 			os.Exit(0)
 		}
 		if *pkey == "modulus" && *key != "" && blockType == "EC-ELGAMAL DECRYPTION KEY" {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
-				return
+				os.Exit(1)
 			}
 			dk := new(elgamal.DecryptionKey)
 			err = dk.UnmarshalBinary(keyBytes)
 			if err != nil {
 				fmt.Println("Error decoding private key:", err)
-				return
+				os.Exit(1)
 			}
 			ek := dk.EncryptionKey()
 			pubBytes, _ := ek.MarshalBinary()
-			fmt.Printf("Pub=%x\n", pubBytes)
+			fmt.Printf("Public=%x\n", pubBytes)
 			os.Exit(0)
 		}
 		if *pkey == "fingerprint" && *key != "" {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
-				return
+				os.Exit(1)
 			}
 			fingerprint := calculateFingerprint(keyBytes)
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
@@ -6381,14 +6643,14 @@ Subcommands:
 			pubFile, err := os.Open(*pub)
 			if err != nil {
 				fmt.Println("Error opening public key file:", err)
-				return
+				os.Exit(1)
 			}
 			defer pubFile.Close()
 
 			pubInfo, err := pubFile.Stat()
 			if err != nil {
 				fmt.Println("Error getting public key file info:", err)
-				return
+				os.Exit(1)
 			}
 
 			pubBuf := make([]byte, pubInfo.Size())
@@ -6406,11 +6668,9 @@ Subcommands:
 				curve = curves.BLS12381G2()
 			case "P256", "ECDSA", "EC", "SECP256R1":
 				curve = curves.P256()
-			case "K256", "KOBLITZ", "SECP256K1":
-				curve = curves.K256()
 			default:
 				fmt.Println("Unsupported curve:", *curveFlag)
-				return
+				os.Exit(3)
 			}
 			ek, dk, _ := elgamal.NewKeys(curve)
 
@@ -6426,7 +6686,7 @@ Subcommands:
 			privPath, err := filepath.Abs(*priv)
 			if err != nil {
 				fmt.Println("Error getting absolute path for private key:", err)
-				return
+				os.Exit(1)
 			}
 			fmt.Printf("Private Key saved to: %s\n", privPath)
 
@@ -6434,7 +6694,7 @@ Subcommands:
 			pubPath, err := filepath.Abs(*pub)
 			if err != nil {
 				fmt.Println("Error getting absolute path for public key:", err)
-				return
+				os.Exit(1)
 			}
 			fmt.Printf("Public Key saved to: %s\n", pubPath)
 
@@ -6446,14 +6706,14 @@ Subcommands:
 			pubFile, err := os.Open(*pub)
 			if err != nil {
 				fmt.Println("Error opening public key file:", err)
-				return
+				os.Exit(1)
 			}
 			defer pubFile.Close()
 
 			pubInfo, err := pubFile.Stat()
 			if err != nil {
 				fmt.Println("Error getting public key file info:", err)
-				return
+				os.Exit(1)
 			}
 
 			pubBuf := make([]byte, pubInfo.Size())
@@ -6466,13 +6726,13 @@ Subcommands:
 			if *pkey == "unwrapkey" {
 				if *key == "" {
 					fmt.Println("A key is required for decryption.")
-					return
+					os.Exit(3)
 				}
 
 				keyBytes, err := readKeyFromPEM(*key, true)
 				if err != nil {
 					fmt.Println("Error reading key from PEM:", err)
-					return
+					os.Exit(1)
 				}
 
 				domain := []byte(*id)
@@ -6487,7 +6747,7 @@ Subcommands:
 				ciphertextBytes, err := hex.DecodeString(*cph)
 				if err != nil {
 					fmt.Println("Error decoding ciphertext:", err)
-					return
+					os.Exit(1)
 				}
 
 				cs := new(elgamal.CipherText)
@@ -6495,13 +6755,13 @@ Subcommands:
 				err = cs.UnmarshalBinary(ciphertextBytes)
 				if err != nil {
 					fmt.Println("Error decoding ciphertext:", err)
-					return
+					os.Exit(1)
 				}
 
 				dbytes, _, err := dk.VerifiableDecryptWithDomain(domain, cs)
 				if err != nil {
 					fmt.Println("Error decrypting:", err)
-					return
+					os.Exit(1)
 				}
 				fmt.Printf("Shared= %x\n", dbytes)
 				os.Exit(0)
@@ -12804,7 +13064,7 @@ func generatePrime(length int) (*big.Int, error) {
 }
 
 func generateSchnorrGroup() (*SchnorrParams, error) {
-	qSize := *length - 1
+	sSize := *length - 1
 
 	q, err := generatePrime(256)
 	if err != nil {
@@ -12815,12 +13075,12 @@ func generateSchnorrGroup() (*SchnorrParams, error) {
 		return nil, errors.New("generated q does not have the desired length")
 	}
 
-	p, err := generatePrime(qSize + 1)
+	p, err := generatePrime(sSize + 1)
 	if err != nil {
 		return nil, fmt.Errorf("error generating p: %v", err)
 	}
 
-	if p.BitLen() != (qSize + 1) {
+	if p.BitLen() != (sSize + 1) {
 		return nil, errors.New("generated p does not have the desired length")
 	}
 
