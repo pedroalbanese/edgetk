@@ -355,6 +355,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Bcrypt (Password-hashing scheme)
    * Makwa (Password-hashing scheme)
    * Argon2 (Password-hashing scheme and KDF)
+   * Lyra2REv1 (Password-hashing scheme and KDF)
    * TLS (Transport Layer Security v1.2 and 1.3)
    * TLCP (Transport Layer Cryptography Protocol v1.1)
    * PKCS12 (Personal Information Exchange Syntax v1.1)
@@ -621,7 +622,7 @@ echo $?
 ./edgetk -help,-h      // Full list of the flags and their defaults
 ```
 
-## Acknoledgments
+## Acknowledgments
 
 - [Sergey Matveev](http://www.cypherpunks.ru/) (GoGOST Library Author)
 - [RyuaNerin](http://github.com/RyuaNerin) (go-krypto Library Author)
