@@ -132,6 +132,7 @@ import (
 	"github.com/pedroalbanese/kuznechik"
 	"github.com/pedroalbanese/lwcrypto/ascon2"
 	"github.com/pedroalbanese/lwcrypto/grain"
+	"github.com/pedroalbanese/lyra2re"
 	"github.com/pedroalbanese/makwa-go"
 	"github.com/pedroalbanese/ocb"
 	"github.com/pedroalbanese/ocb3"
@@ -198,6 +199,7 @@ var (
 	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
 	col        = flag.Int("wrap", 64, "Wrap lines after N columns. (For Base64/32 encoding)")
 	pad        = flag.Bool("nopad", false, "No padding. (For Base64 and Base32 encoding)")
+	version    = flag.Bool("version", false, "Print version info.")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -240,17 +242,22 @@ func handleConnectionTLCP(c net.Conn) {
 func main() {
 	flag.Parse()
 
+	if *version {
+		fmt.Println("EDGE Toolkit v1.4.1  27 Jan 2024")
+	}
+
 	if len(os.Args) < 2 {
 		fmt.Println(`Standard Commands:
   crypt             digest            check             kdf
   mac               pkey              rand              tcp
 
 Public Key Subcommands:
-  keygen            check             derive            text
-  certgen           validate          x25519            modulus
-  req               pkcs12            vko               fingerprint
-  x509              encrypt           sign              randomart
-  crl               decrypt           verify            setup
+  keygen            check             text              derive
+  setup             pkcs12            fingerprint       vko
+  certgen           crl               modulus           x25519
+  recover           req               randomart         wrapkey
+  encrypt           validate          sign              unwrapkey
+  decrypt           x509              verify            help
 
 Public Key Algorithms:
   ecdsa             elgamal           sm2               gost2012
@@ -276,9 +283,9 @@ Block Ciphers:
 
 Key Derivation Functions:
   hkdf              pbkdf2            scrypt            bcrypt (phs)
-  argon2 (phs/kdf)  makwa (phs)       help
+  argon2 (phs/kdf)  lyra2 (phs/kdf)   makwa (phs)       help
 
-Message Athentication Codes:
+Message Athentication Code:
   chaskey           hmac              siphash           xoodyak
   cmac              mgmac             siphash64         zuc128/eia128
   gmac              pmac              skein             zuc256/eia256
@@ -955,7 +962,7 @@ Subcommands:
 		*length = 128
 	}
 
-	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF") && *length == 0 {
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2") && *length == 0 {
 		*length = 256
 	}
 
@@ -997,6 +1004,25 @@ Subcommands:
 	if *kdf == "argon2" {
 		hash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
 		*key = hex.EncodeToString(hash)
+
+		if *crypt == "" {
+			fmt.Println(*key)
+			return
+		}
+	}
+
+	if *kdf == "lyra2" {
+		data := []byte(*key + *salt)
+		for i := 0; i < *iter; i++ {
+			hash, _ := lyra2re.Sum(data)
+			if err != nil {
+				log.Fatal(err)
+			}
+			data = hash
+		}
+
+		derivedKey := data[:*length/8]
+		*key = hex.EncodeToString(derivedKey)
 
 		if *crypt == "" {
 			fmt.Println(*key)
@@ -2444,6 +2470,40 @@ Subcommands:
 		}
 		os.Exit(0)
 	}
+
+	if *digest && *md == "lyra2" && !*check {
+		passwordBytes := []byte(*key + *salt)
+		hash, err := lyra2re.Sum(passwordBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(hex.EncodeToString(hash))
+		os.Exit(0)
+	}
+
+	if *md == "lyra2" && *check {
+		passwordBytes := []byte(*key + *salt)
+		hash, err := lyra2re.Sum(passwordBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		computedHashString := hex.EncodeToString(hash)
+
+		hashedPassword, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+
+		if computedHashString == hashedPasswordString {
+			fmt.Println("Verify: true")
+		} else {
+			fmt.Println("Verify: false")
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	/*
 		if *digest && *alg == "makwa" && !*check {
 			var params makwa.PublicParameters
