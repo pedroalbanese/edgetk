@@ -467,7 +467,8 @@ echo $?
 ```
 #### EG Encryption scheme:
 ```sh
-./edgetk -pkey wrapkey -algorithm elgamal -key public.pem
+./edgetk -pkey wrapkey -algorithm elgamal -key public.pem > cipher.txt
+ciphertext=$(cat cipher.txt|grep "Cipher"|awk '{print $2}')
 ./edgetk -pkey unwrapkey -algorithm elgamal -key private.pem [-pass "passphrase"] -cipher $ciphertext
 ```
 #### Asymmetric RSA keypair generation:
