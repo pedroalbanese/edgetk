@@ -458,11 +458,17 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 ./edgetk -pkey setup -algorithm elgamal [-bits 4096] > SchnorrParams.pem
 ./edgetk -pkey keygen -algorithm elgamal -params SchnorrParams.pem [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
 ```
-#### Digital EG signature:
+#### EG Digital signature:
 ```sh
 ./edgetk -pkey sign -algorithm elgamal -key private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
 ./edgetk -pkey verify -algorithm elgamal -key public.pem -signature $sign < file.ext
+echo $?
+```
+#### EG Encryption scheme:
+```sh
+./edgetk -pkey wrapkey -algorithm elgamal -key public.pem
+./edgetk -pkey unwrapkey -algorithm elgamal -key private.pem -cipher $ciphertext
 echo $?
 ```
 #### Asymmetric RSA keypair generation:
