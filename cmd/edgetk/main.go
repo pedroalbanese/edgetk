@@ -110,6 +110,7 @@ import (
 	"github.com/pedroalbanese/ecb"
 	"github.com/pedroalbanese/ecka-eg/core/curves"
 	"github.com/pedroalbanese/ecka-eg/elgamal"
+	elgamalAlt "github.com/pedroalbanese/ecka-eg/elgamal-alt"
 	"github.com/pedroalbanese/gmac"
 	"github.com/pedroalbanese/go-chaskey"
 	"github.com/pedroalbanese/go-external-ip"
@@ -349,13 +350,16 @@ Methods:
   edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
 Methods: 
-  hkdf, pbkdf2, scrypt, argon2
+  hkdf, pbkdf2, scrypt, argon2, lyra2
 
  HKDF:
   edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
 
  Argon2:
   edgetk -kdf argon2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
+
+ Lyra2:
+  edgetk -kdf lyra2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
 
  PBKDF2:
   edgetk -kdf pbkdf2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
@@ -6244,10 +6248,10 @@ Subcommands:
 
 	if (strings.ToUpper(*alg) == "ELGAMAL" && strings.ToUpper(*alg) != "EC-ELGAMAL" || *params != "") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
 		if *pkey == "setup" {
-			setParams, err := generateSchnorrGroup()
-			err = saveSchnorrParamsToPEM(*params, setParams)
+			setParams, err := generateElGamalParams()
+			err = saveElGamalParamsToPEM(*params, setParams)
 			if err != nil {
-				log.Fatal("Error saving Schnorr parameters to PEM file:", err)
+				log.Fatal("Error saving ElGamal parameters to PEM file:", err)
 				return
 			}
 			os.Exit(0)
@@ -6419,9 +6423,9 @@ Subcommands:
 			fmt.Printf("Shared= %x\n", message)
 		}
 		if *pkey == "text" {
-			readParams, err := readSchnorrParamsFromPEM(*params)
+			readParams, err := readElGamalParamsFromPEM(*params)
 			if err != nil {
-				fmt.Println("Error reading Schnorr parameters from PEM file:", err)
+				fmt.Println("Error reading ElGamal parameters from PEM file:", err)
 				os.Exit(1)
 			}
 
@@ -6431,16 +6435,10 @@ Subcommands:
 				os.Exit(1)
 			}
 			fmt.Print(string(pemData))
-			fmt.Println("Schnorr Parameters:")
+			fmt.Println("ElGamal Parameters:")
 			fmt.Println("Prime(p):")
 			p := fmt.Sprintf("%x", readParams.P)
 			splitz := SplitSubN(p, 2)
-			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
-			}
-			fmt.Println("Order(q):")
-			q := fmt.Sprintf("%x", readParams.Q)
-			splitz = SplitSubN(q, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
 			}
@@ -6456,9 +6454,9 @@ Subcommands:
 			var xval *big.Int
 			var path string
 
-			readParams, err := readSchnorrParamsFromPEM(*params)
+			readParams, err := readElGamalParamsFromPEM(*params)
 			if err != nil {
-				log.Fatal("Error reading Schnorr parameters from PEM file:", err)
+				log.Fatal("Error reading ElGamal parameters from PEM file:", err)
 				os.Exit(1)
 			}
 
@@ -6667,7 +6665,7 @@ Subcommands:
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Public=%x\n", keyBytes)
+			fmt.Printf("Public=%X\n", keyBytes)
 			os.Exit(0)
 		}
 		if *pkey == "modulus" && *key != "" && blockType == "EC-ELGAMAL DECRYPTION KEY" {
@@ -6684,7 +6682,7 @@ Subcommands:
 			}
 			ek := dk.EncryptionKey()
 			pubBytes, _ := ek.MarshalBinary()
-			fmt.Printf("Public=%x\n", pubBytes)
+			fmt.Printf("Public=%X\n", pubBytes)
 			os.Exit(0)
 		}
 		if *pkey == "fingerprint" && *key != "" {
@@ -6877,6 +6875,103 @@ Subcommands:
 				fmt.Printf("Shared= %x\n", msgBytes)
 				os.Exit(0)
 			}
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "EC-ELGAMAL-ALT") && (*pkey == "wrapkey" || *pkey == "unwrapkey") {
+		if *pkey == "unwrapkey" {
+			if *key == "" {
+				fmt.Println("A key is required for decryption.")
+				os.Exit(3)
+			}
+
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			domain := []byte(*id)
+			dk := new(elgamalAlt.DecryptionKey)
+
+			err = dk.UnmarshalBinary(keyBytes)
+			if err != nil {
+				fmt.Println("Error decoding private key:", err)
+				return
+			}
+
+			ciphertextBytes, err := hex.DecodeString(*cph)
+			if err != nil {
+				fmt.Println("Error decoding ciphertext:", err)
+				os.Exit(1)
+			}
+
+			cs := new(elgamalAlt.CipherText)
+
+			err = cs.UnmarshalBinary(ciphertextBytes)
+			if err != nil {
+				fmt.Println("Error decoding ciphertext:", err)
+				os.Exit(1)
+			}
+
+			dbytes, _, err := dk.VerifiableDecryptWithDomain(domain, cs)
+			if err != nil {
+				fmt.Println("Error decrypting:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Shared= %x\n", dbytes)
+			os.Exit(0)
+		} else {
+			if *key == "" {
+				fmt.Println("A key is required for encryption.")
+				return
+			}
+
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+
+			domain := []byte(*id)
+			ek := new(elgamalAlt.EncryptionKey)
+
+			err = ek.UnmarshalBinary(keyBytes)
+			if err != nil {
+				fmt.Println("Error decoding public key:", err)
+				return
+			}
+
+			msgBytes := make([]byte, *length/8)
+			_, err = rand.Read(msgBytes)
+			if err != nil {
+				return
+			}
+
+			cs, proof, err := ek.VerifiableEncrypt(msgBytes, &elgamalAlt.EncryptParams{
+				Domain:          domain,
+				MessageIsHashed: true,
+				GenProof:        true,
+				ProofNonce:      domain,
+			})
+
+			if err != nil {
+				fmt.Println("Error encrypting:", err)
+				return
+			}
+
+			res3, _ := cs.MarshalBinary()
+
+			fmt.Fprint(os.Stderr, "Verified: ")
+			rtn := ek.VerifyDomainEncryptProof(domain, cs, proof)
+			if rtn == nil {
+				fmt.Fprintln(os.Stderr, "true")
+			} else {
+				fmt.Fprintln(os.Stderr, "false")
+			}
+			fmt.Printf("Cipher= %x\n", res3)
+			fmt.Printf("Shared= %x\n", msgBytes)
+			os.Exit(0)
 		}
 	}
 
@@ -13123,60 +13218,48 @@ func generatePrime(length int) (*big.Int, error) {
 	}
 }
 
-func generateSchnorrGroup() (*SchnorrParams, error) {
-	sSize := *length - 1
+type ElGamalParams struct {
+}
 
-	q, err := generatePrime(256)
+func generateElGamalParams() (*ElGamalParams, error) {
+	pSize := *length
+
+	p, err := generatePrime(pSize)
 	if err != nil {
-		return nil, fmt.Errorf("error generating q: %v", err)
+		return nil, fmt.Errorf("error generating P: %v", err)
 	}
 
-	if q.BitLen() != 256 {
-		return nil, errors.New("generated q does not have the desired length")
-	}
-
-	p, err := generatePrime(sSize + 1)
+	g, err := generateGenerator(p)
 	if err != nil {
-		return nil, fmt.Errorf("error generating p: %v", err)
+		return nil, fmt.Errorf("error generating G: %v", err)
 	}
 
-	if p.BitLen() != (sSize + 1) {
-		return nil, errors.New("generated p does not have the desired length")
-	}
-
-	r := new(big.Int).Div(new(big.Int).Sub(p, big.NewInt(1)), q)
-
-	var h *big.Int
-	for {
-		h, _ = rand.Int(rand.Reader, new(big.Int).Sub(p, big.NewInt(2)))
-		h.Add(h, big.NewInt(1))
-		if h.Cmp(big.NewInt(1)) == 1 && h.Cmp(p) == -1 {
-			break
-		}
-	}
-
-	g := new(big.Int).Exp(h, r, p)
-
-	return &SchnorrParams{
+	return &ElGamalParams{
 		P: p,
-		Q: q,
 		G: g,
 	}, nil
 }
 
-type SchnorrParams struct {
-	P *big.Int
-	Q *big.Int
-	G *big.Int
+func generateGenerator(p *big.Int) (*big.Int, error) {
+	two := big.NewInt(2)
+	pMinusTwo := new(big.Int).Sub(p, two)
+
+	g, err := rand.Int(rand.Reader, pMinusTwo)
+	if err != nil {
+		return nil, fmt.Errorf("error generating G: %v", err)
+	}
+	g.Add(g, two)
+
+	return g, nil
 }
 
 func init() {
-	gob.Register(&SchnorrParams{})
+	gob.Register(&ElGamalParams{})
 }
 
-func paramsToBytes(params *SchnorrParams) ([]byte, error) {
+func paramsToBytes(params *ElGamalParams) ([]byte, error) {
 	if params == nil {
-		return nil, errors.New("cannot encode nil SchnorrParams pointer")
+		return nil, errors.New("cannot encode nil ElGamalParams pointer")
 	}
 
 	var buf bytes.Buffer
@@ -13189,8 +13272,8 @@ func paramsToBytes(params *SchnorrParams) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func bytesToParams(data []byte) (*SchnorrParams, error) {
-	var params SchnorrParams
+func bytesToParams(data []byte) (*ElGamalParams, error) {
+	var params ElGamalParams
 	dec := gob.NewDecoder(bytes.NewReader(data))
 
 	err := dec.Decode(&params)
@@ -13201,7 +13284,7 @@ func bytesToParams(data []byte) (*SchnorrParams, error) {
 	return &params, nil
 }
 
-func saveSchnorrParamsToPEM(fileName string, params *SchnorrParams) error {
+func saveElGamalParamsToPEM(fileName string, params *ElGamalParams) error {
 	var file *os.File
 	var err error
 
@@ -13222,7 +13305,7 @@ func saveSchnorrParamsToPEM(fileName string, params *SchnorrParams) error {
 	}
 
 	err = pem.Encode(file, &pem.Block{
-		Type:  "SCHNORR PARAMETERS",
+		Type:  "ELGAMAL PARAMETERS",
 		Bytes: paramsBytes,
 	})
 	if err != nil {
@@ -13232,7 +13315,7 @@ func saveSchnorrParamsToPEM(fileName string, params *SchnorrParams) error {
 	return nil
 }
 
-func readSchnorrParamsFromPEM(fileName string) (*SchnorrParams, error) {
+func readElGamalParamsFromPEM(fileName string) (*ElGamalParams, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
@@ -13328,7 +13411,7 @@ func readKeyFromPEM(fileName string, isPrivateKey bool) ([]byte, error) {
 }
 
 func deriveKeyFromPassword(password string) []byte {
-	key := pbkdf2.Key([]byte(password), []byte(*salt), 1048576, 32, sha256.New)
+	key, _ := lyra2re.Sum([]byte(password + *salt))
 	return key
 }
 
