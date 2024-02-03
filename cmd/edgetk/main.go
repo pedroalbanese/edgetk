@@ -459,6 +459,8 @@ Subcommands:
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
+	} else if (*pkey == "keygen") && (*alg != "sm9encrypt" && *alg != "sm9sign") && *pwd == "nil" {
+		*pwd = ""
 	}
 
 	if (*pkey == "setup") && *pwd == "" && strings.ToUpper(*alg) != "ELGAMAL" {
@@ -1052,7 +1054,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 32 && len(key) != 16 && len(key) != 5 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		ciph, _ := rc4.NewCipher(key)
@@ -1162,7 +1164,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -1209,7 +1211,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var iv []byte
@@ -1256,7 +1258,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 
@@ -1315,7 +1317,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -1371,7 +1373,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 
@@ -1435,7 +1437,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 32 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 
@@ -1492,7 +1494,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 32 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -1725,7 +1727,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 32 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -1772,7 +1774,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -1815,7 +1817,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(keyRaw) != 32 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -1863,7 +1865,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(keyRaw) != 16 {
-				log.Fatal(err)
+				log.Fatal("Invalid key size.")
 			}
 		}
 		var nonce []byte
@@ -6298,26 +6300,26 @@ Subcommands:
 			x := fmt.Sprintf("%x", xval)
 			splitz := SplitSubN(x, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Prime(p):")
 			p := fmt.Sprintf("%x", priv.P)
 			splitz = SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Generator(g):")
 			g := fmt.Sprintf("%x", priv.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("PublicKey(Y):")
 			publicKey := setup(priv.X, priv.G, priv.P)
 			pub := fmt.Sprintf("%x", publicKey)
 			splitz = SplitSubN(pub, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			os.Exit(0)
 		}
@@ -6338,19 +6340,19 @@ Subcommands:
 			p := fmt.Sprintf("%x", publicKeyVal.P)
 			splitz := SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Generator(g):")
 			g := fmt.Sprintf("%x", publicKeyVal.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("PublicKey(Y):")
 			y := fmt.Sprintf("%x", publicKeyVal.Y)
 			splitz = SplitSubN(y, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			return
 		}
@@ -6440,13 +6442,13 @@ Subcommands:
 			p := fmt.Sprintf("%x", readParams.P)
 			splitz := SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Generator(g):")
 			g := fmt.Sprintf("%x", readParams.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			os.Exit(0)
 		}
@@ -6601,7 +6603,7 @@ Subcommands:
 			p := fmt.Sprintf("%x", keyBytes)
 			splitz := SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			os.Exit(0)
 		} else if *pkey == "text" && *key != "" && blockType == "EC-ELGAMAL DECRYPTION KEY" {
@@ -6649,13 +6651,13 @@ Subcommands:
 			prv := fmt.Sprintf("%x", keyBytes)
 			splitz := SplitSubN(prv, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("EncryptionKey:")
 			pub := fmt.Sprintf("%x", pubBytes)
 			splitz = SplitSubN(pub, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			os.Exit(0)
 		}
@@ -7111,7 +7113,7 @@ Subcommands:
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
 			splitz := SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		case *sm9.SignPrivateKey:
@@ -7120,7 +7122,7 @@ Subcommands:
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
 			splitz := SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		case *sm9.EncryptMasterPrivateKey:
@@ -7129,7 +7131,7 @@ Subcommands:
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
 			splitz := SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		case *sm9.SignMasterPrivateKey:
@@ -7138,7 +7140,7 @@ Subcommands:
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
 			splitz := SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		default:
@@ -7170,7 +7172,7 @@ Subcommands:
 		pubKeyHex := fmt.Sprintf("%x", pubKey.MasterPublicKey.Marshal())
 		splitz := SplitSubN(pubKeyHex, 2)
 		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-			fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 		fmt.Println("Curve: sm9p256v1")
 		os.Exit(0)
@@ -7200,7 +7202,7 @@ Subcommands:
 		pubKeyHex := fmt.Sprintf("%x", pubKey.MasterPublicKey.Marshal())
 		splitz := SplitSubN(pubKeyHex, 2)
 		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-			fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 		fmt.Println("Curve: sm9p256v1")
 		os.Exit(0)
@@ -8128,7 +8130,7 @@ Subcommands:
 			c = append(c, m...)
 			splitz := SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("Exponent: %X\n", publicKey.E)
 		} else if strings.ToUpper(*alg) == "ED25519" {
@@ -8148,7 +8150,7 @@ Subcommands:
 			fmt.Printf("pub: \n")
 			splitz := SplitSubN(hex.EncodeToString(derBytes)[24:], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			var spki struct {
 				Algorithm        pkix.AlgorithmIdentifier
@@ -8177,7 +8179,7 @@ Subcommands:
 			fmt.Printf("pub: \n")
 			splitz := SplitSubN(hex.EncodeToString(derBytes)[24:], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			var spki struct {
 				Algorithm        pkix.AlgorithmIdentifier
@@ -8212,7 +8214,7 @@ Subcommands:
 			fmt.Printf("pub.X: \n")
 			splitz := SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			y := publicKey.Y.Bytes()
 			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
@@ -8223,7 +8225,7 @@ Subcommands:
 			fmt.Printf("pub.Y: \n")
 			splitz = SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("pub: \n")
 			x = publicKey.X.Bytes()
@@ -8240,7 +8242,7 @@ Subcommands:
 			c = append([]byte{0x04}, c...)
 			splitz = SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("Curve: %s\n", publicKey.Params().Name)
 		} else if strings.ToUpper(*alg) == "GOST2012" {
@@ -8315,7 +8317,7 @@ Subcommands:
 			fmt.Printf("priv: \n")
 			splitz := SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 
 			publicKey := privKey.PublicKey
@@ -8334,7 +8336,7 @@ Subcommands:
 			c = append([]byte{0x04}, c...)
 			splitz = SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			var spki struct {
 				Algorithm        pkix.AlgorithmIdentifier
@@ -8369,12 +8371,12 @@ Subcommands:
 			fmt.Printf("priv: \n")
 			splitz := SplitSubN(p[:64], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("pub: \n")
 			splitz = SplitSubN(p[64:], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 
 			var spki struct {
@@ -8403,13 +8405,13 @@ Subcommands:
 			fmt.Printf("priv: \n")
 			splitz := SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			p = fmt.Sprintf("%x", edKey.PublicKey().Bytes())
 			fmt.Printf("pub: \n")
 			splitz = SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 
 			var spki struct {
@@ -8443,7 +8445,7 @@ Subcommands:
 			c = append(c, m...)
 			splitz := SplitSubN(hex.EncodeToString(c), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-				fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("Exponent: %X\n\n", privKeyPublicKey.E)
 			derBytes, err := x509.MarshalPKIXPublicKey(&privKeyPublicKey)
@@ -12477,17 +12479,17 @@ func printPublicKeyParamsFull(pk *sphincs.SPHINCS_PK) {
 	fmt.Printf("PK: \n")
 	splitz := SplitSubN(hex.EncodeToString(serializedPK), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	fmt.Printf("PKseed: \n")
 	splitz = SplitSubN(hex.EncodeToString(pk.PKseed), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	fmt.Printf("PKroot: \n")
 	splitz = SplitSubN(hex.EncodeToString(pk.PKroot), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	skid := sha3.Sum256(serializedPK)
 	fmt.Printf("\nKeyID: %x \n", skid[:20])
@@ -12510,28 +12512,28 @@ func printPrivateKeyParamsFull(sk *sphincs.SPHINCS_SK) {
 		fmt.Printf("SK: \n")
 		splitz := SplitSubN(hex.EncodeToString(serializedSK), 2)
 		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-			fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 	*/
 	fmt.Printf("SKseed: \n")
 	splitz := SplitSubN(hex.EncodeToString(sk.SKseed), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	fmt.Printf("SKprf: \n")
 	splitz = SplitSubN(hex.EncodeToString(sk.SKprf), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	fmt.Printf("PKseed: \n")
 	splitz = SplitSubN(hex.EncodeToString(sk.PKseed), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	fmt.Printf("PKroot: \n")
 	splitz = SplitSubN(hex.EncodeToString(sk.PKroot), 2)
 	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("    %-10s    \n", strings.ReplaceAll(chunk, " ", ":"))
+		fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 	}
 	c := append(sk.PKseed, sk.PKroot...)
 	skid := sha3.Sum256(c)
@@ -12974,8 +12976,6 @@ func sign(privateKey *PrivateKey, message []byte, hashFunc func() hash.Hash) (si
 			sBigInt.Mod(sBigInt, new(big.Int).Sub(privateKey.P, big.NewInt(1)))
 			sHex := fmt.Sprintf("%x", sBigInt)
 
-			rHex = strings.TrimLeft(rHex, "0")
-			sHex = strings.TrimLeft(sHex, "0")
 			paddingLen := len(fmt.Sprintf("%x", privateKey.P))
 			rPadded := fmt.Sprintf("%0*s", paddingLen, rHex)
 			sPadded := fmt.Sprintf("%0*s", paddingLen, sHex)
