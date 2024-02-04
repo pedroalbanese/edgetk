@@ -126,6 +126,7 @@ import (
 	"github.com/pedroalbanese/gogost/gost341194"
 	"github.com/pedroalbanese/gogost/gost341264"
 	"github.com/pedroalbanese/gogost/mgm"
+	"github.com/pedroalbanese/golang-rc6"
 	"github.com/pedroalbanese/gopass"
 	"github.com/pedroalbanese/groestl-1"
 	"github.com/pedroalbanese/haraka"
@@ -276,11 +277,12 @@ Modes of Operation:
   ocb (aead)        ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              cast5             idea              rc5
-  aes (default)     camellia          lea               seed
-  aria              gost89            misty1            sm4
-  anubis            grasshopper       magma             threefish
-  blowfish          hight             rc2               twofish
+  3des              cast5             magma             serpent
+  aes (default)     gost89            misty1            sm4
+  anubis            hight             rc2 [obsolete]    threefish
+  aria              idea [obsolete]   rc5               threefish512
+  blowfish          kuznechik         rc6               threefish1024
+  camellia          lea               seed              twofish
 
 Key Derivation Functions:
   hkdf              pbkdf2            scrypt            bcrypt (phs)
@@ -892,7 +894,7 @@ Subcommands:
 		}
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -1935,7 +1937,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -1994,6 +1996,9 @@ Subcommands:
 		} else if *cph == "gost89" {
 			ciph = gost28147.NewCipher(key, &gost28147.SboxIdtc26gost28147paramZ)
 			n = 8
+		} else if *cph == "rc6" {
+			ciph, err = rc6.NewCipher(key)
+			n = 16
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -2130,6 +2135,9 @@ Subcommands:
 		} else if *cph == "rc5" {
 			ciph, err = rc5.New(key)
 			n = 8
+		} else if *cph == "rc6" {
+			ciph, err = rc6.NewCipher(key)
+			n = 16
 		} else if *cph == "idea" {
 			ciph, _ = idea.NewCipher(key)
 			n = 8
@@ -2216,7 +2224,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -2259,6 +2267,9 @@ Subcommands:
 			iv = make([]byte, 16)
 		} else if *cph == "serpent" {
 			ciph, err = serpent.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "rc6" {
+			ciph, err = rc6.NewCipher(key)
 			iv = make([]byte, 16)
 		} else if *cph == "magma" {
 			ciph = gost341264.NewCipher(key)
@@ -3480,6 +3491,8 @@ Subcommands:
 			c, err = camellia.NewCipher([]byte(*key))
 		} else if *cph == "serpent" {
 			c, err = serpent.NewCipher([]byte(*key))
+		} else if *cph == "rc6" {
+			c, err = rc6.NewCipher([]byte(*key))
 		} else if *cph == "misty1" {
 			c, err = misty1.New([]byte(*key))
 		} else if *cph == "magma" {
@@ -3545,6 +3558,8 @@ Subcommands:
 			c, err = camellia.NewCipher([]byte(*key))
 		} else if *cph == "serpent" {
 			c, err = serpent.NewCipher([]byte(*key))
+		} else if *cph == "rc6" {
+			c, err = rc6.NewCipher([]byte(*key))
 		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			c, err = kuznechik.NewCipher([]byte(*key))
 		} else if *cph == "anubis" {
@@ -3577,6 +3592,9 @@ Subcommands:
 	}
 
 	if *mac == "gmac" {
+		if *vector == "" {
+			log.Fatal("Invalid IV size. GMAC nonce must be the same length of the block.")
+		}
 		var c cipher.Block
 		var err error
 
@@ -3598,6 +3616,8 @@ Subcommands:
 			c, err = camellia.NewCipher(key)
 		} else if *cph == "serpent" {
 			c, err = serpent.NewCipher(key)
+		} else if *cph == "rc6" {
+			c, err = rc6.NewCipher(key)
 		} else if *cph == "grasshopper" || *cph == "kuznechik" {
 			c, err = kuznechik.NewCipher(key)
 		} else if *cph == "anubis" {
@@ -3612,12 +3632,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		var nonce []byte
-		if *vector != "" {
-			nonce = []byte(*vector)
-		} else {
-			nonce = []byte("0000000000000000")
-			fmt.Fprintln(os.Stderr, "IV= 0000000000000000")
-		}
+		nonce = []byte(*vector)
 		h, err := gmac.New(c, nonce, message)
 		if err != nil {
 			log.Fatal(err)
@@ -3640,6 +3655,9 @@ Subcommands:
 	}
 
 	if *mac == "mgmac" {
+		if *vector == "" {
+			log.Fatal("Invalid IV size. MGMAC nonce must be the same length of the block.")
+		}
 		var c cipher.Block
 		var err error
 
@@ -3669,6 +3687,9 @@ Subcommands:
 			n = 16
 		} else if *cph == "serpent" {
 			c, err = serpent.NewCipher(key)
+			n = 16
+		} else if *cph == "rc6" {
+			c, err = rc6.NewCipher(key)
 			n = 16
 		} else if *cph == "magma" {
 			c = gost341264.NewCipher(key)
@@ -3722,11 +3743,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		var nonce []byte
-		if *vector != "" {
-			nonce = []byte(*vector)
-		} else {
-			nonce = make([]byte, n)
-		}
+		nonce = []byte(*vector)
 		h, err := NewMGMAC(c, n, nonce, message)
 		if err != nil {
 			log.Fatal(err)
@@ -3749,6 +3766,9 @@ Subcommands:
 	}
 
 	if *mac == "vmac" {
+		if *vector == "" {
+			log.Fatal("Invalid IV size. VMAC nonce must be from 1 to block length -1.")
+		}
 		var c cipher.Block
 		var err error
 		if *cph == "blowfish" {
@@ -3783,6 +3803,8 @@ Subcommands:
 			c, err = camellia.NewCipher([]byte(*key))
 		} else if *cph == "serpent" {
 			c, err = serpent.NewCipher([]byte(*key))
+		} else if *cph == "rc6" {
+			c, err = rc6.NewCipher([]byte(*key))
 		} else if *cph == "misty1" {
 			c, err = misty1.New([]byte(*key))
 		} else if *cph == "magma" {
@@ -4180,6 +4202,12 @@ Subcommands:
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -4308,6 +4336,12 @@ Subcommands:
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -4438,6 +4472,12 @@ Subcommands:
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -4606,6 +4646,12 @@ Subcommands:
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd2), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd2), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -5028,6 +5074,12 @@ Subcommands:
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd2), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd2), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -5685,6 +5737,12 @@ Subcommands:
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 			}
 			if err != nil {
 				log.Fatal(err)
@@ -10588,6 +10646,12 @@ func GenerateRsaKey(bit int) error {
 			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 		} else if *cph == "serpent" || *cph == "serpent256" {
 			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+		} else if *cph == "rc6128" {
+			block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
+		} else if *cph == "rc6192" {
+			block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
+		} else if *cph == "rc6" || *cph == "rc6256" {
+			block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
 		}
 		if err != nil {
 			return err
@@ -10704,6 +10768,12 @@ func EncodeSM2PrivateKey(key *sm2.PrivateKey) ([]byte, error) {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 		} else if *cph == "serpent" || *cph == "serpent256" {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+		} else if *cph == "rc6128" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6128)
+		} else if *cph == "rc6192" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6192)
+		} else if *cph == "rc6" || *cph == "rc6256" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6256)
 		}
 		return pem.EncodeToMemory(keyBlock), nil
 	} else {
@@ -10798,6 +10868,12 @@ func EncodePrivateKey(key *ecdsa.PrivateKey) ([]byte, error) {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
 		} else if *cph == "serpent" || *cph == "serpent256" {
 			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
+		} else if *cph == "rc6128" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6128)
+		} else if *cph == "rc6192" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6192)
+		} else if *cph == "rc6" || *cph == "rc6256" {
+			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6256)
 		}
 		return pem.EncodeToMemory(keyBlock), nil
 	} else {
@@ -11423,6 +11499,12 @@ func PfxParse() error {
 				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6256)
 			}
 		}
 		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
@@ -11478,6 +11560,12 @@ func PfxParse() error {
 				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT192)
 			} else if *cph == "serpent" || *cph == "serpent256" {
 				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT256)
+			} else if *cph == "rc6128" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6128)
+			} else if *cph == "rc6192" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6192)
+			} else if *cph == "rc6" || *cph == "rc6256" {
+				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6256)
 			}
 		}
 		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
@@ -11939,7 +12027,7 @@ func getAlgorithmName(oid string) string {
 
 func PKCS7Padding(ciphertext []byte) []byte {
 	var padding int
-	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" {
+	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" {
 		padding = 16 - len(ciphertext)%16
 	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" {
 		padding = 8 - len(ciphertext)%8
@@ -12595,6 +12683,9 @@ const (
 	PEMCipherSERPENT128
 	PEMCipherSERPENT192
 	PEMCipherSERPENT256
+	PEMCipherRC6128
+	PEMCipherRC6192
+	PEMCipherRC6256
 )
 
 type rfc1423Algo struct {
@@ -12747,6 +12838,24 @@ var rfc1423Algos = []rfc1423Algo{{
 	cipher:     PEMCipherSERPENT256,
 	name:       "SERPENT-256-CBC",
 	cipherFunc: serpent.NewCipher,
+	keySize:    32,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherRC6128,
+	name:       "RC6-128-CBC",
+	cipherFunc: rc6.NewCipher,
+	keySize:    16,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherRC6192,
+	name:       "RC6-192-CBC",
+	cipherFunc: rc6.NewCipher,
+	keySize:    24,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherRC6256,
+	name:       "RC6-256-CBC",
+	cipherFunc: rc6.NewCipher,
 	keySize:    32,
 	blockSize:  16,
 },
@@ -12916,7 +13025,6 @@ func encrypt(random io.Reader, pub *PublicKey, msg []byte) (ciphertext string, e
 
 	aHex := fmt.Sprintf("%0*x", (pub.P.BitLen())/4, a)
 	bHex := fmt.Sprintf("%0*x", (pub.P.BitLen())/4, b)
-
 	ciphertext = aHex + bHex
 
 	return ciphertext, nil
@@ -12924,7 +13032,7 @@ func encrypt(random io.Reader, pub *PublicKey, msg []byte) (ciphertext string, e
 
 func decrypt(priv *PrivateKey, ciphertext string) (msg []byte, err error) {
 	if len(ciphertext)%2 != 0 {
-		return nil, fmt.Errorf("invalid ciphertext format")
+		return nil, fmt.Errorf("invalid cipher format")
 	}
 
 	halfLen := len(ciphertext) / 2
@@ -12934,13 +13042,14 @@ func decrypt(priv *PrivateKey, ciphertext string) (msg []byte, err error) {
 	a, successA := new(big.Int).SetString(aHex, 16)
 	b, successB := new(big.Int).SetString(bHex, 16)
 	if !successA || !successB {
-		return nil, fmt.Errorf("invalid ciphertext format")
+		return nil, fmt.Errorf("invalid cipher format")
 	}
 
 	s := new(big.Int).Exp(a, priv.X, priv.P)
 	s.ModInverse(s, priv.P)
 	s.Mul(s, b)
 	s.Mod(s, priv.P)
+
 	em := s.Bytes()
 
 	return em, nil
