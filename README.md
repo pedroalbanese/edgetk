@@ -115,6 +115,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
     | Salsa20          | 256        | 64/192 | XOR Stream            |
     | Skein512         | Any        |  Any | MAC + XOR Stream      |
+    | Spritz           | Any        |  Any | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -144,6 +145,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Camellia         |        128 | 128/192/256 | All modes supported     |
     | Kuznechik        |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
+    | RC6              |        128 | 128/192/256 | All modes supported     |
     | SEED             |        128 |         128 | All modes supported     |
     | Serpent          |        128 | 128/192/256 | All modes supported     |
     | SM4              |        128 |         128 | All modes supported     |
