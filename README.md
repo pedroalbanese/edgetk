@@ -607,7 +607,7 @@ echo $?
   - Use the UID and HID associated with the private key that performed the signature.
   - Perform the signature verification process.
 ```sh
-./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hid 1] < FILE
+./edgetk -pkey verify -algorithm sm9sign [-key "Public.pem"] [-id "uid"] [-hid 1] [signature "sign"] < FILE
 ```
 #### Hex Encoder/Decoder:
 ```sh
