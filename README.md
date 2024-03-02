@@ -225,6 +225,59 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
 
+<details><summary>AEAD OpenSSL-PHP compliance</summary><br><pre>
+<?php
+function encrypt($plaintext, $key, $aad = '') {
+    $nonceSize = 12; // Chacha20-Poly1305 standard nonce size
+
+    $nonce = random_bytes($nonceSize);
+    $ciphertext = openssl_encrypt(
+        $plaintext,
+        'chacha20-poly1305',
+        $key,
+        OPENSSL_RAW_DATA,
+        $nonce,
+        $tag,
+        $aad
+    );
+
+    return $nonce . $ciphertext . $tag;
+}
+
+function decrypt($ciphertext, $key, $aad = '') {
+    $nonceSize = 12; // Chacha20-Poly1305 standard nonce size
+    $tagSize = 16;   // Assuming a 16-byte tag
+
+    $nonce = substr($ciphertext, 0, $nonceSize);
+    $tag = substr($ciphertext, -$tagSize);
+    $ciphertext = substr($ciphertext, $nonceSize, -$tagSize);
+
+    return openssl_decrypt(
+        $ciphertext,
+        'chacha20-poly1305',
+        $key,
+        OPENSSL_RAW_DATA,
+        $nonce,
+        $tag,
+        $aad
+    );
+}
+
+// Example usage:
+$keyHex = 'af36101b0cb495663dc5011a8a693d5735339ddd66a692fce59461586e42e02c'; // Provide your key in hexadecimal format
+$key = hex2bin($keyHex);
+$plaintext = "Hello, Chacha20-Poly1305!";
+
+// Encrypt
+$ciphertext = encrypt($plaintext, $key);
+echo "Encrypted: " . bin2hex($ciphertext) . PHP_EOL;
+
+// Decrypt
+$decrypted = decrypt($ciphertext, $key);
+echo "Decrypted: " . $decrypted . PHP_EOL;
+?>
+</pre></details>
+
 ### GOST (GOvernment STandard of Russian Federation)
 GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
 
