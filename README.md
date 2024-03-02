@@ -286,8 +286,8 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number (p) and a generator (g) for a finite cyclic group are generated. Each entity possesses a private key (x), kept secret, and a public key (Y), derived from g^x mod p. To encrypt a symmetric key, the sender uses the session key, computes two components (a and b), and sends (g^k mod p, Y^k * key mod p) to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
 
 <details>
-  <summary>Theory</summary>
-  ### Theory
+  <summary>Theory</summary>  
+
 #### Key Generation
 
 Generate a large prime number
