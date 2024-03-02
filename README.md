@@ -319,9 +319,9 @@ The ElGamal algorithm is a public-key cryptography system that enables secure co
 4. Compute
 ![Verificação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20u_2%20%5Cequiv%20r%20%5Ccdot%20w%20%5Cmod%20(p-1)).
 5. Compute
-![Verificação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20g%5E%7Bu_1%7D%20%5Ccdot%20Y%5E%7Bu_2%7D%20%5Cmod%20p)
+![Verificação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20g%5E%7Bu_1%7D%20%5Ccdot%20Y%5E%7Bu_2%7D%20%5Cmod%20p).
 6. The signature is valid if
-![Verificação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20r%20%5Cmod%20p)
+![Verificação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20r%20%5Cmod%20p).
 
 #### Key Agreement
 
