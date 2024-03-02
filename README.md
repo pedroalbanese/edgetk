@@ -326,18 +326,18 @@ The ElGamal algorithm is a public-key cryptography system that enables secure co
 #### Key Agreement
 
 1. Bob generates his key pair
-![Encriptação - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28x_B,%20Y_B%29).
+![Encriptação - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28x_B,%20Y_B%29).
 2. Bob shares his public key
-![Encriptação - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y_B) with Alice.
+![Encriptação - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y_B) with Alice.
 3. Alice generates a random symmetric key
-![Encriptação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D).
-4. Alice encrypts ![Encriptação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) using Bob's public key: 
-![Encriptação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20a%20%3D%20g%5E%7Bk_A%7D%20%5Cmod%20p%2C%20%5C%5C%20b%20%3D%20Y_B%5E%7Bk_A%7D%20%5Ccdot%20K_%7B%5Ctext%7Bsym%7D%7D%20%5Cmod%20p).
+![Encriptação - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D).
+4. Alice encrypts ![Encriptação - Passo 4a](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) using Bob's public key: 
+![Encriptação - Passo 4b](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20a%20%3D%20g%5E%7Bk_A%7D%20%5Cmod%20p%2C%20%5C%5C%20b%20%3D%20Y_B%5E%7Bk_A%7D%20%5Ccdot%20K_%7B%5Ctext%7Bsym%7D%7D%20%5Cmod%20p).
 5. Alice sends the ciphertext 
-![Encriptação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28a,%20b%29)  to Bob.
+![Encriptação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28a,%20b%29)  to Bob.
 6. Bob decrypts the received ciphertext using his private key to obtain:
-![Encriptação - Passo 7](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D%20%3D%20%28b%20%5Ccdot%20a%5E%7B-x_B%7D%29%20%5Cmod%20p).
-7. Now, both Alice and Bob have the shared symmetric key ![Encriptação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) for further communication.
+![Encriptação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D%20%3D%20%28b%20%5Ccdot%20a%5E%7B-x_B%7D%29%20%5Cmod%20p).
+7. Now, both Alice and Bob have the shared symmetric key ![Encriptação - Passo 4a](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) for further communication.
 </details>
 
 ### GOST (GOvernment STandard of Russian Federation)
