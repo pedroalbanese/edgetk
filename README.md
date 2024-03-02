@@ -225,8 +225,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
 
-<details><summary>AEAD OpenSSL-PHP compliance</summary><br><pre>
-&lt;?php
+<details><summary>AEAD OpenSSL-PHP compliance</summary><br>
+```
+<?php
 function encrypt($plaintext, $key, $aad = '') {
     $nonceSize = 12; // Chacha20-Poly1305 standard nonce size
 
@@ -240,7 +241,6 @@ function encrypt($plaintext, $key, $aad = '') {
         $tag,
         $aad
     );
-
     return $nonce . $ciphertext . $tag;
 }
 
@@ -275,8 +275,9 @@ echo "Encrypted: " . bin2hex($ciphertext) . PHP_EOL;
 // Decrypt
 $decrypted = decrypt($ciphertext, $key);
 echo "Decrypted: " . $decrypted . PHP_EOL;
-?&gt;
-</pre></details>
+?>
+```
+</details>
 
 ### GOST (GOvernment STandard of Russian Federation)
 GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
