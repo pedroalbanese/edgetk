@@ -282,6 +282,80 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 ```
 </details>
 
+### ElGamal
+The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number (p) and a generator (g) for a finite cyclic group are generated. Each entity possesses a private key (x), kept secret, and a public key (Y), derived from g^x mod p. To encrypt a symmetric key, the sender uses the session key, computes two components (a and b), and sends (g^k mod p, Y^k * key mod p) to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
+
+<details>
+  <summary>Theory</summary>
+  ### Theory
+#### Key Generation
+
+Generate a large prime number
+![Geração de Chaves - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20p).
+
+Select a generator 
+![Geração de Chaves - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g%20%5Cin%20%5B2,%20p-2%5D).
+
+Generate a private key 
+![Geração de Chaves - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20x) randomly.
+
+Compute the public key
+![Geração de Chaves - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y%20%3D%20g%5Ex%20%5Cmod%20p).
+
+#### Digital Signature
+
+Select a random value 
+![Assinatura - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20k) such that 
+![Assinatura - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%201%20%3C%20k%20%3C%20p-1%2C%20%5Ctext%7Bgcd%7D(k%2C%20p-1)%20%3D%201).
+
+Compute the first signature component: 
+![Assinatura - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20r%20%3D%20g%5Ek%20%5Cmod%20p).
+
+Compute the second signature component:
+![Assinatura - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20s%20%5Cequiv%20%28H(m)%20-%20x%20%5Ccdot%20r%29%20%5Ccdot%20k%5E%7B-1%7D%20%5Cmod%20(p-1)).
+
+#### Digital Signature Verification
+
+Receive the message ![Verificação - Passo 1a](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20m) and the signature components ![Verificação - Passo 1b](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20(r%2C%20s)).
+
+Compute
+![Verificação - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20w%20%5Cequiv%20s%5E%7B-1%7D%20%5Cmod%20(p-1)).
+
+Compute
+![Verificação - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20u_1%20%5Cequiv%20H(m)%20%5Ccdot%20w%20%5Cmod%20(p-1)).
+
+Compute
+![Verificação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20u_2%20%5Cequiv%20r%20%5Ccdot%20w%20%5Cmod%20(p-1)).
+
+Compute
+![Verificação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20g%5E%7Bu_1%7D%20%5Ccdot%20Y%5E%7Bu_2%7D%20%5Cmod%20p)
+
+The signature is valid if
+![Verificação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20r%20%5Cmod%20p)
+
+### Key Agreement
+
+Bob generates his key pair
+![Encriptação - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28x_B,%20Y_B%29).
+
+Bob shares his public key
+![Encriptação - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y_B) with Alice.
+
+Alice generates a random symmetric key
+![Encriptação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D).
+
+Alice encrypts ![Encriptação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) using Bob's public key: 
+![Encriptação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20a%20%3D%20g%5E%7Bk_A%7D%20%5Cmod%20p%2C%20%5C%5C%20b%20%3D%20Y_B%5E%7Bk_A%7D%20%5Ccdot%20K_%7B%5Ctext%7Bsym%7D%7D%20%5Cmod%20p).
+
+Alice sends the ciphertext 
+![Encriptação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28a,%20b%29)  to Bob.
+
+Bob decrypts the received ciphertext using his private key to obtain:
+![Encriptação - Passo 7](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D%20%3D%20%28b%20%5Ccdot%20a%5E%7B-x_B%7D%29%20%5Cmod%20p).
+
+Now, both Alice and Bob have the shared symmetric key ![Encriptação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) for further communication.
+</details>
+
 ### GOST (GOvernment STandard of Russian Federation)
 GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
 
