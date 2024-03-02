@@ -280,6 +280,7 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
   ?>
 
 ```
+</details>
 
 ### GOST (GOvernment STandard of Russian Federation)
 GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
