@@ -266,7 +266,7 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
   }
   
   // Example usage:
-  $keyHex = 'af36101b0cb495663dc5011a8a693d5735339ddd66a692fce59461586e42e02c'; // Provide your key in hexadecimal format
+  $keyHex = ''; // Provide your key in hexadecimal format
   $key = hex2bin($keyHex);
   $plaintext = "Hello, Chacha20-Poly1305!";
   
