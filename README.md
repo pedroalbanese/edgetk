@@ -276,6 +276,7 @@ echo "Encrypted: " . bin2hex($ciphertext) . PHP_EOL;
 $decrypted = decrypt($ciphertext, $key);
 echo "Decrypted: " . $decrypted . PHP_EOL;
 ?>
+
 ```
 </details>
 
