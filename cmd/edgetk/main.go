@@ -37,6 +37,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/ascii85"
 	"encoding/asn1"
 	"encoding/base32"
 	"encoding/base64"
@@ -163,9 +164,10 @@ var (
 	cph        = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crl        = flag.String("crl", "", "Certificate Revocation List path.")
 	crypt      = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
-	curveFlag  = flag.String("curve", "ecdsa", "Subjacent curve (Koblitz, ECDSA, BLS12381G1/2.)")
+	curveFlag  = flag.String("curve", "ecdsa", "Subjacent curve (ECDSA, BLS12381G1 and G2.)")
 	digest     = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
+	b85        = flag.String("base85", "", "Encode binary string to Base85 format and vice-versa. [enc|dec]")
 	b64        = flag.String("base64", "", "Encode binary string to Base64 format and vice-versa. [enc|dec]")
 	b32        = flag.String("base32", "", "Encode binary string to Base32 format and vice-versa. [enc|dec]")
 	factorPStr = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
@@ -199,8 +201,8 @@ var (
 	sig        = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	tcpip      = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
-	col        = flag.Int("wrap", 64, "Wrap lines after N columns. (For Base64/32 encoding)")
-	pad        = flag.Bool("nopad", false, "No padding. (For Base64 and Base32 encoding)")
+	col        = flag.Int("wrap", 64, "Wrap lines after N columns. (for Base64/32 encoding)")
+	pad        = flag.Bool("nopad", false, "No padding. (for Base64 and Base32 encoding)")
 	version    = flag.Bool("version", false, "Print version info.")
 )
 
@@ -245,7 +247,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.1  27 Jan 2024")
+		fmt.Println("EDGE Toolkit v1.4.2  04 Feb 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -411,7 +413,7 @@ Subcommands:
   [-crl <old.crl>] [serials.txt] NewCRL.crl
 
  Parse Keypair:
-  edgetk -pkey <text|modulus> [-pwd "passphrase"] [-key <private.pem>]
+  edgetk -pkey <text|modulus> [-pass "passphrase"] [-key <private.pem>]
   edgetk -pkey <text|modulus|randomart> [-key <public.pem>]
 
  Parse Certificate/CRL:
@@ -439,7 +441,7 @@ Subcommands:
   [-signature <signature>] FILE.ext
 
   Example:
-  edgetk -pkey sign -key private.pem [-pwd "pass"] FILE.ext > sign.txt
+  edgetk -pkey sign -key private.pem [-pass "pass"] FILE.ext > sign.txt
   sign=$(cat sign.txt|awk '{print $2}')
   edgetk -pkey verify -key public.pem -signature $sign FILE.ext
   echo $?`)
@@ -740,6 +742,74 @@ Subcommands:
 		join = strings.ReplaceAll(join, "\r\n", "")
 		join = strings.ReplaceAll(join, "\n", "")
 		fmt.Println(strings.ToLower(join))
+	}
+
+	if *b85 == "enc" || *b85 == "dec" {
+		if *col == 0 && len(flag.Args()) > 0 {
+			inputFile := flag.Arg(0)
+
+			data, err := ioutil.ReadFile(inputFile)
+			if err != nil {
+				fmt.Println("Error reading the file:", err)
+				os.Exit(1)
+			}
+
+			inputData := string(data)
+
+			if *b85 == "enc" {
+				fmt.Print(encodeAscii85([]byte(inputData)))
+			} else {
+				decoder := ascii85.NewDecoder(strings.NewReader(inputData))
+				decodedData, err := ioutil.ReadAll(decoder)
+				if err != nil {
+					fmt.Println("Error decoding data:", err)
+					os.Exit(1)
+				}
+				fmt.Print(string(decodedData))
+			}
+		} else {
+			var inputData string
+
+			if len(flag.Args()) == 0 {
+				data, _ := ioutil.ReadAll(os.Stdin)
+				inputData = string(data)
+			} else {
+				inputFile := flag.Arg(0)
+
+				data, err := ioutil.ReadFile(inputFile)
+				if err != nil {
+					fmt.Println("Error reading the file:", err)
+					os.Exit(1)
+				}
+				inputData = string(data)
+			}
+
+			if *col != 0 {
+				if *b85 == "enc" {
+					printChunks(encodeAscii85([]byte(inputData)), *col)
+				} else {
+					decoder := ascii85.NewDecoder(strings.NewReader(inputData))
+					decodedData, err := ioutil.ReadAll(decoder)
+					if err != nil {
+						fmt.Println("Error decoding data:", err)
+						os.Exit(1)
+					}
+					fmt.Print(string(decodedData))
+				}
+			} else {
+				if *b85 == "enc" {
+					fmt.Print(encodeAscii85([]byte(inputData)))
+				} else {
+					decoder := ascii85.NewDecoder(strings.NewReader(inputData))
+					decodedData, err := ioutil.ReadAll(decoder)
+					if err != nil {
+						fmt.Println("Error decoding data:", err)
+						os.Exit(1)
+					}
+					fmt.Print(string(decodedData))
+				}
+			}
+		}
 	}
 
 	if *b64 == "enc" || *b64 == "dec" {
@@ -1123,13 +1193,13 @@ Subcommands:
 		}
 
 		if *crypt == "enc" {
-			out := spritz.EncryptWithIV(key, []byte(*vector), msg)
+			out := spritz.EncryptWithIV(key, nonce, msg)
 			fmt.Printf("%s", out)
 			os.Exit(0)
 		}
 
 		if *crypt == "dec" {
-			out := spritz.DecryptWithIV(key, []byte(*vector), msg)
+			out := spritz.DecryptWithIV(key, nonce, msg)
 			fmt.Printf("%s", out)
 			os.Exit(0)
 		}
@@ -3592,9 +3662,6 @@ Subcommands:
 	}
 
 	if *mac == "gmac" {
-		if *vector == "" {
-			log.Fatal("Invalid IV size. GMAC nonce must be the same length of the block.")
-		}
 		var c cipher.Block
 		var err error
 
@@ -3631,8 +3698,14 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+		if *vector == "" || len(*vector) != 256/8 {
+			log.Fatal("Invalid IV size. GMAC nonce must be the same length of the block.")
+		}
 		var nonce []byte
-		nonce = []byte(*vector)
+		nonce, err = hex.DecodeString(*vector)
+		if err != nil {
+			log.Fatal(err)
+		}
 		h, err := gmac.New(c, nonce, message)
 		if err != nil {
 			log.Fatal(err)
@@ -3655,9 +3728,6 @@ Subcommands:
 	}
 
 	if *mac == "mgmac" {
-		if *vector == "" {
-			log.Fatal("Invalid IV size. MGMAC nonce must be the same length of the block.")
-		}
 		var c cipher.Block
 		var err error
 
@@ -3742,8 +3812,14 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+		if *vector == "" || (len(*vector) != 256/8 && len(*vector) != 128/8) {
+			log.Fatal("Invalid IV size. MGMAC nonce must be the same length of the block.")
+		}
 		var nonce []byte
-		nonce = []byte(*vector)
+		nonce, err = hex.DecodeString(*vector)
+		if err != nil {
+			log.Fatal(err)
+		}
 		h, err := NewMGMAC(c, n, nonce, message)
 		if err != nil {
 			log.Fatal(err)
@@ -3766,9 +3842,6 @@ Subcommands:
 	}
 
 	if *mac == "vmac" {
-		if *vector == "" {
-			log.Fatal("Invalid IV size. VMAC nonce must be from 1 to block length -1.")
-		}
 		var c cipher.Block
 		var err error
 		if *cph == "blowfish" {
@@ -3861,7 +3934,14 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
-		h, err := vmac.New(c, []byte(*key), []byte(*vector), *length/8)
+		if *vector == "" {
+			log.Fatal("Invalid IV size. VMAC nonce must be from 1 to block length -1.")
+		}
+		nonce, err := hex.DecodeString(*vector)
+		if err != nil {
+			log.Fatal(err)
+		}
+		h, err := vmac.New(c, []byte(*key), nonce, *length/8)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -6306,7 +6386,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if (strings.ToUpper(*alg) == "ELGAMAL" && strings.ToUpper(*alg) != "EC-ELGAMAL" || *params != "") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
+	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EG" && strings.ToUpper(*alg) != "EC-ELGAMAL" || *params != "") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
 		if *pkey == "setup" {
 			setParams, err := generateElGamalParams()
 			err = saveElGamalParamsToPEM(*params, setParams)
@@ -6756,8 +6836,17 @@ Subcommands:
 			os.Exit(0)
 		}
 		if *pkey == "randomart" && *key != "" {
-			fmt.Printf("EC-ElGamal (256-bit)\n")
-
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+			keySize := len(keyBytes) * 8
+			if keySize != 320 {
+				fmt.Println("EC-ElGamal (381-bit)")
+			} else {
+				fmt.Println("EC-ElGamal (256-bit)")
+			}
 			pubFile, err := os.Open(*pub)
 			if err != nil {
 				fmt.Println("Error opening public key file:", err)
@@ -6819,7 +6908,12 @@ Subcommands:
 			fingerprint := calculateFingerprint(pubBytes)
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
 
-			fmt.Printf("EC-ElGamal (256-bit)\n")
+			keySize := len(pubBytes) * 8
+			if keySize != 320 {
+				fmt.Println("EC-ElGamal (381-bit)")
+			} else {
+				fmt.Println("EC-ElGamal (256-bit)")
+			}
 
 			pubFile, err := os.Open(*pub)
 			if err != nil {
@@ -12085,6 +12179,24 @@ func split(s string, size int) []string {
 	return ss
 }
 
+func encodeAscii85(data []byte) string {
+	var encoded strings.Builder
+	encoder := ascii85.NewEncoder(&encoded)
+	encoder.Write(data)
+	encoder.Close()
+	return encoded.String()
+}
+
+func printChunks(s string, size int) {
+	for i := 0; i < len(s); i += size {
+		end := i + size
+		if end > len(s) {
+			end = len(s)
+		}
+		fmt.Println(s[i:end])
+	}
+}
+
 func byte32(s []byte) (a *[32]byte) {
 	if len(a) <= len(s) {
 		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
@@ -13328,6 +13440,8 @@ func generatePrime(length int) (*big.Int, error) {
 }
 
 type ElGamalParams struct {
+	P *big.Int
+	G *big.Int
 }
 
 func generateElGamalParams() (*ElGamalParams, error) {
