@@ -226,7 +226,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 Authenticated encryption (AE) and authenticated encryption with associated data (AEAD) are forms of encryption which simultaneously assure the confidentiality and authenticity of data. Provides both authenticated encryption (confidentiality and authentication) and the ability to check the integrity and authentication of additional authenticated data (AAD) that is sent in the clear.
 
 <details><summary>AEAD OpenSSL-PHP compliance</summary><br><pre>
-<?php
+&lt;?php
 function encrypt($plaintext, $key, $aad = '') {
     $nonceSize = 12; // Chacha20-Poly1305 standard nonce size
 
@@ -275,7 +275,7 @@ echo "Encrypted: " . bin2hex($ciphertext) . PHP_EOL;
 // Decrypt
 $decrypted = decrypt($ciphertext, $key);
 echo "Decrypted: " . $decrypted . PHP_EOL;
-?>
+?&gt;
 </pre></details>
 
 ### GOST (GOvernment STandard of Russian Federation)
