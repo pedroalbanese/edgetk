@@ -743,6 +743,7 @@ echo $?
 ./edgetk -pkey help    // Describes public key cryptography usage
 ./edgetk -tcp help     // Describes TLS 1.3 Protocol parameters and usage
 ./edgetk -help,-h      // Full list of the flags and their defaults
+./edgetk -version      // Print version info
 ```
 
 ## Acknowledgments
