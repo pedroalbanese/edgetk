@@ -85,6 +85,15 @@ import (
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
+	"github.com/deatil/go-cryptobin/cipher/clefia"
+	"github.com/deatil/go-cryptobin/cipher/crypton1"
+	"github.com/deatil/go-cryptobin/cipher/e2"
+	"github.com/deatil/go-cryptobin/cipher/khazad"
+	"github.com/deatil/go-cryptobin/cipher/mars"
+	"github.com/deatil/go-cryptobin/cipher/mars2"
+	"github.com/deatil/go-cryptobin/cipher/noekeon"
+	"github.com/deatil/go-cryptobin/cipher/panama"
+	"github.com/deatil/go-cryptobin/cipher/present"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -121,6 +130,7 @@ import (
 	"github.com/pedroalbanese/go-misty1"
 	"github.com/pedroalbanese/go-rc5"
 	"github.com/pedroalbanese/go-ripemd"
+	"github.com/pedroalbanese/go-twine"
 	"github.com/pedroalbanese/gogost/gost28147"
 	"github.com/pedroalbanese/gogost/gost34112012256"
 	"github.com/pedroalbanese/gogost/gost34112012512"
@@ -149,6 +159,7 @@ import (
 	"github.com/pedroalbanese/spritz"
 	"github.com/pedroalbanese/threefish"
 	"github.com/pedroalbanese/tiger"
+	"github.com/pedroalbanese/trivium"
 	"github.com/pedroalbanese/vmac"
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
@@ -247,7 +258,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.2  04 Feb 2024")
+		fmt.Println("EDGE Toolkit v1.4.3  11 Mar 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -269,9 +280,10 @@ Public Key Algorithms:
   ed25519ph         rsa (default)     sm9sign           x25519
 
 Stream Ciphers:
-  ascon             hc128             rabbit            skein
-  chacha20poly1305  hc256             rc4 [obsolete]    zuc128/eea128
-  grain             kcipher2          salsa20           zuc256/eea256
+  ascon (aead)      grain128a         rabbit            spritz
+  chacha20          hc128             rc4 [obsolete]    trivium
+  chacha20poly1305  hc256             salsa20           zuc128
+  grain (aead)      kcipher2          skein             zuc256
 
 Modes of Operation:
   eax (aead)        ocb3 (aead)       cbc               ecb [obsolete]
@@ -279,12 +291,14 @@ Modes of Operation:
   ocb (aead)        ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              cast5             magma             serpent
-  aes (default)     gost89            misty1            sm4
-  anubis            hight             rc2 [obsolete]    threefish
-  aria              idea [obsolete]   rc5               threefish512
-  blowfish          kuznechik         rc6               threefish1024
-  camellia          lea               seed              twofish
+  3des              crypton           magma             seed
+  aes (default)     e2                mars[2]           serpent
+  anubis            gost89            misty1            sm4
+  aria              hight             noekeon           threefish
+  blowfish          idea [obsolete]   present           threefish512
+  camellia          khazad            rc2 [obsolete]    threefish1024
+  cast5             kuznechik         rc5               twine
+  clefia            lea               rc6               twofish
 
 Key Derivation Functions:
   hkdf              pbkdf2            scrypt            bcrypt (phs)
@@ -964,7 +978,7 @@ Subcommands:
 		}
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "mars" || *cph == "mars2" || *cph == "clefia" || *cph == "crypton" || *cph == "e2" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -976,8 +990,12 @@ Subcommands:
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
+	}
+
+	if (*cph == "present" || *cph == "twine") && *pkey != "keygen" && (*length != 80) && *crypt != "" {
+		*length = 80
 	}
 
 	if (*cph == "anubis") && *pkey != "keygen" && (*length < 128 || *length > 320) && *crypt != "" {
@@ -1215,6 +1233,107 @@ Subcommands:
 
 		out := spritz.Hash(msg, byte(*length/8))
 		fmt.Printf("%x\n", out)
+		os.Exit(0)
+	}
+
+	if *crypt != "" && *cph == "trivium" {
+		var keyHex string
+		keyHex = *key
+		var keyRaw []byte
+		var key = [10]byte{}
+		var err error
+		if keyHex != "" {
+			raw, err := hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			key = *byte10(raw)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != trivium.KeyLength {
+				log.Fatal(err)
+			}
+		} else {
+			keyRaw = make([]byte, 10)
+			_, err = io.ReadFull(rand.Reader, keyRaw)
+			if err != nil {
+				log.Fatal(err)
+			}
+			key = *byte10(keyRaw)
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key[:]))
+		}
+
+		var iv = [10]byte{}
+
+		if *vector == "" {
+			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
+		} else {
+			raw, err := hex.DecodeString(*vector)
+			if err != nil {
+				log.Fatal(err)
+			}
+			iv = *byte10(raw)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		var trivium = trivium.NewTrivium(key, iv)
+		reader := bufio.NewReader(inputfile)
+		writer := bufio.NewWriter(os.Stdout)
+		defer writer.Flush()
+
+		var b byte
+		for b, err = reader.ReadByte(); err == nil; b, err = reader.ReadByte() {
+			kb := trivium.NextByte()
+			err := writer.WriteByte(b ^ kb)
+			if err != nil {
+				log.Fatalf("error writing")
+			}
+		}
+		if err != io.EOF {
+			log.Fatalf("error reading")
+		}
+	}
+
+	if *crypt != "" && *cph == "panama" {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 32 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		ciph, _ := panama.NewCipher(key)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
 		os.Exit(0)
 	}
 
@@ -2007,7 +2126,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "clefia" || *cph == "crypton" || *cph == "e2") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -2068,6 +2187,33 @@ Subcommands:
 			n = 8
 		} else if *cph == "rc6" {
 			ciph, err = rc6.NewCipher(key)
+			n = 16
+		} else if *cph == "khazad" {
+			ciph, err = khazad.NewCipher(key)
+			n = 8
+		} else if *cph == "present" {
+			ciph, err = present.NewCipher(key)
+			n = 8
+		} else if *cph == "twine" {
+			ciph, err = twine.New(key)
+			n = 8
+		} else if *cph == "mars" {
+			ciph, err = mars.NewCipher(key)
+			n = 16
+		} else if *cph == "mars2" {
+			ciph, err = mars2.NewCipher(key)
+			n = 16
+		} else if *cph == "noekeon" {
+			ciph, err = noekeon.NewCipher(key)
+			n = 16
+		} else if *cph == "clefia" {
+			ciph, err = clefia.NewCipher(key)
+			n = 16
+		} else if *cph == "crypton" {
+			ciph, err = crypton1.NewCipher(key)
+			n = 16
+		} else if *cph == "e2" {
+			ciph, err = e2.NewCipher(key)
 			n = 16
 		}
 		if err != nil {
@@ -2145,7 +2291,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 128 && len(key) != 64 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 8 {
+			if len(key) != 128 && len(key) != 64 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 10 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2238,6 +2384,33 @@ Subcommands:
 			}
 			n = 128
 			ciph, err = threefish.New1024(key, tweak)
+		} else if *cph == "khazad" {
+			ciph, err = khazad.NewCipher(key)
+			n = 8
+		} else if *cph == "present" {
+			ciph, err = present.NewCipher(key)
+			n = 8
+		} else if *cph == "twine" {
+			ciph, err = twine.New(key)
+			n = 8
+		} else if *cph == "mars" {
+			ciph, err = mars.NewCipher(key)
+			n = 16
+		} else if *cph == "mars2" {
+			ciph, err = mars2.NewCipher(key)
+			n = 16
+		} else if *cph == "noekeon" {
+			ciph, err = noekeon.NewCipher(key)
+			n = 16
+		} else if *cph == "clefia" {
+			ciph, err = clefia.NewCipher(key)
+			n = 16
+		} else if *cph == "crypton" {
+			ciph, err = crypton1.NewCipher(key)
+			n = 16
+		} else if *cph == "e2" {
+			ciph, err = e2.NewCipher(key)
+			n = 16
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -2294,7 +2467,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "clefia" || *cph == "crypton" || *cph == "e2") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -2368,6 +2541,24 @@ Subcommands:
 			}
 			iv = make([]byte, 128)
 			ciph, err = threefish.New1024(key, tweak)
+		} else if *cph == "mars" {
+			ciph, err = mars.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "mars2" {
+			ciph, err = mars2.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "noekeon" {
+			ciph, err = noekeon.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "clefia" {
+			ciph, err = clefia.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "crypton" {
+			ciph, err = crypton1.NewCipher(key)
+			iv = make([]byte, 16)
+		} else if *cph == "e2" {
+			ciph, err = e2.NewCipher(key)
+			iv = make([]byte, 16)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -2409,7 +2600,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis") {
+	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "khazad" || *cph == "present" || *cph == "twine") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -2429,7 +2620,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 24 {
+			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 10 && len(key) != 24 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2470,6 +2661,15 @@ Subcommands:
 			iv = make([]byte, 8)
 		} else if *cph == "misty1" {
 			ciph, err = misty1.New(key)
+			iv = make([]byte, 8)
+		} else if *cph == "khazad" {
+			ciph, err = khazad.NewCipher(key)
+			iv = make([]byte, 8)
+		} else if *cph == "present" {
+			ciph, err = present.NewCipher(key)
+			iv = make([]byte, 8)
+		} else if *cph == "twine" {
+			ciph, err = twine.New(key)
 			iv = make([]byte, 8)
 		}
 		if err != nil {
@@ -3585,6 +3785,24 @@ Subcommands:
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
 			}
 			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
+		} else if *cph == "khazad" {
+			c, err = khazad.NewCipher([]byte(*key))
+		} else if *cph == "mars" {
+			c, err = mars.NewCipher([]byte(*key))
+		} else if *cph == "mars2" {
+			c, err = mars2.NewCipher([]byte(*key))
+		} else if *cph == "noekeon" {
+			c, err = noekeon.NewCipher([]byte(*key))
+		} else if *cph == "clefia" {
+			c, err = clefia.NewCipher([]byte(*key))
+		} else if *cph == "e2" {
+			c, err = e2.NewCipher([]byte(*key))
+		} else if *cph == "crypton" {
+			c, err = crypton1.NewCipher([]byte(*key))
+		} else if *cph == "present" {
+			c, err = present.NewCipher([]byte(*key))
+		} else if *cph == "twine" {
+			c, err = twine.New([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3637,6 +3855,18 @@ Subcommands:
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
 			}
 			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
+		} else if *cph == "mars" {
+			c, err = mars.NewCipher([]byte(*key))
+		} else if *cph == "mars2" {
+			c, err = mars2.NewCipher([]byte(*key))
+		} else if *cph == "noekeon" {
+			c, err = noekeon.NewCipher([]byte(*key))
+		} else if *cph == "clefia" {
+			c, err = clefia.NewCipher([]byte(*key))
+		} else if *cph == "e2" {
+			c, err = e2.NewCipher([]byte(*key))
+		} else if *cph == "crypton" {
+			c, err = crypton1.NewCipher([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3689,6 +3919,18 @@ Subcommands:
 			c, err = kuznechik.NewCipher(key)
 		} else if *cph == "anubis" {
 			c, err = anubis.NewWithKeySize(key, len(key))
+		} else if *cph == "mars" {
+			c, err = mars.NewCipher(key)
+		} else if *cph == "mars2" {
+			c, err = mars2.NewCipher(key)
+		} else if *cph == "noekeon" {
+			c, err = noekeon.NewCipher(key)
+		} else if *cph == "clefia" {
+			c, err = clefia.NewCipher(key)
+		} else if *cph == "e2" {
+			c, err = e2.NewCipher(key)
+		} else if *cph == "crypton" {
+			c, err = crypton1.NewCipher(key)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3803,6 +4045,33 @@ Subcommands:
 		} else if *cph == "3des" {
 			c, err = des.NewTripleDESCipher(key)
 			n = 8
+		} else if *cph == "khazad" {
+			c, err = khazad.NewCipher(key)
+			n = 8
+		} else if *cph == "present" {
+			c, err = present.NewCipher(key)
+			n = 8
+		} else if *cph == "twine" {
+			c, err = twine.New(key)
+			n = 8
+		} else if *cph == "mars" {
+			c, err = mars.NewCipher(key)
+			n = 16
+		} else if *cph == "mars2" {
+			c, err = mars2.NewCipher(key)
+			n = 16
+		} else if *cph == "noekeon" {
+			c, err = noekeon.NewCipher(key)
+			n = 16
+		} else if *cph == "clefia" {
+			c, err = clefia.NewCipher(key)
+			n = 16
+		} else if *cph == "e2" {
+			c, err = e2.NewCipher(key)
+			n = 16
+		} else if *cph == "crypton" {
+			c, err = crypton1.NewCipher(key)
+			n = 16
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3930,6 +4199,24 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
+		} else if *cph == "khazad" {
+			c, err = khazad.NewCipher([]byte(*key))
+		} else if *cph == "mars" {
+			c, err = mars.NewCipher([]byte(*key))
+		} else if *cph == "mars2" {
+			c, err = mars2.NewCipher([]byte(*key))
+		} else if *cph == "noekeon" {
+			c, err = noekeon.NewCipher([]byte(*key))
+		} else if *cph == "clefia" {
+			c, err = clefia.NewCipher([]byte(*key))
+		} else if *cph == "e2" {
+			c, err = e2.NewCipher([]byte(*key))
+		} else if *cph == "crypton" {
+			c, err = crypton1.NewCipher([]byte(*key))
+		} else if *cph == "present" {
+			c, err = present.NewCipher([]byte(*key))
+		} else if *cph == "twine" {
+			c, err = twine.New([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -6430,6 +6717,7 @@ Subcommands:
 				Type:  "ELGAMAL PRIVATE KEY",
 				Bytes: privBytes,
 			}
+			publicKey := setup(priv.X, priv.G, priv.P)
 
 			pemData := pem.EncodeToMemory(pemBlock)
 			fmt.Print(string(pemData))
@@ -6446,14 +6734,13 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("Generator(g):")
+			fmt.Println("Generator(g in the range [2, p-2]):")
 			g := fmt.Sprintf("%x", priv.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("PublicKey(Y):")
-			publicKey := setup(priv.X, priv.G, priv.P)
+			fmt.Println("PublicKey(Y = g^x mod p):")
 			pub := fmt.Sprintf("%x", publicKey)
 			splitz = SplitSubN(pub, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -8284,7 +8571,7 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Printf("Exponent: %X\n", publicKey.E)
+			fmt.Printf("Exponent: %d (0x%X)\n", publicKey.E, publicKey.E)
 		} else if strings.ToUpper(*alg) == "ED25519" {
 			publicKey := publicInterface.(ed25519.PublicKey)
 			derBytes, err := smx509.MarshalPKIXPublicKey(publicKey)
@@ -8589,7 +8876,8 @@ Subcommands:
 			}
 			fmt.Printf(string(privPEM))
 			fmt.Printf("RSA Private-Key: (%v-bit)\n", privKey.N.BitLen())
-			fmt.Printf("Modulus: \n")
+
+			fmt.Printf("Modulus (N): \n")
 			m := privKeyPublicKey.N.Bytes()
 			b, _ := hex.DecodeString("00")
 			c := []byte{}
@@ -8599,10 +8887,46 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Printf("Exponent: %X\n\n", privKeyPublicKey.E)
+			fmt.Printf("Public Exponent (E): %d (0x%X)\n", privKeyPublicKey.E, privKeyPublicKey.E)
 			derBytes, err := x509.MarshalPKIXPublicKey(&privKeyPublicKey)
 			if err != nil {
 				log.Fatal(err)
+			}
+
+			fmt.Printf("Private Exponent (D): \n")
+			splitz = SplitSubN(hex.EncodeToString(privKey.D.Bytes()), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Prime 1 (P): \n")
+			splitz = SplitSubN(hex.EncodeToString(privKey.Primes[0].Bytes()), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Prime 2 (Q): \n")
+			splitz = SplitSubN(hex.EncodeToString(privKey.Primes[1].Bytes()), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Exponent 1 (D mod (P-1)): \n")
+			splitz = SplitSubN(hex.EncodeToString(privKey.Precomputed.Dp.Bytes()), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Exponent 2 (D mod (Q-1)): \n")
+			splitz = SplitSubN(hex.EncodeToString(privKey.Precomputed.Dq.Bytes()), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Coefficient (Q^-1 mod P): \n")
+			splitz = SplitSubN(hex.EncodeToString(privKey.Precomputed.Qinv.Bytes()), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 
 			var spki struct {
@@ -8614,7 +8938,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
-			fmt.Printf("KeyID: %x \n", skid)
+			fmt.Printf("\nKeyID: %x \n", skid)
 		}
 	}
 
@@ -12121,9 +12445,9 @@ func getAlgorithmName(oid string) string {
 
 func PKCS7Padding(ciphertext []byte) []byte {
 	var padding int
-	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" {
+	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" || *cph == "crypton" || *cph == "mars" {
 		padding = 16 - len(ciphertext)%16
-	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" {
+	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" {
 		padding = 8 - len(ciphertext)%8
 	} else if *cph == "threefish" || *cph == "threefish256" {
 		padding = 32 - len(ciphertext)%32
@@ -12205,6 +12529,13 @@ func byte32(s []byte) (a *[32]byte) {
 }
 
 func byte16(s []byte) (a *[16]byte) {
+	if len(a) <= len(s) {
+		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
+	}
+	return a
+}
+
+func byte10(s []byte) (a *[10]byte) {
 	if len(a) <= len(s) {
 		a = (*[len(a)]byte)(unsafe.Pointer(&s[0]))
 	}
