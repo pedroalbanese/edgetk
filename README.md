@@ -174,8 +174,10 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Khazad           |          64|           128|MGM, CFB-8, CTR, OFB|
     | Magma            |          64|           256|MGM, CFB-8, CTR, OFB|
     | MISTY1           |          64|           128|CBC, CFB-8, CTR, OFB|
+    | PRESENT          |          64|        80/128|CBC, CFB-8, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
+    | TWINE            |          64|        80/128|CBC, CFB-8, CTR, OFB|
 
 - **Modes of Operation:**
 
