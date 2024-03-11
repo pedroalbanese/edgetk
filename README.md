@@ -38,41 +38,44 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 24. ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT/COSIC)
 25. ISO/IEC 18033-3:2010 HIGHT, SEED, Camellia and MISTY1 Block ciphers
 26. ISO/IEC 18033-4:2011 KCipher-2 stream cipher (RFC 7008)
-27. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
-28. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
-29. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
-30. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
-31. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
-32. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
-33. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-34. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-35. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-36. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-37. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-38. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-39. RFC 4543: Galois Message Authentication Code (GMAC)
-40. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-41. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-42. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
-43. RFC 5869: HMAC-based Key Derivation Function (HKDF)
-44. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
-45. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
-46. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
-47. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
-48. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
-49. RFC 7914: The Scrypt Password-Based Key Derivation Function
-50. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
-51. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
-52. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
-53. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
-54. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
-55. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
-56. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
-57. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-58. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
-59. US FIPS 197 Advanced Encryption Standard (AES)
-60. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
-61. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+27. ISO/IEC 29192-3:2012 Trivium Stream cipher with 80-bit key
+28. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
+29. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
+30. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
+31. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
+32. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
+33. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
+34. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
+35. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
+36. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+37. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+38. RFC 4009: The SEED Encryption Algorithm (KISA)
+39. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+40. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+41. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+42. RFC 4543: Galois Message Authentication Code (GMAC)
+43. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+44. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+45. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+46. RFC 5869: HMAC-based Key Derivation Function (HKDF)
+47. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
+48. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
+49. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
+50. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
+51. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
+52. RFC 7914: The Scrypt Password-Based Key Derivation Function
+53. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
+54. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
+55. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
+56. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+57. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+58. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+59. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
+60. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+61. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
+62. US FIPS 197 Advanced Encryption Standard (AES)
+63. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
+64. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
 </details>
 
@@ -116,6 +119,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Salsa20          | 256        | 64/192 | XOR Stream            |
     | Skein512         | Any        |  Any | MAC + XOR Stream      |
     | Spritz           | Any        |  Any | XOR Stream            |
+    | Trivium          | 80         |   80 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
@@ -143,8 +147,12 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Anubis           |        128 |  128 to 320 | All modes supported     |
     | ARIA             |        128 | 128/192/256 | All modes supported     |
     | Camellia         |        128 | 128/192/256 | All modes supported     |
+    | CLEFIA           |        128 | 128/192/256 | All modes supported     |
+    | CRYPTON          |        128 | 128/192/256 | All modes supported     |
     | Kuznechik        |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
+    | MARS             |        128 | 128/192/256 | All modes supported     |
+    | NOEKEON          |        128 |         128 | All modes supported     |
     | RC6              |        128 | 128/192/256 | All modes supported     |
     | SEED             |        128 |         128 | All modes supported     |
     | Serpent          |        128 | 128/192/256 | All modes supported     |
@@ -163,6 +171,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | GOST89 (TC26)    |          64|           256|MGM, CFB-8, CTR, OFB|
     | HIGHT            |          64|           128|CBC, CFB-8, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|CBC, CFB-8, CTR, OFB|
+    | Khazad           |          64|           128|MGM, CFB-8, CTR, OFB|
     | Magma            |          64|           256|MGM, CFB-8, CTR, OFB|
     | MISTY1           |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
