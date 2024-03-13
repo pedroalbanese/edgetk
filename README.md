@@ -147,6 +147,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Anubis           |        128 |  128 to 320 | All modes supported     |
     | ARIA             |        128 | 128/192/256 | All modes supported     |
     | Camellia         |        128 | 128/192/256 | All modes supported     |
+    | CAST256          |        128 | 128/192/256 | All modes supported     |
     | CLEFIA           |        128 | 128/192/256 | All modes supported     |
     | CRYPTON          |        128 | 128/192/256 | All modes supported     |
     | E2               |        128 | 128/192/256 | All modes supported     |
