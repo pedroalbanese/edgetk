@@ -48,34 +48,35 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 34. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 35. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
 36. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-37. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-38. RFC 4009: The SEED Encryption Algorithm (KISA)
-39. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-40. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-41. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-42. RFC 4543: Galois Message Authentication Code (GMAC)
-43. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-44. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-45. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
-46. RFC 5869: HMAC-based Key Derivation Function (HKDF)
-47. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
-48. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
-49. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
-50. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
-51. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
-52. RFC 7914: The Scrypt Password-Based Key Derivation Function
-53. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
-54. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
-55. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
-56. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
-57. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
-58. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
-59. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
-60. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-61. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
-62. US FIPS 197 Advanced Encryption Standard (AES)
-63. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
-64. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+37. RFC 2612: The CAST-256 Encryption Algorithm
+38. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+39. RFC 4009: The SEED Encryption Algorithm (KISA)
+40. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+41. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+42. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+43. RFC 4543: Galois Message Authentication Code (GMAC)
+44. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+45. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+46. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+47. RFC 5869: HMAC-based Key Derivation Function (HKDF)
+48. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
+49. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
+50. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
+51. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
+52. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
+53. RFC 7914: The Scrypt Password-Based Key Derivation Function
+54. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
+55. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
+56. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
+57. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+58. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+59. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+60. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
+61. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+62. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
+63. US FIPS 197 Advanced Encryption Standard (AES)
+64. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
+65. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
 </details>
 
@@ -93,6 +94,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | RSA                 |     |     |     | O   | O        | O   |
     | SM2                 | O   |     | O   | O   | O        | O   |
     | SM9                 | O   |     | O   | O   | O        |     |
+    | CRYSTALS            |     |     |     | O   | O        |     |
     | ElGamal             |     |     |     | O   | O        |     |
     | EC-ElGamal          | O   |     |     |     | O        |     |
     | SPHINCS+            | O   |     |     | O   |          |     |
