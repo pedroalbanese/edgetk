@@ -155,6 +155,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | E2               |        128 | 128/192/256 | All modes supported     |
     | Kuznechik        |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
+    | LOKI97           |        128 | 128/192/256 | All modes supported     |
     | MARS             |        128 |  128 to 448 | All modes supported     |
     | NOEKEON          |        128 |         128 | All modes supported     |
     | RC6              |        128 | 128/192/256 | All modes supported     |
