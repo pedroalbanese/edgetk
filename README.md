@@ -155,7 +155,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | CLEFIA           |        128 | 128/192/256 | All modes supported     |
     | CRYPTON          |        128 | 128/192/256 | All modes supported     |
     | E2               |        128 | 128/192/256 | All modes supported     |
-    | Kalyna128        |        128 |         256 | All modes supported     |
+    | Kalyna128        |        128 |     128/256 | All modes supported     |
     | Kuznechik        |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
     | LOKI97           |        128 | 128/192/256 | All modes supported     |
