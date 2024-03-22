@@ -137,6 +137,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |      Cipher      | Block Size |  Key Size   |          Modes           |
     |:-----------------|:----------:|:-----------:|:------------------------:|
+    | Kalyna256        |        256 |     256/512 | CBC, CFB8, CTR, OFB, IGE |
+    | Kalyna512        |        256 |         512 | CBC, CFB8, CTR, OFB, IGE |
     | Threefish256     |        256 |         256 | CBC, CFB8, CTR, OFB, IGE |
     | Threefish512     |        512 |         512 | CBC, CFB8, CTR, OFB, IGE |
     | Threefish1024    |       1024 |        1024 | CBC, CFB8, CTR, OFB, IGE |
@@ -153,6 +155,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | CLEFIA           |        128 | 128/192/256 | All modes supported     |
     | CRYPTON          |        128 | 128/192/256 | All modes supported     |
     | E2               |        128 | 128/192/256 | All modes supported     |
+    | Kalyna128        |        128 |         256 | All modes supported     |
     | Kuznechik        |        128 |         256 | All modes supported     |
     | LEA              |        128 | 128/192/256 | All modes supported     |
     | LOKI97           |        128 | 128/192/256 | All modes supported     |
