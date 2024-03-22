@@ -85,16 +85,21 @@ import (
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
+	"github.com/deatil/go-cryptobin/cipher/ascon"
 	"github.com/deatil/go-cryptobin/cipher/cast256"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
 	"github.com/deatil/go-cryptobin/cipher/crypton1"
 	"github.com/deatil/go-cryptobin/cipher/e2"
+	"github.com/deatil/go-cryptobin/cipher/grain"
 	"github.com/deatil/go-cryptobin/cipher/khazad"
+	"github.com/deatil/go-cryptobin/cipher/loki97"
 	"github.com/deatil/go-cryptobin/cipher/mars"
 	"github.com/deatil/go-cryptobin/cipher/mars2"
 	"github.com/deatil/go-cryptobin/cipher/noekeon"
 	"github.com/deatil/go-cryptobin/cipher/panama"
 	"github.com/deatil/go-cryptobin/cipher/present"
+	"github.com/deatil/go-cryptobin/cipher/twine"
+	"github.com/deatil/go-cryptobin/cipher/xoodoo/xoodyak"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -116,6 +121,8 @@ import (
 	"github.com/pedroalbanese/crypto/hc128"
 	"github.com/pedroalbanese/crypto/hc256"
 	"github.com/pedroalbanese/crypto/serpent"
+	"github.com/pedroalbanese/crystals-go/crystals-dilithium"
+	"github.com/pedroalbanese/crystals-go/crystals-kyber"
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
@@ -131,7 +138,6 @@ import (
 	"github.com/pedroalbanese/go-misty1"
 	"github.com/pedroalbanese/go-rc5"
 	"github.com/pedroalbanese/go-ripemd"
-	"github.com/pedroalbanese/go-twine"
 	"github.com/pedroalbanese/gogost/gost28147"
 	"github.com/pedroalbanese/gogost/gost34112012256"
 	"github.com/pedroalbanese/gogost/gost34112012512"
@@ -143,9 +149,8 @@ import (
 	"github.com/pedroalbanese/groestl-1"
 	"github.com/pedroalbanese/haraka"
 	"github.com/pedroalbanese/jh"
+	"github.com/pedroalbanese/kalyna"
 	"github.com/pedroalbanese/kuznechik"
-	"github.com/pedroalbanese/lwcrypto/ascon2"
-	"github.com/pedroalbanese/lwcrypto/grain"
 	"github.com/pedroalbanese/lyra2re"
 	"github.com/pedroalbanese/makwa-go"
 	"github.com/pedroalbanese/ocb"
@@ -163,7 +168,6 @@ import (
 	"github.com/pedroalbanese/trivium"
 	"github.com/pedroalbanese/vmac"
 	"github.com/pedroalbanese/whirlpool"
-	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
 )
 
@@ -259,7 +263,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.4  13 Mar 2024")
+		fmt.Println("EDGE Toolkit v1.4.5  22 Mar 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -278,13 +282,13 @@ Public Key Subcommands:
 Public Key Algorithms:
   ecdsa             elgamal           sm2               gost2012
   ed25519           ec-elgamal        sm9encrypt        sphincs
-  ed25519ph         rsa (default)     sm9sign           x25519
+  kyber/dilithium   rsa (default)     sm9sign           x25519
 
 Stream Ciphers:
   ascon (aead)      grain128a         rabbit            spritz
   chacha20          hc128             rc4 [obsolete]    trivium
-  chacha20poly1305  hc256             salsa20           zuc128
-  grain (aead)      kcipher2          skein             zuc256
+  chacha20poly1305  hc256             salsa20           zuc128/eea128
+  grain (aead)      kcipher2          skein             zuc256/eea256
 
 Modes of Operation:
   eax (aead)        ocb3 (aead)       cbc               ecb [obsolete]
@@ -292,14 +296,16 @@ Modes of Operation:
   ocb (aead)        ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              crypton           magma             seed
-  aes (default)     e2                mars/2            serpent
-  anubis            gost89            misty1            sm4
-  aria              hight             noekeon           threefish
-  blowfish          idea [obsolete]   present           threefish512
-  camellia          khazad            rc2 [obsolete]    threefish1024
-  cast5/6           kuznechik         rc5               twine
-  clefia            lea               rc6               twofish
+  3des              des [obsolete]    khazad            rc5
+  aes (default)     e2                kuznechik         rc6
+  anubis            gost89            lea               seed
+  aria              hight             loki97            serpent
+  blowfish          idea [obsolete]   magma             sm4
+  camellia          kalyna128_128     mars/2            threefish
+  cast5             kalyna128_256     misty1            threefish512
+  cast256           kalyna256_256     noekeon           threefish1024
+  clefia            kalyna256_512     present           twine
+  crypton           kalyna512_512     rc2 [obsolete]    twofish
 
 Key Derivation Functions:
   hkdf              pbkdf2            scrypt            bcrypt (phs)
@@ -979,7 +985,7 @@ Subcommands:
 		}
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "mars" || *cph == "mars2" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "crypton" || *cph == "e2" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "mars" || *cph == "mars2" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "crypton" || *cph == "e2" || *cph == "loki97" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -991,7 +997,7 @@ Subcommands:
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit" || *cph == "kalyna128_128") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -1007,7 +1013,7 @@ Subcommands:
 		*length = 256
 	}
 
-	if (*cph == "threefish512") && *pkey != "keygen" && (*length != 512) && *crypt != "" {
+	if (*cph == "threefish512" || *cph == "kalyna256_512" || *cph == "kalyna512_512") && *pkey != "keygen" && (*length != 512) && *crypt != "" {
 		*length = 512
 	}
 
@@ -1039,7 +1045,7 @@ Subcommands:
 		*length = 3072
 	}
 
-	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EC-ELGAMAL") && strings.ToUpper(*mode) == "CTR" {
+	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "KYBER" || strings.ToUpper(*alg) == "DILITHIUM") && strings.ToUpper(*mode) == "CTR" {
 		*mode = "GCM"
 	}
 
@@ -2127,7 +2133,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "crypton" || *cph == "e2") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -2196,7 +2202,7 @@ Subcommands:
 			ciph, err = present.NewCipher(key)
 			n = 8
 		} else if *cph == "twine" {
-			ciph, err = twine.New(key)
+			ciph, err = twine.NewCipher(key)
 			n = 8
 		} else if *cph == "mars" {
 			ciph, err = mars.NewCipher(key)
@@ -2207,9 +2213,27 @@ Subcommands:
 		} else if *cph == "noekeon" {
 			ciph, err = noekeon.NewCipher(key)
 			n = 16
+		} else if *cph == "loki97" {
+			ciph, err = loki97.NewCipher(key)
+			n = 16
 		} else if *cph == "clefia" {
 			ciph, err = clefia.NewCipher(key)
 			n = 16
+		} else if *cph == "kalyna128_128" {
+			ciph, err = kalyna.NewCipher128_128(key)
+			n = 16
+		} else if *cph == "kalyna128_256" {
+			ciph, err = kalyna.NewCipher128_256(key)
+			n = 16
+		} else if *cph == "kalyna256_256" {
+			ciph, err = kalyna.NewCipher256_256(key)
+			n = 32
+		} else if *cph == "kalyna256_512" {
+			ciph, err = kalyna.NewCipher256_512(key)
+			n = 32
+		} else if *cph == "kalyna512_512" {
+			ciph, err = kalyna.NewCipher512_512(key)
+			n = 64
 		} else if *cph == "cast256" || *cph == "cast6" {
 			ciph, err = cast256.NewCipher(key)
 			n = 16
@@ -2395,7 +2419,7 @@ Subcommands:
 			ciph, err = present.NewCipher(key)
 			n = 8
 		} else if *cph == "twine" {
-			ciph, err = twine.New(key)
+			ciph, err = twine.NewCipher(key)
 			n = 8
 		} else if *cph == "mars" {
 			ciph, err = mars.NewCipher(key)
@@ -2406,9 +2430,27 @@ Subcommands:
 		} else if *cph == "noekeon" {
 			ciph, err = noekeon.NewCipher(key)
 			n = 16
+		} else if *cph == "loki97" {
+			ciph, err = loki97.NewCipher(key)
+			n = 16
 		} else if *cph == "clefia" {
 			ciph, err = clefia.NewCipher(key)
 			n = 16
+		} else if *cph == "kalyna128_128" {
+			ciph, err = kalyna.NewCipher128_128(key)
+			n = 16
+		} else if *cph == "kalyna128_256" {
+			ciph, err = kalyna.NewCipher128_256(key)
+			n = 16
+		} else if *cph == "kalyna256_256" {
+			ciph, err = kalyna.NewCipher256_256(key)
+			n = 32
+		} else if *cph == "kalyna256_512" {
+			ciph, err = kalyna.NewCipher256_512(key)
+			n = 32
+		} else if *cph == "kalyna512_512" {
+			ciph, err = kalyna.NewCipher512_512(key)
+			n = 64
 		} else if *cph == "cast256" || *cph == "cast6" {
 			ciph, err = cast256.NewCipher(key)
 			n = 16
@@ -2474,7 +2516,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "crypton" || *cph == "e2") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -2557,9 +2599,27 @@ Subcommands:
 		} else if *cph == "noekeon" {
 			ciph, err = noekeon.NewCipher(key)
 			iv = make([]byte, 16)
+		} else if *cph == "loki97" {
+			ciph, err = loki97.NewCipher(key)
+			iv = make([]byte, 16)
 		} else if *cph == "clefia" {
 			ciph, err = clefia.NewCipher(key)
 			iv = make([]byte, 16)
+		} else if *cph == "kalyna128_128" {
+			ciph, err = kalyna.NewCipher128_128(key)
+			iv = make([]byte, 16)
+		} else if *cph == "kalyna128_256" {
+			ciph, err = kalyna.NewCipher128_256(key)
+			iv = make([]byte, 16)
+		} else if *cph == "kalyna256_256" {
+			ciph, err = kalyna.NewCipher256_256(key)
+			iv = make([]byte, 32)
+		} else if *cph == "kalyna256_512" {
+			ciph, err = kalyna.NewCipher256_512(key)
+			iv = make([]byte, 32)
+		} else if *cph == "kalyna512_512" {
+			ciph, err = kalyna.NewCipher512_512(key)
+			iv = make([]byte, 64)
 		} else if *cph == "cast256" || *cph == "cast6" {
 			ciph, err = cast256.NewCipher(key)
 			iv = make([]byte, 16)
@@ -2679,7 +2739,7 @@ Subcommands:
 			ciph, err = present.NewCipher(key)
 			iv = make([]byte, 8)
 		} else if *cph == "twine" {
-			ciph, err = twine.New(key)
+			ciph, err = twine.NewCipher(key)
 			iv = make([]byte, 8)
 		}
 		if err != nil {
@@ -3709,6 +3769,20 @@ Subcommands:
 		var outerHash [32]byte
 		haraka.Haraka512(&outerHash, &outerInput)
 
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(outerHash[:])
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+
 		fmt.Println("HMAC-HARAKA("+inputdesc+")=", hex.EncodeToString(outerHash[:]))
 		os.Exit(0)
 	}
@@ -3803,8 +3877,14 @@ Subcommands:
 			c, err = mars2.NewCipher([]byte(*key))
 		} else if *cph == "noekeon" {
 			c, err = noekeon.NewCipher([]byte(*key))
+		} else if *cph == "loki97" {
+			c, err = loki97.NewCipher([]byte(*key))
 		} else if *cph == "clefia" {
 			c, err = clefia.NewCipher([]byte(*key))
+		} else if *cph == "kalyna128_128" {
+			c, err = kalyna.NewCipher128_128([]byte(*key))
+		} else if *cph == "kalyna128_256" {
+			c, err = kalyna.NewCipher128_256([]byte(*key))
 		} else if *cph == "cast256" || *cph == "cast6" {
 			c, err = cast256.NewCipher([]byte(*key))
 		} else if *cph == "e2" {
@@ -3814,7 +3894,7 @@ Subcommands:
 		} else if *cph == "present" {
 			c, err = present.NewCipher([]byte(*key))
 		} else if *cph == "twine" {
-			c, err = twine.New([]byte(*key))
+			c, err = twine.NewCipher([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3873,8 +3953,14 @@ Subcommands:
 			c, err = mars2.NewCipher([]byte(*key))
 		} else if *cph == "noekeon" {
 			c, err = noekeon.NewCipher([]byte(*key))
+		} else if *cph == "loki97" {
+			c, err = loki97.NewCipher([]byte(*key))
 		} else if *cph == "clefia" {
 			c, err = clefia.NewCipher([]byte(*key))
+		} else if *cph == "kalyna128_128" {
+			c, err = kalyna.NewCipher128_128([]byte(*key))
+		} else if *cph == "kalyna128_256" {
+			c, err = kalyna.NewCipher128_256([]byte(*key))
 		} else if *cph == "cast256" || *cph == "cast6" {
 			c, err = cast256.NewCipher([]byte(*key))
 		} else if *cph == "e2" {
@@ -3939,8 +4025,14 @@ Subcommands:
 			c, err = mars2.NewCipher(key)
 		} else if *cph == "noekeon" {
 			c, err = noekeon.NewCipher(key)
+		} else if *cph == "loki97" {
+			c, err = loki97.NewCipher(key)
 		} else if *cph == "clefia" {
 			c, err = clefia.NewCipher(key)
+		} else if *cph == "kalyna128_128" {
+			c, err = kalyna.NewCipher128_128(key)
+		} else if *cph == "kalyna128_256" {
+			c, err = kalyna.NewCipher128_256(key)
 		} else if *cph == "cast256" || *cph == "cast6" {
 			c, err = cast256.NewCipher(key)
 		} else if *cph == "e2" {
@@ -4068,7 +4160,7 @@ Subcommands:
 			c, err = present.NewCipher(key)
 			n = 8
 		} else if *cph == "twine" {
-			c, err = twine.New(key)
+			c, err = twine.NewCipher(key)
 			n = 8
 		} else if *cph == "mars" {
 			c, err = mars.NewCipher(key)
@@ -4079,8 +4171,17 @@ Subcommands:
 		} else if *cph == "noekeon" {
 			c, err = noekeon.NewCipher(key)
 			n = 16
+		} else if *cph == "loki97" {
+			c, err = loki97.NewCipher(key)
+			n = 16
 		} else if *cph == "clefia" {
 			c, err = clefia.NewCipher(key)
+			n = 16
+		} else if *cph == "kalyna128_128" {
+			c, err = kalyna.NewCipher128_128(key)
+			n = 16
+		} else if *cph == "kalyna128_256" {
+			c, err = kalyna.NewCipher128_256(key)
 			n = 16
 		} else if *cph == "cast256" || *cph == "cast6" {
 			c, err = cast256.NewCipher(key)
@@ -4226,8 +4327,20 @@ Subcommands:
 			c, err = mars2.NewCipher([]byte(*key))
 		} else if *cph == "noekeon" {
 			c, err = noekeon.NewCipher([]byte(*key))
+		} else if *cph == "loki97" {
+			c, err = loki97.NewCipher([]byte(*key))
 		} else if *cph == "clefia" {
 			c, err = clefia.NewCipher([]byte(*key))
+		} else if *cph == "kalyna128_128" {
+			c, err = kalyna.NewCipher128_128([]byte(*key))
+		} else if *cph == "kalyna128_256" {
+			c, err = kalyna.NewCipher128_256([]byte(*key))
+		} else if *cph == "kalyna256_256" {
+			c, err = kalyna.NewCipher256_256([]byte(*key))
+		} else if *cph == "kalyna256_512" {
+			c, err = kalyna.NewCipher256_512([]byte(*key))
+		} else if *cph == "kalyna512_512" {
+			c, err = kalyna.NewCipher512_512([]byte(*key))
 		} else if *cph == "cast256" || *cph == "cast6" {
 			c, err = cast256.NewCipher([]byte(*key))
 		} else if *cph == "e2" {
@@ -4237,7 +4350,7 @@ Subcommands:
 		} else if *cph == "present" {
 			c, err = present.NewCipher([]byte(*key))
 		} else if *cph == "twine" {
-			c, err = twine.New([]byte(*key))
+			c, err = twine.NewCipher([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -6593,6 +6706,10 @@ Subcommands:
 			*alg = "EC-ELGAMAL"
 		} else if strings.Contains(s, "ELGAMAL") {
 			*alg = "ELGAMAL"
+		} else if strings.Contains(s, "KYBER") {
+			*alg = "KYBER"
+		} else if strings.Contains(s, "DILITHIUM") {
+			*alg = "DILITHIUM"
 		} else if strings.Contains(s, "PRIVATE") {
 			*alg = "ED25519"
 		}
@@ -7155,7 +7272,7 @@ Subcommands:
 			} else {
 				fmt.Println("EC-ElGamal (256-bit)")
 			}
-			pubFile, err := os.Open(*pub)
+			pubFile, err := os.Open(*key)
 			if err != nil {
 				fmt.Println("Error opening public key file:", err)
 				os.Exit(1)
@@ -7434,6 +7551,351 @@ Subcommands:
 			fmt.Printf("Cipher= %x\n", res3)
 			fmt.Printf("Shared= %x\n", msgBytes)
 			os.Exit(0)
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "KYBER") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+		var blockType string
+		if *key != "" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				os.Exit(1)
+			}
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				fmt.Println("Error decoding PEM block")
+				os.Exit(1)
+			}
+			blockType = block.Type
+		}
+		if *pkey == "text" && *key != "" && blockType == "KYBER SECRET KEY" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			pubKeyPEM := pem.Block{Type: "KYBER SECRET KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("SecretKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		} else if *pkey == "text" && *key != "" && blockType == "KYBER PUBLIC KEY" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			pubKeyPEM := pem.Block{Type: "KYBER PUBLIC KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("PublicKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		}
+		if *pkey == "fingerprint" && *key != "" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+			os.Exit(0)
+		}
+		if *pkey == "randomart" && *key != "" {
+			pubFile, err := os.Open(*key)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			fmt.Println("Kyber (3168-bit)")
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+			os.Exit(0)
+		}
+		if *pkey == "keygen" {
+			pk, sk := GenerateKyber()
+
+			block := &pem.Block{
+				Type:  "KYBER SECRET KEY",
+				Bytes: sk,
+			}
+			if err := savePEMToFile(*priv, block, true); err != nil {
+				fmt.Println("Error saving keys:", err)
+				return
+			}
+
+			block = &pem.Block{
+				Type:  "KYBER PUBLIC KEY",
+				Bytes: pk,
+			}
+
+			if err := savePEMToFile(*pub, block, false); err != nil {
+				fmt.Println("Error saving keys:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+
+			pubPath, err := filepath.Abs(*pub)
+			if err != nil {
+				fmt.Println("Error getting absolute path for public key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+
+			fingerprint := calculateFingerprint(pk)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+
+			fmt.Println("Kyber (3168-bit)")
+
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+		} else if *pkey == "wrapkey" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			err = WrapKey(pk)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		} else if *pkey == "unwrapkey" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			unwrappedKey, err := UnwrapKey(sk, *cph)
+			if err != nil {
+				fmt.Println("Error unwrapping key:", err)
+				return
+			}
+
+			fmt.Println("Shared=", hex.EncodeToString(unwrappedKey))
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "DILITHIUM") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "verify" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+		var blockType string
+		if *key != "" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				os.Exit(1)
+			}
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				fmt.Println("Error decoding PEM block")
+				os.Exit(1)
+			}
+			blockType = block.Type
+		}
+		if *pkey == "text" && *key != "" && blockType == "DILITHIUM SECRET KEY" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			pubKeyPEM := pem.Block{Type: "DILITHIUM SECRET KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("SecretKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		} else if *pkey == "text" && *key != "" && blockType == "DILITHIUM PUBLIC KEY" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			pubKeyPEM := pem.Block{Type: "DILITHIUM PUBLIC KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("PublicKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			os.Exit(0)
+		}
+		if *pkey == "fingerprint" && *key != "" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+			os.Exit(0)
+		}
+		if *pkey == "randomart" && *key != "" {
+			pubFile, err := os.Open(*key)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			fmt.Println("Dilithium (4864-bit)")
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+			os.Exit(0)
+		}
+		if *pkey == "keygen" {
+			pk, sk := GenerateDilithium()
+
+			block := &pem.Block{
+				Type:  "DILITHIUM SECRET KEY",
+				Bytes: sk,
+			}
+			if err := savePEMToFile(*priv, block, true); err != nil {
+				fmt.Println("Error saving keys:", err)
+				return
+			}
+
+			block = &pem.Block{
+				Type:  "DILITHIUM PUBLIC KEY",
+				Bytes: pk,
+			}
+
+			if err := savePEMToFile(*pub, block, false); err != nil {
+				fmt.Println("Error saving keys:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+
+			pubPath, err := filepath.Abs(*pub)
+			if err != nil {
+				fmt.Println("Error getting absolute path for public key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+
+			fingerprint := calculateFingerprint(pk)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+
+			fmt.Println("Dilithium (4864-bit)")
+
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+		} else if *pkey == "sign" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			signature, err := Sign(sk, inputfile)
+			if err != nil {
+				fmt.Println("Error signing message:", err)
+				return
+			}
+
+			if err := SaveSignatureToPEM(signature, *sig); err != nil {
+				fmt.Println("Error saving signature:", err)
+				return
+			}
+		} else if *pkey == "verify" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				return
+			}
+
+			err = Verify(pk, *sig, msg)
+			if err != nil {
+				fmt.Println("Error verifying signature:", err)
+				return
+			}
+
+			fmt.Println("Verified: true")
 		}
 	}
 
@@ -12466,13 +12928,13 @@ func getAlgorithmName(oid string) string {
 
 func PKCS7Padding(ciphertext []byte) []byte {
 	var padding int
-	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" || *cph == "crypton" || *cph == "noekeon" || *cph == "mars" || *cph == "mars2" || *cph == "e2" || *cph == "clefia" || *cph == "cast256" || *cph == "cast6" {
+	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" || *cph == "crypton" || *cph == "noekeon" || *cph == "loki97" || *cph == "mars" || *cph == "mars2" || *cph == "e2" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "cast256" || *cph == "cast6" {
 		padding = 16 - len(ciphertext)%16
 	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" {
 		padding = 8 - len(ciphertext)%8
-	} else if *cph == "threefish" || *cph == "threefish256" {
+	} else if *cph == "threefish" || *cph == "threefish256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" {
 		padding = 32 - len(ciphertext)%32
-	} else if *cph == "threefish512" {
+	} else if *cph == "threefish512" || *cph == "kalyna512_512" {
 		padding = 64 - len(ciphertext)%64
 	} else if *cph == "threefish1024" {
 		padding = 128 - len(ciphertext)%128
@@ -14238,6 +14700,125 @@ func decryptBlock(block *pem.Block, key []byte) ([]byte, error) {
 	}
 
 	return decryptedBytes, nil
+}
+
+func GenerateKyber() ([]byte, []byte) {
+	seed := make([]byte, 32)
+	rand.Read(seed)
+
+	d := kyber.NewKyber1024()
+	pk, sk := d.KeyGen(seed)
+
+	return pk, sk
+}
+
+func WrapKey(pk []byte) error {
+	k := kyber.NewKyber1024()
+
+	seed := make([]byte, 32)
+	rand.Read(seed)
+
+	ciphertext, ss := k.Encaps(pk, seed)
+
+	ciphertextBlock := &pem.Block{
+		Type:  "KYBER ENCRYPTED KEY",
+		Bytes: ciphertext,
+	}
+
+	err := pem.Encode(os.Stdout, ciphertextBlock)
+	if err != nil {
+		return fmt.Errorf("error encoding ciphertext to PEM: %v", err)
+	}
+
+	fmt.Println("Shared=", hex.EncodeToString(ss))
+	return nil
+}
+
+func UnwrapKey(sk []byte, cipherFile string) ([]byte, error) {
+	ciphertext, err := ioutil.ReadFile(cipherFile)
+	if err != nil {
+		return nil, fmt.Errorf("error reading wrapped key file: %v", err)
+	}
+
+	block, _ := pem.Decode(ciphertext)
+	if block == nil {
+		return nil, fmt.Errorf("failed to decode PEM block")
+	}
+
+	k := kyber.NewKyber1024()
+
+	unwrappedSecret := k.Decaps(sk, block.Bytes)
+
+	return unwrappedSecret, nil
+}
+
+func GenerateDilithium() ([]byte, []byte) {
+	seed := make([]byte, 32)
+	rand.Read(seed)
+
+	d := dilithium.NewDilithium5()
+	pk, sk := d.KeyGen(seed)
+
+	return pk, sk
+}
+
+func Sign(sk []byte, msgInput io.Reader) ([]byte, error) {
+	msg, err := ioutil.ReadAll(msgInput)
+	if err != nil {
+		return nil, err
+	}
+
+	d := dilithium.NewDilithium5()
+	signature := d.Sign(sk, msg)
+
+	return signature, nil
+}
+
+func Verify(pk []byte, signatureFile string, msg []byte) error {
+	signatureBytes, err := ioutil.ReadFile(signatureFile)
+	if err != nil {
+		return err
+	}
+
+	block, _ := pem.Decode(signatureBytes)
+	if block == nil {
+		fmt.Println("Error decoding signature PEM block")
+		return fmt.Errorf("failed to decode PEM block")
+	}
+
+	if block.Type != "DILITHIUM SIGNATURE" {
+		fmt.Println("Unexpected PEM block type:", block.Type)
+		return fmt.Errorf("unexpected PEM block type")
+	}
+
+	signature := block.Bytes
+
+	d := dilithium.NewDilithium5()
+	verified := d.Verify(pk, msg, signature)
+
+	if !verified {
+		fmt.Println("Verified: false")
+		os.Exit(1)
+	}
+
+	return nil
+}
+
+func SaveSignatureToPEM(signature []byte, filename string) error {
+	signatureBlock := &pem.Block{
+		Type:  "DILITHIUM SIGNATURE",
+		Bytes: signature,
+	}
+
+	if filename == "" {
+		err := pem.Encode(os.Stdout, signatureBlock)
+		if err != nil {
+			return fmt.Errorf("error encoding signature to PEM: %v", err)
+		}
+		return nil
+	}
+
+	return savePEMToFile(filename, signatureBlock, false)
 }
 
 func isHexDump(input string) bool {
