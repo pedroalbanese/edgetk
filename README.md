@@ -221,7 +221,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Haraka v2       |     |     |     | O   |     |     |
     | HAS-160         |     | O   |     |     |     |     |
     | JH              |     |     |     | O   |     |     |
-    | kupyna          |     |     |     | O   | O   | O   |
+    | Kupyna          |     |     |     | O   | O   | O   |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
     | MD4 [Obsolete]  | O   |     |     |     |     |     |
