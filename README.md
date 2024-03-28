@@ -193,7 +193,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |Mode |                                | Blocks     |  Keys     |
     |:---:|:-------------------------------|:----------:|:---------:|
-    | EAX | Encrypt-Authenticate-Translate |128         |128/192/256|
+    | EAX | Encrypt-Authenticate-Translate |128-512     |Any        |
     | GCM | Galois/Counter Mode (AEAD)     |128         |128/192/256|
     | OCB1| Offset Codebook v1 (AEAD)      |128         |128/192/256|
     | OCB3| Offset Codebook v3 (AEAD)      |128         |128/192/256|
