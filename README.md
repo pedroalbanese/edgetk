@@ -178,10 +178,10 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | 3DES [Obsolete]  |          64|           192|EAX, CFB-8, CTR, OFB|
     | Blowfish         |          64|           128|EAX, CFB-8, CTR, OFB|
     | CAST5            |          64|           128|EAX, CFB-8, CTR, OFB|
-    | GOST89 (TC26)    |          64|           256|EAX, MGM, CTR, OFB|
+    | GOST89 (TC26)    |          64|           256|EAX, MGM, CFB-8, CTR|
     | HIGHT            |          64|           128|EAX, CFB-8, CTR, OFB|
     | IDEA [Obsolete]  |          64|           128|EAX, CFB-8, CTR, OFB|
-    | Khazad           |          64|           128|EAX, MGM, CTR, OFB|
+    | Khazad           |          64|           128|EAX, MGM, CFB-8, CTR|
     | Magma            |          64|           256|EAX, CFB-8, CTR, OFB|
     | MISTY1           |          64|           128|EAX, CFB-8, CTR, OFB|
     | PRESENT          |          64|        80/128|EAX, CFB-8, CTR, OFB|
