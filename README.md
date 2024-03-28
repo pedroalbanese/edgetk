@@ -143,7 +143,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Kalyna512        |        512 |         512 | EAX, CFB8, CTR, OFB, IGE |
     | Threefish256     |        256 |         256 | EAX, CFB8, CTR, OFB, IGE |
     | Threefish512     |        512 |         512 | EAX, CFB8, CTR, OFB, IGE |
-    | Threefish1024    |       1024 |        1024 | CBC, CFB8, CTR, OFB, IGE |
+    | Threefish1024    |       1024 |        1024 | EAX, CFB8, CTR, OFB, IGE |
   
 - **128-bit block ciphers:**
 
@@ -174,20 +174,20 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |      Cipher      | Block Size |  Key Size    |    Modes    |
     |:-----------------|:----------:|:------------:|:-----------:|
-    | DES [Obsolete]   |          64|            64|CBC, CFB-8, CTR, OFB|
-    | 3DES [Obsolete]  |          64|           192|CBC, CFB-8, CTR, OFB|
-    | Blowfish         |          64|           128|CBC, CFB-8, CTR, OFB|
-    | CAST5            |          64|           128|CBC, CFB-8, CTR, OFB|
-    | GOST89 (TC26)    |          64|           256|MGM, CFB-8, CTR, OFB|
-    | HIGHT            |          64|           128|CBC, CFB-8, CTR, OFB|
-    | IDEA [Obsolete]  |          64|           128|CBC, CFB-8, CTR, OFB|
-    | Khazad           |          64|           128|MGM, CFB-8, CTR, OFB|
-    | Magma            |          64|           256|MGM, CFB-8, CTR, OFB|
-    | MISTY1           |          64|           128|CBC, CFB-8, CTR, OFB|
-    | PRESENT          |          64|        80/128|MGM, CFB-8, CTR, OFB|
+    | DES [Obsolete]   |          64|            64|EAX, CFB-8, CTR, OFB|
+    | 3DES [Obsolete]  |          64|           192|EAX, CFB-8, CTR, OFB|
+    | Blowfish         |          64|           128|EAX, CFB-8, CTR, OFB|
+    | CAST5            |          64|           128|EAX, CFB-8, CTR, OFB|
+    | GOST89 (TC26)    |          64|           256|EAX, MGM, CTR, OFB|
+    | HIGHT            |          64|           128|EAX, CFB-8, CTR, OFB|
+    | IDEA [Obsolete]  |          64|           128|EAX, CFB-8, CTR, OFB|
+    | Khazad           |          64|           128|EAX, MGM, CTR, OFB|
+    | Magma            |          64|           256|EAX, CFB-8, CTR, OFB|
+    | MISTY1           |          64|           128|EAX, CFB-8, CTR, OFB|
+    | PRESENT          |          64|        80/128|EAX, CFB-8, CTR, OFB|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
-    | TWINE            |          64|        80/128|MGM, CFB-8, CTR, OFB|
+    | TWINE            |          64|        80/128|EAX, CFB-8, CTR, OFB|
 
 - **Modes of Operation:**
 
