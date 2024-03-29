@@ -216,6 +216,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | BLAKE-3         |     |     |     | O   |     |     |
     | Chaskey         | O   |     |     |     |     | O   |
     | Cubehash        |     |     |     |     | O   |     |
+    | ECHO      |     |     |     | O   | O   |     | 
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
     | Haraka v2       |     |     |     | O   |     |     |
