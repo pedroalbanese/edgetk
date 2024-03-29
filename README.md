@@ -186,8 +186,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Magma            |          64|           256|EAX, CFB-8, CTR, OFB|
     | MISTY1           |          64|           128|EAX, CFB-8, CTR, OFB|
     | PRESENT          |          64|        80/128|EAX, MGM, CFB-8, CTR|
-    | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
-    | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
+    | RC2 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
+    | RC5 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
     | TWINE            |          64|        80/128|EAX, MGM, CFB-8, CTR|
 
 - **Modes of Operation:**
