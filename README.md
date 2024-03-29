@@ -61,24 +61,25 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 47. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
 48. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 49. RFC 5869: HMAC-based Key Derivation Function (HKDF)
-50. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
-51. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
-52. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
-53. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
-54. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
-55. RFC 7914: The Scrypt Password-Based Key Derivation Function
-56. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
-57. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
-58. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
-59. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
-60. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
-61. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
-62. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
-63. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-64. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
-65. US FIPS 197 Advanced Encryption Standard (AES)
-66. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
-67. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+50. RFC 6114: The 128-Bit Blockcipher CLEFIA (Sony)
+51. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
+52. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
+53. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
+54. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
+55. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
+56. RFC 7914: The Scrypt Password-Based Key Derivation Function
+57. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
+58. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
+59. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
+60. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+61. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+62. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+63. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
+64. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+65. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
+66. US FIPS 197 Advanced Encryption Standard (AES)
+67. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
+68. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
 </details>
 
@@ -184,10 +185,10 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Khazad           |          64|           128|EAX, MGM, CFB-8, CTR|
     | Magma            |          64|           256|EAX, CFB-8, CTR, OFB|
     | MISTY1           |          64|           128|EAX, CFB-8, CTR, OFB|
-    | PRESENT          |          64|        80/128|EAX, CFB-8, CTR, OFB|
+    | PRESENT          |          64|        80/128|EAX, MGM, CFB-8, CTR|
     | RC2 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|CBC, CFB-8, CTR, OFB|
-    | TWINE            |          64|        80/128|EAX, CFB-8, CTR, OFB|
+    | TWINE            |          64|        80/128|EAX, MGM, CFB-8, CTR|
 
 - **Modes of Operation:**
 
@@ -215,7 +216,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | BLAKE-2S        | O   |     |     | O   |     | O   |
     | BLAKE-3         |     |     |     | O   |     |     |
     | Chaskey         | O   |     |     |     |     | O   |
-    | Cubehash        |     |     |     |     | O   |     |
+    | CubeHash        |     |     |     |     | O   |     |
     | ECHO      |     |     |     | O   | O   |     | 
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
