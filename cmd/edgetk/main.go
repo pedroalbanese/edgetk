@@ -85,21 +85,8 @@ import (
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
-	"github.com/deatil/go-cryptobin/cipher/ascon"
-	"github.com/deatil/go-cryptobin/cipher/cast256"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
-	"github.com/deatil/go-cryptobin/cipher/crypton1"
-	"github.com/deatil/go-cryptobin/cipher/e2"
-	"github.com/deatil/go-cryptobin/cipher/grain"
-	"github.com/deatil/go-cryptobin/cipher/khazad"
-	"github.com/deatil/go-cryptobin/cipher/loki97"
-	"github.com/deatil/go-cryptobin/cipher/mars"
 	"github.com/deatil/go-cryptobin/cipher/mars2"
-	"github.com/deatil/go-cryptobin/cipher/noekeon"
-	"github.com/deatil/go-cryptobin/cipher/panama"
-	"github.com/deatil/go-cryptobin/cipher/present"
-	"github.com/deatil/go-cryptobin/cipher/twine"
-	"github.com/deatil/go-cryptobin/cipher/xoodoo/xoodyak"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -114,6 +101,7 @@ import (
 	"github.com/pedroalbanese/IGE-go/ige"
 	"github.com/pedroalbanese/anubis"
 	"github.com/pedroalbanese/camellia"
+	"github.com/pedroalbanese/cast256"
 	"github.com/pedroalbanese/cast5"
 	"github.com/pedroalbanese/ccm"
 	"github.com/pedroalbanese/cfb8"
@@ -121,17 +109,22 @@ import (
 	"github.com/pedroalbanese/crypto/hc128"
 	"github.com/pedroalbanese/crypto/hc256"
 	"github.com/pedroalbanese/crypto/serpent"
+	"github.com/pedroalbanese/crypton"
 	"github.com/pedroalbanese/crystals-go/crystals-dilithium"
 	"github.com/pedroalbanese/crystals-go/crystals-kyber"
 	"github.com/pedroalbanese/cubehash"
+	"github.com/pedroalbanese/e2"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
+	"github.com/pedroalbanese/echo"
 	"github.com/pedroalbanese/ecka-eg/core/curves"
 	"github.com/pedroalbanese/ecka-eg/elgamal"
 	elgamalAlt "github.com/pedroalbanese/ecka-eg/elgamal-alt"
 	"github.com/pedroalbanese/gmac"
+	"github.com/pedroalbanese/go-ascon"
 	"github.com/pedroalbanese/go-chaskey"
 	"github.com/pedroalbanese/go-external-ip"
+	"github.com/pedroalbanese/go-grain"
 	"github.com/pedroalbanese/go-idea"
 	"github.com/pedroalbanese/go-kcipher2"
 	"github.com/pedroalbanese/go-krcrypt"
@@ -150,12 +143,19 @@ import (
 	"github.com/pedroalbanese/haraka"
 	"github.com/pedroalbanese/jh"
 	"github.com/pedroalbanese/kalyna"
+	"github.com/pedroalbanese/khazad"
+	"github.com/pedroalbanese/kupyna"
 	"github.com/pedroalbanese/kuznechik"
+	"github.com/pedroalbanese/loki97"
 	"github.com/pedroalbanese/lyra2re"
 	"github.com/pedroalbanese/makwa-go"
+	"github.com/pedroalbanese/mars"
+	"github.com/pedroalbanese/noekeon"
 	"github.com/pedroalbanese/ocb"
 	"github.com/pedroalbanese/ocb3"
+	"github.com/pedroalbanese/panama"
 	"github.com/pedroalbanese/pmac"
+	"github.com/pedroalbanese/present"
 	"github.com/pedroalbanese/rabbitio"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
@@ -166,8 +166,10 @@ import (
 	"github.com/pedroalbanese/threefish"
 	"github.com/pedroalbanese/tiger"
 	"github.com/pedroalbanese/trivium"
+	"github.com/pedroalbanese/twine"
 	"github.com/pedroalbanese/vmac"
 	"github.com/pedroalbanese/whirlpool"
+	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
 )
 
@@ -263,7 +265,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.5  22 Mar 2024")
+		fmt.Println("EDGE Toolkit v1.4.6  28 Mar 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -318,18 +320,20 @@ Message Athentication Code:
   gost              poly1305          vmac              help
 
 Message Digests:
-  blake2b256        keccak256         rmd256            shake128
-  blake2b512        keccak512         rmd320            shake256
-  blake2s128 (MAC)  lsh224            sha1 [obsolete]   siphash
-  blake2s256        lsh256            sha224            siphash64
-  blake3            lsh384            sha256 (default)  skein256
-  cubehash          lsh512            sha384            skein512
-  gost94            lsh512-224        sha512            sm3
-  groestl           lsh512-256        sha512-256        streebog256
-  haraka256         md4 [obsolete]    sha3-224          streebog512
-  haraka512         md5 [obsolete]    sha3-256          tiger/2
-  has160 [obsolete] rmd128            sha3-384          whirlpool
-  jh                rmd160            sha3-512          xoodyak`)
+  blake2b256        has160 [obsolete] md5 [obsolete]    sha3-512
+  blake2b512        jh                rmd128            shake128
+  blake2s128 (MAC)  keccak256         rmd160            shake256
+  blake2s256        keccak512         rmd256            siphash
+  blake3            kupyna256         rmd320            siphash64
+  cubehash          kupyna384         sha1 [obsolete]   skein256
+  echo224           kupyna512         sha224            skein512
+  echo256           lsh224            sha256 (default)  sm3
+  echo384           lsh256            sha384            streebog256
+  echo512           lsh384            sha512            streebog512
+  gost94            lsh512            sha512-256        tiger
+  groestl           lsh512-224        sha3-224          tiger2
+  haraka256         lsh512-256        sha3-256          whirlpool
+  haraka512         md4 [obsolete]    sha3-384          xoodyak`)
 		os.Exit(3)
 	}
 
@@ -375,13 +379,16 @@ Methods:
   edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
 Methods: 
-  hkdf, pbkdf2, scrypt, argon2, lyra2
+  hkdf, pbkdf2, scrypt, argon2, lyra2, gost (streebog)
 
  HKDF:
   edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
 
  Argon2:
   edgetk -kdf argon2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
+
+ GOST:
+  edgetk -kdf streebog [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
 
  Lyra2:
   edgetk -kdf lyra2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
@@ -660,6 +667,20 @@ Subcommands:
 		myHash = tiger.New
 	} else if *md == "tiger2" {
 		myHash = tiger.New2
+	} else if *md == "kupyna256" || *md == "kupyna" {
+		myHash = kupyna.New256
+	} else if *md == "kupyna384" {
+		myHash = kupyna.New384
+	} else if *md == "kupyna512" {
+		myHash = kupyna.New512
+	} else if *md == "echo224" {
+		myHash = echo.New224
+	} else if *md == "echo" || *md == "echo256" {
+		myHash = echo.New256
+	} else if *md == "echo384" {
+		myHash = echo.New384
+	} else if *md == "echo512" {
+		myHash = echo.New512
 	}
 
 	if *random != 0 {
@@ -1065,7 +1086,7 @@ Subcommands:
 		*length = 128
 	}
 
-	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2") && *length == 0 {
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
 		*length = 256
 	}
 
@@ -1130,6 +1151,19 @@ Subcommands:
 		if *crypt == "" {
 			fmt.Println(*key)
 			return
+		}
+	}
+
+	if *kdf == "streebog256" || *kdf == "streebog" || *kdf == "gost" {
+		kdf := gost34112012256.NewKDF([]byte(*key))
+
+		derivedKey := kdf.Derive(nil, []byte(*salt), []byte(*info))
+
+		*key = hex.EncodeToString(derivedKey[:*length/8])
+
+		if *crypt == "" {
+			fmt.Println(*key)
+			os.Exit(0)
 		}
 	}
 
@@ -2133,7 +2167,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine") && (strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -2150,7 +2184,193 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		var ciph cipher.Block
+		if *cph == "blowfish" {
+			ciph, err = blowfish.NewCipher(key)
+		} else if *cph == "idea" {
+			ciph, err = idea.NewCipher(key)
+		} else if *cph == "cast5" {
+			ciph, err = cast5.NewCipher(key)
+		} else if *cph == "rc5" {
+			ciph, err = rc5.New(key)
+		} else if *cph == "hight" {
+			ciph, err = krcrypt.NewHIGHT(key)
+		} else if *cph == "rc2" {
+			ciph, err = rc2.NewCipher(key)
+		} else if *cph == "des" {
+			ciph, err = des.NewCipher(key)
+		} else if *cph == "3des" {
+			ciph, err = des.NewTripleDESCipher(key)
+		} else if *cph == "misty1" {
+			ciph, err = misty1.New(key)
+		} else if *cph == "khazad" {
+			ciph, err = khazad.NewCipher(key)
+		} else if *cph == "present" {
+			ciph, err = present.NewCipher(key)
+		} else if *cph == "twine" {
+			ciph, err = twine.NewCipher(key)
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var aead cipher.AEAD
+		aead, err = eax.NewEAX(ciph, 8)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := bytes.NewBuffer(nil)
+		io.Copy(buf, inputfile)
+		msg := buf.Bytes()
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			nonce[0] &= 0x7F
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") && (strings.ToUpper(*mode) == "EAX") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 128 && len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		var ciph cipher.Block
+		var tweak []byte
+		tweak = make([]byte, 16)
+		var n int
+		if *cph == "threefish" || *cph == "threefish256" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			ciph, err = threefish.New256(key, tweak)
+			n = 16
+		} else if *cph == "threefish512" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			ciph, err = threefish.New512(key, tweak)
+			n = 16
+		} else if *cph == "threefish1024" {
+			if *info != "" {
+				tweak = []byte(*info)
+			}
+			ciph, err = threefish.New1024(key, tweak)
+			n = 16
+		} else if *cph == "kalyna256_256" {
+			ciph, err = kalyna.NewCipher256_256(key)
+			n = 16
+		} else if *cph == "kalyna256_512" {
+			ciph, err = kalyna.NewCipher256_512(key)
+			n = 16
+		} else if *cph == "kalyna512_512" {
+			ciph, err = kalyna.NewCipher512_512(key)
+			n = 16
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var aead cipher.AEAD
+		aead, err = eax.NewEAX(ciph, n)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := bytes.NewBuffer(nil)
+		io.Copy(buf, inputfile)
+		msg := buf.Bytes()
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			nonce[0] &= 0x7F
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "mars2" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "crypton" || *cph == "e2") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2225,15 +2445,6 @@ Subcommands:
 		} else if *cph == "kalyna128_256" {
 			ciph, err = kalyna.NewCipher128_256(key)
 			n = 16
-		} else if *cph == "kalyna256_256" {
-			ciph, err = kalyna.NewCipher256_256(key)
-			n = 32
-		} else if *cph == "kalyna256_512" {
-			ciph, err = kalyna.NewCipher256_512(key)
-			n = 32
-		} else if *cph == "kalyna512_512" {
-			ciph, err = kalyna.NewCipher512_512(key)
-			n = 64
 		} else if *cph == "cast256" || *cph == "cast6" {
 			ciph, err = cast256.NewCipher(key)
 			n = 16
@@ -2258,7 +2469,7 @@ Subcommands:
 		} else if strings.ToUpper(*mode) == "OCB3" {
 			aead, err = ocb3.New(ciph)
 		} else if strings.ToUpper(*mode) == "EAX" {
-			aead, err = eax.NewEAX(ciph)
+			aead, err = eax.NewEAX(ciph, 16)
 		} else if strings.ToUpper(*mode) == "CCM" {
 			aead, err = ccm.NewCCM(ciph, 16, 12)
 		}
@@ -3188,6 +3399,20 @@ Subcommands:
 			h = tiger.New()
 		} else if *md == "tiger2" {
 			h = tiger.New2()
+		} else if *md == "kupyna256" || *md == "kupyna" {
+			h = kupyna.New256()
+		} else if *md == "kupyna384" {
+			h = kupyna.New384()
+		} else if *md == "kupyna512" {
+			h = kupyna.New512()
+		} else if *md == "echo224" {
+			h = echo.New224()
+		} else if *md == "echo" || *md == "echo256" {
+			h = echo.New256()
+		} else if *md == "echo384" {
+			h = echo.New384()
+		} else if *md == "echo512" {
+			h = echo.New512()
 		}
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)), "(stdin)")
@@ -3300,6 +3525,20 @@ Subcommands:
 					h = tiger.New()
 				} else if *md == "tiger2" {
 					h = tiger.New2()
+				} else if *md == "kupyna256" || *md == "kupyna" {
+					h = kupyna.New256()
+				} else if *md == "kupyna384" {
+					h = kupyna.New384()
+				} else if *md == "kupyna512" {
+					h = kupyna.New512()
+				} else if *md == "echo224" {
+					h = echo.New224()
+				} else if *md == "echo" || *md == "echo256" {
+					h = echo.New256()
+				} else if *md == "echo384" {
+					h = echo.New384()
+				} else if *md == "echo512" {
+					h = echo.New512()
 				}
 				f, err := os.Open(match)
 				if err != nil {
@@ -3438,6 +3677,20 @@ Subcommands:
 								h = tiger.New()
 							} else if *md == "tiger2" {
 								h = tiger.New2()
+							} else if *md == "kupyna256" || *md == "kupyna" {
+								h = kupyna.New256()
+							} else if *md == "kupyna384" {
+								h = kupyna.New384()
+							} else if *md == "kupyna512" {
+								h = kupyna.New512()
+							} else if *md == "echo224" {
+								h = echo.New224()
+							} else if *md == "echo" || *md == "echo256" {
+								h = echo.New256()
+							} else if *md == "echo384" {
+								h = echo.New384()
+							} else if *md == "echo512" {
+								h = echo.New512()
 							}
 							f, err := os.Open(path)
 							if err != nil {
@@ -3569,6 +3822,20 @@ Subcommands:
 					h = tiger.New()
 				} else if *md == "tiger2" {
 					h = tiger.New2()
+				} else if *md == "kupyna256" || *md == "kupyna" {
+					h = kupyna.New256()
+				} else if *md == "kupyna384" {
+					h = kupyna.New384()
+				} else if *md == "kupyna512" {
+					h = kupyna.New512()
+				} else if *md == "echo224" {
+					h = echo.New224()
+				} else if *md == "echo" || *md == "echo256" {
+					h = echo.New256()
+				} else if *md == "echo384" {
+					h = echo.New384()
+				} else if *md == "echo512" {
+					h = echo.New512()
 				}
 				_, err := os.Stat(lines[1])
 				if err == nil {
@@ -3807,6 +4074,39 @@ Subcommands:
 			}
 		}
 		fmt.Println("HMAC-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "kmac" {
+		var err error
+		var h hash.Hash
+		if *md == "kupyna256" || *md == "kupyna" {
+			h, err = kupyna.NewKmac256([]byte(*key))
+		} else if *md == "kupyna384" {
+			h, err = kupyna.NewKmac384([]byte(*key))
+		} else if *md == "kupyna512" {
+			h, err = kupyna.NewKmac512([]byte(*key))
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err = io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("KMAC-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -4209,6 +4509,7 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+		nonce[0] &= 0x7F
 		h, err := NewMGMAC(c, n, nonce, message)
 		if err != nil {
 			log.Fatal(err)
@@ -11934,6 +12235,20 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = jh.New256
 	} else if *md == "groestl" {
 		myHash = groestl.New256
+	} else if *md == "kupyna" || *md == "kupyna256" {
+		myHash = kupyna.New256
+	} else if *md == "kupyna384" {
+		myHash = kupyna.New384
+	} else if *md == "kupyna512" {
+		myHash = kupyna.New512
+	} else if *md == "echo224" {
+		myHash = echo.New224
+	} else if *md == "echo" || *md == "echo256" {
+		myHash = echo.New256
+	} else if *md == "echo384" {
+		myHash = echo.New384
+	} else if *md == "echo512" {
+		myHash = echo.New512
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
@@ -12045,6 +12360,20 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = jh.New256
 	} else if *md == "groestl" {
 		myHash = groestl.New256
+	} else if *md == "kupyna" || *md == "kupyna256" {
+		myHash = kupyna.New256
+	} else if *md == "kupyna384" {
+		myHash = kupyna.New384
+	} else if *md == "kupyna512" {
+		myHash = kupyna.New512
+	} else if *md == "echo224" {
+		myHash = echo.New224
+	} else if *md == "echo" || *md == "echo256" {
+		myHash = echo.New256
+	} else if *md == "echo384" {
+		myHash = echo.New384
+	} else if *md == "echo512" {
+		myHash = echo.New512
 	}
 
 	xy := make([]uint32, 64*r)
@@ -14587,7 +14916,7 @@ func encryptBlock(block *pem.Block, key []byte) *pem.Block {
 	case "OCB3":
 		aead, err = ocb3.New(blockCipher)
 	case "EAX":
-		aead, err = eax.NewEAX(blockCipher)
+		aead, err = eax.NewEAX(blockCipher, 16)
 	case "CCM":
 		aead, err = ccm.NewCCM(blockCipher, 16, 12)
 	default:
@@ -14677,7 +15006,7 @@ func decryptBlock(block *pem.Block, key []byte) ([]byte, error) {
 	case "OCB3":
 		aead, err = ocb3.New(blockCipher)
 	case "EAX":
-		aead, err = eax.NewEAX(blockCipher)
+		aead, err = eax.NewEAX(blockCipher, 16)
 	case "CCM":
 		aead, err = ccm.NewCCM(blockCipher, 16, 12)
 	default:
