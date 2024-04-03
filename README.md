@@ -499,6 +499,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Makwa (Password-hashing scheme)
    * Argon2 (Password-hashing scheme and KDF)
    * Lyra2REv1 (Password-hashing scheme and KDF)
+   * Lyra2REv2 (Password-hashing scheme and KDF)
    * TLS (Transport Layer Security v1.2 and 1.3)
    * TLCP (Transport Layer Cryptography Protocol v1.1)
    * PKCS12 (Personal Information Exchange Syntax v1.1)
