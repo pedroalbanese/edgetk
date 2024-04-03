@@ -215,9 +215,11 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | BLAKE-2B        |     |     |     | O   | O   | O   |
     | BLAKE-2S        | O   |     |     | O   |     | O   |
     | BLAKE-3         |     |     |     | O   |     |     |
+    | BMW             |     |     |     | O   |     |     |
     | Chaskey         | O   |     |     |     |     | O   |
-    | CubeHash        |     |     |     |     | O   |     |
-    | ECHO      |     |     |     | O   | O   |     | 
+    | CubeHash        |     |     |     | O   | O   |     |
+    | ECHO            |     |     |     | O   | O   |     | 
+    | ESCH            |     |     |     | O   |     |     | 
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
     | Haraka v2       |     |     |     | O   |     |     |
