@@ -100,6 +100,7 @@ import (
 	"github.com/kasperdi/SPHINCSPLUS-golang/sphincs"
 	"github.com/pedroalbanese/IGE-go/ige"
 	"github.com/pedroalbanese/anubis"
+	"github.com/pedroalbanese/bmw"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast256"
 	"github.com/pedroalbanese/cast5"
@@ -113,6 +114,7 @@ import (
 	"github.com/pedroalbanese/crystals-go/crystals-dilithium"
 	"github.com/pedroalbanese/crystals-go/crystals-kyber"
 	"github.com/pedroalbanese/cubehash"
+	"github.com/pedroalbanese/cubehash256"
 	"github.com/pedroalbanese/e2"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
@@ -120,6 +122,7 @@ import (
 	"github.com/pedroalbanese/ecka-eg/core/curves"
 	"github.com/pedroalbanese/ecka-eg/elgamal"
 	elgamalAlt "github.com/pedroalbanese/ecka-eg/elgamal-alt"
+	"github.com/pedroalbanese/esch"
 	"github.com/pedroalbanese/gmac"
 	"github.com/pedroalbanese/go-ascon"
 	"github.com/pedroalbanese/go-chaskey"
@@ -148,6 +151,7 @@ import (
 	"github.com/pedroalbanese/kuznechik"
 	"github.com/pedroalbanese/loki97"
 	"github.com/pedroalbanese/lyra2re"
+	"github.com/pedroalbanese/lyra2rev2"
 	"github.com/pedroalbanese/makwa-go"
 	"github.com/pedroalbanese/mars"
 	"github.com/pedroalbanese/noekeon"
@@ -188,6 +192,7 @@ var (
 	b85        = flag.String("base85", "", "Encode binary string to Base85 format and vice-versa. [enc|dec]")
 	b64        = flag.String("base64", "", "Encode binary string to Base64 format and vice-versa. [enc|dec]")
 	b32        = flag.String("base32", "", "Encode binary string to Base32 format and vice-versa. [enc|dec]")
+	days       = flag.Int("days", 0, "Defines the validity of the certificate from the date of creation.")
 	factorPStr = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
 	hierarchy  = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for SM9 User Private Key)")
@@ -217,6 +222,7 @@ var (
 	root       = flag.String("root", "", "Root CA Certificate path.")
 	salt       = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
 	sig        = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
+	subj       = flag.String("subj", "", "Subject: Identity for which a digital certificate.")
 	tcpip      = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
 	col        = flag.Int("wrap", 64, "Wrap lines after N columns. (for Base64/32 encoding)")
@@ -265,7 +271,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.6  28 Mar 2024")
+		fmt.Println("EDGE Toolkit v1.4.7  02 Apr 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -310,8 +316,11 @@ Block Ciphers:
   crypton           kalyna512_512     rc2 [obsolete]    twofish
 
 Key Derivation Functions:
-  hkdf              pbkdf2            scrypt            bcrypt (phs)
-  argon2 (phs/kdf)  lyra2 (phs/kdf)   makwa (phs)       help
+  hkdf              pbkdf2            scrypt            gost
+  argon2            lyra2             lyra2re2          help
+
+Password Hash Functions:
+  argon2            bcrypt            lyra2/re2         makwa
 
 Message Athentication Code:
   chaskey           hmac              siphash           xoodyak
@@ -320,20 +329,21 @@ Message Athentication Code:
   gost              poly1305          vmac              help
 
 Message Digests:
-  blake2b256        has160 [obsolete] md5 [obsolete]    sha3-512
-  blake2b512        jh                rmd128            shake128
-  blake2s128 (MAC)  keccak256         rmd160            shake256
-  blake2s256        keccak512         rmd256            siphash
-  blake3            kupyna256         rmd320            siphash64
-  cubehash          kupyna384         sha1 [obsolete]   skein256
-  echo224           kupyna512         sha224            skein512
-  echo256           lsh224            sha256 (default)  sm3
-  echo384           lsh256            sha384            streebog256
-  echo512           lsh384            sha512            streebog512
-  gost94            lsh512            sha512-256        tiger
-  groestl           lsh512-224        sha3-224          tiger2
-  haraka256         lsh512-256        sha3-256          whirlpool
-  haraka512         md4 [obsolete]    sha3-384          xoodyak`)
+  blake2b256        groestl           lsh512-256        sha3-384
+  blake2b512        haraka256         md4 [obsolete]    sha3-512
+  blake2s128 (MAC)  haraka512         md5 [obsolete]    shake128
+  blake2s256        has160 [obsolete] rmd128            shake256
+  blake3            jh                rmd160            siphash
+  bmw               keccak256         rmd256            siphash64
+  cubehash256       keccak512         rmd320            skein256
+  cubehash512       kupyna256         sha1 [obsolete]   skein512
+  echo224           kupyna384         sha224            sm3
+  echo256           kupyna512         sha256 (default)  streebog256
+  echo384           lsh224            sha384            streebog512
+  echo512           lsh256            sha512            tiger
+  esch256           lsh384            sha512-256        tiger2
+  esch384           lsh512            sha3-224          whirlpool
+  gost94            lsh512-224        sha3-256          xoodyak`)
 		os.Exit(3)
 	}
 
@@ -647,8 +657,10 @@ Subcommands:
 		myHash = sm3.New
 	} else if *md == "md4" {
 		myHash = md4.New
-	} else if *md == "cubehash" {
+	} else if *md == "cubehash" || *md == "cubehash512" {
 		myHash = cubehash.New
+	} else if *md == "cubehash256" {
+		myHash = cubehash256.New
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
 	} else if *md == "skein" || *md == "skein256" {
@@ -681,6 +693,12 @@ Subcommands:
 		myHash = echo.New384
 	} else if *md == "echo512" {
 		myHash = echo.New512
+	} else if *md == "esch" || *md == "esch256" {
+		myHash = esch.New256
+	} else if *md == "esch384" {
+		myHash = esch.New384
+	} else if *md == "bmw" {
+		myHash = bmw.New
 	}
 
 	if *random != 0 {
@@ -1086,7 +1104,7 @@ Subcommands:
 		*length = 128
 	}
 
-	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2" || strings.ToUpper(*kdf) == "LYRA2RE2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
 		*length = 256
 	}
 
@@ -1139,6 +1157,25 @@ Subcommands:
 		data := []byte(*key + *salt)
 		for i := 0; i < *iter; i++ {
 			hash, _ := lyra2re.Sum(data)
+			if err != nil {
+				log.Fatal(err)
+			}
+			data = hash
+		}
+
+		derivedKey := data[:*length/8]
+		*key = hex.EncodeToString(derivedKey)
+
+		if *crypt == "" {
+			fmt.Println(*key)
+			return
+		}
+	}
+
+	if *kdf == "lyra2re2" {
+		data := []byte(*key + *salt)
+		for i := 0; i < *iter; i++ {
+			hash, _ := lyra2re2.Sum(data)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -3072,6 +3109,39 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *digest && *md == "lyra2re2" && !*check {
+		passwordBytes := []byte(*key + *salt)
+		hash, err := lyra2re2.Sum(passwordBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(hex.EncodeToString(hash))
+		os.Exit(0)
+	}
+
+	if *md == "lyra2re2" && *check {
+		passwordBytes := []byte(*key + *salt)
+		hash, err := lyra2re2.Sum(passwordBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+		computedHashString := hex.EncodeToString(hash)
+
+		hashedPassword, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+
+		if computedHashString == hashedPasswordString {
+			fmt.Println("Verify: true")
+		} else {
+			fmt.Println("Verify: false")
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	/*
 		if *digest && *alg == "makwa" && !*check {
 			var params makwa.PublicParameters
@@ -3383,7 +3453,7 @@ Subcommands:
 			var xkey [16]byte
 			copy(xkey[:], []byte(*key))
 			h, _ = siphash.New64(xkey[:])
-		} else if *md == "cubehash" {
+		} else if *md == "cubehash" || *md == "cubehash512" {
 			h = cubehash.New()
 		} else if *md == "xoodyak" || *md == "xhash" {
 			h = xoodyak.NewXoodyakHash()
@@ -3413,6 +3483,14 @@ Subcommands:
 			h = echo.New384()
 		} else if *md == "echo512" {
 			h = echo.New512()
+		} else if *md == "esch" || *md == "esch256" {
+			h = esch.New256()
+		} else if *md == "esch384" {
+			h = esch.New384()
+		} else if *md == "bmw" {
+			h = bmw.New()
+		} else if *md == "cubehash256" {
+			h = cubehash256.New()
 		}
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)), "(stdin)")
@@ -3509,7 +3587,7 @@ Subcommands:
 					var xkey [16]byte
 					copy(xkey[:], []byte(*key))
 					h, _ = siphash.New64(xkey[:])
-				} else if *md == "cubehash" {
+				} else if *md == "cubehash" || *md == "cubehash512" {
 					h = cubehash.New()
 				} else if *md == "xoodyak" || *md == "xhash" {
 					h = xoodyak.NewXoodyakHash()
@@ -3539,6 +3617,14 @@ Subcommands:
 					h = echo.New384()
 				} else if *md == "echo512" {
 					h = echo.New512()
+				} else if *md == "esch" || *md == "esch256" {
+					h = esch.New256()
+				} else if *md == "esch384" {
+					h = esch.New384()
+				} else if *md == "bmw" {
+					h = bmw.New()
+				} else if *md == "cubehash256" {
+					h = cubehash256.New()
 				}
 				f, err := os.Open(match)
 				if err != nil {
@@ -3661,7 +3747,7 @@ Subcommands:
 								var xkey [16]byte
 								copy(xkey[:], []byte(*key))
 								h, _ = siphash.New64(xkey[:])
-							} else if *md == "cubehash" {
+							} else if *md == "cubehash" || *md == "cubehash512" {
 								h = cubehash.New()
 							} else if *md == "xoodyak" || *md == "xhash" {
 								h = xoodyak.NewXoodyakHash()
@@ -3691,6 +3777,14 @@ Subcommands:
 								h = echo.New384()
 							} else if *md == "echo512" {
 								h = echo.New512()
+							} else if *md == "esch" || *md == "esch256" {
+								h = esch.New256()
+							} else if *md == "esch384" {
+								h = esch.New384()
+							} else if *md == "bmw" {
+								h = bmw.New()
+							} else if *md == "cubehash256" {
+								h = cubehash256.New()
 							}
 							f, err := os.Open(path)
 							if err != nil {
@@ -3806,7 +3900,7 @@ Subcommands:
 					var xkey [16]byte
 					copy(xkey[:], []byte(*key))
 					h, _ = siphash.New64(xkey[:])
-				} else if *md == "cubehash" {
+				} else if *md == "cubehash" || *md == "cubehash512" {
 					h = cubehash.New()
 				} else if *md == "xoodyak" || *md == "xhash" {
 					h = xoodyak.NewXoodyakHash()
@@ -3836,6 +3930,14 @@ Subcommands:
 					h = echo.New384()
 				} else if *md == "echo512" {
 					h = echo.New512()
+				} else if *md == "esch" || *md == "esch256" {
+					h = esch.New256()
+				} else if *md == "esch384" {
+					h = esch.New384()
+				} else if *md == "bmw" {
+					h = bmw.New()
+				} else if *md == "cubehash256" {
+					h = cubehash256.New()
 				}
 				_, err := os.Stat(lines[1])
 				if err == nil {
@@ -6045,7 +6147,7 @@ Subcommands:
 			h = sm3.New()
 		} else if *md == "whirlpool" {
 			h = whirlpool.New()
-		} else if *md == "cubehash" {
+		} else if *md == "cubehash" || *md == "cubehash512" {
 			h = cubehash.New()
 		} else if *md == "jh" {
 			h = jh.New256()
@@ -6130,7 +6232,7 @@ Subcommands:
 			h = sm3.New()
 		} else if *md == "whirlpool" {
 			h = whirlpool.New()
-		} else if *md == "cubehash" {
+		} else if *md == "cubehash" || *md == "cubehash512" {
 			h = cubehash.New()
 		} else if *md == "jh" {
 			h = jh.New256()
@@ -6257,7 +6359,7 @@ Subcommands:
 			h = crypto.BLAKE2b_512.New()
 		} else if *md == "blake2s256" {
 			h = crypto.BLAKE2s_256.New()
-		} else if *md == "cubehash" {
+		} else if *md == "cubehash" || *md == "cubehash512" {
 			h = cubehash.New()
 		} else if *md == "jh" {
 			h = jh.New256()
@@ -6346,7 +6448,7 @@ Subcommands:
 			h = crypto.BLAKE2b_512.New()
 		} else if *md == "blake2s256" {
 			h = crypto.BLAKE2s_256.New()
-		} else if *md == "cubehash" {
+		} else if *md == "cubehash" || *md == "cubehash512" {
 			h = cubehash.New()
 		} else if *md == "jh" {
 			h = jh.New256()
@@ -7921,7 +8023,7 @@ Subcommands:
 			}
 			defer pubFile.Close()
 
-			fmt.Println("Kyber (3168-bit)")
+			fmt.Println("Kyber (1568-bit)")
 
 			pubInfo, err := pubFile.Stat()
 			if err != nil {
@@ -7974,7 +8076,7 @@ Subcommands:
 			fingerprint := calculateFingerprint(pk)
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
 
-			fmt.Println("Kyber (3168-bit)")
+			fmt.Println("Kyber (1568-bit)")
 
 			pubFile, err := os.Open(*pub)
 			if err != nil {
@@ -8088,7 +8190,7 @@ Subcommands:
 			}
 			defer pubFile.Close()
 
-			fmt.Println("Dilithium (4864-bit)")
+			fmt.Println("Dilithium (2592-bit)")
 
 			pubInfo, err := pubFile.Stat()
 			if err != nil {
@@ -8141,7 +8243,7 @@ Subcommands:
 			fingerprint := calculateFingerprint(pk)
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
 
-			fmt.Println("Dilithium (4864-bit)")
+			fmt.Println("Dilithium (2592-bit)")
 
 			pubFile, err := os.Open(*pub)
 			if err != nil {
@@ -8544,53 +8646,65 @@ Subcommands:
 			log.Fatalf("Failed to generate serial number: %v", err)
 		}
 
-		println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
+		if *subj == "" {
+			println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
 
-		scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(os.Stdin)
 
-		print("Common Name: ")
-		scanner.Scan()
-		name := scanner.Text()
+			print("Common Name: ")
+			scanner.Scan()
+			name = scanner.Text()
 
-		print("Country Name (2 letter code) [AU]: ")
-		scanner.Scan()
-		country := scanner.Text()
+			print("Country Name (2 letter code) [AU]: ")
+			scanner.Scan()
+			country = scanner.Text()
 
-		print("State or Province Name (full name) [Some-State]: ")
-		scanner.Scan()
-		province := scanner.Text()
+			print("State or Province Name (full name) [Some-State]: ")
+			scanner.Scan()
+			province = scanner.Text()
 
-		print("Locality Name (eg, city): ")
-		scanner.Scan()
-		locality := scanner.Text()
+			print("Locality Name (eg, city): ")
+			scanner.Scan()
+			locality = scanner.Text()
 
-		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
-		scanner.Scan()
-		organization := scanner.Text()
+			print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
+			scanner.Scan()
+			organization = scanner.Text()
 
-		print("Organizational Unit Name (eg, section): ")
-		scanner.Scan()
-		organizationunit := scanner.Text()
+			print("Organizational Unit Name (eg, section): ")
+			scanner.Scan()
+			organizationunit = scanner.Text()
 
-		print("Email Address []: ")
-		scanner.Scan()
-		email := scanner.Text()
+			print("Email Address []: ")
+			scanner.Scan()
+			email = scanner.Text()
 
-		print("StreetAddress: ")
-		scanner.Scan()
-		street := scanner.Text()
+			print("StreetAddress: ")
+			scanner.Scan()
+			street = scanner.Text()
 
-		print("PostalCode: ")
-		scanner.Scan()
-		postalcode := scanner.Text()
+			print("PostalCode: ")
+			scanner.Scan()
+			postalcode = scanner.Text()
 
-		print("SerialNumber: ")
-		scanner.Scan()
-		number := scanner.Text()
+			print("SerialNumber: ")
+			scanner.Scan()
+			number = scanner.Text()
+		} else {
+			name, number, country, province, locality, organization, organizationunit, street, email, postalcode, err = parseSubjectString(*subj)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
-		print("Validity (in Days): ")
-		scanner.Scan()
-		validity := scanner.Text()
+		var validity string
+
+		if *days > 0 {
+			validity = fmt.Sprintf("%d", *days)
+		} else {
+			fmt.Print("Validity (in Days): ")
+			fmt.Scanln(&validity)
+		}
 
 		intVar, err := strconv.Atoi(validity)
 		NotAfter := time.Now().AddDate(0, 0, intVar)
@@ -8689,49 +8803,56 @@ Subcommands:
 			}
 		}
 
-		println("You are about to be asked to enter information that \nwill be incorporated into your certificate request.")
+		if *subj == "" {
+			println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
 
-		scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(os.Stdin)
 
-		print("Common Name: ")
-		scanner.Scan()
-		name := scanner.Text()
+			print("Common Name: ")
+			scanner.Scan()
+			name = scanner.Text()
 
-		print("Country Name (2 letter code) [AU]: ")
-		scanner.Scan()
-		country := scanner.Text()
+			print("Country Name (2 letter code) [AU]: ")
+			scanner.Scan()
+			country = scanner.Text()
 
-		print("State or Province Name (full name) [Some-State]: ")
-		scanner.Scan()
-		province := scanner.Text()
+			print("State or Province Name (full name) [Some-State]: ")
+			scanner.Scan()
+			province = scanner.Text()
 
-		print("Locality Name (eg, city): ")
-		scanner.Scan()
-		locality := scanner.Text()
+			print("Locality Name (eg, city): ")
+			scanner.Scan()
+			locality = scanner.Text()
 
-		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
-		scanner.Scan()
-		organization := scanner.Text()
+			print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
+			scanner.Scan()
+			organization = scanner.Text()
 
-		print("Organizational Unit Name (eg, section): ")
-		scanner.Scan()
-		organizationunit := scanner.Text()
+			print("Organizational Unit Name (eg, section): ")
+			scanner.Scan()
+			organizationunit = scanner.Text()
 
-		print("Email Address []: ")
-		scanner.Scan()
-		email := scanner.Text()
+			print("Email Address []: ")
+			scanner.Scan()
+			email = scanner.Text()
 
-		print("StreetAddress: ")
-		scanner.Scan()
-		street := scanner.Text()
+			print("StreetAddress: ")
+			scanner.Scan()
+			street = scanner.Text()
 
-		print("PostalCode: ")
-		scanner.Scan()
-		postalcode := scanner.Text()
+			print("PostalCode: ")
+			scanner.Scan()
+			postalcode = scanner.Text()
 
-		print("SerialNumber: ")
-		scanner.Scan()
-		number := scanner.Text()
+			print("SerialNumber: ")
+			scanner.Scan()
+			number = scanner.Text()
+		} else {
+			name, number, country, province, locality, organization, organizationunit, street, email, postalcode, err = parseSubjectString(*subj)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		var sigalg x509.SignatureAlgorithm
 		if *length == 512 {
@@ -10118,53 +10239,65 @@ Subcommands:
 			log.Fatalf("Failed to generate serial number: %v", err)
 		}
 
-		println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
+		if *subj == "" {
+			println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
 
-		scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(os.Stdin)
 
-		print("Common Name: ")
-		scanner.Scan()
-		name := scanner.Text()
+			print("Common Name: ")
+			scanner.Scan()
+			name = scanner.Text()
 
-		print("Country Name (2 letter code) [AU]: ")
-		scanner.Scan()
-		country := scanner.Text()
+			print("Country Name (2 letter code) [AU]: ")
+			scanner.Scan()
+			country = scanner.Text()
 
-		print("State or Province Name (full name) [Some-State]: ")
-		scanner.Scan()
-		province := scanner.Text()
+			print("State or Province Name (full name) [Some-State]: ")
+			scanner.Scan()
+			province = scanner.Text()
 
-		print("Locality Name (eg, city): ")
-		scanner.Scan()
-		locality := scanner.Text()
+			print("Locality Name (eg, city): ")
+			scanner.Scan()
+			locality = scanner.Text()
 
-		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
-		scanner.Scan()
-		organization := scanner.Text()
+			print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
+			scanner.Scan()
+			organization = scanner.Text()
 
-		print("Organizational Unit Name (eg, section): ")
-		scanner.Scan()
-		organizationunit := scanner.Text()
+			print("Organizational Unit Name (eg, section): ")
+			scanner.Scan()
+			organizationunit = scanner.Text()
 
-		print("Email Address []: ")
-		scanner.Scan()
-		email := scanner.Text()
+			print("Email Address []: ")
+			scanner.Scan()
+			email = scanner.Text()
 
-		print("StreetAddress: ")
-		scanner.Scan()
-		street := scanner.Text()
+			print("StreetAddress: ")
+			scanner.Scan()
+			street = scanner.Text()
 
-		print("PostalCode: ")
-		scanner.Scan()
-		postalcode := scanner.Text()
+			print("PostalCode: ")
+			scanner.Scan()
+			postalcode = scanner.Text()
 
-		print("SerialNumber: ")
-		scanner.Scan()
-		number := scanner.Text()
+			print("SerialNumber: ")
+			scanner.Scan()
+			number = scanner.Text()
+		} else {
+			name, number, country, province, locality, organization, organizationunit, street, email, postalcode, err = parseSubjectString(*subj)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
-		print("Validity (in Days): ")
-		scanner.Scan()
-		validity := scanner.Text()
+		var validity string
+
+		if *days > 0 {
+			validity = fmt.Sprintf("%d", *days)
+		} else {
+			fmt.Print("Validity (in Days): ")
+			fmt.Scanln(&validity)
+		}
 
 		intVar, err := strconv.Atoi(validity)
 		NotAfter := time.Now().AddDate(0, 0, intVar)
@@ -10318,49 +10451,56 @@ Subcommands:
 			keyBytes = privateKey
 		}
 
-		println("You are about to be asked to enter information that \nwill be incorporated into your certificate request.")
+		if *subj == "" {
+			println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
 
-		scanner := bufio.NewScanner(os.Stdin)
+			scanner := bufio.NewScanner(os.Stdin)
 
-		print("Common Name: ")
-		scanner.Scan()
-		name := scanner.Text()
+			print("Common Name: ")
+			scanner.Scan()
+			name = scanner.Text()
 
-		print("Country Name (2 letter code) [AU]: ")
-		scanner.Scan()
-		country := scanner.Text()
+			print("Country Name (2 letter code) [AU]: ")
+			scanner.Scan()
+			country = scanner.Text()
 
-		print("State or Province Name (full name) [Some-State]: ")
-		scanner.Scan()
-		province := scanner.Text()
+			print("State or Province Name (full name) [Some-State]: ")
+			scanner.Scan()
+			province = scanner.Text()
 
-		print("Locality Name (eg, city): ")
-		scanner.Scan()
-		locality := scanner.Text()
+			print("Locality Name (eg, city): ")
+			scanner.Scan()
+			locality = scanner.Text()
 
-		print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
-		scanner.Scan()
-		organization := scanner.Text()
+			print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
+			scanner.Scan()
+			organization = scanner.Text()
 
-		print("Organizational Unit Name (eg, section): ")
-		scanner.Scan()
-		organizationunit := scanner.Text()
+			print("Organizational Unit Name (eg, section): ")
+			scanner.Scan()
+			organizationunit = scanner.Text()
 
-		print("Email Address []: ")
-		scanner.Scan()
-		email := scanner.Text()
+			print("Email Address []: ")
+			scanner.Scan()
+			email = scanner.Text()
 
-		print("StreetAddress: ")
-		scanner.Scan()
-		street := scanner.Text()
+			print("StreetAddress: ")
+			scanner.Scan()
+			street = scanner.Text()
 
-		print("PostalCode: ")
-		scanner.Scan()
-		postalcode := scanner.Text()
+			print("PostalCode: ")
+			scanner.Scan()
+			postalcode = scanner.Text()
 
-		print("SerialNumber: ")
-		scanner.Scan()
-		number := scanner.Text()
+			print("SerialNumber: ")
+			scanner.Scan()
+			number = scanner.Text()
+		} else {
+			name, number, country, province, locality, organization, organizationunit, street, email, postalcode, err = parseSubjectString(*subj)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		emailAddress := email
 		subj := pkix.Name{
@@ -12219,7 +12359,7 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = gost34112012512.New
 	} else if *md == "sm3" {
 		myHash = sm3.New
-	} else if *md == "cubehash" {
+	} else if *md == "cubehash" || *md == "cubehash512" {
 		myHash = cubehash.New
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
@@ -12249,6 +12389,14 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = echo.New384
 	} else if *md == "echo512" {
 		myHash = echo.New512
+	} else if *md == "esch" || *md == "esch256" {
+		myHash = esch.New256
+	} else if *md == "esch384" {
+		myHash = esch.New384
+	} else if *md == "cubehash256" {
+		myHash = cubehash256.New
+	} else if *md == "bmw" {
+		myHash = bmw.New
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
@@ -12344,7 +12492,7 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = gost34112012512.New
 	} else if *md == "sm3" {
 		myHash = sm3.New
-	} else if *md == "cubehash" {
+	} else if *md == "cubehash" || *md == "cubehash512" {
 		myHash = cubehash.New
 	} else if *md == "xoodyak" || *md == "xhash" {
 		myHash = xoodyak.NewXoodyakHash
@@ -12374,6 +12522,14 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = echo.New384
 	} else if *md == "echo512" {
 		myHash = echo.New512
+	} else if *md == "esch" || *md == "esch256" {
+		myHash = esch.New256
+	} else if *md == "esch384" {
+		myHash = esch.New384
+	} else if *md == "cubehash256" {
+		myHash = cubehash256.New
+	} else if *md == "bmw" {
+		myHash = bmw.New
 	}
 
 	xy := make([]uint32, 64*r)
@@ -12852,16 +13008,25 @@ func csrToCrt() error {
 		return err
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	println("Digital certificates are valid for up to three years:")
-	print("Validity (in Days): ")
-	scanner.Scan()
-	validity := scanner.Text()
+	var validity string
+
+	if *days > 0 {
+		validity = fmt.Sprintf("%d", *days)
+	} else {
+		println("Digital certificates are valid for up to three years:")
+		fmt.Print("Validity (in Days): ")
+		fmt.Scanln(&validity)
+	}
 
 	intVar, err := strconv.Atoi(validity)
 	NotAfter := time.Now().AddDate(0, 0, intVar)
 
 	var spki struct {
+		Algorithm        pkix.AlgorithmIdentifier
+		SubjectPublicKey asn1.BitString
+	}
+
+	var apki struct {
 		Algorithm        pkix.AlgorithmIdentifier
 		SubjectPublicKey asn1.BitString
 	}
@@ -12875,6 +13040,16 @@ func csrToCrt() error {
 		return err
 	}
 	skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+
+	derBytes, err = smx509.MarshalPKIXPublicKey(caCRT.PublicKey)
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = asn1.Unmarshal(derBytes, &apki)
+	if err != nil {
+		return err
+	}
+	akid := sha1.Sum(apki.SubjectPublicKey.Bytes)
 
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,
@@ -12891,6 +13066,7 @@ func csrToCrt() error {
 		NotBefore:      time.Now(),
 		NotAfter:       NotAfter,
 		KeyUsage:       x509.KeyUsageDigitalSignature,
+		AuthorityKeyId: akid[:],
 		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 	}
 
@@ -12999,10 +13175,15 @@ func csrToCrt2() error {
 		return err
 	}
 
-	scanner := bufio.NewScanner(os.Stdin)
-	print("\nValidity (in Days): ")
-	scanner.Scan()
-	validity := scanner.Text()
+	var validity string
+
+	if *days > 0 {
+		validity = fmt.Sprintf("%d", *days)
+	} else {
+		println("Digital certificates are valid for up to three years:")
+		fmt.Print("Validity (in Days): ")
+		fmt.Scanln(&validity)
+	}
 
 	intVar, err := strconv.Atoi(validity)
 	NotAfter := time.Now().AddDate(0, 0, intVar)
@@ -13013,6 +13194,13 @@ func csrToCrt2() error {
 	}
 	spki := hasher.Sum(nil)
 	spki = spki[:20]
+
+	hasher = gost34112012256.New()
+	if _, err = hasher.Write(caCRT.PublicKey.(*gost3410.PublicKey).Raw()); err != nil {
+		log.Fatalln(err)
+	}
+	akid := hasher.Sum(nil)
+	akid = akid[:20]
 
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,
@@ -13028,6 +13216,7 @@ func csrToCrt2() error {
 		EmailAddresses: clientCSR.EmailAddresses,
 		NotBefore:      time.Now(),
 		NotAfter:       NotAfter,
+		AuthorityKeyId: akid[:],
 		KeyUsage:       x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
 		ExtKeyUsage:    []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 	}
@@ -13253,6 +13442,51 @@ func getAlgorithmName(oid string) string {
 		return algo
 	}
 	return "Unknown Algorithm"
+}
+
+var (
+	name, number, country, province, locality, organization, organizationunit, street, email, postalcode string
+)
+
+func parseSubjectString(subject string) (name, number, country, province, locality, organization, organizationunit, street, email, postalcode string, err error) {
+	parts := strings.Split(subject, "/")
+
+	if len(parts) < 6 || len(parts) > 10 {
+		return "", "", "", "", "", "", "", "", "", "", errors.New("invalid subject string format")
+	}
+
+	for _, part := range parts {
+		kv := strings.SplitN(part, "=", 2)
+		if len(kv) != 2 {
+			continue
+		}
+
+		key := kv[0]
+		value := kv[1]
+
+		switch key {
+		case "C":
+			country = value
+		case "ST":
+			province = value
+		case "L":
+			locality = value
+		case "O":
+			organization = value
+		case "OU":
+			organizationunit = value
+		case "CN":
+			name = value
+		case "emailAddress":
+			email = value
+		case "postalCode":
+			postalcode = value
+		case "STREET":
+			street = value
+		}
+	}
+
+	return name, number, country, province, locality, organization, organizationunit, street, email, postalcode, nil
 }
 
 func PKCS7Padding(ciphertext []byte) []byte {
