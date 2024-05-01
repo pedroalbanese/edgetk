@@ -93,6 +93,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O   | O        | O   |
     | Curve25519          | O   |     | O   | O   |          | O   |
+    | Curve448            |     |     | O   | O   |          |     |
     | GOST2012            | O   | O   | O   | O   |          | O   |
     | RSA                 |     |     |     | O   | O        | O   |
     | SM2                 | O   |     | O   | O   | O        | O   |
@@ -601,6 +602,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * Hex string encoder/dump/decoder (xxd-like)
    * Base32 encoder/decoder
    * Base64 encoder/decoder
+   * Base85 encoder/decoder
    * Privacy-Enhanced Mail (PEM format)
    * RandomArt (OpenSSH-like)
 
