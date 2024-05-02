@@ -245,8 +245,6 @@ func publicKey(priv interface{}) interface{} {
 		return k.Public().(*gost3410.PublicKey)
 	case ed25519.PrivateKey:
 		return k.Public().(ed25519.PublicKey)
-	case ed448.PrivateKey:
-		return k.Public().(ed448.PublicKey)
 	case *rsa.PrivateKey:
 		return &k.PublicKey
 	default:
