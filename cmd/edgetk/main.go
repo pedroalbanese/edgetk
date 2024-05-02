@@ -9880,23 +9880,6 @@ Subcommands:
 		case *ecdsa.PublicKey:
 			publicKey := publicInterface.(*ecdsa.PublicKey)
 			fmt.Printf("ECDSA (%v-bit)\n", publicKey.Curve.Params().BitSize)
-			/*
-				case *nums.PublicKey:
-					publicKey := publicInterface.(*nums.PublicKey)
-					keyLen := len(publicKey.X.Bytes()) + len(publicKey.Y.Bytes()) + 1
-					var curve elliptic.Curve
-					switch keyLen {
-					case 65:
-						curve = nums.P256d1()
-					case 97:
-						curve = nums.P384d1()
-					case 129:
-						curve = nums.P512d1()
-					default:
-						log.Fatal("unsupported key length")
-					}
-					fmt.Printf("NUMS (%v-bit)\n", curve.Params().BitSize)
-			*/
 		case *nums.PublicKey:
 			publicKey := publicInterface.(*nums.PublicKey)
 			curve := determineCurve(publicKey)
@@ -10550,12 +10533,12 @@ Subcommands:
 			fmt.Printf("ED448 Private-Key:\n")
 			p := fmt.Sprintf("%x", privKey)
 			fmt.Printf("priv: \n")
-			splitz := SplitSubN(p[:64], 2)
+			splitz := SplitSubN(p[:114], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("pub: \n")
-			splitz = SplitSubN(p[64:], 2)
+			splitz = SplitSubN(p[114:], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
@@ -10590,12 +10573,12 @@ Subcommands:
 			fmt.Printf("X448 Private-Key:\n")
 			p := fmt.Sprintf("%x", privKey)
 			fmt.Printf("priv: \n")
-			splitz := SplitSubN(p[:64], 2)
+			splitz := SplitSubN(p[:112], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Printf("pub: \n")
-			splitz = SplitSubN(p[64:], 2)
+			splitz = SplitSubN(p[112:], 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
