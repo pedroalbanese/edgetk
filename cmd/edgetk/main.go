@@ -275,7 +275,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.8  16 Apr 2024")
+		fmt.Println("EDGE Toolkit v1.4.9  02 May 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -1091,10 +1091,6 @@ Subcommands:
 
 	if (strings.ToUpper(*alg) == "ELGAMAL" && *pkey != "wrapkey" && *pkey != "unwrapkey") && *length == 0 {
 		*length = 3072
-	}
-
-	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "KYBER" || strings.ToUpper(*alg) == "DILITHIUM") && strings.ToUpper(*mode) == "CTR" {
-		*mode = "GCM"
 	}
 
 	if *digest && *md == "spritz" && *length == 0 {
