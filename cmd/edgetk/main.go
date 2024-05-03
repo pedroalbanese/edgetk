@@ -6882,11 +6882,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		if *pwd != "" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherGOST)
-			if err != nil {
-				log.Fatal(err)
-			}
-			err = pem.Encode(file, block)
+			err = EncryptAndWriteBlock(*cph, block, []byte(*pwd), file)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -12354,65 +12350,9 @@ func GenerateRsaKey(bit int) error {
 		return err
 	}
 	if *pwd != "" {
-		if *cph == "aes128" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherAES128)
-		} else if *cph == "aes192" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherAES192)
-		} else if *cph == "aes" || *cph == "aes256" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherAES256)
-		} else if *cph == "3des" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipher3DES)
-		} else if *cph == "des" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherDES)
-		} else if *cph == "sm4" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSM4)
-		} else if *cph == "seed" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSEED)
-		} else if *cph == "gost" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherGOST)
-		} else if *cph == "idea" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherIDEA)
-		} else if *cph == "camellia128" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAMELLIA128)
-		} else if *cph == "camellia192" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAMELLIA192)
-		} else if *cph == "camellia" || *cph == "camellia256" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAMELLIA256)
-		} else if *cph == "aria128" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA128)
-		} else if *cph == "aria192" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA192)
-		} else if *cph == "aria" || *cph == "aria256" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherARIA256)
-		} else if *cph == "lea128" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA128)
-		} else if *cph == "lea192" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA192)
-		} else if *cph == "lea" || *cph == "lea256" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherLEA256)
-		} else if *cph == "cast5" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherCAST)
-		} else if *cph == "anubis" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherANUBIS)
-		} else if *cph == "serpent128" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT128)
-		} else if *cph == "serpent192" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT192)
-		} else if *cph == "serpent" || *cph == "serpent256" {
-			block, err = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherSERPENT256)
-		} else if *cph == "rc6128" {
-			block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6128)
-		} else if *cph == "rc6192" {
-			block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6192)
-		} else if *cph == "rc6" || *cph == "rc6256" {
-			block, _ = EncryptPEMBlock(rand.Reader, block.Type, block.Bytes, []byte(*pwd), PEMCipherRC6256)
-		}
+		err = EncryptAndWriteBlock(*cph, block, []byte(*pwd), file)
 		if err != nil {
-			return err
-		}
-		err = pem.Encode(file, block)
-		if err != nil {
-			return err
+			log.Fatal(err)
 		}
 	} else {
 		err = pem.Encode(file, block)
@@ -12476,60 +12416,11 @@ func EncodeSM2PrivateKey(key *sm2.PrivateKey) ([]byte, error) {
 		Bytes: derKey,
 	}
 	if *pwd != "" {
-		if *cph == "aes128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES128)
-		} else if *cph == "aes192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES192)
-		} else if *cph == "aes" || *cph == "aes256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES256)
-		} else if *cph == "3des" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipher3DES)
-		} else if *cph == "des" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherDES)
-		} else if *cph == "sm4" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSM4)
-		} else if *cph == "seed" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSEED)
-		} else if *cph == "gost" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherGOST)
-		} else if *cph == "idea" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherIDEA)
-		} else if *cph == "camellia128" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA128)
-		} else if *cph == "camellia192" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA192)
-		} else if *cph == "camellia" || *cph == "camellia256" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA256)
-		} else if *cph == "aria128" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA128)
-		} else if *cph == "aria192" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA192)
-		} else if *cph == "aria" || *cph == "aria256" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA256)
-		} else if *cph == "lea128" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA128)
-		} else if *cph == "lea192" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA192)
-		} else if *cph == "lea" || *cph == "lea256" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA256)
-		} else if *cph == "cast5" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAST)
-		} else if *cph == "anubis" {
-			keyBlock, err = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherANUBIS)
-		} else if *cph == "serpent128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT128)
-		} else if *cph == "serpent192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
-		} else if *cph == "serpent" || *cph == "serpent256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
-		} else if *cph == "rc6128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6128)
-		} else if *cph == "rc6192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6192)
-		} else if *cph == "rc6" || *cph == "rc6256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6256)
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
 		}
-		return pem.EncodeToMemory(keyBlock), nil
+		return pem.EncodeToMemory(encryptedBlock), nil
 	} else {
 		return pem.EncodeToMemory(keyBlock), nil
 	}
@@ -12576,60 +12467,11 @@ func EncodePrivateKey(key *ecdsa.PrivateKey) ([]byte, error) {
 		Bytes: derKey,
 	}
 	if *pwd != "" {
-		if *cph == "aes128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES128)
-		} else if *cph == "aes192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES192)
-		} else if *cph == "aes" || *cph == "aes256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES256)
-		} else if *cph == "3des" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipher3DES)
-		} else if *cph == "des" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherDES)
-		} else if *cph == "sm4" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSM4)
-		} else if *cph == "seed" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSEED)
-		} else if *cph == "gost" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherGOST)
-		} else if *cph == "idea" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherIDEA)
-		} else if *cph == "camellia128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA128)
-		} else if *cph == "camellia192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA192)
-		} else if *cph == "camellia256" || *cph == "camellia" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA256)
-		} else if *cph == "aria128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA128)
-		} else if *cph == "aria192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA192)
-		} else if *cph == "aria" || *cph == "aria256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA256)
-		} else if *cph == "lea128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA128)
-		} else if *cph == "lea192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA192)
-		} else if *cph == "lea" || *cph == "lea256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA256)
-		} else if *cph == "cast5" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAST)
-		} else if *cph == "anubis" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherANUBIS)
-		} else if *cph == "serpent128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT128)
-		} else if *cph == "serpent192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
-		} else if *cph == "serpent" || *cph == "serpent256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
-		} else if *cph == "rc6128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6128)
-		} else if *cph == "rc6192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6192)
-		} else if *cph == "rc6" || *cph == "rc6256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6256)
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
 		}
-		return pem.EncodeToMemory(keyBlock), nil
+		return pem.EncodeToMemory(encryptedBlock), nil
 	} else {
 		return pem.EncodeToMemory(keyBlock), nil
 	}
@@ -12706,60 +12548,11 @@ func EncodeNUMSPrivateKey(key *nums.PrivateKey) ([]byte, error) {
 		Bytes: derKey,
 	}
 	if *pwd != "" {
-		if *cph == "aes128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES128)
-		} else if *cph == "aes192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES192)
-		} else if *cph == "aes" || *cph == "aes256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherAES256)
-		} else if *cph == "3des" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipher3DES)
-		} else if *cph == "des" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherDES)
-		} else if *cph == "sm4" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSM4)
-		} else if *cph == "seed" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSEED)
-		} else if *cph == "gost" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherGOST)
-		} else if *cph == "idea" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherIDEA)
-		} else if *cph == "camellia128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA128)
-		} else if *cph == "camellia192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA192)
-		} else if *cph == "camellia256" || *cph == "camellia" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAMELLIA256)
-		} else if *cph == "aria128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA128)
-		} else if *cph == "aria192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA192)
-		} else if *cph == "aria" || *cph == "aria256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherARIA256)
-		} else if *cph == "lea128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA128)
-		} else if *cph == "lea192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA192)
-		} else if *cph == "lea" || *cph == "lea256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherLEA256)
-		} else if *cph == "cast5" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherCAST)
-		} else if *cph == "anubis" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherANUBIS)
-		} else if *cph == "serpent128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT128)
-		} else if *cph == "serpent192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT192)
-		} else if *cph == "serpent" || *cph == "serpent256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherSERPENT256)
-		} else if *cph == "rc6128" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6128)
-		} else if *cph == "rc6192" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6192)
-		} else if *cph == "rc6" || *cph == "rc6256" {
-			keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), PEMCipherRC6256)
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
 		}
-		return pem.EncodeToMemory(keyBlock), nil
+		return pem.EncodeToMemory(encryptedBlock), nil
 	} else {
 		return pem.EncodeToMemory(keyBlock), nil
 	}
@@ -13425,58 +13218,9 @@ func PfxParse() error {
 			Bytes: PEM[1].Bytes,
 		}
 		if psd != "" {
-			if *cph == "aes128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES128)
-			} else if *cph == "aes192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES192)
-			} else if *cph == "aes" || *cph == "aes256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES256)
-			} else if *cph == "3des" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipher3DES)
-			} else if *cph == "des" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherDES)
-			} else if *cph == "sm4" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSM4)
-			} else if *cph == "seed" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSEED)
-			} else if *cph == "gost" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherGOST)
-			} else if *cph == "idea" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherIDEA)
-			} else if *cph == "camellia128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA128)
-			} else if *cph == "camellia192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA192)
-			} else if *cph == "camellia256" || *cph == "camellia" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA256)
-			} else if *cph == "aria128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA128)
-			} else if *cph == "aria192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA192)
-			} else if *cph == "aria" || *cph == "aria256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA256)
-			} else if *cph == "cast5" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAST)
-			} else if *cph == "anubis" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherANUBIS)
-			} else if *cph == "lea128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherLEA128)
-			} else if *cph == "lea192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherLEA192)
-			} else if *cph == "lea" || *cph == "lea256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherLEA256)
-			} else if *cph == "serpent128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT128)
-			} else if *cph == "serpent192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT192)
-			} else if *cph == "serpent" || *cph == "serpent256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(*pwd), PEMCipherSERPENT256)
-			} else if *cph == "rc6128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6128)
-			} else if *cph == "rc6192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6192)
-			} else if *cph == "rc6" || *cph == "rc6256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6256)
+			keyBlock, err = EncryptBlockWithCipher(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), *cph)
+			if err != nil {
+				return err
 			}
 		}
 		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
@@ -13486,58 +13230,9 @@ func PfxParse() error {
 			Bytes: PEM[1].Bytes,
 		}
 		if psd != "" {
-			if *cph == "aes128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES128)
-			} else if *cph == "aes192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES192)
-			} else if *cph == "aes" || *cph == "aes256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherAES256)
-			} else if *cph == "3des" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipher3DES)
-			} else if *cph == "des" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherDES)
-			} else if *cph == "sm4" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSM4)
-			} else if *cph == "seed" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSEED)
-			} else if *cph == "gost" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherGOST)
-			} else if *cph == "idea" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherIDEA)
-			} else if *cph == "camellia128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA128)
-			} else if *cph == "camellia192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA192)
-			} else if *cph == "camellia256" || *cph == "camellia" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAMELLIA256)
-			} else if *cph == "aria128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA128)
-			} else if *cph == "aria192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA192)
-			} else if *cph == "aria" || *cph == "aria256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherARIA256)
-			} else if *cph == "cast5" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherCAST)
-			} else if *cph == "anubis" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherANUBIS)
-			} else if *cph == "lea128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherLEA128)
-			} else if *cph == "lea192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherLEA192)
-			} else if *cph == "lea" || *cph == "lea256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherLEA256)
-			} else if *cph == "serpent128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT128)
-			} else if *cph == "serpent192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT192)
-			} else if *cph == "serpent" || *cph == "serpent256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherSERPENT256)
-			} else if *cph == "rc6128" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6128)
-			} else if *cph == "rc6192" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6192)
-			} else if *cph == "rc6" || *cph == "rc6256" {
-				keyBlock, _ = EncryptPEMBlock(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), PEMCipherRC6256)
+			keyBlock, err = EncryptBlockWithCipher(rand.Reader, keyBlock.Type, PEM[1].Bytes, []byte(psd), *cph)
+			if err != nil {
+				return err
 			}
 		}
 		fmt.Printf("%s", pem.EncodeToMemory(keyBlock))
@@ -14617,6 +14312,12 @@ const (
 	PEMCipherCAST256_128
 	PEMCipherCAST256_192
 	PEMCipherCAST256_256
+	PEMCipherTWOFISH128
+	PEMCipherTWOFISH192
+	PEMCipherTWOFISH256
+	PEMCipherKALYNA128_128
+	PEMCipherKALYNA128_192
+	PEMCipherKALYNA128_256
 )
 
 type rfc1423Algo struct {
@@ -14885,7 +14586,45 @@ var rfc1423Algos = []rfc1423Algo{{
 	cipherFunc: cast256.NewCipher,
 	keySize:    32,
 	blockSize:  16,
+}, {
+	cipher:     PEMCipherTWOFISH128,
+	name:       "TWOFISH-128-CBC",
+	cipherFunc: twofishCipherFunc,
+	keySize:    16,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherTWOFISH192,
+	name:       "TWOFISH-192-CBC",
+	cipherFunc: twofishCipherFunc,
+	keySize:    24,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherTWOFISH256,
+	name:       "TWOFISH-256-CBC",
+	cipherFunc: twofishCipherFunc,
+	keySize:    32,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherKALYNA128_128,
+	name:       "KALYNA128_128-CBC",
+	cipherFunc: kalyna.NewCipher128_128,
+	keySize:    16,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherKALYNA128_256,
+	name:       "KALYNA128_256-CBC",
+	cipherFunc: kalyna.NewCipher128_256,
+	keySize:    32,
+	blockSize:  16,
 },
+}
+
+func twofishCipherFunc(key []byte) (cipher.Block, error) {
+	ciph, err := twofish.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return ciph, nil
 }
 
 func (c rfc1423Algo) deriveKey(password, salt []byte) []byte {
@@ -15041,59 +14780,66 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 	var err error
 
 	cipherMap := map[string]PEMCipher{
-		"aes128":      PEMCipherAES128,
-		"aes192":      PEMCipherAES192,
-		"aes256":      PEMCipherAES256,
-		"aes":         PEMCipherAES256,
-		"3des":        PEMCipher3DES,
-		"des":         PEMCipherDES,
-		"sm4":         PEMCipherSM4,
-		"gost":        PEMCipherGOST,
-		"idea":        PEMCipherIDEA,
-		"camellia128": PEMCipherCAMELLIA128,
-		"camellia192": PEMCipherCAMELLIA192,
-		"camellia256": PEMCipherCAMELLIA256,
-		"camellia":    PEMCipherCAMELLIA256,
-		"aria128":     PEMCipherARIA128,
-		"aria192":     PEMCipherARIA192,
-		"aria256":     PEMCipherARIA256,
-		"aria":        PEMCipherARIA256,
-		"lea128":      PEMCipherLEA128,
-		"lea192":      PEMCipherLEA192,
-		"lea256":      PEMCipherLEA256,
-		"lea":         PEMCipherLEA256,
-		"seed":        PEMCipherSEED,
-		"cast5":       PEMCipherCAST,
-		"anubis":      PEMCipherANUBIS,
-		"serpent128":  PEMCipherSERPENT128,
-		"serpent192":  PEMCipherSERPENT192,
-		"serpent256":  PEMCipherSERPENT256,
-		"serpent":     PEMCipherSERPENT256,
-		"rc6-128":     PEMCipherRC6128,
-		"rc6-192":     PEMCipherRC6192,
-		"rc6-256":     PEMCipherRC6256,
-		"rc6":         PEMCipherRC6256,
-		"crypton128":  PEMCipherCRYPTON128,
-		"crypton192":  PEMCipherCRYPTON192,
-		"crypton256":  PEMCipherCRYPTON256,
-		"crypton":     PEMCipherCRYPTON256,
-		"cast256-128": PEMCipherCAST256_128,
-		"cast256-192": PEMCipherCAST256_192,
-		"cast256-256": PEMCipherCAST256_256,
-		"cast256":     PEMCipherCAST256_256,
-		"e2-128":      PEMCipherE2128,
-		"e2-192":      PEMCipherE2192,
-		"e2-256":      PEMCipherE2256,
-		"e2":          PEMCipherE2256,
-		"loki97-128":  PEMCipherLOKI97128,
-		"loki97-192":  PEMCipherLOKI97192,
-		"loki97-256":  PEMCipherLOKI97256,
-		"loki97":      PEMCipherLOKI97256,
-		"mars128":     PEMCipherMARS128,
-		"mars192":     PEMCipherMARS192,
-		"mars256":     PEMCipherMARS256,
-		"mars":        PEMCipherMARS256,
-		"noekeon":     PEMCipherNOEKEON,
+		"aes128":        PEMCipherAES128,
+		"aes192":        PEMCipherAES192,
+		"aes256":        PEMCipherAES256,
+		"aes":           PEMCipherAES256,
+		"3des":          PEMCipher3DES,
+		"des":           PEMCipherDES,
+		"sm4":           PEMCipherSM4,
+		"gost":          PEMCipherGOST,
+		"idea":          PEMCipherIDEA,
+		"camellia128":   PEMCipherCAMELLIA128,
+		"camellia192":   PEMCipherCAMELLIA192,
+		"camellia256":   PEMCipherCAMELLIA256,
+		"camellia":      PEMCipherCAMELLIA256,
+		"aria128":       PEMCipherARIA128,
+		"aria192":       PEMCipherARIA192,
+		"aria256":       PEMCipherARIA256,
+		"aria":          PEMCipherARIA256,
+		"lea128":        PEMCipherLEA128,
+		"lea192":        PEMCipherLEA192,
+		"lea256":        PEMCipherLEA256,
+		"lea":           PEMCipherLEA256,
+		"seed":          PEMCipherSEED,
+		"cast5":         PEMCipherCAST,
+		"anubis":        PEMCipherANUBIS,
+		"serpent128":    PEMCipherSERPENT128,
+		"serpent192":    PEMCipherSERPENT192,
+		"serpent256":    PEMCipherSERPENT256,
+		"serpent":       PEMCipherSERPENT256,
+		"rc6-128":       PEMCipherRC6128,
+		"rc6-192":       PEMCipherRC6192,
+		"rc6-256":       PEMCipherRC6256,
+		"rc6":           PEMCipherRC6256,
+		"crypton128":    PEMCipherCRYPTON128,
+		"crypton192":    PEMCipherCRYPTON192,
+		"crypton256":    PEMCipherCRYPTON256,
+		"crypton":       PEMCipherCRYPTON256,
+		"cast256-128":   PEMCipherCAST256_128,
+		"cast256-192":   PEMCipherCAST256_192,
+		"cast256-256":   PEMCipherCAST256_256,
+		"cast256":       PEMCipherCAST256_256,
+		"e2-128":        PEMCipherE2128,
+		"e2-192":        PEMCipherE2192,
+		"e2-256":        PEMCipherE2256,
+		"e2":            PEMCipherE2256,
+		"loki97-128":    PEMCipherLOKI97128,
+		"loki97-192":    PEMCipherLOKI97192,
+		"loki97-256":    PEMCipherLOKI97256,
+		"loki97":        PEMCipherLOKI97256,
+		"mars128":       PEMCipherMARS128,
+		"mars192":       PEMCipherMARS192,
+		"mars256":       PEMCipherMARS256,
+		"mars":          PEMCipherMARS256,
+		"noekeon":       PEMCipherNOEKEON,
+		"twofish128":    PEMCipherTWOFISH128,
+		"twofish192":    PEMCipherTWOFISH192,
+		"twofish256":    PEMCipherTWOFISH256,
+		"twofish":       PEMCipherTWOFISH256,
+		"kalyna128_128": PEMCipherKALYNA128_128,
+		"kalyna128_256": PEMCipherKALYNA128_256,
+		"kalyna128":     PEMCipherKALYNA128_256,
 	}
 
 	if val, ok := cipherMap[cph]; ok {
@@ -15112,6 +14858,115 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 	}
 
 	return nil
+}
+
+func EncryptBlockWithCipher(rand io.Reader, blockType string, blockBytes, password []byte, cipherName string) (*pem.Block, error) {
+	var cipher PEMCipher
+	switch cipherName {
+	case "aes128":
+		cipher = PEMCipherAES128
+	case "aes192":
+		cipher = PEMCipherAES192
+	case "aes", "aes256":
+		cipher = PEMCipherAES256
+	case "3des":
+		cipher = PEMCipher3DES
+	case "des":
+		cipher = PEMCipherDES
+	case "sm4":
+		cipher = PEMCipherSM4
+	case "seed":
+		cipher = PEMCipherSEED
+	case "gost":
+		cipher = PEMCipherGOST
+	case "idea":
+		cipher = PEMCipherIDEA
+	case "camellia128":
+		cipher = PEMCipherCAMELLIA128
+	case "camellia192":
+		cipher = PEMCipherCAMELLIA192
+	case "camellia", "camellia256":
+		cipher = PEMCipherCAMELLIA256
+	case "aria128":
+		cipher = PEMCipherARIA128
+	case "aria192":
+		cipher = PEMCipherARIA192
+	case "aria", "aria256":
+		cipher = PEMCipherARIA256
+	case "lea128":
+		cipher = PEMCipherLEA128
+	case "lea192":
+		cipher = PEMCipherLEA192
+	case "lea", "lea256":
+		cipher = PEMCipherLEA256
+	case "cast5":
+		cipher = PEMCipherCAST
+	case "anubis":
+		cipher = PEMCipherANUBIS
+	case "serpent128":
+		cipher = PEMCipherSERPENT128
+	case "serpent192":
+		cipher = PEMCipherSERPENT192
+	case "serpent", "serpent256":
+		cipher = PEMCipherSERPENT256
+	case "rc6128":
+		cipher = PEMCipherRC6128
+	case "rc6192":
+		cipher = PEMCipherRC6192
+	case "rc6", "rc6256":
+		cipher = PEMCipherRC6256
+	case "crypton128":
+		cipher = PEMCipherCRYPTON128
+	case "crypton192":
+		cipher = PEMCipherCRYPTON192
+	case "crypton256", "crypton":
+		cipher = PEMCipherCRYPTON256
+	case "cast256-128":
+		cipher = PEMCipherCAST256_128
+	case "cast256-192":
+		cipher = PEMCipherCAST256_192
+	case "cast256-256", "cast256":
+		cipher = PEMCipherCAST256_256
+	case "e2-128":
+		cipher = PEMCipherE2128
+	case "e2-192":
+		cipher = PEMCipherE2192
+	case "e2-256", "e2":
+		cipher = PEMCipherE2256
+	case "loki97-128":
+		cipher = PEMCipherLOKI97128
+	case "loki97-192":
+		cipher = PEMCipherLOKI97192
+	case "loki97-256", "loki97":
+		cipher = PEMCipherLOKI97256
+	case "mars128":
+		cipher = PEMCipherMARS128
+	case "mars192":
+		cipher = PEMCipherMARS192
+	case "mars256", "mars":
+		cipher = PEMCipherMARS256
+	case "noekeon":
+		cipher = PEMCipherNOEKEON
+	case "twofish128":
+		cipher = PEMCipherTWOFISH128
+	case "twofish192":
+		cipher = PEMCipherTWOFISH192
+	case "twofish", "twofish256":
+		cipher = PEMCipherTWOFISH256
+	case "kalyna128_128":
+		cipher = PEMCipherKALYNA128_128
+	case "kalyna128", "kalyna128_256":
+		cipher = PEMCipherKALYNA128_256
+	default:
+		return nil, errors.New("unsupported cipher algorithm")
+	}
+
+	encryptedBlock, err := EncryptPEMBlock(rand, blockType, blockBytes, password, cipher)
+	if err != nil {
+		return nil, err
+	}
+
+	return encryptedBlock, nil
 }
 
 func setup(privateKey *big.Int, g, p *big.Int) *big.Int {
