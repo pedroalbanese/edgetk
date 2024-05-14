@@ -44,42 +44,44 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 30. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
 31. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
 32. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
-33. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
-34. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
-35. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
-36. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
-37. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-38. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-39. RFC 2612: The CAST-256 Encryption Algorithm
-40. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-41. RFC 4009: The SEED Encryption Algorithm (KISA)
-42. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-43. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-44. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-45. RFC 4543: Galois Message Authentication Code (GMAC)
-46. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-47. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-48. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
-49. RFC 5869: HMAC-based Key Derivation Function (HKDF)
-50. RFC 6114: The 128-Bit Blockcipher CLEFIA (Sony)
-51. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
-52. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
-53. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
-54. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
-55. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
-56. RFC 7914: The Scrypt Password-Based Key Derivation Function
-57. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
-58. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
-59. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
-60. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
-61. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
-62. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
-63. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
-64. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-65. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
-66. US FIPS 197 Advanced Encryption Standard (AES)
-67. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
-68. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+33. ISO/IEC 15946-5:2022 Barreto-Naehrig and Barreto-Lynn-Scott Curves
+34. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
+35. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
+36. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
+37. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
+38. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
+39. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+40. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+41. RFC 2612: The CAST-256 Encryption Algorithm
+42. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+43. RFC 4009: The SEED Encryption Algorithm (KISA)
+44. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+45. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+46. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+47. RFC 4543: Galois Message Authentication Code (GMAC)
+48. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+49. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+50. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+51. RFC 5869: HMAC-based Key Derivation Function (HKDF)
+52. RFC 6114: The 128-Bit Blockcipher CLEFIA (Sony)
+53. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
+54. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
+55. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
+56. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
+57. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
+58. RFC 7914: The Scrypt Password-Based Key Derivation Function
+59. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
+60. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
+61. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
+62. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+63. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+64. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+65. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
+66. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+67. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
+68. US FIPS 197 Advanced Encryption Standard (AES)
+69. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
+70. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
 </details>
 
