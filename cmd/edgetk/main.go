@@ -50,7 +50,6 @@ import (
 	"fmt"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/blowfish"
 	"golang.org/x/crypto/chacha20"
@@ -115,6 +114,8 @@ import (
 	"github.com/pedroalbanese/crystals-go/crystals-kyber"
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/cubehash256"
+	"github.com/pedroalbanese/curve448/ed448"
+	"github.com/pedroalbanese/curve448/x448"
 	"github.com/pedroalbanese/e2"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
@@ -122,7 +123,6 @@ import (
 	"github.com/pedroalbanese/ecka-eg/core/curves"
 	"github.com/pedroalbanese/ecka-eg/elgamal"
 	elgamalAlt "github.com/pedroalbanese/ecka-eg/elgamal-alt"
-	"github.com/pedroalbanese/ed448"
 	"github.com/pedroalbanese/esch"
 	"github.com/pedroalbanese/gmac"
 	"github.com/pedroalbanese/go-ascon"
@@ -175,7 +175,6 @@ import (
 	"github.com/pedroalbanese/twine"
 	"github.com/pedroalbanese/vmac"
 	"github.com/pedroalbanese/whirlpool"
-	"github.com/pedroalbanese/x448"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
 )
@@ -292,7 +291,7 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  ecdsa             elgamal           nums              sm2
+  ecdsa             elgamal           nums/nums-te      sm2
   ed25519           ec-elgamal        rsa (default)     sphincs
   ed448             kyber             sm9encrypt        x25519
   gost2012          dilithium         sm9sign           x448
@@ -582,127 +581,133 @@ Subcommands:
 	}
 
 	var myHash func() hash.Hash
-	if *md == "sha224" {
+	switch *md {
+	case "sha224":
 		myHash = sha256.New224
-	} else if *md == "sha256" {
+	case "sha256":
 		myHash = sha256.New
-	} else if *md == "sha384" {
+	case "sha384":
 		myHash = sha512.New384
-	} else if *md == "sha512" {
+	case "sha512":
 		myHash = sha512.New
-	} else if *md == "sha512-256" {
+	case "sha512-256":
 		myHash = sha512.New512_256
-	} else if *md == "sha1" {
+	case "sha1":
 		myHash = sha1.New
-	} else if *md == "rmd160" {
+	case "rmd160":
 		myHash = ripemd160.New
-	} else if *md == "rmd128" {
+	case "rmd128":
 		myHash = ripemd.New128
-	} else if *md == "rmd256" {
+	case "rmd256":
 		myHash = ripemd.New256
-	} else if *md == "rmd320" {
+	case "rmd320":
 		myHash = ripemd.New320
-	} else if *md == "sha3-224" {
+	case "sha3-224":
 		myHash = sha3.New224
-	} else if *md == "sha3-256" {
+	case "sha3-256":
 		myHash = sha3.New256
-	} else if *md == "sha3-384" {
+	case "sha3-384":
 		myHash = sha3.New384
-	} else if *md == "sha3-512" {
+	case "sha3-512":
 		myHash = sha3.New512
-	} else if *md == "keccak" || *md == "keccak256" {
+	case "keccak", "keccak256":
 		myHash = sha3.NewLegacyKeccak256
-	} else if *md == "keccak512" {
+	case "keccak512":
 		myHash = sha3.NewLegacyKeccak512
-	} else if *md == "shake128" {
+	case "shake128":
 		myHash = func() hash.Hash {
 			return sha3.NewShake128()
 		}
-	} else if *md == "shake256" {
+	case "shake256":
 		myHash = func() hash.Hash {
 			return sha3.NewShake256()
 		}
-	} else if *md == "lsh224" || *md == "lsh256-224" {
+	case "lsh224", "lsh256-224":
 		myHash = lsh256.New224
-	} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
+	case "lsh", "lsh256", "lsh256-256":
 		myHash = lsh256.New
-	} else if *md == "lsh512-256" {
+	case "lsh512-256":
 		myHash = lsh512.New256
-	} else if *md == "lsh512-224" {
+	case "lsh512-224":
 		myHash = lsh512.New224
-	} else if *md == "lsh384" || *md == "lsh512-384" {
+	case "lsh384", "lsh512-384":
 		myHash = lsh512.New384
-	} else if *md == "lsh512" {
+	case "lsh512":
 		myHash = lsh512.New
-	} else if *md == "has160" {
+	case "has160":
 		myHash = has160.New
-	} else if *md == "whirlpool" {
+	case "whirlpool":
 		myHash = whirlpool.New
-	} else if *md == "blake2b256" {
+	case "blake2b256":
 		myHash = crypto.BLAKE2b_256.New
-	} else if *md == "blake2b512" {
+	case "blake2b512":
 		myHash = crypto.BLAKE2b_512.New
-	} else if *md == "blake2s256" {
+	case "blake2s128":
+		h, _ := blake2s.New128([]byte(*key))
+		myHash = func() hash.Hash {
+			return h
+		}
+	case "blake2s256":
 		myHash = crypto.BLAKE2s_256.New
-	} else if *md == "blake3" {
+	case "blake3":
 		myHash = func() hash.Hash {
 			return blake3.New()
 		}
-	} else if *md == "md5" {
+	case "md5":
 		myHash = md5.New
-	} else if *md == "gost94" {
+	case "gost94":
 		myHash = func() hash.Hash {
 			return gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
 		}
-	} else if *md == "streebog" || *md == "streebog256" {
+	case "streebog", "streebog256":
 		myHash = gost34112012256.New
-	} else if *md == "streebog512" {
+	case "streebog512":
 		myHash = gost34112012512.New
-	} else if *md == "sm3" {
+	case "sm3":
 		myHash = sm3.New
-	} else if *md == "md4" {
+	case "md4":
 		myHash = md4.New
-	} else if *md == "cubehash" || *md == "cubehash512" {
+	case "cubehash", "cubehash512":
 		myHash = cubehash.New
-	} else if *md == "cubehash256" {
+	case "cubehash256":
 		myHash = cubehash256.New
-	} else if *md == "xoodyak" || *md == "xhash" {
+	case "xoodyak", "xhash":
 		myHash = xoodyak.NewXoodyakHash
-	} else if *md == "skein" || *md == "skein256" {
+	case "skein", "skein256":
 		myHash = func() hash.Hash {
 			return skein.New256(nil)
 		}
-	} else if *md == "skein512" {
+	case "skein512":
 		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-	} else if *md == "jh" {
+	case "jh":
 		myHash = jh.New256
-	} else if *md == "groestl" {
+	case "groestl":
 		myHash = groestl.New256
-	} else if *md == "tiger" {
+	case "tiger":
 		myHash = tiger.New
-	} else if *md == "tiger2" {
+	case "tiger2":
 		myHash = tiger.New2
-	} else if *md == "kupyna256" || *md == "kupyna" {
+	case "kupyna256", "kupyna":
 		myHash = kupyna.New256
-	} else if *md == "kupyna384" {
+	case "kupyna384":
 		myHash = kupyna.New384
-	} else if *md == "kupyna512" {
+	case "kupyna512":
 		myHash = kupyna.New512
-	} else if *md == "echo224" {
+	case "echo224":
 		myHash = echo.New224
-	} else if *md == "echo" || *md == "echo256" {
+	case "echo", "echo256":
 		myHash = echo.New256
-	} else if *md == "echo384" {
+	case "echo384":
 		myHash = echo.New384
-	} else if *md == "echo512" {
+	case "echo512":
 		myHash = echo.New512
-	} else if *md == "esch" || *md == "esch256" {
+	case "esch", "esch256":
 		myHash = esch.New256
-	} else if *md == "esch384" {
+	case "esch384":
 		myHash = esch.New384
-	} else if *md == "bmw" {
+	case "bmw":
 		myHash = bmw.New
 	}
 
@@ -3146,104 +3151,6 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	/*
-		if *digest && *alg == "makwa" && !*check {
-			var params makwa.PublicParameters
-			bits := *length
-			privateParams, err := makwa.GenerateParameters(bits)
-			if err != nil {
-				log.Fatal(err)
-			}
-			params.N = privateParams.N
-			params.Hash = myHash
-
-			fmt.Println("Modulus=", params.N)
-			fmt.Println("FactorP=", privateParams.P)
-			fmt.Println("FactorQ=", privateParams.Q)
-
-			digest, err := makwa.Hash(params, []byte(*key), []byte(*salt), *iter, false, 0)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Println("Digest=", digest)
-			os.Exit(0)
-		}
-
-		if *alg == "makwa" && *check {
-			var params makwa.PublicParameters
-			hashedPassword, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			hashedPasswordString := strings.TrimSpace(string(hashedPassword))
-			modulus := new(big.Int)
-			_, success := modulus.SetString(*modulusStr, 10)
-			if !success {
-				log.Fatal("Failed to parse modulus")
-			}
-
-			params.N = modulus
-			params.Hash = myHash
-
-			digest := &makwa.Digest{}
-			err = digest.UnmarshalText([]byte(hashedPasswordString))
-			if err != nil {
-				log.Fatal(err)
-			}
-			isValid := makwa.CheckPassword(params, digest, []byte(*key))
-			if isValid == nil {
-				fmt.Println("Verified: true")
-				os.Exit(0)
-			} else {
-				fmt.Println("Verified: false")
-				os.Exit(1)
-			}
-		}
-
-		if *recover {
-			hashedPassword, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				log.Fatal(err)
-			}
-			hashedPasswordString := strings.TrimSpace(string(hashedPassword))
-			modulus := new(big.Int)
-			_, success := modulus.SetString(*modulusStr, 10)
-			if !success {
-				log.Fatal("Failed to parse modulus")
-			}
-			factor1 := new(big.Int)
-			factor1, success = factor1.SetString(*factorPStr, 10)
-			if !success {
-				log.Fatal("Failed to parse factor1")
-			}
-			factor2 := new(big.Int)
-			factor2, success = factor2.SetString(*factorQStr, 10)
-			if !success {
-				log.Fatal("Failed to parse factor2")
-			}
-			digest := &makwa.Digest{}
-			err = digest.UnmarshalText([]byte(hashedPasswordString))
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			params := makwa.PrivateParameters{
-				PublicParameters: makwa.PublicParameters{
-					N:    modulus,
-					Hash: myHash,
-				},
-				P: factor1,
-				Q: factor2,
-			}
-
-			originalKey, err := makwa.Recover(params, digest)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Printf("%s\n", originalKey)
-			os.Exit(0)
-		}
-	*/
 	if *digest && *alg == "makwa" && !*check {
 		var params makwa.PublicParameters
 		bits := *length
@@ -3374,128 +3281,7 @@ Subcommands:
 	}
 
 	if *digest && (Files == "-" || Files == "") {
-		var h hash.Hash
-		if *md == "sha224" {
-			h = sha256.New224()
-		} else if *md == "sha256" {
-			h = sha256.New()
-		} else if *md == "sha384" {
-			h = sha512.New384()
-		} else if *md == "sha512-256" {
-			h = sha512.New512_256()
-		} else if *md == "sha512" {
-			h = sha512.New()
-		} else if *md == "sha1" {
-			h = sha1.New()
-		} else if *md == "rmd160" {
-			h = ripemd160.New()
-		} else if *md == "rmd128" {
-			h = ripemd.New128()
-		} else if *md == "rmd256" {
-			h = ripemd.New256()
-		} else if *md == "rmd320" {
-			h = ripemd.New320()
-		} else if *md == "sha3-224" {
-			h = sha3.New224()
-		} else if *md == "sha3-256" {
-			h = sha3.New256()
-		} else if *md == "sha3-384" {
-			h = sha3.New384()
-		} else if *md == "sha3-512" {
-			h = sha3.New512()
-		} else if *md == "shake128" {
-			h = sha3.NewShake128()
-		} else if *md == "shake256" {
-			h = sha3.NewShake256()
-		} else if *md == "lsh224" || *md == "lsh256-224" {
-			h = lsh256.New224()
-		} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
-			h = lsh256.New()
-		} else if *md == "lsh512-224" {
-			h = lsh512.New224()
-		} else if *md == "lsh512-256" {
-			h = lsh512.New256()
-		} else if *md == "lsh384" || *md == "lsh512-384" {
-			h = lsh512.New384()
-		} else if *md == "lsh512" {
-			h = lsh512.New()
-		} else if *md == "has160" {
-			h = has160.New()
-		} else if *md == "keccak" || *md == "keccak256" {
-			h = sha3.NewLegacyKeccak256()
-		} else if *md == "keccak512" {
-			h = sha3.NewLegacyKeccak512()
-		} else if *md == "whirlpool" {
-			h = whirlpool.New()
-		} else if *md == "blake2b256" {
-			h, _ = blake2b.New256([]byte(*key))
-		} else if *md == "blake2b512" {
-			h, _ = blake2b.New512([]byte(*key))
-		} else if *md == "blake2s128" {
-			h, _ = blake2s.New128([]byte(*key))
-		} else if *md == "blake2s256" {
-			h, _ = blake2s.New256([]byte(*key))
-		} else if *md == "blake3" {
-			h = blake3.New()
-		} else if *md == "md5" {
-			h = md5.New()
-		} else if *md == "gost94" {
-			h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
-		} else if *md == "streebog" || *md == "streebog256" {
-			h = gost34112012256.New()
-		} else if *md == "streebog512" {
-			h = gost34112012512.New()
-		} else if *md == "sm3" {
-			h = sm3.New()
-		} else if *md == "md4" {
-			h = md4.New()
-		} else if *md == "siphash" || *md == "siphash128" {
-			var xkey [16]byte
-			copy(xkey[:], []byte(*key))
-			h, _ = siphash.New128(xkey[:])
-		} else if *md == "siphash64" {
-			var xkey [16]byte
-			copy(xkey[:], []byte(*key))
-			h, _ = siphash.New64(xkey[:])
-		} else if *md == "cubehash" || *md == "cubehash512" {
-			h = cubehash.New()
-		} else if *md == "xoodyak" || *md == "xhash" {
-			h = xoodyak.NewXoodyakHash()
-		} else if *md == "skein" || *md == "skein256" {
-			h = skein.New256([]byte(*key))
-		} else if *md == "skein512" {
-			h = skein.New512([]byte(*key))
-		} else if *md == "jh" {
-			h = jh.New256()
-		} else if *md == "groestl" {
-			h = groestl.New256()
-		} else if *md == "tiger" {
-			h = tiger.New()
-		} else if *md == "tiger2" {
-			h = tiger.New2()
-		} else if *md == "kupyna256" || *md == "kupyna" {
-			h = kupyna.New256()
-		} else if *md == "kupyna384" {
-			h = kupyna.New384()
-		} else if *md == "kupyna512" {
-			h = kupyna.New512()
-		} else if *md == "echo224" {
-			h = echo.New224()
-		} else if *md == "echo" || *md == "echo256" {
-			h = echo.New256()
-		} else if *md == "echo384" {
-			h = echo.New384()
-		} else if *md == "echo512" {
-			h = echo.New512()
-		} else if *md == "esch" || *md == "esch256" {
-			h = esch.New256()
-		} else if *md == "esch384" {
-			h = esch.New384()
-		} else if *md == "bmw" {
-			h = bmw.New()
-		} else if *md == "cubehash256" {
-			h = cubehash256.New()
-		}
+		h := myHash()
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)), "(stdin)")
 		os.Exit(0)
@@ -3508,128 +3294,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			for _, match := range files {
-				var h hash.Hash
-				if *md == "sha224" {
-					h = sha256.New224()
-				} else if *md == "sha256" {
-					h = sha256.New()
-				} else if *md == "sha512-256" {
-					h = sha512.New512_256()
-				} else if *md == "sha384" {
-					h = sha512.New384()
-				} else if *md == "sha512" {
-					h = sha512.New()
-				} else if *md == "sha1" {
-					h = sha1.New()
-				} else if *md == "rmd160" {
-					h = ripemd160.New()
-				} else if *md == "rmd128" {
-					h = ripemd.New128()
-				} else if *md == "rmd256" {
-					h = ripemd.New256()
-				} else if *md == "rmd320" {
-					h = ripemd.New320()
-				} else if *md == "sha3-224" {
-					h = sha3.New224()
-				} else if *md == "sha3-256" {
-					h = sha3.New256()
-				} else if *md == "sha3-384" {
-					h = sha3.New384()
-				} else if *md == "sha3-512" {
-					h = sha3.New512()
-				} else if *md == "shake128" {
-					h = sha3.NewShake128()
-				} else if *md == "shake256" {
-					h = sha3.NewShake256()
-				} else if *md == "lsh224" || *md == "lsh256-224" {
-					h = lsh256.New224()
-				} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
-					h = lsh256.New()
-				} else if *md == "lsh512-224" {
-					h = lsh512.New224()
-				} else if *md == "lsh512-256" {
-					h = lsh512.New256()
-				} else if *md == "lsh384" || *md == "lsh512-384" {
-					h = lsh512.New384()
-				} else if *md == "lsh512" {
-					h = lsh512.New()
-				} else if *md == "has160" {
-					h = has160.New()
-				} else if *md == "keccak" || *md == "keccak256" {
-					h = sha3.NewLegacyKeccak256()
-				} else if *md == "keccak512" {
-					h = sha3.NewLegacyKeccak512()
-				} else if *md == "whirlpool" {
-					h = whirlpool.New()
-				} else if *md == "blake2b256" {
-					h, _ = blake2b.New256([]byte(*key))
-				} else if *md == "blake2b512" {
-					h, _ = blake2b.New512([]byte(*key))
-				} else if *md == "blake2s128" {
-					h, _ = blake2s.New128([]byte(*key))
-				} else if *md == "blake2s256" {
-					h, _ = blake2s.New256([]byte(*key))
-				} else if *md == "blake3" {
-					h = blake3.New()
-				} else if *md == "md5" {
-					h = md5.New()
-				} else if *md == "gost94" {
-					h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
-				} else if *md == "streebog" || *md == "streebog256" {
-					h = gost34112012256.New()
-				} else if *md == "streebog512" {
-					h = gost34112012512.New()
-				} else if *md == "sm3" {
-					h = sm3.New()
-				} else if *md == "md4" {
-					h = md4.New()
-				} else if *md == "siphash" || *md == "siphash128" {
-					var xkey [16]byte
-					copy(xkey[:], []byte(*key))
-					h, _ = siphash.New128(xkey[:])
-				} else if *md == "siphash64" {
-					var xkey [16]byte
-					copy(xkey[:], []byte(*key))
-					h, _ = siphash.New64(xkey[:])
-				} else if *md == "cubehash" || *md == "cubehash512" {
-					h = cubehash.New()
-				} else if *md == "xoodyak" || *md == "xhash" {
-					h = xoodyak.NewXoodyakHash()
-				} else if *md == "skein" || *md == "skein256" {
-					h = skein.New256([]byte(*key))
-				} else if *md == "skein512" {
-					h = skein.New512([]byte(*key))
-				} else if *md == "jh" {
-					h = jh.New256()
-				} else if *md == "groestl" {
-					h = groestl.New256()
-				} else if *md == "tiger" {
-					h = tiger.New()
-				} else if *md == "tiger2" {
-					h = tiger.New2()
-				} else if *md == "kupyna256" || *md == "kupyna" {
-					h = kupyna.New256()
-				} else if *md == "kupyna384" {
-					h = kupyna.New384()
-				} else if *md == "kupyna512" {
-					h = kupyna.New512()
-				} else if *md == "echo224" {
-					h = echo.New224()
-				} else if *md == "echo" || *md == "echo256" {
-					h = echo.New256()
-				} else if *md == "echo384" {
-					h = echo.New384()
-				} else if *md == "echo512" {
-					h = echo.New512()
-				} else if *md == "esch" || *md == "esch256" {
-					h = esch.New256()
-				} else if *md == "esch384" {
-					h = esch.New384()
-				} else if *md == "bmw" {
-					h = bmw.New()
-				} else if *md == "cubehash256" {
-					h = cubehash256.New()
-				}
+				h := myHash()
 				f, err := os.Open(match)
 				if err != nil {
 					log.Fatal(err)
@@ -3668,128 +3333,7 @@ Subcommands:
 							log.Fatal(err)
 						}
 						if matched {
-							var h hash.Hash
-							if *md == "sha224" {
-								h = sha256.New224()
-							} else if *md == "sha256" {
-								h = sha256.New()
-							} else if *md == "sha512-256" {
-								h = sha512.New512_256()
-							} else if *md == "sha384" {
-								h = sha512.New384()
-							} else if *md == "sha512" {
-								h = sha512.New()
-							} else if *md == "sha1" {
-								h = sha1.New()
-							} else if *md == "rmd160" {
-								h = ripemd160.New()
-							} else if *md == "rmd128" {
-								h = ripemd.New128()
-							} else if *md == "rmd256" {
-								h = ripemd.New256()
-							} else if *md == "rmd320" {
-								h = ripemd.New320()
-							} else if *md == "sha3-224" {
-								h = sha3.New224()
-							} else if *md == "sha3-256" {
-								h = sha3.New256()
-							} else if *md == "sha3-384" {
-								h = sha3.New384()
-							} else if *md == "sha3-512" {
-								h = sha3.New512()
-							} else if *md == "shake128" {
-								h = sha3.NewShake128()
-							} else if *md == "shake256" {
-								h = sha3.NewShake256()
-							} else if *md == "lsh224" || *md == "lsh256-224" {
-								h = lsh256.New224()
-							} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
-								h = lsh256.New()
-							} else if *md == "lsh512-224" {
-								h = lsh512.New224()
-							} else if *md == "lsh512-256" {
-								h = lsh512.New256()
-							} else if *md == "lsh384" || *md == "lsh512-384" {
-								h = lsh512.New384()
-							} else if *md == "lsh512" {
-								h = lsh512.New()
-							} else if *md == "has160" {
-								h = has160.New()
-							} else if *md == "keccak" || *md == "keccak256" {
-								h = sha3.NewLegacyKeccak256()
-							} else if *md == "keccak512" {
-								h = sha3.NewLegacyKeccak512()
-							} else if *md == "whirlpool" {
-								h = whirlpool.New()
-							} else if *md == "blake2b256" {
-								h, _ = blake2b.New256([]byte(*key))
-							} else if *md == "blake2b512" {
-								h, _ = blake2b.New512([]byte(*key))
-							} else if *md == "blake2s128" {
-								h, _ = blake2s.New128([]byte(*key))
-							} else if *md == "blake2s256" {
-								h, _ = blake2s.New256([]byte(*key))
-							} else if *md == "blake3" {
-								h = blake3.New()
-							} else if *md == "md5" {
-								h = md5.New()
-							} else if *md == "gost94" {
-								h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
-							} else if *md == "streebog" || *md == "streebog256" {
-								h = gost34112012256.New()
-							} else if *md == "streebog512" {
-								h = gost34112012512.New()
-							} else if *md == "sm3" {
-								h = sm3.New()
-							} else if *md == "md4" {
-								h = md4.New()
-							} else if *md == "siphash" || *md == "siphash128" {
-								var xkey [16]byte
-								copy(xkey[:], []byte(*key))
-								h, _ = siphash.New128(xkey[:])
-							} else if *md == "siphash64" {
-								var xkey [16]byte
-								copy(xkey[:], []byte(*key))
-								h, _ = siphash.New64(xkey[:])
-							} else if *md == "cubehash" || *md == "cubehash512" {
-								h = cubehash.New()
-							} else if *md == "xoodyak" || *md == "xhash" {
-								h = xoodyak.NewXoodyakHash()
-							} else if *md == "skein" || *md == "skein256" {
-								h = skein.New256([]byte(*key))
-							} else if *md == "skein512" {
-								h = skein.New512([]byte(*key))
-							} else if *md == "jh" {
-								h = jh.New256()
-							} else if *md == "groestl" {
-								h = groestl.New256()
-							} else if *md == "tiger" {
-								h = tiger.New()
-							} else if *md == "tiger2" {
-								h = tiger.New2()
-							} else if *md == "kupyna256" || *md == "kupyna" {
-								h = kupyna.New256()
-							} else if *md == "kupyna384" {
-								h = kupyna.New384()
-							} else if *md == "kupyna512" {
-								h = kupyna.New512()
-							} else if *md == "echo224" {
-								h = echo.New224()
-							} else if *md == "echo" || *md == "echo256" {
-								h = echo.New256()
-							} else if *md == "echo384" {
-								h = echo.New384()
-							} else if *md == "echo512" {
-								h = echo.New512()
-							} else if *md == "esch" || *md == "esch256" {
-								h = esch.New256()
-							} else if *md == "esch384" {
-								h = esch.New384()
-							} else if *md == "bmw" {
-								h = bmw.New()
-							} else if *md == "cubehash256" {
-								h = cubehash256.New()
-							}
+							h := myHash()
 							f, err := os.Open(path)
 							if err != nil {
 								log.Fatal(err)
@@ -3821,128 +3365,7 @@ Subcommands:
 		for _, eachline := range txtlines {
 			lines := strings.Split(string(eachline), " *")
 			if strings.Contains(string(eachline), " *") {
-				var h hash.Hash
-				if *md == "sha224" {
-					h = sha256.New224()
-				} else if *md == "sha256" {
-					h = sha256.New()
-				} else if *md == "sha512-256" {
-					h = sha512.New512_256()
-				} else if *md == "sha384" {
-					h = sha512.New384()
-				} else if *md == "sha512" {
-					h = sha512.New()
-				} else if *md == "sha1" {
-					h = sha1.New()
-				} else if *md == "rmd160" {
-					h = ripemd160.New()
-				} else if *md == "rmd128" {
-					h = ripemd.New128()
-				} else if *md == "rmd256" {
-					h = ripemd.New256()
-				} else if *md == "rmd320" {
-					h = ripemd.New320()
-				} else if *md == "sha3-224" {
-					h = sha3.New224()
-				} else if *md == "sha3-256" {
-					h = sha3.New256()
-				} else if *md == "sha3-384" {
-					h = sha3.New384()
-				} else if *md == "sha3-512" {
-					h = sha3.New512()
-				} else if *md == "shake128" {
-					h = sha3.NewShake128()
-				} else if *md == "shake256" {
-					h = sha3.NewShake256()
-				} else if *md == "lsh224" || *md == "lsh256-224" {
-					h = lsh256.New224()
-				} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
-					h = lsh256.New()
-				} else if *md == "lsh512-224" {
-					h = lsh512.New224()
-				} else if *md == "lsh512-256" {
-					h = lsh512.New256()
-				} else if *md == "lsh384" || *md == "lsh512-384" {
-					h = lsh512.New384()
-				} else if *md == "lsh512" {
-					h = lsh512.New()
-				} else if *md == "has160" {
-					h = has160.New()
-				} else if *md == "keccak" || *md == "keccak256" {
-					h = sha3.NewLegacyKeccak256()
-				} else if *md == "keccak512" {
-					h = sha3.NewLegacyKeccak512()
-				} else if *md == "whirlpool" {
-					h = whirlpool.New()
-				} else if *md == "blake2b256" {
-					h, _ = blake2b.New256([]byte(*key))
-				} else if *md == "blake2b512" {
-					h, _ = blake2b.New512([]byte(*key))
-				} else if *md == "blake2s128" {
-					h, _ = blake2s.New128([]byte(*key))
-				} else if *md == "blake2s256" {
-					h, _ = blake2s.New256([]byte(*key))
-				} else if *md == "blake3" {
-					h = blake3.New()
-				} else if *md == "md5" {
-					h = md5.New()
-				} else if *md == "gost94" {
-					h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
-				} else if *md == "streebog" || *md == "streebog256" {
-					h = gost34112012256.New()
-				} else if *md == "streebog512" {
-					h = gost34112012512.New()
-				} else if *md == "sm3" {
-					h = sm3.New()
-				} else if *md == "md4" {
-					h = md4.New()
-				} else if *md == "siphash" || *md == "siphash128" {
-					var xkey [16]byte
-					copy(xkey[:], []byte(*key))
-					h, _ = siphash.New128(xkey[:])
-				} else if *md == "siphash64" {
-					var xkey [16]byte
-					copy(xkey[:], []byte(*key))
-					h, _ = siphash.New64(xkey[:])
-				} else if *md == "cubehash" || *md == "cubehash512" {
-					h = cubehash.New()
-				} else if *md == "xoodyak" || *md == "xhash" {
-					h = xoodyak.NewXoodyakHash()
-				} else if *md == "skein" || *md == "skein256" {
-					h = skein.New256([]byte(*key))
-				} else if *md == "skein512" {
-					h = skein.New512([]byte(*key))
-				} else if *md == "jh" {
-					h = jh.New256()
-				} else if *md == "groestl" {
-					h = groestl.New256()
-				} else if *md == "tiger" {
-					h = tiger.New()
-				} else if *md == "tiger2" {
-					h = tiger.New2()
-				} else if *md == "kupyna256" || *md == "kupyna" {
-					h = kupyna.New256()
-				} else if *md == "kupyna384" {
-					h = kupyna.New384()
-				} else if *md == "kupyna512" {
-					h = kupyna.New512()
-				} else if *md == "echo224" {
-					h = echo.New224()
-				} else if *md == "echo" || *md == "echo256" {
-					h = echo.New256()
-				} else if *md == "echo384" {
-					h = echo.New384()
-				} else if *md == "echo512" {
-					h = echo.New512()
-				} else if *md == "esch" || *md == "esch256" {
-					h = esch.New256()
-				} else if *md == "esch384" {
-					h = esch.New384()
-				} else if *md == "bmw" {
-					h = bmw.New()
-				} else if *md == "cubehash256" {
-					h = cubehash256.New()
-				}
+				h := myHash()
 				_, err := os.Stat(lines[1])
 				if err == nil {
 					f, err := os.Open(lines[1])
@@ -14836,6 +14259,8 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 		"kalyna128_128": PEMCipherKALYNA128_128,
 		"kalyna128_256": PEMCipherKALYNA128_256,
 		"kalyna128":     PEMCipherKALYNA128_256,
+		"kuznechik":     PEMCipherGOST,
+		"grasshopper":   PEMCipherGOST,
 	}
 
 	if val, ok := cipherMap[cph]; ok {
@@ -14953,6 +14378,8 @@ func EncryptBlockWithCipher(rand io.Reader, blockType string, blockBytes, passwo
 		cipher = PEMCipherKALYNA128_128
 	case "kalyna128", "kalyna128_256":
 		cipher = PEMCipherKALYNA128_256
+	case "kuznechik", "grasshopper":
+		cipher = PEMCipherGOST
 	default:
 		return nil, errors.New("unsupported cipher algorithm")
 	}
