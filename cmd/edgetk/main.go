@@ -124,6 +124,7 @@ import (
 	"github.com/pedroalbanese/ecka-eg/elgamal"
 	elgamalAlt "github.com/pedroalbanese/ecka-eg/elgamal-alt"
 	"github.com/pedroalbanese/esch"
+	"github.com/pedroalbanese/fugue"
 	"github.com/pedroalbanese/gmac"
 	"github.com/pedroalbanese/go-ascon"
 	"github.com/pedroalbanese/go-chaskey"
@@ -145,6 +146,7 @@ import (
 	"github.com/pedroalbanese/golang-rc6"
 	"github.com/pedroalbanese/gopass"
 	"github.com/pedroalbanese/groestl-1"
+	"github.com/pedroalbanese/hamsi"
 	"github.com/pedroalbanese/haraka"
 	"github.com/pedroalbanese/jh"
 	"github.com/pedroalbanese/kalyna"
@@ -152,6 +154,7 @@ import (
 	"github.com/pedroalbanese/kupyna"
 	"github.com/pedroalbanese/kuznechik"
 	"github.com/pedroalbanese/loki97"
+	"github.com/pedroalbanese/luffa"
 	"github.com/pedroalbanese/lyra2re"
 	"github.com/pedroalbanese/lyra2rev2"
 	"github.com/pedroalbanese/makwa-go"
@@ -165,6 +168,8 @@ import (
 	"github.com/pedroalbanese/rabbitio"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
+	"github.com/pedroalbanese/shavite"
+	"github.com/pedroalbanese/simd"
 	"github.com/pedroalbanese/siphash"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
@@ -274,7 +279,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.4.9  02 May 2024")
+		fmt.Println("EDGE Toolkit v1.5.0  18 May 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -333,21 +338,26 @@ Message Athentication Code:
   gost              pmac              vmac              help
 
 Message Digests:
-  blake2b256        groestl           lsh512-256        sha3-384
-  blake2b512        haraka256         md4 [obsolete]    sha3-512
-  blake2s128 (MAC)  haraka512         md5 [obsolete]    shake128
-  blake2s256        has160 [obsolete] rmd128            shake256
-  blake3            jh                rmd160            siphash
-  bmw               keccak256         rmd256            siphash64
-  cubehash256       keccak512         rmd320            skein256
-  cubehash512       kupyna256         sha1 [obsolete]   skein512
-  echo224           kupyna384         sha224            sm3
-  echo256           kupyna512         sha256 (default)  streebog256
-  echo384           lsh224            sha384            streebog512
-  echo512           lsh256            sha512            tiger
-  esch256           lsh384            sha512-256        tiger2
-  esch384           lsh512            sha3-224          whirlpool
-  gost94            lsh512-224        sha3-256          xoodyak`)
+  blake2b256        hamsi224          luffa256          shake256
+  blake2b512        hamsi256          luffa384          shavite224
+  blake2s128 (MAC)  hamsi384          luffa512          shavite256
+  blake2s256        hamsi512          md4 [obsolete]    shavite384
+  blake3            haraka256         md5 [obsolete]    shavite512
+  bmw               haraka512         rmd128            simd224
+  cubehash256       has160 [obsolete] rmd160            simd256
+  cubehash512       jh                rmd256            simd384
+  echo224           keccak256         rmd320            simd512
+  echo256           keccak512         sha1 [obsolete]   siphash
+  echo384           kupyna256         sha224            siphash64
+  echo512           kupyna384         sha256 (default)  skein256
+  esch256           kupyna512         sha3-224          skein512
+  esch384           lsh224            sha3-256          sm3
+  fugue224          lsh256            sha3-384          streebog256
+  fugue256          lsh384            sha3-512          streebog512
+  fugue384          lsh512            sha384            tiger
+  fugue512          lsh512-224        sha512            tiger2
+  gost94            lsh512-256        sha512-256        whirlpool
+  groestl           luffa224          shake128          xoodyak`)
 		os.Exit(3)
 	}
 
@@ -709,6 +719,46 @@ Subcommands:
 		myHash = esch.New384
 	case "bmw":
 		myHash = bmw.New
+	case "hamsi224":
+		myHash = hamsi.New224
+	case "hamsi", "hamsi256":
+		myHash = hamsi.New256
+	case "hamsi384":
+		myHash = hamsi.New384
+	case "hamsi512":
+		myHash = hamsi.New512
+	case "fugue224":
+		myHash = fugue.New224
+	case "fugue", "fugue256":
+		myHash = fugue.New256
+	case "fugue384":
+		myHash = fugue.New384
+	case "fugue512":
+		myHash = fugue.New512
+	case "luffa224":
+		myHash = luffa.New224
+	case "luffa", "luffa256":
+		myHash = luffa.New256
+	case "luffa384":
+		myHash = luffa.New384
+	case "luffa512":
+		myHash = luffa.New512
+	case "shavite224":
+		myHash = shavite.New224
+	case "shavite", "shavite256":
+		myHash = shavite.New256
+	case "shavite384":
+		myHash = shavite.New384
+	case "shavite512":
+		myHash = shavite.New512
+	case "simd224":
+		myHash = simd.New224
+	case "simd", "simd256":
+		myHash = simd.New256
+	case "simd384":
+		myHash = simd.New384
+	case "simd512":
+		myHash = simd.New512
 	}
 
 	if *random != 0 {
@@ -1112,6 +1162,10 @@ Subcommands:
 
 	if (*pkey == "derivea" || *pkey == "deriveb") && *length == 0 {
 		*length = 128
+	}
+
+	if *kdf == "scrypt" && *iter == 1 {
+		*iter = 4096
 	}
 
 	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2RE" || strings.ToUpper(*kdf) == "LYRA2RE2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
@@ -12083,118 +12137,169 @@ func determineCurve(key *nums.PublicKey) elliptic.Curve {
 
 func Hkdf(master, salt, info []byte) ([128]byte, error) {
 	var myHash func() hash.Hash
-	if *md == "sha256" {
+	switch *md {
+	case "sha224":
+		myHash = sha256.New224
+	case "sha256":
 		myHash = sha256.New
-	} else if *md == "sha512" {
-		myHash = sha512.New
-	} else if *md == "sha512-256" {
-		myHash = sha512.New512_256
-	} else if *md == "sha384" {
+	case "sha384":
 		myHash = sha512.New384
-	} else if *md == "sha1" {
+	case "sha512":
+		myHash = sha512.New
+	case "sha512-256":
+		myHash = sha512.New512_256
+	case "sha1":
 		myHash = sha1.New
-	} else if *md == "rmd160" {
+	case "rmd160":
 		myHash = ripemd160.New
-	} else if *md == "rmd128" {
+	case "rmd128":
 		myHash = ripemd.New128
-	} else if *md == "rmd256" {
+	case "rmd256":
 		myHash = ripemd.New256
-	} else if *md == "rmd320" {
+	case "rmd320":
 		myHash = ripemd.New320
-	} else if *md == "sha3-256" {
+	case "sha3-224":
+		myHash = sha3.New224
+	case "sha3-256":
 		myHash = sha3.New256
-	} else if *md == "sha3-512" {
+	case "sha3-384":
+		myHash = sha3.New384
+	case "sha3-512":
 		myHash = sha3.New512
-	} else if *md == "keccak" || *md == "keccak256" {
+	case "keccak", "keccak256":
 		myHash = sha3.NewLegacyKeccak256
-	} else if *md == "keccak512" {
+	case "keccak512":
 		myHash = sha3.NewLegacyKeccak512
-	} else if *md == "shake128" {
+	case "shake128":
 		myHash = func() hash.Hash {
 			return sha3.NewShake128()
 		}
-	} else if *md == "shake256" {
+	case "shake256":
 		myHash = func() hash.Hash {
 			return sha3.NewShake256()
 		}
-	} else if *md == "lsh224" || *md == "lsh256-224" {
+	case "lsh224", "lsh256-224":
 		myHash = lsh256.New224
-	} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
+	case "lsh", "lsh256", "lsh256-256":
 		myHash = lsh256.New
-	} else if *md == "lsh512-224" {
-		myHash = lsh512.New224
-	} else if *md == "lsh512-256" {
+	case "lsh512-256":
 		myHash = lsh512.New256
-	} else if *md == "lsh384" || *md == "lsh512-384" {
+	case "lsh512-224":
+		myHash = lsh512.New224
+	case "lsh384", "lsh512-384":
 		myHash = lsh512.New384
-	} else if *md == "lsh512" {
+	case "lsh512":
 		myHash = lsh512.New
-	} else if *md == "has160" {
+	case "has160":
 		myHash = has160.New
-	} else if *md == "whirlpool" {
+	case "whirlpool":
 		myHash = whirlpool.New
-	} else if *md == "blake2b256" {
+	case "blake2b256":
 		myHash = crypto.BLAKE2b_256.New
-	} else if *md == "blake2b512" {
+	case "blake2b512":
 		myHash = crypto.BLAKE2b_512.New
-	} else if *md == "blake2s256" {
+	case "blake2s256":
 		myHash = crypto.BLAKE2s_256.New
-	} else if *md == "blake3" {
+	case "blake3":
 		myHash = func() hash.Hash {
 			return blake3.New()
 		}
-	} else if *md == "md4" {
-		myHash = md4.New
-	} else if *md == "md5" {
+	case "md5":
 		myHash = md5.New
-	} else if *md == "gost94" {
+	case "gost94":
 		myHash = func() hash.Hash {
 			return gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
 		}
-	} else if *md == "streebog" || *md == "streebog256" {
+	case "streebog", "streebog256":
 		myHash = gost34112012256.New
-	} else if *md == "streebog512" {
+	case "streebog512":
 		myHash = gost34112012512.New
-	} else if *md == "sm3" {
+	case "sm3":
 		myHash = sm3.New
-	} else if *md == "cubehash" || *md == "cubehash512" {
+	case "md4":
+		myHash = md4.New
+	case "cubehash", "cubehash512":
 		myHash = cubehash.New
-	} else if *md == "xoodyak" || *md == "xhash" {
+	case "cubehash256":
+		myHash = cubehash256.New
+	case "xoodyak", "xhash":
 		myHash = xoodyak.NewXoodyakHash
-	} else if *md == "skein" || *md == "skein256" {
+	case "skein", "skein256":
 		myHash = func() hash.Hash {
 			return skein.New256(nil)
 		}
-	} else if *md == "skein512" {
+	case "skein512":
 		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-	} else if *md == "jh" {
+	case "jh":
 		myHash = jh.New256
-	} else if *md == "groestl" {
+	case "groestl":
 		myHash = groestl.New256
-	} else if *md == "kupyna" || *md == "kupyna256" {
+	case "tiger":
+		myHash = tiger.New
+	case "tiger2":
+		myHash = tiger.New2
+	case "kupyna256", "kupyna":
 		myHash = kupyna.New256
-	} else if *md == "kupyna384" {
+	case "kupyna384":
 		myHash = kupyna.New384
-	} else if *md == "kupyna512" {
+	case "kupyna512":
 		myHash = kupyna.New512
-	} else if *md == "echo224" {
+	case "echo224":
 		myHash = echo.New224
-	} else if *md == "echo" || *md == "echo256" {
+	case "echo", "echo256":
 		myHash = echo.New256
-	} else if *md == "echo384" {
+	case "echo384":
 		myHash = echo.New384
-	} else if *md == "echo512" {
+	case "echo512":
 		myHash = echo.New512
-	} else if *md == "esch" || *md == "esch256" {
+	case "esch", "esch256":
 		myHash = esch.New256
-	} else if *md == "esch384" {
+	case "esch384":
 		myHash = esch.New384
-	} else if *md == "cubehash256" {
-		myHash = cubehash256.New
-	} else if *md == "bmw" {
+	case "bmw":
 		myHash = bmw.New
+	case "hamsi224":
+		myHash = hamsi.New224
+	case "hamsi", "hamsi256":
+		myHash = hamsi.New256
+	case "hamsi384":
+		myHash = hamsi.New384
+	case "hamsi512":
+		myHash = hamsi.New512
+	case "fugue224":
+		myHash = fugue.New224
+	case "fugue", "fugue256":
+		myHash = fugue.New256
+	case "fugue384":
+		myHash = fugue.New384
+	case "fugue512":
+		myHash = fugue.New512
+	case "luffa224":
+		myHash = luffa.New224
+	case "luffa", "luffa256":
+		myHash = luffa.New256
+	case "luffa384":
+		myHash = luffa.New384
+	case "luffa512":
+		myHash = luffa.New512
+	case "shavite224":
+		myHash = shavite.New224
+	case "shavite", "shavite256":
+		myHash = shavite.New256
+	case "shavite384":
+		myHash = shavite.New384
+	case "shavite512":
+		myHash = shavite.New512
+	case "simd224":
+		myHash = simd.New224
+	case "simd", "simd256":
+		myHash = simd.New256
+	case "simd384":
+		myHash = simd.New384
+	case "simd512":
+		myHash = simd.New512
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
@@ -12216,118 +12321,169 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 	}
 
 	var myHash func() hash.Hash
-	if *md == "sha256" {
+	switch *md {
+	case "sha224":
+		myHash = sha256.New224
+	case "sha256":
 		myHash = sha256.New
-	} else if *md == "sha512" {
-		myHash = sha512.New
-	} else if *md == "sha512-256" {
-		myHash = sha512.New512_256
-	} else if *md == "sha384" {
+	case "sha384":
 		myHash = sha512.New384
-	} else if *md == "sha1" {
+	case "sha512":
+		myHash = sha512.New
+	case "sha512-256":
+		myHash = sha512.New512_256
+	case "sha1":
 		myHash = sha1.New
-	} else if *md == "rmd160" {
+	case "rmd160":
 		myHash = ripemd160.New
-	} else if *md == "rmd128" {
+	case "rmd128":
 		myHash = ripemd.New128
-	} else if *md == "rmd256" {
+	case "rmd256":
 		myHash = ripemd.New256
-	} else if *md == "rmd320" {
+	case "rmd320":
 		myHash = ripemd.New320
-	} else if *md == "sha3-256" {
+	case "sha3-224":
+		myHash = sha3.New224
+	case "sha3-256":
 		myHash = sha3.New256
-	} else if *md == "sha3-512" {
+	case "sha3-384":
+		myHash = sha3.New384
+	case "sha3-512":
 		myHash = sha3.New512
-	} else if *md == "keccak" || *md == "keccak256" {
+	case "keccak", "keccak256":
 		myHash = sha3.NewLegacyKeccak256
-	} else if *md == "keccak512" {
+	case "keccak512":
 		myHash = sha3.NewLegacyKeccak512
-	} else if *md == "shake128" {
+	case "shake128":
 		myHash = func() hash.Hash {
 			return sha3.NewShake128()
 		}
-	} else if *md == "shake256" {
+	case "shake256":
 		myHash = func() hash.Hash {
 			return sha3.NewShake256()
 		}
-	} else if *md == "lsh224" || *md == "lsh256-224" {
+	case "lsh224", "lsh256-224":
 		myHash = lsh256.New224
-	} else if *md == "lsh" || *md == "lsh256" || *md == "lsh256-256" {
+	case "lsh", "lsh256", "lsh256-256":
 		myHash = lsh256.New
-	} else if *md == "lsh512-224" {
-		myHash = lsh512.New224
-	} else if *md == "lsh512-256" {
+	case "lsh512-256":
 		myHash = lsh512.New256
-	} else if *md == "lsh384" || *md == "lsh512-384" {
+	case "lsh512-224":
+		myHash = lsh512.New224
+	case "lsh384", "lsh512-384":
 		myHash = lsh512.New384
-	} else if *md == "lsh512" {
+	case "lsh512":
 		myHash = lsh512.New
-	} else if *md == "has160" {
+	case "has160":
 		myHash = has160.New
-	} else if *md == "whirlpool" {
+	case "whirlpool":
 		myHash = whirlpool.New
-	} else if *md == "blake2b256" {
+	case "blake2b256":
 		myHash = crypto.BLAKE2b_256.New
-	} else if *md == "blake2b512" {
+	case "blake2b512":
 		myHash = crypto.BLAKE2b_512.New
-	} else if *md == "blake2s256" {
+	case "blake2s256":
 		myHash = crypto.BLAKE2s_256.New
-	} else if *md == "blake3" {
+	case "blake3":
 		myHash = func() hash.Hash {
 			return blake3.New()
 		}
-	} else if *md == "md4" {
-		myHash = md4.New
-	} else if *md == "md5" {
+	case "md5":
 		myHash = md5.New
-	} else if *md == "gost94" {
+	case "gost94":
 		myHash = func() hash.Hash {
 			return gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
 		}
-	} else if *md == "streebog" || *md == "streebog256" {
+	case "streebog", "streebog256":
 		myHash = gost34112012256.New
-	} else if *md == "streebog512" {
+	case "streebog512":
 		myHash = gost34112012512.New
-	} else if *md == "sm3" {
+	case "sm3":
 		myHash = sm3.New
-	} else if *md == "cubehash" || *md == "cubehash512" {
+	case "md4":
+		myHash = md4.New
+	case "cubehash", "cubehash512":
 		myHash = cubehash.New
-	} else if *md == "xoodyak" || *md == "xhash" {
+	case "cubehash256":
+		myHash = cubehash256.New
+	case "xoodyak", "xhash":
 		myHash = xoodyak.NewXoodyakHash
-	} else if *md == "skein" || *md == "skein256" {
+	case "skein", "skein256":
 		myHash = func() hash.Hash {
 			return skein.New256(nil)
 		}
-	} else if *md == "skein512" {
+	case "skein512":
 		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-	} else if *md == "jh" {
+	case "jh":
 		myHash = jh.New256
-	} else if *md == "groestl" {
+	case "groestl":
 		myHash = groestl.New256
-	} else if *md == "kupyna" || *md == "kupyna256" {
+	case "tiger":
+		myHash = tiger.New
+	case "tiger2":
+		myHash = tiger.New2
+	case "kupyna256", "kupyna":
 		myHash = kupyna.New256
-	} else if *md == "kupyna384" {
+	case "kupyna384":
 		myHash = kupyna.New384
-	} else if *md == "kupyna512" {
+	case "kupyna512":
 		myHash = kupyna.New512
-	} else if *md == "echo224" {
+	case "echo224":
 		myHash = echo.New224
-	} else if *md == "echo" || *md == "echo256" {
+	case "echo", "echo256":
 		myHash = echo.New256
-	} else if *md == "echo384" {
+	case "echo384":
 		myHash = echo.New384
-	} else if *md == "echo512" {
+	case "echo512":
 		myHash = echo.New512
-	} else if *md == "esch" || *md == "esch256" {
+	case "esch", "esch256":
 		myHash = esch.New256
-	} else if *md == "esch384" {
+	case "esch384":
 		myHash = esch.New384
-	} else if *md == "cubehash256" {
-		myHash = cubehash256.New
-	} else if *md == "bmw" {
+	case "bmw":
 		myHash = bmw.New
+	case "hamsi224":
+		myHash = hamsi.New224
+	case "hamsi", "hamsi256":
+		myHash = hamsi.New256
+	case "hamsi384":
+		myHash = hamsi.New384
+	case "hamsi512":
+		myHash = hamsi.New512
+	case "fugue224":
+		myHash = fugue.New224
+	case "fugue", "fugue256":
+		myHash = fugue.New256
+	case "fugue384":
+		myHash = fugue.New384
+	case "fugue512":
+		myHash = fugue.New512
+	case "luffa224":
+		myHash = luffa.New224
+	case "luffa", "luffa256":
+		myHash = luffa.New256
+	case "luffa384":
+		myHash = luffa.New384
+	case "luffa512":
+		myHash = luffa.New512
+	case "shavite224":
+		myHash = shavite.New224
+	case "shavite", "shavite256":
+		myHash = shavite.New256
+	case "shavite384":
+		myHash = shavite.New384
+	case "shavite512":
+		myHash = shavite.New512
+	case "simd224":
+		myHash = simd.New224
+	case "simd", "simd256":
+		myHash = simd.New256
+	case "simd384":
+		myHash = simd.New384
+	case "simd512":
+		myHash = simd.New512
 	}
 
 	xy := make([]uint32, 64*r)
@@ -13735,7 +13891,6 @@ const (
 	PEMCipherTWOFISH192
 	PEMCipherTWOFISH256
 	PEMCipherKALYNA128_128
-	PEMCipherKALYNA128_192
 	PEMCipherKALYNA128_256
 )
 
@@ -14259,6 +14414,7 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 		"kalyna128_128": PEMCipherKALYNA128_128,
 		"kalyna128_256": PEMCipherKALYNA128_256,
 		"kalyna128":     PEMCipherKALYNA128_256,
+		"kalyna":        PEMCipherKALYNA128_256,
 		"kuznechik":     PEMCipherGOST,
 		"grasshopper":   PEMCipherGOST,
 	}
