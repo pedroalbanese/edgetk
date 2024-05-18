@@ -225,14 +225,17 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | CubeHash        |     |     |     | O   | O   |     |
     | ECHO            |     |     |     | O   | O   |     | 
     | ESCH            |     |     |     | O   |     |     | 
+    | Fugue           |     |     |     | O   | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
     | Grøstl          |     |     |     | O   |     |     |
+    | Hamsi           |     |     |     | O   | O   |     |
     | Haraka v2       |     |     |     | O   |     |     |
     | HAS-160         |     | O   |     |     |     |     |
     | JH              |     |     |     | O   |     |     |
     | Kupyna          |     |     |     | O   | O   | O   |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
+    | Luffa           |     |     |     | O   | O   |     |
     | MD4 [Obsolete]  | O   |     |     |     |     |     |
     | MD5 [Obsolete]  | O   |     |     |     |     |     |
     | Poly1305        | O   |     |     |     |     | O   |
@@ -241,6 +244,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SHA2 (default)  |     |     |     | O   | O   |     | 
     | SHA3            |     |     |     | O   | O   |     |
     | SHAKE           |     |     |     | O   | O   |     |
+    | SHAvite-3       |     |     |     | O   | O   |     |
+    | SIMD            |     |     |     | O   | O   |     |
     | SipHash         | O   |     |     |     |     | O   |
     | Skein           |     |     |     | O   | O   | O   | 
     | SM3             |     |     |     | O   |     |     |
