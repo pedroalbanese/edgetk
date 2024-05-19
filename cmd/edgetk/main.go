@@ -50,6 +50,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/blake2b"
 	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/blowfish"
 	"golang.org/x/crypto/chacha20"
@@ -759,6 +760,170 @@ Subcommands:
 		myHash = simd.New384
 	case "simd512":
 		myHash = simd.New512
+	}
+
+	var h hash.Hash
+	switch *md {
+	case "sha224":
+		h = sha256.New224()
+	case "sha256":
+		h = sha256.New()
+	case "sha384":
+		h = sha512.New384()
+	case "sha512-256":
+		h = sha512.New512_256()
+	case "sha512":
+		h = sha512.New()
+	case "sha1":
+		h = sha1.New()
+	case "rmd160":
+		h = ripemd160.New()
+	case "rmd128":
+		h = ripemd.New128()
+	case "rmd256":
+		h = ripemd.New256()
+	case "rmd320":
+		h = ripemd.New320()
+	case "sha3-224":
+		h = sha3.New224()
+	case "sha3-256":
+		h = sha3.New256()
+	case "sha3-384":
+		h = sha3.New384()
+	case "sha3-512":
+		h = sha3.New512()
+	case "shake128":
+		h = sha3.NewShake128()
+	case "shake256":
+		h = sha3.NewShake256()
+	case "lsh224", "lsh256-224":
+		h = lsh256.New224()
+	case "lsh", "lsh256", "lsh256-256":
+		h = lsh256.New()
+	case "lsh512-224":
+		h = lsh512.New224()
+	case "lsh512-256":
+		h = lsh512.New256()
+	case "lsh384", "lsh512-384":
+		h = lsh512.New384()
+	case "lsh512":
+		h = lsh512.New()
+	case "has160":
+		h = has160.New()
+	case "keccak", "keccak256":
+		h = sha3.NewLegacyKeccak256()
+	case "keccak512":
+		h = sha3.NewLegacyKeccak512()
+	case "whirlpool":
+		h = whirlpool.New()
+	case "blake2b256":
+		h, _ = blake2b.New256([]byte(*key))
+	case "blake2b512":
+		h, _ = blake2b.New512([]byte(*key))
+	case "blake2s128":
+		h, _ = blake2s.New128([]byte(*key))
+	case "blake2s256":
+		h, _ = blake2s.New256([]byte(*key))
+	case "blake3":
+		h = blake3.New()
+	case "md5":
+		h = md5.New()
+	case "gost94":
+		h = gost341194.New(&gost28147.SboxIdGostR341194CryptoProParamSet)
+	case "streebog", "streebog256":
+		h = gost34112012256.New()
+	case "streebog512":
+		h = gost34112012512.New()
+	case "sm3":
+		h = sm3.New()
+	case "md4":
+		h = md4.New()
+	case "siphash", "siphash128":
+		var xkey [16]byte
+		copy(xkey[:], []byte(*key))
+		h, _ = siphash.New128(xkey[:])
+	case "siphash64":
+		var xkey [16]byte
+		copy(xkey[:], []byte(*key))
+		h, _ = siphash.New64(xkey[:])
+	case "cubehash", "cubehash512":
+		h = cubehash.New()
+	case "xoodyak", "xhash":
+		h = xoodyak.NewXoodyakHash()
+	case "skein", "skein256":
+		h = skein.New256([]byte(*key))
+	case "skein512":
+		h = skein.New512([]byte(*key))
+	case "jh":
+		h = jh.New256()
+	case "groestl":
+		h = groestl.New256()
+	case "tiger":
+		h = tiger.New()
+	case "tiger2":
+		h = tiger.New2()
+	case "kupyna256", "kupyna":
+		h = kupyna.New256()
+	case "kupyna384":
+		h = kupyna.New384()
+	case "kupyna512":
+		h = kupyna.New512()
+	case "echo224":
+		h = echo.New224()
+	case "echo", "echo256":
+		h = echo.New256()
+	case "echo384":
+		h = echo.New384()
+	case "echo512":
+		h = echo.New512()
+	case "esch", "esch256":
+		h = esch.New256()
+	case "esch384":
+		h = esch.New384()
+	case "bmw":
+		h = bmw.New()
+	case "cubehash256":
+		h = cubehash256.New()
+	case "hamsi224":
+		h = hamsi.New224()
+	case "hamsi", "hamsi256":
+		h = hamsi.New256()
+	case "hamsi384":
+		h = hamsi.New384()
+	case "hamsi512":
+		h = hamsi.New512()
+	case "fugue224":
+		h = fugue.New224()
+	case "fugue", "fugue256":
+		h = fugue.New256()
+	case "fugue384":
+		h = fugue.New384()
+	case "fugue512":
+		h = fugue.New512()
+	case "luffa224":
+		h = luffa.New224()
+	case "luffa", "luffa256":
+		h = luffa.New256()
+	case "luffa384":
+		h = luffa.New384()
+	case "luffa512":
+		h = luffa.New512()
+	case "shavite224":
+		h = shavite.New224()
+	case "shavite", "shavite256":
+		h = shavite.New256()
+	case "shavite384":
+		h = shavite.New384()
+	case "shavite512":
+		h = shavite.New512()
+	case "simd224":
+		h = simd.New224()
+	case "simd", "simd256":
+		h = simd.New256()
+	case "simd384":
+		h = simd.New384()
+	case "simd512":
+		h = simd.New512()
 	}
 
 	if *random != 0 {
@@ -3335,7 +3500,7 @@ Subcommands:
 	}
 
 	if *digest && (Files == "-" || Files == "") {
-		h := myHash()
+		h.Reset()
 		io.Copy(h, os.Stdin)
 		fmt.Println(hex.EncodeToString(h.Sum(nil)), "(stdin)")
 		os.Exit(0)
@@ -3348,7 +3513,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			for _, match := range files {
-				h := myHash()
+				h.Reset()
 				f, err := os.Open(match)
 				if err != nil {
 					log.Fatal(err)
@@ -3387,7 +3552,7 @@ Subcommands:
 							log.Fatal(err)
 						}
 						if matched {
-							h := myHash()
+							h.Reset()
 							f, err := os.Open(path)
 							if err != nil {
 								log.Fatal(err)
@@ -3419,7 +3584,7 @@ Subcommands:
 		for _, eachline := range txtlines {
 			lines := strings.Split(string(eachline), " *")
 			if strings.Contains(string(eachline), " *") {
-				h := myHash()
+				h.Reset()
 				_, err := os.Stat(lines[1])
 				if err == nil {
 					f, err := os.Open(lines[1])
