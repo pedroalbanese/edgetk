@@ -167,6 +167,7 @@ import (
 	"github.com/pedroalbanese/pmac"
 	"github.com/pedroalbanese/present"
 	"github.com/pedroalbanese/rabbitio"
+	"github.com/pedroalbanese/radio_gatun"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
 	"github.com/pedroalbanese/shavite"
@@ -339,26 +340,26 @@ Message Athentication Code:
   gost              pmac              vmac              help
 
 Message Digests:
-  blake2b256        hamsi224          luffa256          shake256
-  blake2b512        hamsi256          luffa384          shavite224
-  blake2s128 (MAC)  hamsi384          luffa512          shavite256
-  blake2s256        hamsi512          md4 [obsolete]    shavite384
-  blake3            haraka256         md5 [obsolete]    shavite512
-  bmw               haraka512         rmd128            simd224
-  cubehash256       has160 [obsolete] rmd160            simd256
-  cubehash512       jh                rmd256            simd384
-  echo224           keccak256         rmd320            simd512
-  echo256           keccak512         sha1 [obsolete]   siphash
-  echo384           kupyna256         sha224            siphash64
-  echo512           kupyna384         sha256 (default)  skein256
-  esch256           kupyna512         sha3-224          skein512
-  esch384           lsh224            sha3-256          sm3
-  fugue224          lsh256            sha3-384          streebog256
-  fugue256          lsh384            sha3-512          streebog512
-  fugue384          lsh512            sha384            tiger
-  fugue512          lsh512-224        sha512            tiger2
-  gost94            lsh512-256        sha512-256        whirlpool
-  groestl           luffa224          shake128          xoodyak`)
+  blake2b256        hamsi224          luffa256          sha512-256
+  blake2b512        hamsi256          luffa384          shake128
+  blake2s128 (MAC)  hamsi384          luffa512          shake256
+  blake2s256        hamsi512          md4 [obsolete]    shavite224
+  blake3            haraka256         md5 [obsolete]    shavite256
+  bmw               haraka512         radiogatun32      shavite384
+  cubehash256       has160 [obsolete] radiogatun64      shavite512
+  cubehash512       jh                rmd128            simd224
+  echo224           keccak256         rmd160            simd256
+  echo256           keccak512         rmd256            simd384
+  echo384           kupyna256         rmd320            simd512
+  echo512           kupyna384         sha1 [obsolete]   siphash
+  esch256           kupyna512         sha224            skein256
+  esch384           lsh224            sha256 (default)  skein512
+  fugue224          lsh256            sha3-224          sm3
+  fugue256          lsh384            sha3-256          streebog256
+  fugue384          lsh512            sha3-384          streebog512
+  fugue512          lsh512-224        sha3-512          tiger/2
+  gost94            lsh512-256        sha384            whirlpool
+  groestl           luffa224          sha512            xoodyak`)
 		os.Exit(3)
 	}
 
@@ -653,11 +654,6 @@ Subcommands:
 		myHash = crypto.BLAKE2b_256.New
 	case "blake2b512":
 		myHash = crypto.BLAKE2b_512.New
-	case "blake2s128":
-		h, _ := blake2s.New128([]byte(*key))
-		myHash = func() hash.Hash {
-			return h
-		}
 	case "blake2s256":
 		myHash = crypto.BLAKE2s_256.New
 	case "blake3":
@@ -760,6 +756,10 @@ Subcommands:
 		myHash = simd.New384
 	case "simd512":
 		myHash = simd.New512
+	case "radiogatun", "radiogatun32":
+		myHash = radio_gatun.New32
+	case "radiogatun64":
+		myHash = radio_gatun.New64
 	}
 
 	var h hash.Hash
@@ -924,6 +924,10 @@ Subcommands:
 		h = simd.New384()
 	case "simd512":
 		h = simd.New512()
+	case "radiogatun", "radiogatun32":
+		h = radio_gatun.New32()
+	case "radiogatun64":
+		h = radio_gatun.New64()
 	}
 
 	if *random != 0 {
@@ -1266,7 +1270,7 @@ Subcommands:
 	}
 
 	if (*cph == "present" || *cph == "twine") && *pkey != "keygen" && (*length != 80) && *crypt != "" {
-		*length = 80
+		*length = 128
 	}
 
 	if (*cph == "anubis") && *pkey != "keygen" && (*length < 128 || *length > 320) && *crypt != "" {
@@ -12465,6 +12469,10 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = simd.New384
 	case "simd512":
 		myHash = simd.New512
+	case "radiogatun", "radiogatun32":
+		myHash = radio_gatun.New32
+	case "radiogatun64":
+		myHash = radio_gatun.New64
 	}
 	hkdf := hkdf.New(myHash, master, salt, info)
 
@@ -12649,6 +12657,10 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = simd.New384
 	case "simd512":
 		myHash = simd.New512
+	case "radiogatun", "radiogatun32":
+		myHash = radio_gatun.New32
+	case "radiogatun64":
+		myHash = radio_gatun.New64
 	}
 
 	xy := make([]uint32, 64*r)
