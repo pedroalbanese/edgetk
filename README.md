@@ -220,18 +220,18 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | BLAKE-2B        |     |     |     | O   | O   | O   |
     | BLAKE-2S        | O   |     |     | O   |     | O   |
     | BLAKE-3         |     |     |     | O   |     |     |
-    | BMW             |     |     |     | O   |     |     |
+    | BMW             |     |     |     | O   | O   |     |
     | Chaskey         | O   |     |     |     |     | O   |
     | CubeHash        |     |     |     | O   | O   |     |
     | ECHO            |     |     |     | O   | O   |     | 
     | ESCH            |     |     |     | O   |     |     | 
     | Fugue           |     |     |     | O   | O   |     |
     | GOST94 CryptoPro      |     |     |     | O   |     |     |
-    | Grøstl          |     |     |     | O   |     |     |
+    | Grøstl          |     |     |     | O   | O   |     |
     | Hamsi           |     |     |     | O   | O   |     |
     | Haraka v2       |     |     |     | O   |     |     |
     | HAS-160         |     | O   |     |     |     |     |
-    | JH              |     |     |     | O   |     |     |
+    | JH              |     |     |     | O   | O   |     |
     | Kupyna          |     |     |     | O   | O   | O   |
     | Legacy Keccak   |     |     |     | O   | O   |     |
     | LSH             |     |     |     | O   | O   |     |
@@ -239,6 +239,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | MD4 [Obsolete]  | O   |     |     |     |     |     |
     | MD5 [Obsolete]  | O   |     |     |     |     |     |
     | Poly1305        | O   |     |     |     |     | O   |
+    | Radio-Gatun     |     |     |     | O   |     |     |
     | RIPEMD          | O   | O   |     | O   |     |     |
     | SHA1 [Obsolete] |     | O   |     |     |     |     |
     | SHA2 (default)  |     |     |     | O   | O   |     | 
