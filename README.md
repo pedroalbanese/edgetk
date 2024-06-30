@@ -198,7 +198,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |      Cipher    | Block Size |  Key Size    |    Modes    |
     |:--------------|:----:|:----:|:---------------------:|
-    | Curupira      |   96 |  96/144/192 |EAX, CFB-8, CTR, CBC, ECB, IGE|
+    | Curupira      |   96 |  96/144/192 |EAX, CFB-8, CTR, CBC, IGE|
 
 - **Modes of Operation:**
 
