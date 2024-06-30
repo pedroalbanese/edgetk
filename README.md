@@ -455,7 +455,7 @@ We then reconstruct the challenge with:
 
 $chall = C1 || C2 || R1 || R2 || \text{Nonce}$
 
-We take this value and hash it ($H()$), and create a scalar value with ($ek$) to produce:
+We take this value and hash it ($H$()), and create a scalar value with ($ek$) to produce:
 
 $c = H(\text{chall}) \cdot ek$
 
