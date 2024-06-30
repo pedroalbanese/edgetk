@@ -195,6 +195,12 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | RC5 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
     | TWINE            |          64|        80/128|EAX, MGM, CFB-8, CTR|
 
+- **Experimental:**
+
+    |     Cipher    |  Key |  IV  |         Mode          |
+    |:--------------|:----:|:----:|:---------------------:|
+    | Curuupira     |  96/144/192 |  96 |EAX, CfB-8, CTR, IGE|
+
 - **Modes of Operation:**
 
     |Mode |                                | Blocks     |  Keys     |
