@@ -335,142 +335,131 @@ $$
 
 
 ### ElGamal
-The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number ![p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20p) and a generator ![g](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g) for a finite cyclic group are generated. Each entity possesses a private key ![x](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20x), kept secret, and a public key ![Y](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y), derived from ![g^x \mod p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g%5Ex%20%5Cmod%20p). To encrypt a symmetric key, the sender uses the session key, computes two components \(a\) and \(b\), and sends ![g^k \mod p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g%5Ek%20%5Cmod%20p) and ![Y^k \cdot \text{key} \mod p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y%5Ek%20%5Ccdot%20%5Ctext%7Bkey%7D%20%5Cmod%20p) to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
+The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number $p$ and a generator $g$ for a finite cyclic group are generated. Each entity possesses a private key $x$, kept secret, and a public key $Y$, derived from $g^x \mod p$. To encrypt a symmetric key, the sender uses the session key, computes two components \(a\) and \(b\), and sends $g^k \mod p$ and $Y^k \cdot \text{key} \mod p$ to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
 
 <details>
   <summary>ElGamal Theory</summary>  
 
 #### Key Generation
 
-1. Generate a large prime number
-![Geração de Chaves - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20p).
-2. Select a generator 
-![Geração de Chaves - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g%20%5Cin%20%5B2,%20p-2%5D).
-3. Generate a private key 
-![Geração de Chaves - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20x) randomly.
-4. Compute the public key
-![Geração de Chaves - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y%20%3D%20g%5Ex%20%5Cmod%20p).
+1. Generate a large prime number $p$.
+2. Select a generator $g \in [2, p-2]$.
+3. Generate a private key $x$ randomly.
+4. Compute the public key $Y = g^x \mod p$.
 
 #### Digital Signature
 
-1. Select a random value 
-![Assinatura - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20k) such that 
-![Assinatura - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%201%20%3C%20k%20%3C%20p-1%2C%20%5Ctext%7Bgcd%7D(k%2C%20p-1)%20%3D%201).
-2. Compute the first signature component: 
-![Assinatura - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20r%20%3D%20g%5Ek%20%5Cmod%20p).
-3. Compute the second signature component:
-![Assinatura - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20s%20%5Cequiv%20%28H(m)%20-%20x%20%5Ccdot%20r%29%20%5Ccdot%20k%5E%7B-1%7D%20%5Cmod%20(p-1)).
+1. Select a random value $k$ such that $1 < k < p-1$, $\text{gcd}(k, p-1) = 1$.
+2. Compute the first signature component: $r = g^k \mod p$.
+3. Compute the second signature component: $s \equiv (H(m) - x \cdot r) \cdot k^{-1} \mod (p-1)$.
 
 #### Digital Signature Verification
 
-1. Receive the message ![Verificação - Passo 1a](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20m) and the signature components ![Verificação - Passo 1b](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20(r%2C%20s)).
-2. Compute
-![Verificação - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20w%20%5Cequiv%20s%5E%7B-1%7D%20%5Cmod%20(p-1)).
-3. Compute
-![Verificação - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20u_1%20%5Cequiv%20H(m)%20%5Ccdot%20w%20%5Cmod%20(p-1)).
-4. Compute
-![Verificação - Passo 4](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20u_2%20%5Cequiv%20r%20%5Ccdot%20w%20%5Cmod%20(p-1)).
-5. Compute
-![Verificação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20g%5E%7Bu_1%7D%20%5Ccdot%20Y%5E%7Bu_2%7D%20%5Cmod%20p).
-6. The signature is valid if
-![Verificação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20v%20%5Cequiv%20r%20%5Cmod%20p).
+1. Receive the message $m$ and the signature components $(r, s)$.
+2. Compute $w \equiv s^{-1} \mod (p-1)$.
+3. Compute $u_1 \equiv H(m) \cdot w \mod (p-1)$.
+4. Compute $u_2 \equiv r \cdot w \mod (p-1)$.
+5. Compute $v \equiv g^{u_1} \cdot Y^{u_2} \mod p$.
+6. The signature is valid if $v \equiv r \mod p$.
 
 #### Key Agreement
 
-1. Bob generates his key pair
-![Encriptação - Passo 1](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28x_B,%20Y_B%29).
-2. Bob shares his public key
-![Encriptação - Passo 2](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y_B) with Alice.
-3. Alice generates a random symmetric key
-![Encriptação - Passo 3](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D).
-4. Alice encrypts ![Encriptação - Passo 4a](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) using Bob's public key: 
-![Encriptação - Passo 4b](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20a%20%3D%20g%5E%7Bk_A%7D%20%5Cmod%20p%2C%20%5C%5C%20b%20%3D%20Y_B%5E%7Bk_A%7D%20%5Ccdot%20K_%7B%5Ctext%7Bsym%7D%7D%20%5Cmod%20p).
-5. Alice sends the ciphertext 
-![Encriptação - Passo 5](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20%28a,%20b%29)  to Bob.
+1. Bob generates his key pair $(x_B, Y_B)$.
+2. Bob shares his public key $Y_B$ with Alice.
+3. Alice generates a random symmetric key $K_{\text{sym}}$.
+4. Alice encrypts $K_{\text{sym}}$ using Bob's public key: 
+   $a = g^{k_A} \mod p, \\
+   b = Y_B^{k_A} \cdot K_{\text{sym}} \mod p$.
+5. Alice sends the ciphertext $(a, b)$ to Bob.
 6. Bob decrypts the received ciphertext using his private key to obtain:
-![Encriptação - Passo 6](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D%20%3D%20%28b%20%5Ccdot%20a%5E%7B-x_B%7D%29%20%5Cmod%20p).
-7. Now, both Alice and Bob have the shared symmetric key ![Encriptação - Passo 4a](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20K_%7B%5Ctext%7Bsym%7D%7D) for further communication.
+   $K_{\text{sym}} = (b \cdot a^{-x_B}) \mod p$.
+7. Now, both Alice and Bob have the shared symmetric key $K_{\text{sym}}$ for further communication.
 </details>
 
 ### EC-ElGamal
-The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key. Initially, each party generates its private key as a random number ![x](https://latex.codecogs.com/svg.latex?x) and computes its corresponding public key ![Q = x \cdot G](https://latex.codecogs.com/svg.latex?Q%20%3D%20x%20%5Ccdot%20G), where ![G](https://latex.codecogs.com/svg.latex?G) is a base point on the elliptic curve. To encrypt a message ![M](https://latex.codecogs.com/svg.latex?M), the sender selects a random value ![r](https://latex.codecogs.com/svg.latex?r) and computes ![\(t = r \cdot Q\)](https://latex.codecogs.com/svg.latex?t%20%3D%20r%20%5Ccdot%20Q) and ![\(C2 = M \cdot H + r \cdot Q\)](https://latex.codecogs.com/svg.latex?C2%20%3D%20M%20%5Ccdot%20H%20%2B%20r%20%5Ccdot%20Q), where \(H\) is another point on the elliptic curve. These values are then combined to form the additional authentication data (AAD), which is used along with the message for symmetric encryption. A nonce value is also generated to ensure randomness in the cipher. The receiver uses their private key \(x\) to derive ![\(t = x \cdot C1\)](https://latex.codecogs.com/svg.latex?t%20%3D%20x%20%5Ccdot%20C1) and from it, the symmetric key used to decrypt the message. The algorithm also includes a zero-knowledge proof (ZKP) mechanism based on Schnorr, allowing the receiver to verify the authenticity of the received message without revealing their private key.
+The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key. Initially, each party generates its private key as a random number $x$ and computes its corresponding public key $Q = x \cdot G$, where $G$ is a base point on the elliptic curve. To encrypt a message $M$, the sender selects a random value $r$ and computes $t = r \cdot Q$ and $C2 = M \cdot H + r \cdot Q$, where $H$ is another point on the elliptic curve. These values are then combined to form the additional authentication data (AAD), which is used along with the message for symmetric encryption. A nonce value is also generated to ensure randomness in the cipher. The receiver uses their private key $x$ to derive $t = x \cdot C1$ and from it, the symmetric key used to decrypt the message. The algorithm also includes a zero-knowledge proof (ZKP) mechanism based on Schnorr, allowing the receiver to verify the authenticity of the received message without revealing their private key.
 
 <details>
   <summary>EC-ElGamal Theory</summary>    
-	
-We initially create a private key as a random number ![x](https://latex.codecogs.com/svg.latex?x) and a public key of:  
 
-![Q = x \cdot G](https://latex.codecogs.com/svg.latex?Q%20%3D%20x%20%5Ccdot%20G)
+We initially create a private key as a random number $x$ and a public key of:  
 
-With standard ElGamal encryption, we generate a random value ![r](https://latex.codecogs.com/svg.latex?r) to give:
+$Q = x \cdot G$
 
-![t = r \cdot Q](https://latex.codecogs.com/svg.latex?t%20%3D%20r%20%5Ccdot%20Q)
+With standard ElGamal encryption, we generate a random value $r$ to give:
+
+$t = r \cdot Q$
 
 We then create a symmetric key from this elliptic curve point:
 
-![AEADKey = \text{Derive}(t)](https://latex.codecogs.com/svg.latex?%5Ctext%7BAEADKey%7D%20%3D%20%5Ctext%7BDerive%7D%28t%29)
+$AEADKey = \text{Derive}(t)$
 
-and where ![Derive](https://latex.codecogs.com/svg.latex?Derive) just converts a point on the curve to a byte array value that is the length of the required symmetric encryption key (such as for 32 bytes in the case of 256-bit Anubis).
+and where $\text{Derive}$ just converts a point on the curve to a byte array value that is the length of the required symmetric encryption key (such as for 32 bytes in the case of 256-bit Anubis).
 
 Next, we compute the ciphertext values of:
 
-![C1 = r \cdot G](https://latex.codecogs.com/svg.latex?C1%20%3D%20r%20%5Ccdot%20G)  
-![C2 = M \cdot H + r \cdot Q](https://latex.codecogs.com/svg.latex?C2%20%3D%20M%20%5Ccdot%20H%20%2B%20r%20%5Ccdot%20Q)
+$C1 = r \cdot G$  
+$C2 = M \cdot H + r \cdot Q$
 
-and where ![M](https://latex.codecogs.com/svg.latex?M) is the ![msg](https://latex.codecogs.com/svg.latex?%5Ctext%7Bmsg%7D) value converted into a scalar value. We then append these together to create the additional data that will be used for the symmetric key encryption of the message:
+and where $M$ is the $msg$ value converted into a scalar value. We then append these together to create the additional data that will be used for the symmetric key encryption of the message:
 
-![AAD = C1 || C2](https://latex.codecogs.com/svg.latex?%5Ctext%7BAAD%7D%20%3D%20C1%20%7C%7C%20C2)
+$AAD = C1 || C2$
 
-We then generate a nonce value (![Nonce](https://latex.codecogs.com/svg.latex?%5Ctext%7BNonce%7D)) and then perform symmetric key encryption on the message:
+We then generate a nonce value ($\text{Nonce}$) and then perform symmetric key encryption on the message:
 
-![cipher = \text{EncAEADKey}(\text{msg}, \text{Nonce}, \text{AAD})](https://latex.codecogs.com/svg.latex?%5Ctext%7Bcipher%7D%20%3D%20%5Ctext%7BEncAEADKey%7D%28%5Ctext%7Bmsg%7D%2C%20%5Ctext%7BNonce%7D%2C%20%5Ctext%7BAAD%7D%29)
+$cipher = \text{EncAEADKey}(\text{msg}, \text{Nonce}, \text{AAD})$
 
-The ciphertext then has values of ![C1](https://latex.codecogs.com/svg.latex?C1), ![C2](https://latex.codecogs.com/svg.latex?C2), ![Nonce](https://latex.codecogs.com/svg.latex?%5Ctext%7BNonce%7D), and ![cipher](https://latex.codecogs.com/svg.latex?%5Ctext%7Bcipher%7D). ![C1](https://latex.codecogs.com/svg.latex?C1), ![C2](https://latex.codecogs.com/svg.latex?C2) are points on the curve, and the ![Nonce](https://latex.codecogs.com/svg.latex?%5Ctext%7BNonce%7D) value and ![cipher](https://latex.codecogs.com/svg.latex?%5Ctext%7Bcipher%7D) are byte array values. To decrypt, we take the private key (![x](https://latex.codecogs.com/svg.latex?x)) and derive:
+The ciphertext then has values of $C1$, $C2$, $\text{Nonce}$, and $\text{cipher}$. $C1$, $C2$ are points on the curve, and the $\text{Nonce}$ value and $\text{cipher}$ are byte array values. To decrypt, we take the private key ($x$) and derive:
 
-![t = x \cdot C1](https://latex.codecogs.com/svg.latex?t%20%3D%20x%20%5Ccdot%20C1)  
-![AEADKey = \text{Derive}(t)](https://latex.codecogs.com/svg.latex?%5Ctext%7BAEADKey%7D%20%3D%20%5Ctext%7BDerive%7D%28t%29)  
-![AAD = C1 || C2](https://latex.codecogs.com/svg.latex?%5Ctext%7BAAD%7D%20%3D%20C1%20%7C%7C%20C2)  
-![msg = \text{DecAEADKey}(\text{cipher}, \text{Nonce}, \text{AAD})](https://latex.codecogs.com/svg.latex?%5Ctext%7Bmsg%7D%20%3D%20%5Ctext%7BDecAEADKey%7D%28%5Ctext%7Bcipher%7D%2C%20%5Ctext%7BNonce%7D%2C%20%5Ctext%7BAAD%7D%29)
+$t = x \cdot C1$  
+$AEADKey = \text{Derive}(t)$  
+$AAD = C1 || C2$  
+$msg = \text{DecAEADKey}(\text{cipher}, \text{Nonce}, \text{AAD})$
 
 Here is an overview of the method:
 
-To generate the proof, we generate a random value (![r](https://latex.codecogs.com/svg.latex?r)) and a blinding factor (![b](https://latex.codecogs.com/svg.latex?b)) to give two points on the elliptic curve:
+To generate the proof, we generate a random value ($r$) and a blinding factor ($b$) to give two points on the elliptic curve:
 
-![R1 = r \cdot G](https://latex.codecogs.com/svg.latex?R1%20%3D%20r%20%5Ccdot%20G)  
-![R2 = r \cdot Q + b \cdot H](https://latex.codecogs.com/svg.latex?R2%20%3D%20r%20%5Ccdot%20Q%20%2B%20b%20%5Ccdot%20H)
+$R1 = r \cdot G$  
+$R2 = r \cdot Q + b \cdot H$
 
 Next, we create the challenge bytes with:
 
-![chall = C1 || C2 || R1 || R2 || \text{Nonce}](https://latex.codecogs.com/svg.latex?%5Ctext%7Bchall%7D%20%3D%20C1%20%7C%7C%20C2%20%7C%7C%20R1%20%7C%7C%20R2%20%7C%7C%20%5Ctext%7BNonce%7D)
+$chall = C1 || C2 || R1 || R2 || \text{Nonce}$
 
-We take this value and hash it (![H()](https://latex.codecogs.com/svg.latex?H%28%29)), and create a scalar value with (![ek](https://latex.codecogs.com/svg.latex?ek)) to produce:
+We take this value and hash it ($H()$), and create a scalar value with ($ek$) to produce:
 
-![c = H(\text{chall}) \cdot ek](https://latex.codecogs.com/svg.latex?c%20%3D%20H%28%5Ctext%7Bchall%7D%29%20%5Ccdot%20ek)
+$c = H(\text{chall}) \cdot ek$
 
 We then create two Schnorr proof values:
 
-![S1 = b - c \cdot m](https://latex.codecogs.com/svg.latex?S1%20%3D%20b%20-%20c%20%5Ccdot%20m)
-![S2 = r - c \cdot b](https://latex.codecogs.com/svg.latex?S2%20%3D%20r%20-%20c%20%5Ccdot%20b)
+$S1 = b - c \cdot m$  
+$S2 = r - c \cdot b$
 
-To verify the proof, we reconstruct ![R1](https://latex.codecogs.com/svg.latex?R1):
+To verify the proof, we reconstruct $R1$:
 
-![R1 = c \cdot C1 + S2 \cdot G](https://latex.codecogs.com/svg.latex?R1%20%3D%20c%20%5Ccdot%20C1%20%2B%20S2%20%5Ccdot%20G)
+$R1 = c \cdot C1 + S2 \cdot G$
 
-We reconstruct ![R2](https://latex.codecogs.com/svg.latex?R2):
+We reconstruct $R2$:
 
-![R2 = c \cdot C2 + S1 \cdot Q + S1 \cdot H](https://latex.codecogs.com/svg.latex?R2%20%3D%20c%20%5Ccdot%20C2%20%2B%20S1%20%5Ccdot%20Q%20%2B%20S1%20%5Ccdot%20H)
+$R2 = c \cdot C2 + S1 \cdot Q + S1 \cdot H$
 
 This works because:
 
-![\begin{align*} R2 & = c \cdot C2 + S1 \cdot Q + S1 \cdot H \\ & = c \cdot (b \cdot Q + m \cdot H) + (r - cb) \cdot Q + (b - cm) \cdot H \\ & = (cb + r - cb) \cdot Q + (cm + b - cm) \cdot H \\ & = r \cdot Q + b \cdot H \end{align*}](https://latex.codecogs.com/svg.latex?%5Cbegin%7Balign*%7D%20R2%20%26%20%3D%20c%20%5Ccdot%20C2%20%2B%20S1%20%5Ccdot%20Q%20%2B%20S1%20%5Ccdot%20H%20%5C%5C%20%26%20%3D%20c%20%5Ccdot%20%28b%20%5Ccdot%20Q%20%2B%20m%20%5Ccdot%20H%29%20%2B%20%28r%20-%20cb%29%20%5Ccdot%20Q%20%2B%20%28b%20-%20cm%29%20%5Ccdot%20H%20%5C%5C%20%26%20%3D%20%28cb%20%2B%20r%20-%20cb%29%20%5Ccdot%20Q%20%2B%20%28cm%20%2B%20b%20-%20cm%29%20%5Ccdot%20H%20%5C%5C%20%26%20%3D%20r%20%5Ccdot%20Q%20%2B%20b%20%5Ccdot%20H%20%5Cend%7Balign*%7D)
+$\begin{align*}
+R2 & = c \cdot C2 + S1 \cdot Q + S1 \cdot H \\
+& = c \cdot (b \cdot Q + m \cdot H) + (r - cb) \cdot Q + (b - cm) \cdot H \\
+& = (cb + r - cb) \cdot Q + (cm + b - cm) \cdot H \\
+& = r \cdot Q + b \cdot H
+\end{align*}$
 
 We then reconstruct the challenge with:
 
-![chall = C1 || C2 || R1 || R2 || \text{Nonce}](https://latex.codecogs.com/svg.latex?%5Ctext%7Bchall%7D%20%3D%20C1%20%7C%7C%20C2%20%7C%7C%20R1%20%7C%7C%20R2%20%7C%7C%20%5Ctext%7BNonce%7D)
+$chall = C1 || C2 || R1 || R2 || \text{Nonce}$
 
-We take this value and hash it (![H()](https://latex.codecogs.com/svg.latex?H%28%29)), and create a scalar value with (![ek](https://latex.codecogs.com/svg.latex?ek)) to produce:
+We take this value and hash it ($H()$), and create a scalar value with ($ek$) to produce:
 
-![c = H(\text{chall}) \cdot ek](https://latex.codecogs.com/svg.latex?c%20%3D%20H%28%5Ctext%7Bchall%7D%29%20%5Ccdot%20ek)
+$c = H(\text{chall}) \cdot ek$
 
 This value is then checked against the challenge in the proof, and if they are the same, the proof is verified.
 </details>
