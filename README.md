@@ -327,7 +327,7 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 
 ### Curupira
 
-Curupira is a 96-bit block cipher, with keys of 96, 144 or 192 bits, and variable number of rounds, an algorithm described at SBRC 2007 by Paulo S. L. M. Barreto, Marcos A. Simplício Jr.
+Curupira is a 96-bit block cipher, with keys of 96, 144 or 192 bits, and variable number of rounds, an algorithm described at SBRC 2007 by Paulo S. L. M. Barreto and Marcos A. Simplício Jr.
 
 $$
 \text{Curupira}[K] \equiv \sigma[\kappa(R)] \circ \pi \circ \gamma \circ \left( \prod_{r=1}^{R-1} \sigma[\kappa(r)] \circ \theta \circ \pi \circ \gamma \right) \circ \sigma[\kappa(0)]
@@ -446,12 +446,10 @@ $R2 = c \cdot C2 + S1 \cdot Q + S1 \cdot H$
 
 This works because:
 
-$\begin{align*}
-R2 & = c \cdot C2 + S1 \cdot Q + S1 \cdot H \\
-& = c \cdot (b \cdot Q + m \cdot H) + (r - cb) \cdot Q + (b - cm) \cdot H \\
-& = (cb + r - cb) \cdot Q + (cm + b - cm) \cdot H \\
-& = r \cdot Q + b \cdot H
-\end{align*}$
+$R2 = c \cdot C2 + S1 \cdot Q + S1 \cdot H$  
+$\quad = c \cdot (b \cdot Q + m \cdot H) + (r - cb) \cdot Q + (b - cm) \cdot H$  
+$\quad = (cb + r - cb) \cdot Q + (cm + b - cm) \cdot H$  
+$\quad = r \cdot Q + b \cdot H$
 
 We then reconstruct the challenge with:
 
