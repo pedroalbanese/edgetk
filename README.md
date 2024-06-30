@@ -199,7 +199,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |     Cipher    |  Key |  IV  |         Mode          |
     |:--------------|:----:|:----:|:---------------------:|
-    | Curuupira     |  96/144/192 |  96 |EAX, CfB-8, CTR, IGE|
+    | Curupira     |  96/144/192 |  96 |EAX, CfB-8, CTR, CBC, IGE|
 
 - **Modes of Operation:**
 
