@@ -324,6 +324,15 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 ```
 </details>
 
+### Curupira
+
+Curupira is a 96-bit block cipher, with keys of 96, 144 or 192 bits, and variable number of rounds, an algorithm described at SBRC 2007 by Paulo S. L. M. Barreto, Marcos A. Simplício Jr.
+
+$$
+\text{Curupira}[K] \equiv \sigma[\kappa(R)] \circ \pi \circ \gamma \circ \left( \prod_{r=1}^{R-1} \sigma[\kappa(r)] \circ \theta \circ \pi \circ \gamma \right) \circ \sigma[\kappa(0)]
+$$
+
+
 ### ElGamal
 The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number ![p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20p) and a generator ![g](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g) for a finite cyclic group are generated. Each entity possesses a private key ![x](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20x), kept secret, and a public key ![Y](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y), derived from ![g^x \mod p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g%5Ex%20%5Cmod%20p). To encrypt a symmetric key, the sender uses the session key, computes two components \(a\) and \(b\), and sends ![g^k \mod p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20g%5Ek%20%5Cmod%20p) and ![Y^k \cdot \text{key} \mod p](https://latex.codecogs.com/svg.latex?%5Cdpi%7B120%7D%20%5Cfn_phv%20%5Csmall%20Y%5Ek%20%5Ccdot%20%5Ctext%7Bkey%7D%20%5Cmod%20p) to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
 
