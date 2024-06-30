@@ -177,7 +177,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
    
 - **64-bit block ciphers:**
 
-
     |      Cipher      | Block Size |  Key Size    |    Modes    |
     |:-----------------|:----------:|:------------:|:-----------:|
     | DES [Obsolete]   |          64|            64|EAX, CFB-8, CTR, OFB|
@@ -197,9 +196,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Experimental:**
 
-    |     Cipher    |  Key |  IV  |         Mode          |
+    |      Cipher    | Block Size |  Key Size    |    Modes    |
     |:--------------|:----:|:----:|:---------------------:|
-    | Curupira     |  96/144/192 |  96 |EAX, CFB-8, CTR, CBC, ECB, IGE|
+    | Curupira      |   96 |  96/144/192 |EAX, CFB-8, CTR, CBC, ECB, IGE|
 
 - **Modes of Operation:**
 
