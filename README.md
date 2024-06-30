@@ -75,14 +75,15 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 61. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
 62. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
 63. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
-64. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
-65. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
-66. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
-67. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-68. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
-69. US FIPS 197 Advanced Encryption Standard (AES)
-70. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
-71. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+64. SBRC 2007: Curupira 96-bit block cipher with 96/144/192-bit keys
+65. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+66. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+67. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
+68. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+69. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
+70. US FIPS 197 Advanced Encryption Standard (AES)
+71. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
+72. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
 </details>
 
