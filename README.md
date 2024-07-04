@@ -176,6 +176,12 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM4              |        128 |         128 | All modes supported     |
     | Twofish          |        128 | 128/192/256 | All modes supported     |
    
+- **96-bit block ciphers:**
+
+    |      Cipher    | Block Size |  Key Size    |    Modes    |
+    |:--------------|:----:|:----:|:---------------------:|
+    | Curupira      |   96 |  96/144/192 |EAX, MARVIN, CTR, CBC, IGE|
+
 - **64-bit block ciphers:**
 
     |      Cipher      | Block Size |  Key Size    |    Modes    |
@@ -194,12 +200,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | RC2 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
     | TWINE            |          64|        80/128|EAX, MGM, CFB-8, CTR|
-
-- **Experimental:**
-
-    |      Cipher    | Block Size |  Key Size    |    Modes    |
-    |:--------------|:----:|:----:|:---------------------:|
-    | Curupira      |   96 |  96/144/192 |EAX, CFB-8, CTR, CBC, IGE|
 
 - **Modes of Operation:**
 
