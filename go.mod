@@ -1,23 +1,18 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.12
+go 1.20
 
 require (
 	gitee.com/Trisia/gotlcp v1.3.17
 	github.com/RyuaNerin/go-krypto v1.2.4
-	github.com/aead/skein v0.0.0-20160722084837-9365ae6e95d2 // indirect
-	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb
-	github.com/dchest/blake256 v1.1.0 // indirect
-	github.com/deatil/go-cryptobin v1.0.2056
-	github.com/deedlefake/crypto v0.0.0-20170910233742-2f50d39c528d // indirect
+	github.com/deatil/go-cryptobin v1.0.2076
 	github.com/emmansun/certinfo v0.1.0
 	github.com/emmansun/gmsm v0.24.2
 	github.com/emmansun/go-pkcs12 v0.3.0
 	github.com/kasperdi/SPHINCSPLUS-golang v0.0.0-20231223193046-84468b93f7e9
 	github.com/pedroalbanese/IGE-go v0.0.0-20140730194654-752bc7fd80fb
 	github.com/pedroalbanese/anubis v0.0.1
-	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e
-	github.com/pedroalbanese/bmw v0.0.0-20240403151626-135f0d278f9f
+	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
 	github.com/pedroalbanese/camellia v0.0.0-20220911183557-30cc05c20118
 	github.com/pedroalbanese/cast256 v0.0.0-20240325185652-e35cf700d5fe
 	github.com/pedroalbanese/cast5 v0.0.0-20220924202825-3e5c3c00277c
@@ -30,13 +25,13 @@ require (
 	github.com/pedroalbanese/crystals-go v0.0.0-20240315230756-81011b679705
 	github.com/pedroalbanese/cubehash v0.0.0
 	github.com/pedroalbanese/cubehash256 v0.0.0-20240403151932-00980243a56a
+	github.com/pedroalbanese/curupira1 v0.0.0-gama
 	github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
-	github.com/pedroalbanese/eax v0.0.0-20240328204252-f37b5c0353b6
+	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
 	github.com/pedroalbanese/echo v0.0.0-20240329160327-5e65f19de84b
 	github.com/pedroalbanese/ecka-eg v0.0.3
-	github.com/pedroalbanese/ed448 v0.0.0-20240502143247-1488e9a9b965
 	github.com/pedroalbanese/esch v0.0.0-20240403151441-bc287e464d49
 	github.com/pedroalbanese/fugue v0.0.0-20240518170253-4e3af93fc75a
 	github.com/pedroalbanese/gmac v0.0.0-20231030174635-9eb35b8b4542
@@ -54,19 +49,18 @@ require (
 	github.com/pedroalbanese/gogost v0.0.0-20240430171730-f95129c7a5af
 	github.com/pedroalbanese/golang-rc6 v0.0.0-20240204183933-f7014051ac04
 	github.com/pedroalbanese/gopass v0.0.0-20210920133722-c8aef6fb66ef
-	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d
+	github.com/pedroalbanese/groestl v1.0.1
 	github.com/pedroalbanese/hamsi v0.0.0-20240518170147-c7c58b0f2a86
 	github.com/pedroalbanese/haraka v0.0.0-20180824194238-3cf1081eecd7
-	github.com/pedroalbanese/jh v0.0.0-20230125164747-5f04dcadc65e
+	github.com/pedroalbanese/jh v0.0.0-20240624180005-e6705e517191
 	github.com/pedroalbanese/kalyna v0.0.0-20240325185136-5fa784896340
 	github.com/pedroalbanese/khazad v0.0.0-20240325180817-e65ded2695ed
 	github.com/pedroalbanese/kupyna v0.0.0-20240326161126-ebb2f9665eeb
 	github.com/pedroalbanese/kuznechik v0.0.0
 	github.com/pedroalbanese/loki97 v0.0.0-20240325185530-a0580bcacc04
 	github.com/pedroalbanese/luffa v0.0.0-20240518171333-cf7dac6a64ae
-	github.com/pedroalbanese/lwcrypto v1.0.0
-	github.com/pedroalbanese/lyra2re v0.0.0-20240519222910-68d35c9b48d5
-	github.com/pedroalbanese/lyra2rev2 v0.0.0-20240403154941-f87fd41b92ca
+	github.com/pedroalbanese/lyra2re v0.0.0-20240520232624-5764a75dde63
+	github.com/pedroalbanese/lyra2rev2 v0.0.0-20240608181906-fe968f886565
 	github.com/pedroalbanese/makwa-go v0.0.0-20141227225204-3dbfaeed5fdb
 	github.com/pedroalbanese/mars v0.0.0-20240325185557-fe8b863ed824
 	github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f
@@ -76,6 +70,7 @@ require (
 	github.com/pedroalbanese/pmac v0.0.0-20220627194402-f0cad01ed05b
 	github.com/pedroalbanese/present v0.0.0-20240325185615-de3b5340e616
 	github.com/pedroalbanese/rabbitio v0.0.0-20230209212404-cffc97bafde8
+	github.com/pedroalbanese/radio_gatun v0.0.0-20240520204859-03d5d3af41c3
 	github.com/pedroalbanese/randomart v0.0.0-20130402080559-540116cac932
 	github.com/pedroalbanese/rc2 v0.0.0-20131011165748-24b9757f5521
 	github.com/pedroalbanese/shavite v0.0.0-20240518173728-5c0c7c528bc7
@@ -90,8 +85,22 @@ require (
 	github.com/pedroalbanese/twine v0.0.0-20240325185833-a027b56be619
 	github.com/pedroalbanese/vmac v0.0.0-20231111194716-1a03aacdcb4c
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
-	github.com/pedroalbanese/x448 v0.0.0-20240501225730-1328c1559a03
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.23.0
+	golang.org/x/crypto v0.24.0
+)
+
+require (
+	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
+	git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9 // indirect
+	github.com/bwesterb/go-ristretto v1.2.0 // indirect
+	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb // indirect
+	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
+	github.com/nixberg/chacha-rng-go v0.1.0 // indirect
+	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
+	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
+	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
 )
