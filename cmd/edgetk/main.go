@@ -115,6 +115,7 @@ import (
 	"github.com/pedroalbanese/crystals-go/crystals-kyber"
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/cubehash256"
+	"github.com/pedroalbanese/curupira1"
 	"github.com/pedroalbanese/curve448/ed448"
 	"github.com/pedroalbanese/curve448/x448"
 	"github.com/pedroalbanese/e2"
@@ -146,7 +147,7 @@ import (
 	"github.com/pedroalbanese/gogost/mgm"
 	"github.com/pedroalbanese/golang-rc6"
 	"github.com/pedroalbanese/gopass"
-	"github.com/pedroalbanese/groestl-1"
+	"github.com/pedroalbanese/groestl"
 	"github.com/pedroalbanese/hamsi"
 	"github.com/pedroalbanese/haraka"
 	"github.com/pedroalbanese/jh"
@@ -281,7 +282,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.0  18 May 2024")
+		fmt.Println("EDGE Toolkit v1.5.1  12 Jul 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -315,7 +316,7 @@ Modes of Operation:
   ocb (aead)        ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              des [obsolete]    khazad            rc5
+  3des              curupira          khazad            rc5
   aes (default)     e2                kuznechik         rc6
   anubis            gost89            lea               seed
   aria              hight             loki97            serpent
@@ -328,38 +329,40 @@ Block Ciphers:
 
 Key Derivation Functions:
   hkdf              pbkdf2            scrypt            gost
-  argon2            lyra2re           lyra2re2          help
+  argon2            blake3            lyra2re/2         help
 
 Password Hash Functions:
   argon2            bcrypt            lyra2re/2         makwa
 
 Message Athentication Code:
+  blake3            gost              pmac              vmac
   chaskey           hmac              poly1305          xoodyak
   cmac              kmac              siphash           zuc128/eia128
   gmac              mgmac             skein             zuc256/eia256
-  gost              pmac              vmac              help
 
 Message Digests:
-  blake2b256        hamsi224          luffa256          sha512-256
-  blake2b512        hamsi256          luffa384          shake128
-  blake2s128 (MAC)  hamsi384          luffa512          shake256
-  blake2s256        hamsi512          md4 [obsolete]    shavite224
-  blake3            haraka256         md5 [obsolete]    shavite256
-  bmw               haraka512         radiogatun32      shavite384
-  cubehash256       has160 [obsolete] radiogatun64      shavite512
-  cubehash512       jh                rmd128            simd224
-  echo224           keccak256         rmd160            simd256
-  echo256           keccak512         rmd256            simd384
-  echo384           kupyna256         rmd320            simd512
-  echo512           kupyna384         sha1 [obsolete]   siphash
-  esch256           kupyna512         sha224            skein256
-  esch384           lsh224            sha256 (default)  skein512
-  fugue224          lsh256            sha3-224          sm3
-  fugue256          lsh384            sha3-256          streebog256
-  fugue384          lsh512            sha3-384          streebog512
-  fugue512          lsh512-224        sha3-512          tiger/2
-  gost94            lsh512-256        sha384            whirlpool
-  groestl           luffa224          sha512            xoodyak`)
+  blake2b256        groestl224        lsh384            sha3-256
+  blake2b512        groestl256        lsh512            sha3-384
+  blake2s128 (MAC)  groestl384        lsh512-224        sha3-512
+  blake2s256        groestl512        lsh512-256        shake128
+  blake3            hamsi224          luffa224          shake256
+  bmw224            hamsi256          luffa256          shavite224
+  bmw256            hamsi384          luffa384          shavite256
+  bmw384            hamsi512          luffa512          shavite384
+  bmw512            haraka256         md5 [obsolete]    shavite512
+  cubehash256       haraka512         radiogatun32      simd224
+  cubehash512       has160 [obsolete] radiogatun64      simd256
+  echo224           jh224             rmd128            simd384
+  echo256           jh256             rmd160            simd512
+  echo384           jh384             rmd256            siphash
+  echo512           jh512             rmd320            skein256
+  esch256           keccak256         sha1 [obsolete]   skein512
+  esch384           keccak512         sha224            sm3
+  fugue224          kupyna256         sha256 (default)  streebog256
+  fugue256          kupyna384         sha384            streebog512
+  fugue384          kupyna512         sha512            tiger/2
+  fugue512          lsh224            sha512-256        whirlpool
+  gost94            lsh256            sha3-224          xoodyak`)
 		os.Exit(3)
 	}
 
@@ -688,10 +691,22 @@ Subcommands:
 		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-	case "jh":
+	case "jh224":
+		myHash = jh.New224
+	case "jh", "jh256":
 		myHash = jh.New256
-	case "groestl":
+	case "jh384":
+		myHash = jh.New384
+	case "jh512":
+		myHash = jh.New512
+	case "groestl224":
+		myHash = groestl.New224
+	case "groestl", "groestl256":
 		myHash = groestl.New256
+	case "groestl384":
+		myHash = groestl.New384
+	case "groestl512":
+		myHash = groestl.New512
 	case "tiger":
 		myHash = tiger.New
 	case "tiger2":
@@ -714,8 +729,14 @@ Subcommands:
 		myHash = esch.New256
 	case "esch384":
 		myHash = esch.New384
-	case "bmw":
-		myHash = bmw.New
+	case "bmw224":
+		myHash = bmw.New224
+	case "bmw", "bmw256":
+		myHash = bmw.New256
+	case "bmw384":
+		myHash = bmw.New384
+	case "bmw512":
+		myHash = bmw.New512
 	case "hamsi224":
 		myHash = hamsi.New224
 	case "hamsi", "hamsi256":
@@ -854,10 +875,22 @@ Subcommands:
 		h = skein.New256([]byte(*key))
 	case "skein512":
 		h = skein.New512([]byte(*key))
-	case "jh":
+	case "jh224":
+		h = jh.New224()
+	case "jh", "jh256":
 		h = jh.New256()
-	case "groestl":
+	case "jh384":
+		h = jh.New384()
+	case "jh512":
+		h = jh.New512()
+	case "groestl224":
+		h = groestl.New224()
+	case "groestl", "groestl256":
 		h = groestl.New256()
+	case "groestl384":
+		h = groestl.New384()
+	case "groestl512":
+		h = groestl.New512()
 	case "tiger":
 		h = tiger.New()
 	case "tiger2":
@@ -880,8 +913,14 @@ Subcommands:
 		h = esch.New256()
 	case "esch384":
 		h = esch.New384()
-	case "bmw":
-		h = bmw.New()
+	case "bmw224":
+		h = bmw.New224()
+	case "bmw", "bmw256":
+		h = bmw.New256()
+	case "bmw384":
+		h = bmw.New384()
+	case "bmw512":
+		h = bmw.New512()
 	case "cubehash256":
 		h = cubehash256.New()
 	case "hamsi224":
@@ -1273,6 +1312,10 @@ Subcommands:
 		*length = 128
 	}
 
+	if (*cph == "curupira") && *pkey != "keygen" && (*length != 96 && *length != 144 && *length != 192) && *crypt != "" {
+		*length = 96
+	}
+
 	if (*cph == "anubis") && *pkey != "keygen" && (*length < 128 || *length > 320) && *crypt != "" {
 		*length = 128
 	}
@@ -1337,7 +1380,7 @@ Subcommands:
 		*iter = 4096
 	}
 
-	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "LYRA2RE" || strings.ToUpper(*kdf) == "LYRA2RE2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "BLAKE3" || strings.ToUpper(*kdf) == "LYRA2RE" || strings.ToUpper(*kdf) == "LYRA2RE2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
 		*length = 256
 	}
 
@@ -1350,9 +1393,6 @@ Subcommands:
 	}
 
 	if *kdf == "pbkdf2" {
-		if *md == "jh" {
-			*salt = fmt.Sprintf("%-64s", *salt)
-		}
 		keyRaw := pbkdf2.Key([]byte(*key), []byte(*salt), *iter, *length/8, myHash)
 		*key = hex.EncodeToString(keyRaw)
 		if *crypt == "" {
@@ -1362,9 +1402,6 @@ Subcommands:
 	}
 
 	if *kdf == "scrypt" {
-		if *md == "jh" {
-			*salt = fmt.Sprintf("%-64s", *salt)
-		}
 		keyRaw, err := Scrypt([]byte(*key), []byte(*salt), *iter, 8, 1, *length/8)
 		if err != nil {
 			log.Fatal(err)
@@ -1434,6 +1471,94 @@ Subcommands:
 		if *crypt == "" {
 			fmt.Println(*key)
 			os.Exit(0)
+		}
+	}
+
+	if *kdf == "blake3" {
+		out := make([]byte, *length/8)
+		blake3.DeriveKey(*info, []byte(*key), out)
+		*key = hex.EncodeToString(out)
+
+		if *crypt == "" {
+			fmt.Println(*key)
+			os.Exit(0)
+		}
+	}
+
+	if *crypt != "" && (*cph == "curupira" && strings.ToUpper(*mode) == "LETTERSOUP") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 12 && len(key) != 18 && len(key) != 24 {
+				log.Fatal("Invalid key size. Key must be either 12, 18, or 24 bytes (96, 144, or 192 bits) for Curupira.")
+			}
+		}
+
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		aad := []byte(*info)
+
+		cipher, err := curupira1.NewCipher(key)
+		if err != nil {
+			log.Fatal("Error creating Curupira cipher instance:", err)
+		}
+
+		aead := curupira1.NewLetterSoup(cipher)
+
+		if *crypt == "enc" {
+			nonce := make([]byte, 12)
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			aead.SetIV(nonce)
+
+			ciphertext := make([]byte, len(msg))
+			aead.Encrypt(ciphertext, msg)
+			aead.Update(aad)
+			tag := aead.GetTag(nil, 96)
+
+			output := append(nonce, tag...)
+			output = append(output, ciphertext...)
+			os.Stdout.Write(output)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, tag, msg := msg[:12], msg[12:24], msg[24:]
+
+			aead.SetIV(nonce)
+
+			decrypted := make([]byte, len(msg))
+			aead.Decrypt(decrypted, msg)
+
+			ciphertext := make([]byte, len(decrypted))
+			aead.Encrypt(ciphertext, decrypted)
+			aead.Update(aad)
+			tagEnc := aead.GetTag(nil, 96)
+
+			if bytes.Equal(tag, tagEnc) {
+				os.Stdout.Write(decrypted)
+				os.Exit(0)
+			} else {
+				log.Fatal("Error: authentication verification failed!")
+			}
 		}
 	}
 
@@ -2527,6 +2652,72 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *crypt != "" && (*cph == "curupira") && (strings.ToUpper(*mode) == "EAX") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 24 && len(key) != 18 && len(key) != 12 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		ciph, err := curupira1.NewCipher(key)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var aead cipher.AEAD
+		aead, err = eax.NewEAX(ciph, 12)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := bytes.NewBuffer(nil)
+		io.Copy(buf, inputfile)
+		msg := buf.Bytes()
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			nonce[0] &= 0x7F
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+		os.Exit(0)
+	}
+
 	if *crypt != "" && (*cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") && (strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
@@ -2544,7 +2735,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 128 && len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 128 && len(key) != 64 && len(key) != 32 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2797,7 +2988,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 128 && len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 10 && len(key) != 8 {
+			if len(key) != 128 && len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 18 && len(key) != 16 && len(key) != 12 && len(key) != 10 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2935,6 +3126,9 @@ Subcommands:
 		} else if *cph == "e2" {
 			ciph, err = e2.NewCipher(key)
 			n = 16
+		} else if *cph == "curupira" {
+			ciph, err = curupira1.NewCipher(key)
+			n = 12
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3146,7 +3340,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "khazad" || *cph == "present" || *cph == "twine") {
+	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "curupira") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -3166,7 +3360,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 10 && len(key) != 24 {
+			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 10 && len(key) != 24 && len(key) != 18 && len(key) != 12 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -3217,6 +3411,9 @@ Subcommands:
 		} else if *cph == "twine" {
 			ciph, err = twine.NewCipher(key)
 			iv = make([]byte, 8)
+		} else if *cph == "curupira" {
+			ciph, err = curupira1.NewCipher(key)
+			iv = make([]byte, 12)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -3744,6 +3941,31 @@ Subcommands:
 			}
 		}
 		fmt.Println("MAC-SKEIN("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
+		os.Exit(0)
+	}
+
+	if *mac == "blake3" {
+		h, err = blake3.NewKeyed([]byte(*key))
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err = io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		var verify bool
+		if *sig != "" {
+			mac := hex.EncodeToString(h.Sum(nil))
+			if mac != *sig {
+				verify = false
+				fmt.Println(verify)
+				os.Exit(1)
+			} else {
+				verify = true
+				fmt.Println(verify)
+				os.Exit(0)
+			}
+		}
+		fmt.Println("MAC-BLAKE3("+inputdesc+")=", hex.EncodeToString(h.Sum(nil)))
 		os.Exit(0)
 	}
 
@@ -4397,6 +4619,8 @@ Subcommands:
 			c, err = present.NewCipher([]byte(*key))
 		} else if *cph == "twine" {
 			c, err = twine.NewCipher([]byte(*key))
+		} else if *cph == "curupira" {
+			c, err = curupira1.NewCipher([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -4443,9 +4667,6 @@ Subcommands:
 	}
 
 	if *kdf == "hkdf" {
-		if *md == "jh" {
-			*info = fmt.Sprintf("%-64s", *info)
-		}
 		hash, err := Hkdf([]byte(*key), []byte(*salt), []byte(*info))
 		if err != nil {
 			log.Fatal(err)
@@ -5247,7 +5468,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 
-		absPrivPath, err := filepath.Abs(*priv)
+		absPrivPath, err := filepath.Abs(*master)
 		if err != nil {
 			log.Fatal("Failed to get absolute path for private key:", err)
 		}
@@ -5327,7 +5548,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 
-		absPrivPath, err := filepath.Abs(*priv)
+		absPrivPath, err := filepath.Abs(*master)
 		if err != nil {
 			log.Fatal("Failed to get absolute path for private key:", err)
 		}
@@ -5800,7 +6021,7 @@ Subcommands:
 		}
 	}
 
-	if *pkey == "sign" && (strings.ToUpper(*alg) == "SM9SIGN") {
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "SM9SIGN" || strings.ToUpper(*alg) == "SM9SIGNPH") {
 		var privPEM []byte
 		file, err := os.Open(*key)
 		if err != nil {
@@ -5841,21 +6062,46 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		hashed, err := ioutil.ReadAll(inputfile)
-		if err != nil {
-			fmt.Println("Error reading input file:", err)
-			os.Exit(1)
+		/*
+			hashed, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading input file:", err)
+				os.Exit(1)
+			}
+		*/
+
+		var hashed []byte
+		if strings.ToUpper(*alg) == "SM9SIGN" {
+			hashed, err = ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading input file:", err)
+				os.Exit(1)
+			}
+		} else {
+			var h hash.Hash
+			h = myHash()
+			_, err = io.Copy(h, inputfile)
+			if err != nil {
+				fmt.Println("Error hashing input file:", err)
+				os.Exit(1)
+			}
+			hashed = h.Sum(nil)
 		}
+
 		signature, err := sm9.SignASN1(rand.Reader, signPrivateKey, hashed)
 		if err != nil {
 			fmt.Println("Error signing the message:", err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("PureSM9(%s)= %x\n", inputdesc, signature)
+		if strings.ToUpper(*alg) == "SM9SIGN" {
+			fmt.Printf("PureSM9(%s)= %x\n", inputdesc, signature)
+		} else {
+			fmt.Printf("SM9-"+strings.ToUpper(*md)+"(%s)= %x\n", inputdesc, signature)
+		}
 	}
 
-	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM9SIGN") {
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM9SIGN" || strings.ToUpper(*alg) == "SM9SIGNPH") {
 		fileContent, err := ioutil.ReadFile(*key)
 		if err != nil {
 			fmt.Println("Erro ao ler o arquivo:", err)
@@ -5875,10 +6121,30 @@ Subcommands:
 			return
 		}
 
-		hashed, err := ioutil.ReadAll(inputfile)
-		if err != nil {
-			fmt.Println("Error reading input file:", err)
-			os.Exit(1)
+		/*
+			hashed, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading input file:", err)
+				os.Exit(1)
+			}
+		*/
+
+		var hashed []byte
+		if strings.ToUpper(*alg) == "SM9SIGN" {
+			hashed, err = ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading input file:", err)
+				os.Exit(1)
+			}
+		} else {
+			var h hash.Hash
+			h = myHash()
+			_, err = io.Copy(h, inputfile)
+			if err != nil {
+				fmt.Println("Error hashing input file:", err)
+				os.Exit(1)
+			}
+			hashed = h.Sum(nil)
 		}
 
 		signature, err := hex.DecodeString(*sig)
@@ -5989,6 +6255,60 @@ Subcommands:
 			log.Fatal(err)
 		}
 		verifystatus := sm2.VerifyASN1WithSM2(public, nil, inputBytes, sigBytes)
+		if verifystatus == true {
+			fmt.Printf("Verified: %v\n", verifystatus)
+			os.Exit(0)
+		} else {
+			fmt.Printf("Verified: %v\n", verifystatus)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "SM2PH") {
+		var privatekey *sm2.PrivateKey
+		var h hash.Hash
+		h = myHash()
+		if _, err := io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeSM2PrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		signature, err := privatekey.Sign(rand.Reader, h.Sum(nil), sm2.DefaultSM2SignerOpts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("SM2"+"-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
+		os.Exit(0)
+	}
+
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM2PH") {
+		var h hash.Hash
+		h = myHash()
+		if _, err := io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		public, err = DecodePublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sigBytes, err := hex.DecodeString(*sig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		verifystatus := sm2.VerifyASN1WithSM2(public, nil, h.Sum(nil), sigBytes)
 		if verifystatus == true {
 			fmt.Printf("Verified: %v\n", verifystatus)
 			os.Exit(0)
@@ -6471,7 +6791,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		b, _ := public.Curve.ScalarMult(public.X, public.Y, privatekey.D.Bytes())
-		fmt.Printf("%x", b.Bytes())
+		fmt.Printf("%x\n", b.Bytes())
 		os.Exit(0)
 	}
 
@@ -7167,12 +7487,6 @@ Subcommands:
 			return
 		}
 		if *pkey == "sign" {
-			message, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading file:", err)
-				os.Exit(1)
-			}
-
 			priv, err := readPrivateKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading private key:", err)
@@ -7180,7 +7494,9 @@ Subcommands:
 			}
 
 			hash := myHash()
-			_, err = hash.Write(message)
+			if _, err := io.Copy(hash, inputfile); err != nil {
+				log.Fatal(err)
+			}
 			if err != nil {
 				fmt.Println("Error hashing message:", err)
 				os.Exit(1)
@@ -7196,12 +7512,6 @@ Subcommands:
 			fmt.Printf("EG-%s(%s)= %x\n", strings.ToUpper(*md), inputdesc, sign)
 		}
 		if *pkey == "verify" {
-			message, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading file:", err)
-				os.Exit(1)
-			}
-
 			if *key == "" {
 				fmt.Println("Error: Public key file not provided for verification.")
 				os.Exit(3)
@@ -7226,7 +7536,9 @@ Subcommands:
 			}
 
 			hash := myHash()
-			_, err = hash.Write(message)
+			if _, err := io.Copy(hash, inputfile); err != nil {
+				log.Fatal(err)
+			}
 			if err != nil {
 				fmt.Println("Error hashing message:", err)
 				os.Exit(1)
@@ -9072,7 +9384,7 @@ Subcommands:
 			fmt.Printf("ECDSA (%v-bit)\n", publicKey.Curve.Params().BitSize)
 		case *nums.PublicKey:
 			publicKey := publicInterface.(*nums.PublicKey)
-			curve := determineCurve(publicKey)
+			curve := publicKey.Curve
 			fmt.Printf("NUMS (%v-bit)\n", curve.Params().BitSize)
 		case *ecdh.PublicKey:
 			fmt.Println("X25519 (256-bit)")
@@ -12180,8 +12492,7 @@ func DecodePublicKey(encodedKey []byte) (*ecdsa.PublicKey, error) {
 }
 
 func EncodeNUMSPrivateKey(key *nums.PrivateKey) ([]byte, error) {
-	curve := determineCurveFromPrivateKey(key)
-	derKey, err := key.MarshalPKCS8PrivateKey(curve)
+	derKey, err := key.MarshalPKCS8PrivateKey(key.PublicKey.Curve)
 	if err != nil {
 		return nil, err
 	}
@@ -12232,7 +12543,7 @@ func DecodeNUMSPrivateKey(encodedKey []byte) (*nums.PrivateKey, error) {
 }
 
 func EncodeNUMSPublicKey(key *nums.PublicKey) ([]byte, error) {
-	curve := determineCurve(key)
+	curve := key.Curve
 	if curve == nil {
 		return nil, errors.New("unsupported key length")
 	}
@@ -12260,48 +12571,6 @@ func DecodeNUMSPublicKey(encodedKey []byte) (*nums.PublicKey, error) {
 		return nil, err
 	}
 	return public, nil
-}
-
-func determineCurveFromPrivateKey(key *nums.PrivateKey) elliptic.Curve {
-	curve := key.PublicKey.Curve
-	switch {
-	case curve == nums.P256d1():
-		return nums.P256d1()
-	case curve == nums.P384d1():
-		return nums.P384d1()
-	case curve == nums.P512d1():
-		return nums.P512d1()
-	case curve == nums.P256t1():
-		return nums.P256t1()
-	case curve == nums.P384t1():
-		return nums.P384t1()
-	case curve == nums.P512t1():
-		return nums.P512t1()
-	default:
-		log.Fatal("unsupported curve")
-		return nil
-	}
-}
-
-func determineCurve(key *nums.PublicKey) elliptic.Curve {
-	curve := key.Curve
-	switch {
-	case curve == nums.P256d1():
-		return nums.P256d1()
-	case curve == nums.P384d1():
-		return nums.P384d1()
-	case curve == nums.P512d1():
-		return nums.P512d1()
-	case curve == nums.P256t1():
-		return nums.P256t1()
-	case curve == nums.P384t1():
-		return nums.P384t1()
-	case curve == nums.P512t1():
-		return nums.P512t1()
-	default:
-		log.Fatal("unsupported curve")
-		return nil
-	}
 }
 
 func Hkdf(master, salt, info []byte) ([128]byte, error) {
@@ -12401,10 +12670,22 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-	case "jh":
+	case "jh224":
+		myHash = jh.New224
+	case "jh", "jh256":
 		myHash = jh.New256
-	case "groestl":
+	case "jh384":
+		myHash = jh.New384
+	case "jh512":
+		myHash = jh.New512
+	case "groestl224":
+		myHash = groestl.New224
+	case "groestl", "groestl256":
 		myHash = groestl.New256
+	case "groestl384":
+		myHash = groestl.New384
+	case "groestl512":
+		myHash = groestl.New512
 	case "tiger":
 		myHash = tiger.New
 	case "tiger2":
@@ -12427,8 +12708,14 @@ func Hkdf(master, salt, info []byte) ([128]byte, error) {
 		myHash = esch.New256
 	case "esch384":
 		myHash = esch.New384
-	case "bmw":
-		myHash = bmw.New
+	case "bmw224":
+		myHash = bmw.New224
+	case "bmw", "bmw256":
+		myHash = bmw.New256
+	case "bmw384":
+		myHash = bmw.New384
+	case "bmw512":
+		myHash = bmw.New512
 	case "hamsi224":
 		myHash = hamsi.New224
 	case "hamsi", "hamsi256":
@@ -12589,10 +12876,22 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = func() hash.Hash {
 			return skein.New512(nil)
 		}
-	case "jh":
+	case "jh224":
+		myHash = jh.New224
+	case "jh", "jh256":
 		myHash = jh.New256
-	case "groestl":
+	case "jh384":
+		myHash = jh.New384
+	case "jh512":
+		myHash = jh.New512
+	case "groestl224":
+		myHash = groestl.New224
+	case "groestl", "groestl256":
 		myHash = groestl.New256
+	case "groestl384":
+		myHash = groestl.New384
+	case "groestl512":
+		myHash = groestl.New512
 	case "tiger":
 		myHash = tiger.New
 	case "tiger2":
@@ -12615,8 +12914,14 @@ func Scrypt(password, salt []byte, N, r, p, keyLen int) ([]byte, error) {
 		myHash = esch.New256
 	case "esch384":
 		myHash = esch.New384
-	case "bmw":
-		myHash = bmw.New
+	case "bmw224":
+		myHash = bmw.New224
+	case "bmw", "bmw256":
+		myHash = bmw.New256
+	case "bmw384":
+		myHash = bmw.New384
+	case "bmw512":
+		myHash = bmw.New512
 	case "hamsi224":
 		myHash = hamsi.New224
 	case "hamsi", "hamsi256":
@@ -13546,6 +13851,8 @@ func PKCS7Padding(ciphertext []byte) []byte {
 		padding = 64 - len(ciphertext)%64
 	} else if *cph == "threefish1024" {
 		padding = 128 - len(ciphertext)%128
+	} else if *cph == "curupira" {
+		padding = 12 - len(ciphertext)%12
 	}
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
 	return append(ciphertext, padtext...)
@@ -14069,6 +14376,9 @@ const (
 	PEMCipherTWOFISH256
 	PEMCipherKALYNA128_128
 	PEMCipherKALYNA128_256
+	PEMCipherCURUPIRA96
+	PEMCipherCURUPIRA144
+	PEMCipherCURUPIRA192
 )
 
 type rfc1423Algo struct {
@@ -14367,11 +14677,37 @@ var rfc1423Algos = []rfc1423Algo{{
 	cipherFunc: kalyna.NewCipher128_256,
 	keySize:    32,
 	blockSize:  16,
+}, {
+	cipher:     PEMCipherCURUPIRA96,
+	name:       "CURUPIRA-96-CBC",
+	cipherFunc: curupiraCipherFunc,
+	keySize:    12,
+	blockSize:  12,
+}, {
+	cipher:     PEMCipherCURUPIRA144,
+	name:       "CURUPIRA-144-CBC",
+	cipherFunc: curupiraCipherFunc,
+	keySize:    18,
+	blockSize:  12,
+}, {
+	cipher:     PEMCipherCURUPIRA192,
+	name:       "CURUPIRA-192-CBC",
+	cipherFunc: curupiraCipherFunc,
+	keySize:    24,
+	blockSize:  12,
 },
 }
 
 func twofishCipherFunc(key []byte) (cipher.Block, error) {
 	ciph, err := twofish.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return ciph, nil
+}
+
+func curupiraCipherFunc(key []byte) (cipher.Block, error) {
+	ciph, err := curupira1.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
@@ -14594,6 +14930,10 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 		"kalyna":        PEMCipherKALYNA128_256,
 		"kuznechik":     PEMCipherGOST,
 		"grasshopper":   PEMCipherGOST,
+		"curupira96":    PEMCipherCURUPIRA96,
+		"curupira144":   PEMCipherCURUPIRA144,
+		"curupira192":   PEMCipherCURUPIRA192,
+		"curupira":      PEMCipherCURUPIRA192,
 	}
 
 	if val, ok := cipherMap[cph]; ok {
@@ -14713,6 +15053,12 @@ func EncryptBlockWithCipher(rand io.Reader, blockType string, blockBytes, passwo
 		cipher = PEMCipherKALYNA128_256
 	case "kuznechik", "grasshopper":
 		cipher = PEMCipherGOST
+	case "curupira96":
+		cipher = PEMCipherCURUPIRA96
+	case "curupira144":
+		cipher = PEMCipherCURUPIRA144
+	case "curupira192", "curupira":
+		cipher = PEMCipherCURUPIRA192
 	default:
 		return nil, errors.New("unsupported cipher algorithm")
 	}
@@ -15263,7 +15609,19 @@ func WrapKey(pk []byte) error {
 		Bytes: ciphertext,
 	}
 
-	err := pem.Encode(os.Stdout, ciphertextBlock)
+	var writer io.Writer
+	if *cph == "" {
+		writer = os.Stdout
+	} else {
+		file, err := os.Create(*cph)
+		if err != nil {
+			return fmt.Errorf("error opening file %s: %v", *cph, err)
+		}
+		defer file.Close()
+		writer = file
+	}
+
+	err := pem.Encode(writer, ciphertextBlock)
 	if err != nil {
 		return fmt.Errorf("error encoding ciphertext to PEM: %v", err)
 	}
