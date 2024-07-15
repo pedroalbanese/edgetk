@@ -146,11 +146,11 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |      Cipher      | Block Size |  Key Size   |          Modes          |
     |:-----------------|:----------:|:-----------:|:-----------------------:|
-    | Kalyna256        |        256 |     256/512 | EAX, CIV, CTR, OFB, IGE |
-    | Kalyna512        |        512 |         512 | EAX, CIV, CTR, OFB, IGE |
-    | Threefish256     |        256 |         256 | EAX, CIV, CTR, OFB, IGE |
-    | Threefish512     |        512 |         512 | EAX, CIV, CTR, OFB, IGE |
-    | Threefish1024    |       1024 |        1024 | EAX, CIV, CTR, OFB, IGE |
+    | Kalyna256        |        256 |     256/512 | EAX, SIV, CTR, OFB, IGE |
+    | Kalyna512        |        512 |         512 | EAX, SIV, CTR, OFB, IGE |
+    | Threefish256     |        256 |         256 | EAX, SIV, CTR, OFB, IGE |
+    | Threefish512     |        512 |         512 | EAX, SIV, CTR, OFB, IGE |
+    | Threefish1024    |       1024 |        1024 | EAX, SIV, CTR, OFB, IGE |
   
 - **128-bit block ciphers:**
 
@@ -211,7 +211,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | OCB3| Offset Codebook v3 (AEAD)      |128         |128/192/256|
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        |
     | CCM | Counter with CBC-MAC (AEAD)    |128         |128/192/256|
-    | CIV | Synthetic IV Mode (AEAD)       |All         |Any        |
+    | SIV | Synthetic IV Mode (AEAD)       |All         |Any        |
     | CBC | Cipher-Block Chaining          |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
     |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
