@@ -211,16 +211,14 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | OCB3| Offset Codebook v3 (AEAD)      |128         |128/192/256|
     | MGM | Multilinear Galois Mode (AEAD) |64/128      |Any        |
     | CCM | Counter with CBC-MAC (AEAD)    |128         |128/192/256|
-    | SIV | Synthetic IV Mode (AEAD)       |All*        |Any        |
+    | SIV | Synthetic IV Mode (AEAD)       |All        |Any        |
     | CBC | Cipher-Block Chaining          |All         |Any        |
     | CFB | Cipher Feedback Mode           |All         |Any        |
     |CFB-8| Cipher Feedback Mode 8-bit     |All         |Any        |
     | CTR | Counter Mode (default)         |All         |Any        |
     | ECB | Eletronic Codebook Mode        |All         |Any        |
     | IGE | Infinite Garble Extension      |All         |Any        |
-    | OFB | Output Feedback Mode           |All         |Any        |
-  
-    - All except 96-bit as Curupira block cipher. 
+    | OFB | Output Feedback Mode           |All         |Any        | 
    
 - **Message Digest Algorithms:**
 
