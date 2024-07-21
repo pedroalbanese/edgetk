@@ -1,4 +1,4 @@
-Copyright (C) 2024 Pedro Albanese pedroalbanese@hotmail.com  
+Copyright (c) 2024, Pedro F. Albanese pedroalbanese@hotmail.com
 
 Permission to use, copy, modify, and distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
