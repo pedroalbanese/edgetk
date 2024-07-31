@@ -899,6 +899,7 @@ echo $?
 - [RyuaNerin](http://github.com/RyuaNerin) (go-krypto Library Author)
 - [Sun Yimin](https://github.com/emmansun) (GMSM Library Author)
 - [Damian Gryski](https://github.com/dgryski) (Anubis, SipHash, Misty1 Libraries Author)
+- [Dana Booth](https://sourceforge.net/u/danabooth/profile/) (Main Contributor)
 - [Deatil](https://github.com/deatil) (go-cryptobin, go-hash Libraries Author)
 
 ## Contribute
