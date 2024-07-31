@@ -611,93 +611,116 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
    * RandomArt (OpenSSH-like)
 
 ## Usage
-<pre>  -algorithm string
-        Public key algorithm: EC, Ed25519, GOST2012, SM2. (default "RSA")
+<pre>Usage of ./edgetk:
+  -algorithm string
+    	Public key algorithm: EC, Ed25519, GOST2012, SM2. (default "RSA")
+  -base32 string
+    	Encode binary string to Base32 format and vice-versa. [enc|dec]
+  -base64 string
+    	Encode binary string to Base64 format and vice-versa. [enc|dec]
+  -base85 string
+    	Encode binary string to Base85 format and vice-versa. [enc|dec]
   -bits int
-        Key length. (for keypair generation and symmetric encryption)
+    	Key length. (for keypair generation and symmetric encryption)
   -cacert string
-        CA Certificate path. (for TLCP Protocol)
+    	CA Certificate path. (for TLCP Protocol)
   -cakey string
-        CA Private key. (for TLCP Protocol)
+    	CA Private key. (for TLCP Protocol)
   -cert string
-        Certificate path.
+    	Certificate path.
   -check
-        Check hashsum file. ('-' for STDIN)
+    	Check hashsum file. ('-' for STDIN)
   -cipher string
-        Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
+    	Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
   -crl string
-        Certificate Revocation List path.
+    	Certificate Revocation List path.
   -crypt string
-        Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
+    	Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
+  -curve string
+    	Subjacent curve (ECDSA, BLS12381G1 and G2.) (default "ecdsa")
+  -days int
+    	Defines the validity of the certificate from the date of creation.
   -digest
-        Target file/wildcard to generate hashsum list. ('-' for STDIN)
+    	Target file/wildcard to generate hashsum list. ('-' for STDIN)
   -factorp string
-        Makwa private Factor P. (for Makwa Password-hashing Scheme)
+    	Makwa private Factor P. (for Makwa Password-hashing Scheme)
   -factorq string
-        Makwa private Factor Q. (for Makwa Password-hashing Scheme)
+    	Makwa private Factor Q. (for Makwa Password-hashing Scheme)
   -hex string
-        Encode binary string to hex format and vice-versa. [enc|dump|dec]
+    	Encode binary string to hex format and vice-versa. [enc|dump|dec]
   -hid uint
-        Hierarchy Identifier. (for SM9 User Private Key) (default 1)
+    	Hierarchy Identifier. (for SM9 User Private Key) (default 1)
   -id string
-        User Identifier. (for SM9 User Private Key operations)
+    	User Identifier. (for SM9 User Private Key operations)
   -info string
-        Additional info. (for HKDF command and AEAD bulk encryption)
+    	Additional info. (for HKDF command and AEAD bulk encryption)
   -ipport string
-        Local Port/remote's side Public IP:Port.
+    	Local Port/remote's side Public IP:Port.
   -iter int
-        Iter. (for Password-based key derivation function) (default 1)
+    	Iter. (for Password-based key derivation function) (default 1)
   -iv string
-        Initialization Vector. (for symmetric encryption)
+    	Initialization Vector. (for symmetric encryption)
   -kdf string
-        Key derivation function. [pbkdf2|hkdf|scrypt|argon2]
+    	Key derivation function. [pbkdf2|hkdf|scrypt|argon2|lyra2re2]
   -key string
-        Asymmetric key, symmetric key or HMAC key, depending on operation.
+    	Asymmetric key, symmetric key or HMAC key, depending on operation.
   -mac string
-        Compute Hash/Cipher-based message authentication code.
+    	Compute Hash/Cipher-based message authentication code.
   -master string
-        Master key path. (for sm9 setup) (default "Master.pem")
+    	Master key path. (for sm9 setup) (default "Master.pem")
   -md string
-        Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
+    	Hash algorithm: sha256, sha3-256 or whirlpool. (default "sha256")
   -mode string
-        Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB. (default "CTR")
+    	Mode of operation: GCM, MGM, CBC, CFB8, OCB, OFB. (default "CTR")
   -modulus string
-        Makwa modulus. (Makwa hash Public Parameter)
+    	Makwa modulus. (Makwa hash Public Parameter)
+  -nopad
+    	No padding. (for Base64 and Base32 encoding)
+  -params string
+    	ElGamal Public Parameters path.
   -paramset string
-        Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
+    	Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
   -pass string
-        Password/Passphrase. (for Private key PEM encryption)
+    	Password/Passphrase. (for Private key PEM encryption)
   -passout string
-        User Password. (for SM9 User Private Key PEM encryption)
+    	User Password. (for SM9 User Private Key PEM encryption)
   -peerid string
-        Remote's side User Identifier. (for SM9 Key Exchange)
+    	Remote's side User Identifier. (for SM9 Key Exchange)
   -pkey string
-        Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
-  -priv string
-        Private key path. (for keypair generation) (default "Private.pem")
+    	Subcommands: keygen|certgen, sign|verify|derive, text|modulus.
+  -prv string
+    	Private key path. (for keypair generation) (default "Private.pem")
   -pub string
-        Public key path. (for keypair generation) (default "Public.pem")
+    	Public key path. (for keypair generation) (default "Public.pem")
   -rand int
-        Generate random cryptographic key with given bit length.
+    	Generate random cryptographic key with given bit length.
   -recover
-        Recover Passphrase from Makwa hash with Private Parameters.
+    	Recover Passphrase from Makwa hash with Private Parameters.
   -recursive
-        Process directories recursively. (for DIGEST command only)
+    	Process directories recursively. (for DIGEST command only)
   -root string
-        Root CA Certificate path.
+    	Root CA Certificate path.
   -salt string
-        Salt. (for HKDF and PBKDF2 commands)
+    	Salt. (for HKDF and PBKDF2 commands)
   -signature string
-        Input signature. (for VERIFY command and MAC verification)
+    	Input signature. (for VERIFY command and MAC verification)
+  -subj string
+    	Subject: Identity for which a digital certificate.
   -tcp string
-        Encrypted TCP/IP Transfer Protocol. [server|ip|client]</pre>
+    	Encrypted TCP/IP Transfer Protocol. [server|ip|client]
+  -tweak string
+    	Additional 128-bit parameter input. (for THREEFISH encryption)
+  -version
+    	Print version info.
+  -wrap int
+    	Wrap lines after N columns. (for Base64/32 encoding) (default 64)</pre>
 
 ## Examples
 
 #### Asymmetric EG keypair generation:
 ```sh
 ./edgetk -pkey setup -algorithm elgamal [-bits 4096] > ElGamalParams.pem
-./edgetk -pkey keygen -algorithm elgamal -params ElGamalParams.pem [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
+./edgetk -pkey keygen -algorithm elgamal -params ElGamalParams.pem [-pass "passphrase"] [-prv Private.pem] [-pub Public.pem]
 ```
 #### EG Digital signature:
 ```sh
@@ -714,7 +737,7 @@ ciphertext=$(cat cipher.txt|grep "Cipher"|awk '{print $2}')
 ```
 #### Asymmetric RSA keypair generation:
 ```sh
-./edgetk -pkey keygen -bits 4096 [-pass "passphrase"] [-priv Private.pem] [-pub Public.pem]
+./edgetk -pkey keygen -bits 4096 [-pass "passphrase"] [-prv Private.pem] [-pub Public.pem]
 ```
 #### Parse keys info:
 ```sh
@@ -810,7 +833,7 @@ echo $?
 ```
 - Generate a private key and a UID (User ID) and an HID (Hierarchy ID).
 ```sh
-./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-priv "Private.pem"] [-id "uid"] [-hid 1]
+./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-prv "Private.pem"] [-id "uid"] [-hid 1]
 ```
 
 ##### Message Encryption:
