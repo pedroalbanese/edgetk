@@ -174,6 +174,7 @@ import (
 	"github.com/pedroalbanese/shavite"
 	"github.com/pedroalbanese/simd"
 	"github.com/pedroalbanese/siphash"
+	"github.com/pedroalbanese/siv"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
 	"github.com/pedroalbanese/spritz"
@@ -211,7 +212,7 @@ var (
 	info       = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport      = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	iter       = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
-	kdf        = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt|argon2]")
+	kdf        = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt|argon2|lyra2re2]")
 	key        = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
 	length     = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac        = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
@@ -222,7 +223,7 @@ var (
 	paramset   = flag.String("paramset", "A", "Elliptic curve ParamSet: A, B, C, D. (for GOST2012)")
 	params     = flag.String("params", "", "ElGamal Public Parameters path.")
 	pkey       = flag.String("pkey", "", "Subcommands: keygen|certgen, sign|verify|derive, text|modulus.")
-	priv       = flag.String("priv", "Private.pem", "Private key path. (for keypair generation)")
+	priv       = flag.String("prv", "Private.pem", "Private key path. (for keypair generation)")
 	pub        = flag.String("pub", "Public.pem", "Public key path. (for keypair generation)")
 	pwd        = flag.String("pass", "", "Password/Passphrase. (for Private key PEM encryption)")
 	pwd2       = flag.String("passout", "", "User Password. (for SM9 User Private Key PEM encryption)")
@@ -234,6 +235,7 @@ var (
 	sig        = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	subj       = flag.String("subj", "", "Subject: Identity for which a digital certificate.")
 	tcpip      = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
+	tweakStr   = flag.String("tweak", "", "Additional 128-bit parameter input. (for THREEFISH encryption)")
 	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
 	col        = flag.Int("wrap", 64, "Wrap lines after N columns. (for Base64/32 encoding)")
 	pad        = flag.Bool("nopad", false, "No padding. (for Base64 and Base32 encoding)")
@@ -267,7 +269,7 @@ var (
 	oidNSComment                    = []int{2, 16, 840, 1, 113730, 1, 13}
 	oidStepProvisioner              = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 1}
 	oidStepCertificateAuthority     = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 37476, 9000, 64, 2}
-	oidPublicKeyEIGamal             = asn1.ObjectIdentifier{1, 3, 14, 7, 2, 1, 1}
+	oidPublicKeyElGamal             = asn1.ObjectIdentifier{1, 3, 14, 7, 2, 1, 1}
 )
 
 func handleConnectionTLS(c net.Conn) {
@@ -282,7 +284,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.1  12 Jul 2024")
+		fmt.Println("EDGE Toolkit v1.5.1  30 Jul 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -299,10 +301,10 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  ecdsa             elgamal           nums/nums-te      sm2
-  ed25519           ec-elgamal        rsa (default)     sphincs
-  ed448             kyber             sm9encrypt        x25519
-  gost2012          dilithium         sm9sign           x448
+  ecdsa             elgamal           nums/nums-te      sm2[ph]
+  ed25519[ph]       ec-elgamal        rsa (default)     sphincs
+  ed448[ph]         kyber             sm9encrypt        x25519
+  gost2012          dilithium         sm9sign[ph]       x448
 
 Stream Ciphers:
   ascon (aead)      grain128a         rabbit            spritz
@@ -311,9 +313,9 @@ Stream Ciphers:
   grain (aead)      kcipher2          skein             zuc256/eea256
 
 Modes of Operation:
-  eax (aead)        ocb3 (aead)       cbc               ecb [obsolete]
+  eax (aead)        siv (aead)        cbc               ecb [obsolete]
   gcm (aead)        mgm (aead)        cfb/cfb1/cfb8     ige
-  ocb (aead)        ccm (aead)        ctr (default)     ofb
+  ocb1/3 (aead)     ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
   3des              curupira          khazad            rc5
@@ -579,6 +581,29 @@ Subcommands:
 			print("Passphrase: ")
 			pass, _ := gopass.GetPasswd()
 			*pwd = string(pass)
+		}
+	}
+
+	if (*tcpip == "server" || *tcpip == "client") && (*alg == "sm2") && (*key != "") && *pwd2 == "" {
+		file, err := os.Open(*cakey)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			errors.New("no valid private key found")
+		}
+		if IsEncryptedPEMBlock(block) {
+			print("EncKey Passphrase: ")
+			pass, _ := gopass.GetPasswd()
+			*pwd2 = string(pass)
 		}
 	}
 
@@ -1304,11 +1329,11 @@ Subcommands:
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit" || *cph == "kalyna128_128") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit" || *cph == "kalyna128_128") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
-	if (*cph == "present" || *cph == "twine") && *pkey != "keygen" && (*length != 80) && *crypt != "" {
+	if (*cph == "present" || *cph == "twine") && *pkey != "keygen" && (*length != 80 && *length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -1390,6 +1415,10 @@ Subcommands:
 
 	if strings.ToUpper(*mac) == "VMAC" && *length == 0 {
 		*length = 128
+	}
+
+	if strings.ToUpper(*mode) == "SIV" {
+		*length = *length * 2
 	}
 
 	if *kdf == "pbkdf2" {
@@ -1502,7 +1531,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 			if len(key) != 12 && len(key) != 18 && len(key) != 24 {
-				log.Fatal("Invalid key size. Key must be either 12, 18, or 24 bytes (96, 144, or 192 bits) for Curupira.")
+				log.Fatal("Invalid key size. Key must be either 96, 144, or 192 bits for Curupira.")
 			}
 		}
 
@@ -2276,7 +2305,6 @@ Subcommands:
 			}
 			var nonce [32]byte
 			var iv []byte
-			iv = make([]byte, 32)
 			if *vector != "" {
 				iv, _ = hex.DecodeString(*vector)
 				copy(nonce[:], iv)
@@ -2303,7 +2331,6 @@ Subcommands:
 				fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key[:]))
 			}
 			var iv []byte
-			iv = make([]byte, 16)
 			var nonce [16]byte
 			if *vector != "" {
 				iv, _ = hex.DecodeString(*vector)
@@ -2579,7 +2606,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 20 && len(key) != 16 && len(key) != 10 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2614,7 +2641,7 @@ Subcommands:
 		}
 
 		var aead cipher.AEAD
-		aead, err = eax.NewEAX(ciph, 8)
+		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 8, 8)
 
 		if err != nil {
 			log.Fatal(err)
@@ -2680,7 +2707,7 @@ Subcommands:
 		}
 
 		var aead cipher.AEAD
-		aead, err = eax.NewEAX(ciph, 12)
+		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 12, 12)
 
 		if err != nil {
 			log.Fatal(err)
@@ -2744,39 +2771,472 @@ Subcommands:
 		tweak = make([]byte, 16)
 		var n int
 		if *cph == "threefish" || *cph == "threefish256" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			ciph, err = threefish.New256(key, tweak)
-			n = 16
+			n = 32
 		} else if *cph == "threefish512" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			ciph, err = threefish.New512(key, tweak)
-			n = 16
+			n = 64
 		} else if *cph == "threefish1024" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			ciph, err = threefish.New1024(key, tweak)
-			n = 16
+			n = 128
 		} else if *cph == "kalyna256_256" {
 			ciph, err = kalyna.NewCipher256_256(key)
-			n = 16
+			n = 32
 		} else if *cph == "kalyna256_512" {
 			ciph, err = kalyna.NewCipher256_512(key)
-			n = 16
+			n = 32
 		} else if *cph == "kalyna512_512" {
 			ciph, err = kalyna.NewCipher512_512(key)
-			n = 16
+			n = 64
 		}
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		var aead cipher.AEAD
-		aead, err = eax.NewEAX(ciph, n)
+		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, n, n)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := bytes.NewBuffer(nil)
+		io.Copy(buf, inputfile)
+		msg := buf.Bytes()
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			nonce[0] &= 0x7F
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024") && (strings.ToUpper(*mode) == "SIV") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 128 && len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 10 && len(key) != 8 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		var ciph cipher.Block
+		var macBlock cipher.Block
+
+		macKey := key[:len(key)/2]
+		blockKey := key[len(key)/2:]
+
+		var tweak []byte
+		tweak = make([]byte, 16)
+
+		if *cph == "aes" {
+			ciph, err = aes.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = aes.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "twofish" {
+			ciph, err = twofish.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = twofish.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "aria" {
+			ciph, err = aria.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = aria.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "lea" {
+			ciph, err = lea.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = lea.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "camellia" {
+			ciph, err = camellia.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = camellia.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "serpent" {
+			ciph, err = serpent.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = serpent.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+			ciph, err = kuznechik.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = kuznechik.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "sm4" {
+			ciph, err = sm4.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = sm4.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "seed" {
+			ciph, err = krcrypt.NewSEED(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = krcrypt.NewSEED(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "anubis" {
+			ciph, err = anubis.NewWithKeySize(key, len(blockKey))
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = anubis.NewWithKeySize(key, len(macKey))
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "rc6" {
+			ciph, err = rc6.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = rc6.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "mars" {
+			ciph, err = mars.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = mars.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "noekeon" {
+			ciph, err = noekeon.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = noekeon.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "loki97" {
+			ciph, err = loki97.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = loki97.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "clefia" {
+			ciph, err = clefia.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = clefia.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "kalyna128_128" {
+			ciph, err = kalyna.NewCipher128_128(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = kalyna.NewCipher128_128(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "kalyna128_256" {
+			ciph, err = kalyna.NewCipher128_256(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = kalyna.NewCipher128_256(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "kalyna256_256" {
+			ciph, err = kalyna.NewCipher256_256(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = kalyna.NewCipher256_256(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "kalyna256_512" {
+			ciph, err = kalyna.NewCipher256_512(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = kalyna.NewCipher256_512(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "kalyna512_512" {
+			ciph, err = kalyna.NewCipher512_512(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = kalyna.NewCipher512_512(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "khazad" {
+			ciph, err = khazad.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = khazad.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "cast256" || *cph == "cast6" {
+			ciph, err = cast256.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = cast256.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "crypton" {
+			ciph, err = crypton1.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = crypton1.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "e2" {
+			ciph, err = e2.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = e2.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "blowfish" {
+			ciph, err = blowfish.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = blowfish.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "idea" {
+			ciph, err = idea.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = idea.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "cast5" {
+			ciph, err = cast5.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = cast5.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "rc5" {
+			ciph, err = rc5.New(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = rc5.New(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "hight" {
+			ciph, err = krcrypt.NewHIGHT(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = krcrypt.NewHIGHT(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "rc2" {
+			ciph, err = rc2.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = rc2.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "des" {
+			ciph, err = des.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = des.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "3des" {
+			ciph, err = des.NewTripleDESCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = des.NewTripleDESCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "misty1" {
+			ciph, err = misty1.New(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = misty1.New(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "khazad" {
+			ciph, err = khazad.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = khazad.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "present" {
+			ciph, err = present.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = present.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "twine" {
+			ciph, err = twine.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = twine.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish" || *cph == "threefish256" {
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
+			}
+			ciph, err = threefish.New256(blockKey, tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = threefish.New256(macKey, tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish512" {
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
+			}
+			ciph, err = threefish.New512(blockKey, tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = threefish.New512(macKey, tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish1024" {
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
+			}
+			ciph, err = threefish.New1024(blockKey, tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = threefish.New1024(macKey, tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		aead, err := siv.NewSiv(macBlock, ciph, 12)
+		if err != nil {
+			log.Fatalf("Error creating PMAC cipher: %s", err)
+		}
 
 		if err != nil {
 			log.Fatal(err)
@@ -2831,7 +3291,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 {
+			if len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 10 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -2927,7 +3387,7 @@ Subcommands:
 		} else if strings.ToUpper(*mode) == "OCB3" {
 			aead, err = ocb3.New(ciph)
 		} else if strings.ToUpper(*mode) == "EAX" {
-			aead, err = eax.NewEAX(ciph, 16)
+			aead, err = eax.NewEAXWithNonceAndTagSize(ciph, n, n)
 		} else if strings.ToUpper(*mode) == "CCM" {
 			aead, err = ccm.NewCCM(ciph, 16, 12)
 		}
@@ -3064,20 +3524,20 @@ Subcommands:
 			ciph, err = misty1.New(key)
 			n = 8
 		} else if *cph == "threefish256" || *cph == "threefish" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			n = 32
 			ciph, err = threefish.New256(key, tweak)
 		} else if *cph == "threefish512" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			n = 64
 			ciph, err = threefish.New512(key, tweak)
 		} else if *cph == "threefish1024" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			n = 128
 			ciph, err = threefish.New1024(key, tweak)
@@ -3242,20 +3702,20 @@ Subcommands:
 			ciph, err = kuznechik.NewCipher(key)
 			iv = make([]byte, 16)
 		} else if *cph == "threefish256" || *cph == "threefish" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			iv = make([]byte, 32)
 			ciph, err = threefish.New256(key, tweak)
 		} else if *cph == "threefish512" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			iv = make([]byte, 64)
 			ciph, err = threefish.New512(key, tweak)
 		} else if *cph == "threefish1024" {
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			iv = make([]byte, 128)
 			ciph, err = threefish.New1024(key, tweak)
@@ -3360,7 +3820,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 10 && len(key) != 24 && len(key) != 18 && len(key) != 12 {
+			if len(key) != 32 && len(key) != 40 && len(key) != 16 && len(key) != 10 && len(key) != 24 && len(key) != 18 && len(key) != 12 && len(key) != 10 && len(key) != 8 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -3743,6 +4203,9 @@ Subcommands:
 					return err
 				}
 				file, err := os.Stat(path)
+				if err != nil {
+					log.Fatal(err)
+				}
 				if file.IsDir() {
 				} else {
 					for _, match := range flag.Args() {
@@ -4198,10 +4661,26 @@ Subcommands:
 	if *mac == "pmac" {
 		var c cipher.Block
 		var err error
-		if *cph == "sm4" {
+		if *cph == "blowfish" {
+			c, err = blowfish.NewCipher([]byte(*key))
+		} else if *cph == "idea" {
+			c, err = idea.NewCipher([]byte(*key))
+		} else if *cph == "cast5" {
+			c, err = cast5.NewCipher([]byte(*key))
+		} else if *cph == "rc5" {
+			c, err = rc5.New([]byte(*key))
+		} else if *cph == "sm4" {
 			c, err = sm4.NewCipher([]byte(*key))
 		} else if *cph == "seed" {
 			c, err = krcrypt.NewSEED([]byte(*key))
+		} else if *cph == "hight" {
+			c, err = krcrypt.NewHIGHT([]byte(*key))
+		} else if *cph == "rc2" {
+			c, err = rc2.NewCipher([]byte(*key))
+		} else if *cph == "des" {
+			c, err = des.NewCipher([]byte(*key))
+		} else if *cph == "3des" {
+			c, err = des.NewTripleDESCipher([]byte(*key))
 		} else if *cph == "aes" {
 			c, err = aes.NewCipher([]byte(*key))
 		} else if *cph == "twofish" {
@@ -4216,13 +4695,60 @@ Subcommands:
 			c, err = serpent.NewCipher([]byte(*key))
 		} else if *cph == "rc6" {
 			c, err = rc6.NewCipher([]byte(*key))
+		} else if *cph == "misty1" {
+			c, err = misty1.New([]byte(*key))
+		} else if *cph == "magma" {
+			if len(*key) != 32 {
+				log.Fatal("MAGMA invalid key size ", len(*key))
+			}
+			c = gost341264.NewCipher([]byte(*key))
 		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+			if len(*key) != 32 {
+				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
+			}
 			c, err = kuznechik.NewCipher([]byte(*key))
+		} else if *cph == "gost89" {
+			if len(*key) != 32 {
+				log.Fatal("GOST89: invalid key size ", len(*key))
+			}
+			c = gost28147.NewCipher([]byte(*key), &gost28147.SboxIdtc26gost28147paramZ)
 		} else if *cph == "anubis" {
 			if len(*key) != 16 && len(*key) != 24 && len(*key) != 32 && len(*key) != 40 {
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
 			}
 			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
+		} else if *cph == "threefish256" || *cph == "threefish" {
+			var tweak []byte
+			tweak = make([]byte, 16)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
+			}
+			c, err = threefish.New256([]byte(*key), tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish512" {
+			var tweak []byte
+			tweak = make([]byte, 16)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
+			}
+			c, err = threefish.New512([]byte(*key), tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "threefish1024" {
+			var tweak []byte
+			tweak = make([]byte, 16)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
+			}
+			c, err = threefish.New1024([]byte(*key), tweak)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else if *cph == "khazad" {
+			c, err = khazad.NewCipher([]byte(*key))
 		} else if *cph == "mars" {
 			c, err = mars.NewCipher([]byte(*key))
 		} else if *cph == "noekeon" {
@@ -4235,18 +4761,31 @@ Subcommands:
 			c, err = kalyna.NewCipher128_128([]byte(*key))
 		} else if *cph == "kalyna128_256" {
 			c, err = kalyna.NewCipher128_256([]byte(*key))
+		} else if *cph == "kalyna256_256" {
+			c, err = kalyna.NewCipher256_256([]byte(*key))
+		} else if *cph == "kalyna256_512" {
+			c, err = kalyna.NewCipher256_512([]byte(*key))
+		} else if *cph == "kalyna512_512" {
+			c, err = kalyna.NewCipher512_512([]byte(*key))
 		} else if *cph == "cast256" || *cph == "cast6" {
 			c, err = cast256.NewCipher([]byte(*key))
 		} else if *cph == "e2" {
 			c, err = e2.NewCipher([]byte(*key))
 		} else if *cph == "crypton" {
 			c, err = crypton1.NewCipher([]byte(*key))
+		} else if *cph == "present" {
+			c, err = present.NewCipher([]byte(*key))
+		} else if *cph == "twine" {
+			c, err = twine.NewCipher([]byte(*key))
 		}
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		h := pmac.New(c)
+		h, err := pmac.New(c)
+		if err != nil {
+			log.Fatal(err)
+		}
 		io.Copy(h, inputfile)
 		var verify bool
 		if *sig != "" {
@@ -4562,8 +5101,8 @@ Subcommands:
 		} else if *cph == "threefish256" || *cph == "threefish" {
 			var tweak []byte
 			tweak = make([]byte, 16)
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			c, err = threefish.New256([]byte(*key), tweak)
 			if err != nil {
@@ -4572,8 +5111,8 @@ Subcommands:
 		} else if *cph == "threefish512" {
 			var tweak []byte
 			tweak = make([]byte, 16)
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			c, err = threefish.New512([]byte(*key), tweak)
 			if err != nil {
@@ -4582,8 +5121,8 @@ Subcommands:
 		} else if *cph == "threefish1024" {
 			var tweak []byte
 			tweak = make([]byte, 16)
-			if *info != "" {
-				tweak = []byte(*info)
+			if *tweakStr != "" {
+				tweak = []byte(*tweakStr)
 			}
 			c, err = threefish.New1024([]byte(*key), tweak)
 			if err != nil {
@@ -4701,7 +5240,6 @@ Subcommands:
 				log.Fatal(err)
 			}
 		} else {
-			privatekey = new(ecdsa.PrivateKey)
 			privatekey, err = ecdsa.GenerateKey(pubkeyCurve, rand.Reader)
 
 			if err != nil {
@@ -4808,7 +5346,6 @@ Subcommands:
 				log.Fatal(err)
 			}
 		} else {
-			privatekey = new(sm2.PrivateKey)
 			privatekey, err = sm2.GenerateKey(rand.Reader)
 
 			if err != nil {
@@ -5097,7 +5634,7 @@ Subcommands:
 		if err != nil {
 			log.Fatal("Error computing shared key:", err)
 		}
-		fmt.Printf("%x", sharedKey)
+		fmt.Printf("%x\n", sharedKey)
 		os.Exit(0)
 	}
 
@@ -5627,6 +6164,9 @@ Subcommands:
 		}
 
 		privKeyBytes, err = smx509.MarshalPKCS8PrivateKey(userKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		block = &pem.Block{
 			Type:  "SM9 ENC PRIVATE KEY",
@@ -5637,7 +6177,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		if *pwd2 != "" {
-			err = EncryptAndWriteBlock(*cph, block, []byte(*pwd), file)
+			err = EncryptAndWriteBlock(*cph, block, []byte(*pwd2), file)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -5818,6 +6358,9 @@ Subcommands:
 		cipherHexString = strings.Replace(string(cipherHexString), " ", "", -1)
 
 		cipherMarshaled, err := hex.DecodeString(cipherHexString)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		var cipher bn256.G1
 		_, err = cipher.Unmarshal(cipherMarshaled)
@@ -5832,7 +6375,7 @@ Subcommands:
 		fmt.Printf("Shared= %x\n", key)
 	}
 
-	if (*pkey == "derivea" || *pkey == "deriveb") && (strings.ToUpper(*alg) == "SM9ENCRYPT") {
+	if *pkey == "derivea" || *pkey == "deriveb" {
 		var privPEM []byte
 		file, err := os.Open(*key)
 		if err != nil {
@@ -5999,6 +6542,9 @@ Subcommands:
 		}
 
 		privKeyBytes, err = smx509.MarshalPKCS8PrivateKey(userKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		block = &pem.Block{
 			Type:  "SM9 SIGN PRIVATE KEY",
@@ -6009,7 +6555,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 		if *pwd2 != "" {
-			err = EncryptAndWriteBlock(*cph, block, []byte(*pwd), file)
+			err = EncryptAndWriteBlock(*cph, block, []byte(*pwd2), file)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -7139,6 +7685,9 @@ Subcommands:
 		isPrivateKey := block.Type == "SPHINCS SECRET KEY"
 
 		loadedKeyBytes, err := readKeyFromPEM(*key, isPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 		if err := printKeyParams(loadedKeyBytes, isPrivateKey); err != nil {
 			log.Fatal(err)
 		}
@@ -7164,6 +7713,9 @@ Subcommands:
 		isPrivateKey := block.Type == "SPHINCS SECRET KEY"
 
 		loadedKeyBytes, err := readKeyFromPEM(*key, isPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 		if err := printKeyParamsFull(loadedKeyBytes, isPrivateKey); err != nil {
 			log.Fatal(err)
 		}
@@ -7206,6 +7758,9 @@ Subcommands:
 	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EG" && strings.ToUpper(*alg) != "EC-ELGAMAL" || *params != "") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
 		if *pkey == "setup" {
 			setParams, err := generateElGamalParams()
+			if err != nil {
+				log.Fatal(err)
+			}
 			err = saveElGamalParamsToPEM(*params, setParams)
 			if err != nil {
 				log.Fatal("Error saving ElGamal parameters to PEM file:", err)
@@ -7431,6 +7986,9 @@ Subcommands:
 					os.Exit(1)
 				}
 				path, err = filepath.Abs(*priv)
+				if err != nil {
+					log.Fatal(err)
+				}
 				y := setup(xval, readParams.G, readParams.P)
 				privateKey := &PrivateKey{
 					PublicKey: PublicKey{
@@ -7457,6 +8015,10 @@ Subcommands:
 			publicKey := setup(xval, readParams.G, readParams.P)
 
 			path, err = filepath.Abs(*pub)
+			if err != nil {
+				log.Fatal(err)
+			}
+
 			fmt.Fprintf(os.Stderr, "Public Key save to: %s\n", path)
 			if err := savePublicKeyToPEM(*pub, &PublicKey{Y: publicKey, G: readParams.G, P: readParams.P}); err != nil {
 				log.Fatal("Error saving public key:", err)
@@ -8721,6 +9283,9 @@ Subcommands:
 		}
 
 		intVar, err := strconv.Atoi(validity)
+		if err != nil {
+			log.Fatal(err)
+		}
 		NotAfter := time.Now().AddDate(0, 0, intVar)
 
 		hasher := gost34112012256.New()
@@ -8966,6 +9531,9 @@ Subcommands:
 
 		if *tcpip == "server" {
 			cert, err := tls.X509KeyPair(certPEM, privPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 			cfg := tls.Config{Certificates: []tls.Certificate{cert}, ClientAuth: tls.RequireAnyClientCert, MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13}
 			cfg.Rand = rand.Reader
 
@@ -9029,6 +9597,9 @@ Subcommands:
 
 		if *tcpip == "client" {
 			cert, err := tls.X509KeyPair(certPEM, privPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 			cfg := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
 			ipport := "127.0.0.1:8081"
@@ -9150,12 +9721,15 @@ Subcommands:
 		io.Copy(buf, data)
 		Data := string(buf.Bytes())
 		Signature, err := hex.DecodeString(*sig)
+		if err != nil {
+			log.Fatal(err)
+		}
 		err = VerifyRSA([]byte(Data), Signature)
 		if err != nil {
 			fmt.Println("Checksum error:", err)
 			os.Exit(1)
 		}
-		fmt.Println("Verify correct.")
+		fmt.Println("Verified: true")
 	}
 
 	if *pkey == "encrypt" && (*key != "") && strings.ToUpper(*alg) == "RSA" {
@@ -9371,6 +9945,9 @@ Subcommands:
 					publicInterface, err = ed448.ParsePublicKey(block.Bytes)
 					if err != nil {
 						publicInterface, err = x448.ParsePublicKey(block.Bytes)
+						if err != nil {
+							log.Fatal(err)
+						}
 					}
 				}
 			}
@@ -9420,6 +9997,15 @@ Subcommands:
 			publicInterface, err = x509.ParsePKIXPublicKey(block.Bytes)
 			if err != nil {
 				publicInterface, err = nums.ParsePublicKey(block.Bytes)
+				if err != nil {
+					publicInterface, err = ed448.ParsePublicKey(block.Bytes)
+					if err != nil {
+						publicInterface, err = x448.ParsePublicKey(block.Bytes)
+						if err != nil {
+							log.Fatal(err)
+						}
+					}
+				}
 			}
 		}
 		var fingerprint string
@@ -9429,6 +10015,10 @@ Subcommands:
 		case *gost3410.PublicKey:
 			fingerprint = calculateFingerprintGOST(buf)
 		case *nums.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case ed448.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case x448.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		default:
 			log.Fatal("unknown type of public key")
@@ -9459,6 +10049,9 @@ Subcommands:
 					publicInterface, err = ed448.ParsePublicKey(block.Bytes)
 					if err != nil {
 						publicInterface, err = x448.ParsePublicKey(block.Bytes)
+						if err != nil {
+							log.Fatal(err)
+						}
 					}
 				}
 			}
@@ -10662,6 +11255,9 @@ Subcommands:
 		}
 
 		intVar, err := strconv.Atoi(validity)
+		if err != nil {
+			log.Fatal(err)
+		}
 		NotAfter := time.Now().AddDate(0, 0, intVar)
 
 		template := x509.Certificate{
@@ -11532,6 +12128,9 @@ Subcommands:
 
 		if *tcpip == "server" {
 			cert, err := tls.X509KeyPair(certPEM, privPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 			cfg := tls.Config{Certificates: []tls.Certificate{cert}, ClientAuth: tls.RequireAnyClientCert, MinVersion: tls.VersionTLS12, MaxVersion: tls.VersionTLS13}
 			cfg.Rand = rand.Reader
 
@@ -11596,6 +12195,9 @@ Subcommands:
 
 		if *tcpip == "client" {
 			cert, err := tls.X509KeyPair(certPEM, privPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 			cfg := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
 
 			ipport := "127.0.0.1:8081"
@@ -11777,7 +12379,7 @@ Subcommands:
 
 			var privKeyBytes2 []byte
 			if IsEncryptedPEMBlock(block) {
-				privKeyBytes2, err = DecryptPEMBlock(block, []byte(*pwd))
+				privKeyBytes2, err = DecryptPEMBlock(block, []byte(*pwd2))
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -11815,7 +12417,13 @@ Subcommands:
 			var sigcert tlcp.Certificate
 			var enccert tlcp.Certificate
 			sigcert, err = tlcp.X509KeyPair(sigcertPEM, sigprivPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 			enccert, err = tlcp.X509KeyPair(enccertPEM, encprivPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			rootCert, err := smx509.ParseCertificatePEM([]byte(rootPEM))
 			if err != nil {
@@ -11897,6 +12505,9 @@ Subcommands:
 		if *tcpip == "client" {
 			var cert tlcp.Certificate
 			cert, err = tlcp.X509KeyPair(sigcertPEM, sigprivPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			rootCert, err := smx509.ParseCertificatePEM([]byte(rootPEM))
 			if err != nil {
@@ -11974,9 +12585,105 @@ Subcommands:
 	}
 
 	if (*tcpip == "server" || *tcpip == "client") && strings.ToUpper(*alg) == "SM2" && *root == "" {
+		var sigcertPEM []byte
+		var sigprivPEM []byte
+		var enccertPEM []byte
+		var encprivPEM []byte
+
 		if *tcpip == "server" {
-			sigcert, err := tlcp.LoadX509KeyPair(*cert, *key)
-			enccert, err := tlcp.LoadX509KeyPair(*cacert, *cakey)
+			file, err := os.Open(*key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err := file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf := make([]byte, info.Size())
+			file.Read(buf)
+
+			var block *pem.Block
+			block, _ = pem.Decode(buf)
+
+			if block == nil {
+				errors.New("no valid private key found")
+			}
+
+			var privKeyBytes []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				sigprivPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
+			} else {
+				sigprivPEM = buf
+			}
+
+			file, err = os.Open(*cert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err = file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = make([]byte, info.Size())
+			file.Read(buf)
+			sigcertPEM = buf
+
+			file, err = os.Open(*cakey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err = file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = make([]byte, info.Size())
+			file.Read(buf)
+
+			block, _ = pem.Decode(buf)
+
+			if block == nil {
+				errors.New("no valid private key found")
+			}
+
+			var privKeyBytes2 []byte
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes2, err = DecryptPEMBlock(block, []byte(*pwd2))
+				if err != nil {
+					log.Fatal(err)
+				}
+				encprivPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes2})
+			} else {
+				encprivPEM = buf
+			}
+
+			file, err = os.Open(*cacert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			info, err = file.Stat()
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = make([]byte, info.Size())
+			file.Read(buf)
+			enccertPEM = buf
+		}
+
+		if *tcpip == "server" {
+			var sigcert tlcp.Certificate
+			var enccert tlcp.Certificate
+			sigcert, err = tlcp.X509KeyPair(sigcertPEM, sigprivPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
+			enccert, err = tlcp.X509KeyPair(enccertPEM, encprivPEM)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			cfg := tlcp.Config{
 				Certificates: []tlcp.Certificate{sigcert, enccert},
@@ -13357,6 +14064,9 @@ func csrToCrt() error {
 	}
 
 	intVar, err := strconv.Atoi(validity)
+	if err != nil {
+		log.Fatal(err)
+	}
 	NotAfter := time.Now().AddDate(0, 0, intVar)
 
 	var spki struct {
@@ -13433,24 +14143,36 @@ func csrToCrt() error {
 			return err
 		}
 		clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else if strings.ToUpper(*alg) == "ED25519" {
 		caPrivateKey, err := x509.ParsePKCS8PrivateKey(der)
 		if err != nil {
 			return err
 		}
 		clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else if strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "EC" {
 		caPrivateKey, err := x509.ParseECPrivateKey(der)
 		if err != nil {
 			return err
 		}
 		clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 	} else if strings.ToUpper(*alg) == "SM2" {
 		caPrivateKey, err := smx509.ParseSM2PrivateKey(der)
 		if err != nil {
 			return err
 		}
 		clientCRTRaw, err = smx509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT.ToX509(), clientCSR.PublicKey, caPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	if err != nil {
 		return err
@@ -13530,6 +14252,9 @@ func csrToCrt2() error {
 	}
 
 	intVar, err := strconv.Atoi(validity)
+	if err != nil {
+		log.Fatal(err)
+	}
 	NotAfter := time.Now().AddDate(0, 0, intVar)
 
 	hasher := gost34112012256.New()
@@ -13980,6 +14705,9 @@ func printKeyDetails(block *pem.Block) {
 			publicInterface, err = x448.ParsePublicKey(block.Bytes)
 			if err != nil {
 				publicInterface, err = ed448.ParsePublicKey(block.Bytes)
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
 	}
