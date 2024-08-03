@@ -284,7 +284,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.1  30 Jul 2024")
+		fmt.Println("EDGE Toolkit v1.5.1-beta  30 Jul 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -2641,7 +2641,7 @@ Subcommands:
 		}
 
 		var aead cipher.AEAD
-		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 8, 8)
+		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 12, 8)
 
 		if err != nil {
 			log.Fatal(err)
@@ -2803,7 +2803,7 @@ Subcommands:
 		}
 
 		var aead cipher.AEAD
-		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, n, n)
+		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 12, n)
 
 		if err != nil {
 			log.Fatal(err)
@@ -3387,7 +3387,7 @@ Subcommands:
 		} else if strings.ToUpper(*mode) == "OCB3" {
 			aead, err = ocb3.New(ciph)
 		} else if strings.ToUpper(*mode) == "EAX" {
-			aead, err = eax.NewEAXWithNonceAndTagSize(ciph, n, n)
+			aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 12, n)
 		} else if strings.ToUpper(*mode) == "CCM" {
 			aead, err = ccm.NewCCM(ciph, 16, 12)
 		}
