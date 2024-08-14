@@ -806,6 +806,8 @@ Subcommands:
 		myHash = radio_gatun.New32
 	case "radiogatun64":
 		myHash = radio_gatun.New64
+	default:
+		log.Fatalf("Message digest type %s not recognized", *md)
 	}
 
 	var h hash.Hash
@@ -992,6 +994,8 @@ Subcommands:
 		h = radio_gatun.New32()
 	case "radiogatun64":
 		h = radio_gatun.New64()
+	default:
+		log.Fatalf("Message digest type %s not recognized", *md)
 	}
 
 	if *random != 0 {
@@ -3923,9 +3927,9 @@ Subcommands:
 		var stream cipher.Stream
 
 		switch {
-		case *crypt == "enc" && modeUpper == "CTR":
+		case modeUpper == "CTR":
 			stream = cipher.NewCTR(ciph, iv)
-		case *crypt == "enc" && modeUpper == "OFB":
+		case modeUpper == "OFB":
 			stream = cipher.NewOFB(ciph, iv)
 		case *crypt == "enc" && modeUpper == "CFB1":
 			stream = CFB1.NewCFB1Encrypt(ciph, iv)
@@ -4852,46 +4856,49 @@ Subcommands:
 
 		key := []byte(*key)
 
-		if *cph == "sm4" {
+		switch *cph {
+		case "sm4":
 			c, err = sm4.NewCipher(key)
-		} else if *cph == "seed" {
+		case "seed":
 			c, err = krcrypt.NewSEED(key)
-		} else if *cph == "aes" {
+		case "aes":
 			c, err = aes.NewCipher(key)
-		} else if *cph == "twofish" {
+		case "twofish":
 			c, err = twofish.NewCipher(key)
-		} else if *cph == "aria" {
+		case "aria":
 			c, err = aria.NewCipher(key)
-		} else if *cph == "lea" {
+		case "lea":
 			c, err = lea.NewCipher(key)
-		} else if *cph == "camellia" {
+		case "camellia":
 			c, err = camellia.NewCipher(key)
-		} else if *cph == "serpent" {
+		case "serpent":
 			c, err = serpent.NewCipher(key)
-		} else if *cph == "rc6" {
+		case "rc6":
 			c, err = rc6.NewCipher(key)
-		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+		case "grasshopper", "kuznechik":
 			c, err = kuznechik.NewCipher(key)
-		} else if *cph == "anubis" {
+		case "anubis":
 			c, err = anubis.NewWithKeySize(key, len(key))
-		} else if *cph == "mars" {
+		case "mars":
 			c, err = mars.NewCipher(key)
-		} else if *cph == "noekeon" {
+		case "noekeon":
 			c, err = noekeon.NewCipher(key)
-		} else if *cph == "loki97" {
+		case "loki97":
 			c, err = loki97.NewCipher(key)
-		} else if *cph == "clefia" {
+		case "clefia":
 			c, err = clefia.NewCipher(key)
-		} else if *cph == "kalyna128_128" {
+		case "kalyna128_128":
 			c, err = kalyna.NewCipher128_128(key)
-		} else if *cph == "kalyna128_256" {
+		case "kalyna128_256":
 			c, err = kalyna.NewCipher128_256(key)
-		} else if *cph == "cast256" || *cph == "cast6" {
+		case "cast256", "cast6":
 			c, err = cast256.NewCipher(key)
-		} else if *cph == "e2" {
+		case "e2":
 			c, err = e2.NewCipher(key)
-		} else if *cph == "crypton" {
+		case "crypton":
 			c, err = crypton1.NewCipher(key)
+		default:
+			log.Fatalf("Unsupported cipher type: %s", *cph)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -4937,111 +4944,96 @@ Subcommands:
 		key := []byte(*key)
 		var n int
 
-		if *cph == "sm4" {
+		switch *cph {
+		case "sm4":
 			c, err = sm4.NewCipher(key)
 			n = 16
-		} else if *cph == "seed" {
+		case "seed":
 			c, err = krcrypt.NewSEED(key)
 			n = 16
-		} else if *cph == "aes" {
+		case "aes":
 			c, err = aes.NewCipher(key)
 			n = 16
-		} else if *cph == "twofish" {
+		case "twofish":
 			c, err = twofish.NewCipher(key)
 			n = 16
-		} else if *cph == "aria" {
+		case "aria":
 			c, err = aria.NewCipher(key)
 			n = 16
-		} else if *cph == "lea" {
+		case "lea":
 			c, err = lea.NewCipher(key)
 			n = 16
-		} else if *cph == "camellia" {
+		case "camellia":
 			c, err = camellia.NewCipher(key)
 			n = 16
-		} else if *cph == "serpent" {
+		case "serpent":
 			c, err = serpent.NewCipher(key)
 			n = 16
-		} else if *cph == "rc6" {
+		case "rc6":
 			c, err = rc6.NewCipher(key)
 			n = 16
-		} else if *cph == "magma" {
+		case "magma":
 			c = gost341264.NewCipher(key)
 			n = 8
-		} else if *cph == "gost89" {
+		case "gost89":
 			c = gost28147.NewCipher(key, &gost28147.SboxIdtc26gost28147paramZ)
 			n = 8
-		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+		case "grasshopper", "kuznechik":
 			c, err = kuznechik.NewCipher(key)
 			n = 16
-		} else if *cph == "anubis" {
+		case "anubis":
 			c, err = anubis.NewWithKeySize(key, len(key))
 			n = 16
-		} else if *cph == "blowfish" {
+		case "blowfish":
 			c, err = blowfish.NewCipher(key)
 			n = 8
-		} else if *cph == "idea" {
+		case "idea":
 			c, err = idea.NewCipher(key)
 			n = 8
-		} else if *cph == "cast5" {
+		case "cast5":
 			c, err = cast5.NewCipher(key)
 			n = 8
-		} else if *cph == "rc5" {
+		case "rc5":
 			c, err = rc5.New(key)
 			n = 8
-		} else if *cph == "sm4" {
-			c, err = sm4.NewCipher(key)
-			n = 8
-		} else if *cph == "seed" {
-			c, err = krcrypt.NewSEED(key)
-			n = 8
-		} else if *cph == "hight" {
+		case "hight":
 			c, err = krcrypt.NewHIGHT(key)
 			n = 8
-		} else if *cph == "rc2" {
+		case "rc2":
 			c, err = rc2.NewCipher(key)
 			n = 8
-		} else if *cph == "des" {
+		case "des":
 			c, err = des.NewCipher(key)
 			n = 8
-		} else if *cph == "3des" {
+		case "3des":
 			c, err = des.NewTripleDESCipher(key)
 			n = 8
-		} else if *cph == "khazad" {
+		case "khazad":
 			c, err = khazad.NewCipher(key)
 			n = 8
-		} else if *cph == "present" {
+		case "present":
 			c, err = present.NewCipher(key)
 			n = 8
-		} else if *cph == "twine" {
+		case "twine":
 			c, err = twine.NewCipher(key)
 			n = 8
-		} else if *cph == "mars" {
-			c, err = mars.NewCipher(key)
-			n = 16
-		} else if *cph == "noekeon" {
-			c, err = noekeon.NewCipher(key)
-			n = 16
-		} else if *cph == "loki97" {
-			c, err = loki97.NewCipher(key)
-			n = 16
-		} else if *cph == "clefia" {
-			c, err = clefia.NewCipher(key)
-			n = 16
-		} else if *cph == "kalyna128_128" {
+		case "kalyna128_128":
 			c, err = kalyna.NewCipher128_128(key)
 			n = 16
-		} else if *cph == "kalyna128_256" {
+		case "kalyna128_256":
 			c, err = kalyna.NewCipher128_256(key)
 			n = 16
-		} else if *cph == "cast256" || *cph == "cast6" {
+		case "cast256", "cast6":
 			c, err = cast256.NewCipher(key)
 			n = 16
-		} else if *cph == "e2" {
+		case "e2":
 			c, err = e2.NewCipher(key)
 			n = 16
-		} else if *cph == "crypton" {
+		case "crypton":
 			c, err = crypton1.NewCipher(key)
 			n = 16
+		default:
+			log.Fatalf("Unsupported cipher type: %s", *cph)
 		}
 		if err != nil {
 			log.Fatal(err)
@@ -5084,128 +5076,123 @@ Subcommands:
 	if *mac == "vmac" {
 		var c cipher.Block
 		var err error
-		if *cph == "blowfish" {
+		switch *cph {
+		case "blowfish":
 			c, err = blowfish.NewCipher([]byte(*key))
-		} else if *cph == "idea" {
+		case "idea":
 			c, err = idea.NewCipher([]byte(*key))
-		} else if *cph == "cast5" {
+		case "cast5":
 			c, err = cast5.NewCipher([]byte(*key))
-		} else if *cph == "rc5" {
+		case "rc5":
 			c, err = rc5.New([]byte(*key))
-		} else if *cph == "sm4" {
+		case "sm4":
 			c, err = sm4.NewCipher([]byte(*key))
-		} else if *cph == "seed" {
+		case "seed":
 			c, err = krcrypt.NewSEED([]byte(*key))
-		} else if *cph == "hight" {
+		case "hight":
 			c, err = krcrypt.NewHIGHT([]byte(*key))
-		} else if *cph == "rc2" {
+		case "rc2":
 			c, err = rc2.NewCipher([]byte(*key))
-		} else if *cph == "des" {
+		case "des":
 			c, err = des.NewCipher([]byte(*key))
-		} else if *cph == "3des" {
+		case "3des":
 			c, err = des.NewTripleDESCipher([]byte(*key))
-		} else if *cph == "aes" {
+		case "aes":
 			c, err = aes.NewCipher([]byte(*key))
-		} else if *cph == "twofish" {
+		case "twofish":
 			c, err = twofish.NewCipher([]byte(*key))
-		} else if *cph == "aria" {
+		case "aria":
 			c, err = aria.NewCipher([]byte(*key))
-		} else if *cph == "lea" {
+		case "lea":
 			c, err = lea.NewCipher([]byte(*key))
-		} else if *cph == "camellia" {
+		case "camellia":
 			c, err = camellia.NewCipher([]byte(*key))
-		} else if *cph == "serpent" {
+		case "serpent":
 			c, err = serpent.NewCipher([]byte(*key))
-		} else if *cph == "rc6" {
+		case "rc6":
 			c, err = rc6.NewCipher([]byte(*key))
-		} else if *cph == "misty1" {
+		case "misty1":
 			c, err = misty1.New([]byte(*key))
-		} else if *cph == "magma" {
+		case "magma":
 			if len(*key) != 32 {
 				log.Fatal("MAGMA invalid key size ", len(*key))
 			}
 			c = gost341264.NewCipher([]byte(*key))
-		} else if *cph == "grasshopper" || *cph == "kuznechik" {
+		case "grasshopper", "kuznechik":
 			if len(*key) != 32 {
 				log.Fatal("KUZNECHIK: invalid key size ", len(*key))
 			}
 			c, err = kuznechik.NewCipher([]byte(*key))
-		} else if *cph == "gost89" {
+		case "gost89":
 			if len(*key) != 32 {
 				log.Fatal("GOST89: invalid key size ", len(*key))
 			}
 			c = gost28147.NewCipher([]byte(*key), &gost28147.SboxIdtc26gost28147paramZ)
-		} else if *cph == "anubis" {
+		case "anubis":
 			if len(*key) != 16 && len(*key) != 24 && len(*key) != 32 && len(*key) != 40 {
 				log.Fatal("ANUBIS: invalid key size ", len(*key))
 			}
 			c, err = anubis.NewWithKeySize([]byte(*key), len(*key))
-		} else if *cph == "threefish256" || *cph == "threefish" {
+		case "threefish256", "threefish":
 			var tweak []byte
 			tweak = make([]byte, 16)
 			if *tweakStr != "" {
 				tweak = []byte(*tweakStr)
 			}
 			c, err = threefish.New256([]byte(*key), tweak)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else if *cph == "threefish512" {
+		case "threefish512":
 			var tweak []byte
 			tweak = make([]byte, 16)
 			if *tweakStr != "" {
 				tweak = []byte(*tweakStr)
 			}
 			c, err = threefish.New512([]byte(*key), tweak)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else if *cph == "threefish1024" {
+		case "threefish1024":
 			var tweak []byte
 			tweak = make([]byte, 16)
 			if *tweakStr != "" {
 				tweak = []byte(*tweakStr)
 			}
 			c, err = threefish.New1024([]byte(*key), tweak)
-			if err != nil {
-				log.Fatal(err)
-			}
-		} else if *cph == "khazad" {
+		case "khazad":
 			c, err = khazad.NewCipher([]byte(*key))
-		} else if *cph == "mars" {
+		case "mars":
 			c, err = mars.NewCipher([]byte(*key))
-		} else if *cph == "noekeon" {
+		case "noekeon":
 			c, err = noekeon.NewCipher([]byte(*key))
-		} else if *cph == "loki97" {
+		case "loki97":
 			c, err = loki97.NewCipher([]byte(*key))
-		} else if *cph == "clefia" {
+		case "clefia":
 			c, err = clefia.NewCipher([]byte(*key))
-		} else if *cph == "kalyna128_128" {
+		case "kalyna128_128":
 			c, err = kalyna.NewCipher128_128([]byte(*key))
-		} else if *cph == "kalyna128_256" {
+		case "kalyna128_256":
 			c, err = kalyna.NewCipher128_256([]byte(*key))
-		} else if *cph == "kalyna256_256" {
+		case "kalyna256_256":
 			c, err = kalyna.NewCipher256_256([]byte(*key))
-		} else if *cph == "kalyna256_512" {
+		case "kalyna256_512":
 			c, err = kalyna.NewCipher256_512([]byte(*key))
-		} else if *cph == "kalyna512_512" {
+		case "kalyna512_512":
 			c, err = kalyna.NewCipher512_512([]byte(*key))
-		} else if *cph == "cast256" || *cph == "cast6" {
+		case "cast256", "cast6":
 			c, err = cast256.NewCipher([]byte(*key))
-		} else if *cph == "e2" {
+		case "e2":
 			c, err = e2.NewCipher([]byte(*key))
-		} else if *cph == "crypton" {
+		case "crypton":
 			c, err = crypton1.NewCipher([]byte(*key))
-		} else if *cph == "present" {
+		case "present":
 			c, err = present.NewCipher([]byte(*key))
-		} else if *cph == "twine" {
+		case "twine":
 			c, err = twine.NewCipher([]byte(*key))
-		} else if *cph == "curupira" {
+		case "curupira":
 			c, err = curupira1.NewCipher([]byte(*key))
+		default:
+			log.Fatalf("Unsupported cipher type: %s", *cph)
 		}
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		if *vector == "" {
 			log.Fatal("Invalid IV size. VMAC nonce must be from 1 to block length -1.")
 		}
