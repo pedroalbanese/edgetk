@@ -245,6 +245,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Luffa           |     |     |     | O   | O   |     |
     | MD4 [Obsolete]  | O   |     |     |     |     |     |
     | MD5 [Obsolete]  | O   |     |     |     |     |     |
+    | MD6             |     |     |     | 0   | 0   |     |
     | Poly1305        | O   |     |     |     |     | O   |
     | Radio-Gatun     |     |     |     | O   |     |     |
     | RIPEMD          | O   | O   |     | O   |     |     |
