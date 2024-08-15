@@ -5,7 +5,7 @@ go 1.20
 require (
 	gitee.com/Trisia/gotlcp v1.3.17
 	github.com/RyuaNerin/go-krypto v1.2.4
-	github.com/deatil/go-cryptobin v1.0.2076
+	github.com/deatil/go-cryptobin v1.0.3015
 	github.com/emmansun/certinfo v0.1.0
 	github.com/emmansun/gmsm v0.24.2
 	github.com/emmansun/go-pkcs12 v0.3.0
@@ -43,7 +43,7 @@ require (
 	github.com/pedroalbanese/go-kcipher2 v0.0.0-20170506094415-4fcf5aa27627
 	github.com/pedroalbanese/go-krcrypt v0.0.0-20170928183100-a0c871728ae1
 	github.com/pedroalbanese/go-misty1 v0.0.0-20150819220543-a3984aec4fae
-	github.com/pedroalbanese/go-nums v0.0.0-20240430141424-adf4ad62d33d
+	github.com/pedroalbanese/go-nums v0.0.0-20240718212750-f4c240aa5c08
 	github.com/pedroalbanese/go-rc5 v0.0.0-20181025211356-a14dd155920a
 	github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10
 	github.com/pedroalbanese/gogost v0.0.0-20240430171730-f95129c7a5af
@@ -54,7 +54,7 @@ require (
 	github.com/pedroalbanese/haraka v0.0.0-20180824194238-3cf1081eecd7
 	github.com/pedroalbanese/jh v0.0.0-20240624180005-e6705e517191
 	github.com/pedroalbanese/kalyna v0.0.0-20240325185136-5fa784896340
-	github.com/pedroalbanese/khazad v0.0.0-20240325180817-e65ded2695ed
+	github.com/pedroalbanese/khazad v0.0.0-20240325185634-12dbcf5e3eaa
 	github.com/pedroalbanese/kupyna v0.0.0-20240326161126-ebb2f9665eeb
 	github.com/pedroalbanese/kuznechik v0.0.0
 	github.com/pedroalbanese/loki97 v0.0.0-20240325185530-a0580bcacc04
@@ -67,7 +67,7 @@ require (
 	github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75
 	github.com/pedroalbanese/ocb3 v0.0.0-20230127113333-c403200ee5a8
 	github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b
-	github.com/pedroalbanese/pmac v0.0.0-20220627194402-f0cad01ed05b
+	github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5
 	github.com/pedroalbanese/present v0.0.0-20240325185615-de3b5340e616
 	github.com/pedroalbanese/rabbitio v0.0.0-20230209212404-cffc97bafde8
 	github.com/pedroalbanese/radio_gatun v0.0.0-20240520204859-03d5d3af41c3
@@ -76,6 +76,8 @@ require (
 	github.com/pedroalbanese/shavite v0.0.0-20240518173728-5c0c7c528bc7
 	github.com/pedroalbanese/simd v0.0.0-20240518173711-b73ebc90aae8
 	github.com/pedroalbanese/siphash v1.0.1
+	github.com/pedroalbanese/siv v0.0.2
+	github.com/pedroalbanese/siv2 v0.0.0-20240715210841-1855f350d793
 	github.com/pedroalbanese/skein v0.0.0-20230124182825-ffe5e4ff3827
 	github.com/pedroalbanese/skein-1 v0.0.0-20171112102903-d7f1022db390
 	github.com/pedroalbanese/spritz v0.0.0-20140823220804-e125bc694ec3
@@ -96,6 +98,7 @@ require (
 	github.com/bwesterb/go-ristretto v1.2.0 // indirect
 	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
+	github.com/miscreant/miscreant.go v0.0.0-20200214223636-26d376326b75 // indirect
 	github.com/nixberg/chacha-rng-go v0.1.0 // indirect
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
