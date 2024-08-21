@@ -106,6 +106,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | CRYSTALS            |     |     |     | O   | O        |     |
     | ElGamal             |     |     |     | O   | O        |     |
     | EC-ElGamal          | O   |     |     |     | O        |     |
+    | ECGDSA              | O   | O   |     | O   |          |     |
+    | EC-KCDSA            | O   | O   |     | O   |          |     |
     | SPHINCS+            | O   |     |     | O   |          |     |
 
 - **Supported ParamSets:**
