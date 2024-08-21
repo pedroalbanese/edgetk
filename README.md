@@ -96,6 +96,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |  Algorithm          | 256 | 512 |ECDH |Sign |Encryption| TLS |
     |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O   | O        | O   |
+    | ECGDSA              | O   | O   |     | O   |          |     |
+    | EC-KCDSA            | O   | O   |     | O   |          |     |
     | Curve25519          | O   |     | O   | O   |          | O   |
     | Curve448            |     |     | O   | O   |          |     |
     | GOST2012            | O   | O   | O   | O   |          | O   |
@@ -106,8 +108,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | CRYSTALS            |     |     |     | O   | O        |     |
     | ElGamal             |     |     |     | O   | O        |     |
     | EC-ElGamal          | O   |     |     |     | O        |     |
-    | ECGDSA              | O   | O   |     | O   |          |     |
-    | EC-KCDSA            | O   | O   |     | O   |          |     |
     | SPHINCS+            | O   |     |     | O   |          |     |
 
 - **Supported ParamSets:**
