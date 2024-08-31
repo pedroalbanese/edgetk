@@ -288,7 +288,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.1  14 Aug 2024")
+		fmt.Println("EDGE Toolkit v1.5.2a  30 Aug 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -305,7 +305,7 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  ecdsa/ecgdsa      elgamal           nums/nums-te      sm2[ph]
+  ecdsa/eckcdsa     elgamal           nums/nums-te      sm2[ph]
   ed25519[ph]       ec-elgamal        rsa (default)     sphincs
   ed448[ph]         kyber             sm9encrypt        x25519
   gost2012          dilithium         sm9sign[ph]       x448
@@ -1539,83 +1539,6 @@ Subcommands:
 		}
 	}
 
-	if *crypt != "" && (*cph == "curupira" && strings.ToUpper(*mode) == "LETTERSOUP") {
-		var keyHex string
-		keyHex = *key
-		var key []byte
-		var err error
-		if keyHex == "" {
-			_, err = io.ReadFull(rand.Reader, key)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
-		} else {
-			key, err = hex.DecodeString(keyHex)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if len(key) != 12 && len(key) != 18 && len(key) != 24 {
-				log.Fatal("Invalid key size. Key must be either 96, 144, or 192 bits for Curupira.")
-			}
-		}
-
-		buf := bytes.NewBuffer(nil)
-		var data io.Reader
-		data = inputfile
-		io.Copy(buf, data)
-		msg := buf.Bytes()
-
-		aad := []byte(*info)
-
-		cipher, err := curupira1.NewCipher(key)
-		if err != nil {
-			log.Fatal("Error creating Curupira cipher instance:", err)
-		}
-
-		aead := curupira1.NewLetterSoup(cipher)
-
-		if *crypt == "enc" {
-			nonce := make([]byte, 12)
-			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-				log.Fatal(err)
-			}
-			aead.SetIV(nonce)
-
-			ciphertext := make([]byte, len(msg))
-			aead.Encrypt(ciphertext, msg)
-			aead.Update(aad)
-			tag := aead.GetTag(nil, 96)
-
-			output := append(nonce, tag...)
-			output = append(output, ciphertext...)
-			os.Stdout.Write(output)
-
-			os.Exit(0)
-		}
-
-		if *crypt == "dec" {
-			nonce, tag, msg := msg[:12], msg[12:24], msg[24:]
-
-			aead.SetIV(nonce)
-
-			decrypted := make([]byte, len(msg))
-			aead.Decrypt(decrypted, msg)
-
-			ciphertext := make([]byte, len(decrypted))
-			aead.Encrypt(ciphertext, decrypted)
-			aead.Update(aad)
-			tagEnc := aead.GetTag(nil, 96)
-
-			if bytes.Equal(tag, tagEnc) {
-				os.Stdout.Write(decrypted)
-				os.Exit(0)
-			} else {
-				log.Fatal("Error: authentication verification failed!")
-			}
-		}
-	}
-
 	if *crypt != "" && (*cph == "rc4") {
 		var keyHex string
 		keyHex = *key
@@ -2705,6 +2628,84 @@ Subcommands:
 			os.Exit(0)
 		}
 		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "curupira" && strings.ToUpper(*mode) == "LETTERSOUP") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 12 && len(key) != 18 && len(key) != 24 {
+				log.Fatal("Invalid key size. Key must be either 96, 144, or 192 bits for Curupira.")
+			}
+		}
+
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		aad := []byte(*info)
+
+		cipher, err := curupira1.NewCipher(key)
+		if err != nil {
+			log.Fatal("Error creating Curupira cipher instance:", err)
+		}
+
+		aead := curupira1.NewLetterSoup(cipher)
+
+		if *crypt == "enc" {
+			nonce := make([]byte, 12)
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			aead.SetIV(nonce)
+
+			ciphertext := make([]byte, len(msg))
+			aead.Encrypt(ciphertext, msg)
+			aead.Update(aad)
+			tag := aead.GetTag(nil, 96)
+
+			output := append(nonce, tag...)
+			output = append(output, ciphertext...)
+			os.Stdout.Write(output)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, tag, msg := msg[:12], msg[12:24], msg[24:]
+
+			aead.SetIV(nonce)
+
+			decrypted := make([]byte, len(msg))
+			aead.Decrypt(decrypted, msg)
+
+			ciphertext := make([]byte, len(decrypted))
+			aead.Encrypt(ciphertext, decrypted)
+			aead.Update(aad)
+			tagEnc := aead.GetTag(nil, 96)
+
+			if bytes.Equal(tag, tagEnc) {
+				os.Stdout.Write(decrypted)
+				os.Exit(0)
+			} else {
+				log.Fatal("Error: authentication verification failed!")
+			}
+		}
 	}
 
 	if *crypt != "" && (*cph == "curupira") && (strings.ToUpper(*mode) == "EAX") {
