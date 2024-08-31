@@ -61,9 +61,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 47. RFC 4543: Galois Message Authentication Code (GMAC)
 48. RFC 4764: EAX Authenticated-Encryption Mode of Operation
 49. RFC 4648: Base16, Base32, and Base64 Data Encodings
-50. RFC 5297: Synthetic Initialization Vector (SIV Mode) 
 51. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
 52. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+50. RFC 5297: Synthetic Initialization Vector (SIV Mode) 
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
 54. RFC 6114: The 128-Bit Blockcipher CLEFIA (Sony)
 55. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
