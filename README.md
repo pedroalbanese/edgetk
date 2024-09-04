@@ -96,29 +96,22 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Public key algorithms:**  
 
-    |  Algorithm          | 256 | 512 |ECDH |Sign |Encryption| TLS |
-    |:--------------------|:---:|:---:|:---:|:---:|:--------:|:---:|
-    | ECDSA               | O   | O   | O   | O   | O        | O   |
-    | ECGDSA              | O   | O   |     | O   |          |     |
-    | EC-KCDSA            | O   | O   |     | O   |          |     |
-    | Curve25519          | O   |     | O   | O   |          | O   |
-    | Curve448            |     |     | O   | O   |          |     |
-    | GOST2012            | O   | O   | O   | O   |          | O   |
-    | RSA                 |     |     |     | O   | O        | O   |
-    | SM2                 | O   |     | O   | O   | O        | O   |
-    | SM9                 | O   |     | O   | O   | O        |     |
-    | NUMS                | O   | O   | O   | O   | O        |     |
-    | CRYSTALS            |     |     |     | O   | O        |     |
-    | ElGamal             |     |     |     | O   | O        |     |
-    | EC-ElGamal          | O   |     |     |     | O        |     |
-    | SPHINCS+            | O   |     |     | O   |          |     |
-
-- **Supported ParamSets:**
-
-    |  Algorithm          |  A  |  B  |  C  |  D  |
-    |:--------------------|:---:|:---:|:---:|:---:|
-    | GOST R 34.10-2012 256-bit | O   | O   | O   | O   |
-    | GOST R 34.10-2012 512-bit | O   | O   | O   |     |
+    |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption| TLS |
+    |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
+    | ECDSA               | O   | O   | O   | O       | O        | O   |
+    | ECGDSA              | O   | O   |     | O       |          |     |
+    | EC-KCDSA            | O   | O   |     | O       |          |     |
+    | Curve25519          | O   |     | O   | O       |          | O   |
+    | Curve448            |     |     | O   | O       |          |     |
+    | GOST2012            | O   | O   | O   | O       |          | O   |
+    | RSA                 |     |     |     | O       | O        | O   |
+    | SM2                 | O   |     | O   | O       | O        | O   |
+    | SM9                 | O   |     | O   | O       | O        |     |
+    | NUMS                | O   | O   | O   | O       | O        |     |
+    | CRYSTALS            |     |     |     | O       | O        |     |
+    | ElGamal             |     |     |     | O       | O        |     |
+    | EC-ElGamal          | O   |     |     |         | O        |     |
+    | SPHINCS+            | O   |     |     | O       |          |     |
 
 - **Subjacent Elliptic Curves:**
 
@@ -132,6 +125,13 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | B-409 (sect409r1)     |         |          | O         |           |
     | B-571 (sect571r1)     |         |          | O         |           |
     | BLS12-381             |         |          |           | O         |
+
+- **Supported ParamSets:**
+
+    |  Algorithm          |  A  |  B  |  C  |  D  |
+    |:--------------------|:---:|:---:|:---:|:---:|
+    | GOST R 34.10-2012 256-bit | O   | O   | O   | O   |
+    | GOST R 34.10-2012 512-bit | O   | O   | O   |     |
 
 ### Symmetric
 
