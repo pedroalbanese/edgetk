@@ -125,6 +125,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | B-409 (sect409r1)     |         |           | O          |           |
     | B-571 (sect571r1)     |         |           | O          |           |
     | BLS12-381             |         |           |            | O         |
+    | SM2 (sm2p256v1)       | O       |           |            |           |
 
 - **Supported ParamSets:**
 
