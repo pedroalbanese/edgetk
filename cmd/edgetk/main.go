@@ -80,6 +80,7 @@ import (
 
 	"crypto/go.cypherpunks.ru/gogost/v5/gost3410"
 	"gitee.com/Trisia/gotlcp/tlcp"
+	"github.com/RyuaNerin/elliptic2/nist"
 	"github.com/RyuaNerin/go-krypto/aria"
 	"github.com/RyuaNerin/go-krypto/eckcdsa"
 	"github.com/RyuaNerin/go-krypto/has160"
@@ -201,7 +202,7 @@ var (
 	cph        = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crl        = flag.String("crl", "", "Certificate Revocation List path.")
 	crypt      = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
-	curveFlag  = flag.String("curve", "ecdsa", "Subjacent curve (ECDSA, BLS12381G1 and G2.)")
+	curveFlag  = flag.String("curve", "secp256r1", "Subjacent curve (secp256r1, bls12381g1 and g2.)")
 	digest     = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	b85        = flag.String("base85", "", "Encode binary string to Base85 format and vice-versa. [enc|dec]")
@@ -288,7 +289,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.2a  30 Aug 2024")
+		fmt.Println("EDGE Toolkit v1.5.2b  04 Sep 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -5273,6 +5274,12 @@ Subcommands:
 		pubkeyCurve = elliptic.P384()
 	} else if *pkey == "keygen" && *length == 521 {
 		pubkeyCurve = elliptic.P521()
+	} else if *pkey == "keygen" && *length == 283 {
+		pubkeyCurve = nist.B283()
+	} else if *pkey == "keygen" && *length == 409 {
+		pubkeyCurve = nist.B409()
+	} else if *pkey == "keygen" && *length == 571 {
+		pubkeyCurve = nist.B571()
 	}
 
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521) {
@@ -5381,7 +5388,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECKCDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECKCDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521 || *length == 283 || *length == 409 || *length == 571) {
 		privateKey, err := eckcdsa.GenerateKey(pubkeyCurve, rand.Reader)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
