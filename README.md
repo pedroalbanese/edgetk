@@ -120,6 +120,18 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | GOST R 34.10-2012 256-bit | O   | O   | O   | O   |
     | GOST R 34.10-2012 512-bit | O   | O   | O   |     |
 
+- **Sujacent Curves:**
+
+    |  Curve              |  ECDSA  |  ECGDSA  |  ECKCDSA  |
+    |:--------------------|:-------:|:--------:|:---------:|
+    | secp224r1           | O       | O        | O         |
+    | secp256r1           | O       | O        | O         |
+    | secp384r1           | O       | O        | O         |
+    | secp521r1           | O       | O        | O         |
+    | sect283r1           |         |          | O         |
+    | sect409r1           |         |          | O         |
+    | sect571r1           |         |          | O         |
+
 ### Symmetric
 
 - **Stream ciphers:**
