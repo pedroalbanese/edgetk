@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	gitee.com/Trisia/gotlcp v1.3.17
-	github.com/RyuaNerin/go-krypto v1.2.4
-	github.com/deatil/go-cryptobin v1.0.3015
+	github.com/RyuaNerin/go-krypto v1.3.0
+	github.com/deatil/go-cryptobin v1.0.3026
 	github.com/emmansun/certinfo v0.1.0
 	github.com/emmansun/gmsm v0.24.2
 	github.com/emmansun/go-pkcs12 v0.3.0
@@ -61,8 +61,9 @@ require (
 	github.com/pedroalbanese/luffa v0.0.0-20240518171333-cf7dac6a64ae
 	github.com/pedroalbanese/lyra2re v0.0.0-20240520232624-5764a75dde63
 	github.com/pedroalbanese/lyra2rev2 v0.0.0-20240608181906-fe968f886565
-	github.com/pedroalbanese/makwa-go v0.0.0-20141227225204-3dbfaeed5fdb
+	github.com/pedroalbanese/makwa-go v0.0.0-20240816162209-f803984910a2
 	github.com/pedroalbanese/mars v0.0.0-20240325185557-fe8b863ed824
+	github.com/pedroalbanese/md6 v0.0.0-20240815222317-052c055905a4
 	github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f
 	github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75
 	github.com/pedroalbanese/ocb3 v0.0.0-20230127113333-c403200ee5a8
@@ -77,7 +78,6 @@ require (
 	github.com/pedroalbanese/simd v0.0.0-20240518173711-b73ebc90aae8
 	github.com/pedroalbanese/siphash v1.0.1
 	github.com/pedroalbanese/siv v0.0.2
-	github.com/pedroalbanese/siv2 v0.0.0-20240715210841-1855f350d793
 	github.com/pedroalbanese/skein v0.0.0-20230124182825-ffe5e4ff3827
 	github.com/pedroalbanese/skein-1 v0.0.0-20171112102903-d7f1022db390
 	github.com/pedroalbanese/spritz v0.0.0-20140823220804-e125bc694ec3
@@ -95,10 +95,10 @@ require (
 require (
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9 // indirect
+	github.com/RyuaNerin/elliptic2 v1.0.0 // indirect
 	github.com/bwesterb/go-ristretto v1.2.0 // indirect
 	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
-	github.com/miscreant/miscreant.go v0.0.0-20200214223636-26d376326b75 // indirect
 	github.com/nixberg/chacha-rng-go v0.1.0 // indirect
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
