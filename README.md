@@ -127,7 +127,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | P-224 (secp224r1)       | O       | O        | O         |
     | P-256 (secp256r1)       | O       | O        | O         |
     | P-384 (secp384r1)       | O       | O        | O         |
-    | P-512 (secp521r1)       | O       | O        | O         |
+    | P-521 (secp521r1)       | O       | O        | O         |
     | B-283 (sect283r1)       |         |          | O         |
     | B-409 (sect409r1)       |         |          | O         |
     | B-571 (sect571r1)       |         |          | O         |
