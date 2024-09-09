@@ -167,6 +167,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |:-----------------|:----------:|:-----------:|:-----------------------:|
     | Kalyna256        |        256 |     256/512 | EAX, SIV, CTR, OFB, IGE |
     | Kalyna512        |        512 |         512 | EAX, SIV, CTR, OFB, IGE |
+    | SHACAL-2         |        256 |  128 to 512 | EAX, SIV, CTR, OFB, IGE |
     | Threefish256     |        256 |         256 | EAX, SIV, CTR, OFB, IGE |
     | Threefish512     |        512 |         512 | EAX, SIV, CTR, OFB, IGE |
     | Threefish1024    |       1024 |        1024 | EAX, SIV, CTR, OFB, IGE |
@@ -218,6 +219,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | PRESENT          |          64|        80/128|EAX, MGM, CFB-8, CTR|
     | RC2 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
     | RC5 [Obsolete]   |          64|           128|EAX, CFB-8, CTR, OFB|
+    | SAFER+           |          64|        64/128|EAX, CFB-8, CTR, OFB|
     | TWINE            |          64|        80/128|EAX, MGM, CFB-8, CTR|
 
 - **Modes of Operation:**
