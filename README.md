@@ -141,7 +141,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |      Cipher      |  Key Size  |  IV  |         Modes         |
     |:-----------------|:----------:|:----:|:---------------------:|
+    | Ascon 1.2        | 128        |  128 | AEAD Stream Cipher  |
     | Chacha20Poly1305 | 256        | 96/192 | AEAD Stream Cipher  |
+    | Grain128a        | 128        | 40-96  | AEAD Stream Cipher  |
     | HC-128           | 128        |  128 | XOR Stream            |
     | HC-256           | 256        |  256 | XOR Stream            |
     | KCipher-2        | 128        |  128 | XOR Stream            |
@@ -154,13 +156,11 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
     | ZUC-256 Zu Chongzhi | 256     |  184 | MAC + XOR Stream      |
 
-- **Experimental:**
+- **Permutation ciphers:**
 
     |     Cipher    |  Key |  IV  |         Mode          |
     |:--------------|:----:|:----:|:---------------------:|
     | Xoodyak       |  128 |  128 |Lightweight AEAD Permutation Cipher|
-    | Ascon 1.2     |  128 |  128 |NIST Lightweight AEAD Stream Cipher|
-    | Grain128a     |  128 |40-96 |NIST Lightweight AEAD Stream Cipher|
 
 - **256-bit> block ciphers:**
 
@@ -572,11 +572,10 @@ Keying material is in general to include things like shared Diffie-Hellman secre
 MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
 
 ### NUMS
-
-These curves are elliptic curves over a prime field, just like the NIST or Brainpool curves. However, the domain-parameters are choosen using a VERY TIGHT DESIGN SPACE to ensure, that the introduction of a backdoor is infeasable. For a desired size of s bits the prime p is choosen as p = 2^s - c with the smallest c where c>0 and p mod 4 = 3 and p being prime.
-
 **Microsoft Nothing Up My Sleeve Elliptic curves**  
 [NUMS](http://www.watersprings.org/pub/id/draft-black-numscurves-01.html) (Nothing Up My Sleeve) curves, which are supported in the MSRElliptic Curve Cryptography Library (a.k.a. MSR ECCLib).
+
+These curves are elliptic curves over a prime field, just like the NIST or Brainpool curves. However, the domain-parameters are choosen using a VERY TIGHT DESIGN SPACE to ensure, that the introduction of a backdoor is infeasable. For a desired size of s bits the prime p is choosen as p = 2^s - c with the smallest c where c>0 and p mod 4 = 3 and p being prime.
 
 ### PBKDF2
 PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic function designed to derive secure cryptographic keys from weak passwords or passphrases. It applies a pseudorandom function, such as HMAC-SHA1, HMAC-SHA256, or HMAC-SHA512, multiple times in a loop, with a salt and a user-defined number of iterations, effectively increasing the computational cost of key generation. This technique enhances the resilience against brute-force attacks, making it more difficult and time-consuming for attackers to obtain the original password from the derived key.
@@ -760,16 +759,16 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 ```
 #### EG Digital signature:
 ```sh
-./edgetk -pkey sign -algorithm elgamal -key private.pem [-pass "passphrase"] < file.ext > sign.txt
+./edgetk -pkey sign -algorithm elgamal -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
-./edgetk -pkey verify -algorithm elgamal -key public.pem -signature $sign < file.ext
+./edgetk -pkey verify -algorithm elgamal -key Public.pem -signature $sign < file.ext
 echo $?
 ```
 #### EG Encryption scheme:
 ```sh
-./edgetk -pkey wrapkey -algorithm elgamal -key public.pem > cipher.txt
+./edgetk -pkey wrapkey -algorithm elgamal -key Public.pem > cipher.txt
 ciphertext=$(cat cipher.txt|grep "Cipher"|awk '{print $2}')
-./edgetk -pkey unwrapkey -algorithm elgamal -key private.pem [-pass "passphrase"] -cipher $ciphertext
+./edgetk -pkey unwrapkey -algorithm elgamal -key Private.pem [-pass "passphrase"] -cipher $ciphertext
 ```
 #### Asymmetric RSA keypair generation:
 ```sh
@@ -777,54 +776,54 @@ ciphertext=$(cat cipher.txt|grep "Cipher"|awk '{print $2}')
 ```
 #### Parse keys info:
 ```sh
-./edgetk -pkey [text|modulus] [-pass "passphrase"] -key private.pem
-./edgetk -pkey [text|modulus|randomart|fingerprint] -key public.pem
+./edgetk -pkey [text|modulus] [-pass "passphrase"] -key Private.pem
+./edgetk -pkey [text|modulus|randomart|fingerprint] -key Public.pem
 ```
 #### Digital signature:
 ```sh
-./edgetk -pkey sign -key private.pem [-pass "passphrase"] < file.ext > sign.txt
+./edgetk -pkey sign -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
-./edgetk -pkey verify -key public.pem -signature $sign < file.ext
+./edgetk -pkey verify -key Public.pem -signature $sign < file.ext
 echo $?
 ```
 #### Encryption/decryption with RSA algorithm:
 ```sh
-./edgetk -pkey encrypt -key public.pem < plaintext.ext > ciphertext.ext
-./edgetk -pkey decrypt -key private.pem < ciphertext.ext > plaintext.ext
+./edgetk -pkey encrypt -key Public.pem < plaintext.ext > ciphertext.ext
+./edgetk -pkey decrypt -key Private.pem < ciphertext.ext > plaintext.ext
 ```
 #### Asymmetric EC keypair generation (256-bit):
 ```sh
-./edgetk -pkey keygen -bits 256 -algorithm EC [-pass "passphrase"]
+./edgetk -pkey keygen -bits 256 -algorithm EC [-pass "passphrase"] [-prv Private.pem] [-pub Public.pem]
 ```
 #### EC Diffie-Hellman:
 ```sh
-./edgetk -pkey derive -algorithm EC -key private.pem -pub peerkey.pem
+./edgetk -pkey derive -algorithm EC -key Private.pem -pub Peerkey.pem
 ```
 #### Generate Self Signed Certificate:
 ```sh
-./edgetk -pkey certgen -key private.pem [-pass "passphrase"] [-cert "output.crt"]
+./edgetk -pkey certgen -key Private.pem [-pass "passphrase"] [-cert "output.crt"]
 ```
 #### Generate Certificate Signing Request:
 ```sh
-./edgetk -pkey req -key private.pem [-pass "passphrase"] [-cert certificate.csr]
+./edgetk -pkey req -key Private.pem [-pass "passphrase"] [-cert Certificate.csr]
 ```
 #### Sign CSR with CA Certificate:
 ```sh
-./edgetk -pkey x509 -key private.pem -root cacert.pem -cert cert.csr > cert.crt
+./edgetk -pkey x509 -key Private.pem -root CACert.pem -cert Certificate.csr > Certificate.crt
 ```
 #### Parse Certificate info:
 ```sh
-./edgetk -pkey [text|modulus] -cert certificate.pem
+./edgetk -pkey [text|modulus] -cert Certificate.pem
 ```
 #### Generate Certificate Revocation List:
 ```sh
-./edgetk -pkey crl -cert cacert.pem -key private.pem -crl old.crl serials.txt > NewCRL.crl
+./edgetk -pkey crl -cert CACert.pem -key Private.pem -crl old.crl serials.txt > NewCRL.crl
 ```
 #### TLS Layer (TCP/IP):
 ```sh
 ./edgetk -tcp ip > MyExternalIP.txt
-./edgetk -tcp server -cert certificate.pem -key private.pem [-ipport "8081"]
-./edgetk -tcp client -cert certificate.pem -key private.pem [-ipport "127.0.0.1:8081"]
+./edgetk -tcp server -cert Certificate.pem -key Private.pem [-ipport "8081"]
+./edgetk -tcp client -cert Certificate.pem -key Private.pem [-ipport "127.0.0.1:8081"]
 ```
 #### Symmetric key generation (256-bit):
 ```sh
@@ -865,11 +864,11 @@ echo $?
 
 - Generate a master key
 ```sh
-./edgetk -pkey setup -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-pub "Public.pem"]
+./edgetk -pkey setup -algorithm <sm9encrypt|sm9sign> [-master "Master.pem"] [-pub "Public.pem"]
 ```
 - Generate a private key and a UID (User ID) and an HID (Hierarchy ID).
 ```sh
-./edgetk -pkey keygen -algorithm [sm9encrypt|sm9sign] [-master "Master.pem"] [-prv "Private.pem"] [-id "uid"] [-hid 1]
+./edgetk -pkey keygen -algorithm <sm9encrypt|sm9sign> [-master "Master.pem"] [-prv "Private.pem"] [-id "uid"] [-hid 1]
 ```
 
 ##### Message Encryption:
