@@ -79,15 +79,17 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 65. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
 66. SBRC 2007: Curupira 96-bit block cipher with 96/144/192-bit keys
 67. STB 34.101.31-2011 Belorussian standard (Bel-T) block cipher
-68. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
-69. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
-70. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
-71. TTAK.KO-12.0015/R3 EC-KCDSA Korean Digital Signature Algorithm
-72. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
-73. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
-74. US FIPS 197 Advanced Encryption Standard (AES)
-75. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
-76. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+68. STB 34.101.45-2013 Belorussian BignV1 public key algorithhm
+69. STB 34.101.77-2020 Belorussian standard BASH hash function
+70. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
+71. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
+72. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
+73. TTAK.KO-12.0015/R3 EC-KCDSA Korean Digital Signature Algorithm
+74. TTAK.KO-12.0223 LEA 128-bit block cipher (ISO/IEC 29192-2:2019)
+75. TTAK.KO-12.0276 LSH Message digest algorithm (KS X 3262)
+76. US FIPS 197 Advanced Encryption Standard (AES)
+77. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
+78. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
 
 </details>
 
@@ -102,6 +104,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ECDSA               | O   | O   | O   | O       | O        | O   |
     | ECGDSA              | O   | O   |     | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
+    | BignV1              | O   | O   |     | O       |          |     |
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
@@ -247,6 +250,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
     |    Algorithm    | 128 | 160 | 192 | 256 | 512 | MAC |
     |:----------------|:---:|:---:|:---:|:---:|:---:|:---:|
+    | BASH            |     |     |     | O   | O   |     |
+    | Bel-T           |     |     |     | O   |     |     |
     | BLAKE-2B        |     |     |     | O   | O   | O   |
     | BLAKE-2S        | O   |     |     | O   |     | O   |
     | BLAKE-3         |     |     |     | O   |     | O   |
