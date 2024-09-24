@@ -367,6 +367,8 @@ $$
 
 ### Digital Signature Algorithms
 
+#### ElGamal-based algorithms
+
 Here are the main differences between ECDSA, ECGDSA, and ECKCDSA:
 
 $\text{ECDSA: Compute } r = x([k]B); \text{ s must be a root of } H(m)s^{-1} + rs^{-1}a - k \text{ modulo } n,$
@@ -377,6 +379,10 @@ $\text{ so compute } s \equiv a^{-1} \left( kr - H(m) \right) \pmod{n}.$
 
 $\text{ECKCDSA: Compute } r = H(x([k]B)); \text{ s must be a root of } r \oplus H(m,h) + sa - k \text{ modulo } n,$
 $\text{ so compute } s \equiv a^{-1} \left( k - r \oplus H(m,h) \right) \pmod{n}.$
+
+#### Schnorr-based algorithms
+
+BignV1: Compute $R = [k]G; \, s_0$ must be a root of $h(OID(H) || R || H(X));$ so compute $s_1 \equiv (k - H(X) - (s_0 + 2^l)d) \mod q.$
 
 ### ElGamal
 The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number $p$ and a generator $g$ for a finite cyclic group are generated. Each entity possesses a private key $x$, kept secret, and a public key $Y$, derived from $g^x \mod p$. To encrypt a symmetric key, the sender uses the session key, computes two components \(a\) and \(b\), and sends $g^k \mod p$ and $Y^k \cdot \text{key} \mod p$ to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
