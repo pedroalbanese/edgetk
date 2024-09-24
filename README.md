@@ -382,7 +382,7 @@ $\text{ so compute } s \equiv a^{-1} \left( k - r \oplus H(m,h) \right) \pmod{n}
 
 #### Schnorr-based algorithms
 
-$\text{BignV1: Compute }  R = [k]G; \, s_0$ must be a root of $h(OID(H) || R || H(X)),$ 
+$\text{BignV1: Compute }  R = [k]G; s_0$ must be a root of $h(OID(H) || R || H(X)),$ 
 $\text{ so compute } s_1 \equiv (k - H(X) - (s_0 + 2^l)d) \mod q.$
 
 ### ElGamal
