@@ -358,7 +358,7 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 </details>
 
 ### ANSSI 
-Parameters for the ANSSI FRP256v1 Elliptic curve, Agence nationale de la sécurité des systèmes d'information. "Publication d'un paramétrage de courbe elliptique visant des applications de passeport électronique et de l'administration électronique française." 21 November 2011.
+Parameters for the [ANSSI FRP256v1](https://www.alvestrand.no/objectid/1.2.250.1.223.101.256.1.html) Elliptic curve, Agence nationale de la sécurité des systèmes d'information. "Publication d'un paramétrage de courbe elliptique visant des applications de passeport électronique et de l'administration électronique française." 21 November 2011.
 
 ### Curupira
 
