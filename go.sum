@@ -102,10 +102,6 @@ github.com/pedroalbanese/go-ascon v0.0.0-20240325185942-de83d7994a95 h1:neZv2pO/
 github.com/pedroalbanese/go-ascon v0.0.0-20240325185942-de83d7994a95/go.mod h1:EjAmbU3fA9mdAT8BGnLVNTR5rUYEpIG/VK056gJqv6E=
 github.com/pedroalbanese/go-chaskey v0.0.0-20230117155006-a9e41c18223c h1:Ji9KhJxym1GjLQ9eCRY9usH8wOXtJ/ZP+lIeA94YBQc=
 github.com/pedroalbanese/go-chaskey v0.0.0-20230117155006-a9e41c18223c/go.mod h1:5F8Scq4sW8D+yL/o8yrNT6R5PeamiYpW9DAu3i7kE6c=
-github.com/pedroalbanese/go-eccrypt v0.0.0-20240926182624-3b0aabe281c3 h1:PCFdY7c/DMkUOFqxMNxKjMDEuH5CReHP5wOQQxWO4UI=
-github.com/pedroalbanese/go-eccrypt v0.0.0-20240926182624-3b0aabe281c3/go.mod h1:tRp7t5m0ah1Ef1v9y6Xhjwk9kpIVtLVdxZkQgC/I6X4=
-github.com/pedroalbanese/go-eccrypt v0.0.0-20240926184610-a3ec9026136e h1:JS745bDLf+MNcUlofDHTvWhXxDMfJzxcjM7z7nQLT7I=
-github.com/pedroalbanese/go-eccrypt v0.0.0-20240926184610-a3ec9026136e/go.mod h1:tRp7t5m0ah1Ef1v9y6Xhjwk9kpIVtLVdxZkQgC/I6X4=
 github.com/pedroalbanese/go-external-ip v0.0.0-20200601212049-c872357d968e h1:VUR1tH5e1MXJgiJNq+8kh8ztihi5/wrkuIEG4bmYpBU=
 github.com/pedroalbanese/go-external-ip v0.0.0-20200601212049-c872357d968e/go.mod h1:SvmxrS/2giIWAuUE60MY8tf9mgI0gBLc1Q1W4juTans=
 github.com/pedroalbanese/go-grain v0.0.0-20240325185755-73b4f13ea6bc h1:0i9CwHS0m0ryTTv7LYOsg17ylUHy208mD+ibBo+RCFc=

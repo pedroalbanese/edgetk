@@ -42,7 +42,6 @@ require (
 	github.com/pedroalbanese/gmac v0.0.0-20231030174635-9eb35b8b4542
 	github.com/pedroalbanese/go-ascon v0.0.0-20240325185942-de83d7994a95
 	github.com/pedroalbanese/go-chaskey v0.0.0-20230117155006-a9e41c18223c
-	github.com/pedroalbanese/go-eccrypt v0.0.0-20240926184610-a3ec9026136e
 	github.com/pedroalbanese/go-external-ip v0.0.0-20200601212049-c872357d968e
 	github.com/pedroalbanese/go-grain v0.0.0-20240325185755-73b4f13ea6bc
 	github.com/pedroalbanese/go-idea v0.0.0-20170306091226-d2fb45a411fb
