@@ -387,7 +387,7 @@ $\text{ so compute } s \equiv a^{-1} \left( k - r \oplus H(m,h) \right) \pmod{n}
 
 #### Schnorr-based algorithms
 
-$\text{BignV1: Compute }  R = [k]G; s_0$ must be a root of $h(OID(H) || R || H(X)),$ 
+$\text{BignV1: Compute }  R = [k]G; s_0$ must be a root of $h(OID(H) \parallel R \parallel H(X)),$ 
 $\text{ so compute } s_1 \equiv (k - H(X) - (s_0 + 2^l)d) \mod q.$
 
 $\text{EdDSA: Compute } R = [k] G; S \equiv k + H(R \parallel m) \cdot d \mod q $, where $H$ is a hash function and $d$ is the private key.
