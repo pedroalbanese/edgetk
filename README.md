@@ -619,6 +619,11 @@ Quantum computing is in an early stage of development and faces significant chal
 ### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
 SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
 
+### SM9 GM/T 0044-2016 Public key algorithm 256-bit
+Parameters for the sm9p256v1 Elliptic curve
+
+SM9 is a Chinese National Identity Based Cryptography Standard and was originally published using a 256-bit Barreto-Naehrig Curve as its primary example. The new paper suggests that because attacks against some Barreto-Naehrig curves have improved that the SM9 standard should adopt a 384-bit Barreto-Naehrig Curve. The authors go on to suggest that this curve offers roughly 118 bits of security.
+
 ### XOR
 XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it by ^. If the two bits it takes as input are the same, the result is 0, otherwise it is 1. This implements an exclusive or operation, i.e. exactly one argument has to be 1 for the final result to be 1. We can show this using a truth table:
 
