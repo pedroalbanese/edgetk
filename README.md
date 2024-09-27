@@ -105,6 +105,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ECGDSA              | O   | O   |     | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
     | ANSSI               | O   |     | O   | O       | O        |     |
+    | Koblitz             | O   |     | O   | O       | O        |     |
     | BignV1              | O   | O   | O   | O       |          |     |
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
@@ -129,8 +130,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | B-283 (sect283r1)     |         |           | O          |           |
     | B-409 (sect409r1)     |         |           | O          |           |
     | B-571 (sect571r1)     |         |           | O          |           |
-    | ANSSI (frp256v1)      | O       |           |            |           |
     | BLS12-381             |         |           |            | O         |
+    | ANSSI (frp256v1)      | O       |           |            |           |
+    | Koblitz (secp256k1)   | O       |           |            |           |
     | SM2 (sm2p256v1)       | O       |           |            |           |
 
 - **Supported ParamSets:**
