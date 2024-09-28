@@ -444,7 +444,7 @@ The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that
 
 <details>
   <summary>EC-ElGamal Theory</summary>    
-
+  
 We initially create a private key as a random number $x$ and a public key of:  
 
 $Q = x \cdot G$
@@ -476,7 +476,7 @@ The ciphertext then has values of $C1$, $C2$, $\text{Nonce}$, and $\text{cipher}
 
 $t = x \cdot C1$  
 $AEADKey = \text{Derive}(t)$  
-$AAD = C1 || C2$  
+$AAD = C1 \parallel C2$  
 $msg = \text{DecAEADKey}(\text{cipher}, \text{Nonce}, \text{AAD})$
 
 Here is an overview of the method:
@@ -488,7 +488,7 @@ $R2 = r \cdot Q + b \cdot H$
 
 Next, we create the challenge bytes with:
 
-$chall = C1 || C2 || R1 || R2 || \text{Nonce}$
+$chall = C1 \parallel C2 \parallel R1 \parallel R2 \parallel \text{Nonce}$
 
 We take this value and hash it ($H$()), and create a scalar value with ($ek$) to produce:
 
@@ -516,7 +516,7 @@ $\quad = r \cdot Q + b \cdot H$
 
 We then reconstruct the challenge with:
 
-$chall = C1 || C2 || R1 || R2 || \text{Nonce}$
+$chall = C1 \parallel C2 \parallel R1 \parallel R2 \parallel \text{Nonce}$
 
 We take this value and hash it ($H$()), and create a scalar value with ($ek$) to produce:
 
