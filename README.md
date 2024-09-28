@@ -466,7 +466,7 @@ $C2 = M \cdot H + r \cdot Q$
 
 and where $M$ is the $msg$ value converted into a scalar value. We then append these together to create the additional data that will be used for the symmetric key encryption of the message:
 
-$AAD = C1 || C2$
+$AAD = C1 \parallel C2$
 
 We then generate a nonce value ($\text{Nonce}$) and then perform symmetric key encryption on the message:
 
