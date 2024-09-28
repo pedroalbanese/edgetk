@@ -392,6 +392,11 @@ $\text{ so compute } s_1 \equiv (k - H(X) - (s_0 + 2^l)d) \mod q.$
 
 $\text{EdDSA: Compute } R = [k] G; S \equiv k + H(R \parallel m) \cdot d \mod q $, where $H$ is a hash function and $d$ is the private key.
 
+#### Notes
+1. $H(m)$ represents the hash value of the message.
+2. $k^{-1}$ denotes the modular multiplicative inverse of $k$ modulo $(p-1)$.
+3. $\equiv$ indicates congruence.
+
 ### ElGamal
 The ElGamal algorithm is a public-key cryptography system that enables secure communication between two parties, involving asymmetric keypair generation and cryptographic operations. Initially, a large prime number $p$ and a generator $g$ for a finite cyclic group are generated. Each entity possesses a private key $x$, kept secret, and a public key $Y$, derived from $g^x \mod p$. To encrypt a symmetric key, the sender uses the session key, computes two components \(a\) and \(b\), and sends $g^k \mod p$ and $Y^k \cdot \text{key} \mod p$ to the recipient. The recipient, using their private key, decrypts the symmetric key. The ElGamal algorithm is known for its security based on the difficulty of solving the discrete logarithm problem and provides confidentiality and authentication properties.
 
