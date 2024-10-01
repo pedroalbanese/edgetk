@@ -442,7 +442,7 @@ The ElGamal algorithm is a public-key cryptography system that enables secure co
 
 ### EC-ElGamal
 
-The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key.  ElGamal encryption using elliptic curves is a cryptographic scheme that allows secure message transmission over an insecure channel. The algorithm relies on the mathematical properties of elliptic curves to ensure the confidentiality of messages.
+The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key.  Is a cryptographic scheme that allows secure message transmission over an insecure channel. The algorithm relies on the mathematical properties of elliptic curves to ensure the confidentiality of messages.
 
 #### Pure EC-ElGamal
 EC-ElGamal encryption using elliptic curves allows secure message transmission by having Alice generate a private key $y$ and a public key $Y = y \cdot G$, while Bob encrypts a message $M$ with a random value $r$, computing $C_1 = r \cdot G$ and $C_2 = r \cdot Y + M$, and Alice decrypts using $M = C_2 - y \cdot C_1$.
