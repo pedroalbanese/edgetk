@@ -442,8 +442,9 @@ The ElGamal algorithm is a public-key cryptography system that enables secure co
 
 ### EC-ElGamal
 
-The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key. Initially, each party generates its private key as a random number $x$ and computes its corresponding public key $Q = x \cdot G$, where $G$ is a base point on the elliptic curve. To encrypt a message $M$, the sender selects a random value $r$ and computes $t = r \cdot Q$ and $C2 = M \cdot H + r \cdot Q$, where $H$ is another point on the elliptic curve. These values are then combined to form the additional authentication data (AAD), which is used along with the message for symmetric encryption. A nonce value is also generated to ensure randomness in the cipher. The receiver uses their private key $x$ to derive $t = x \cdot C1$ and from it, the symmetric key used to decrypt the message. The algorithm also includes a zero-knowledge proof (ZKP) mechanism based on Schnorr, allowing the receiver to verify the authenticity of the received message without revealing their private key.
+The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key.  ElGamal encryption using elliptic curves is a cryptographic scheme that allows secure message transmission. The algorithm relies on the mathematical properties of elliptic curves to ensure the confidentiality of messages.
 
+#### Pure EC-ElGamal
 <details>
   <summary>EC-ElGamal Theory</summary>    
 With ElGamal encryption using elliptic curves, Alice generates a private key $y$ and a public key of:  
@@ -464,6 +465,10 @@ This works because:
 
 $M = C_2 - y \cdot C_1 = r \cdot y \cdot G + M - y \cdot r \cdot G = M$
 </details>
+
+#### EC-ELGamal with Verifiable Encryption
+
+Initially, each party generates its private key as a random number $x$ and computes its corresponding public key $Q = x \cdot G$, where $G$ is a base point on the elliptic curve. To encrypt a message $M$, the sender selects a random value $r$ and computes $t = r \cdot Q$ and $C2 = M \cdot H + r \cdot Q$, where $H$ is another point on the elliptic curve. These values are then combined to form the additional authentication data (AAD), which is used along with the message for symmetric encryption. A nonce value is also generated to ensure randomness in the cipher. The receiver uses their private key $x$ to derive $t = x \cdot C1$ and from it, the symmetric key used to decrypt the message. The algorithm also includes a zero-knowledge proof (ZKP) mechanism based on Schnorr, allowing the receiver to verify the authenticity of the received message without revealing their private key.
 
 <details>
   <summary>EC-ElGamal with Schnorr Proof</summary>    
