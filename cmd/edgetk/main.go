@@ -90,7 +90,7 @@ import (
 	"github.com/RyuaNerin/go-krypto/lsh512"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
 	"github.com/deatil/go-cryptobin/cipher/saferplus"
-	"github.com/deatil/go-cryptobin/ecgdsa"
+	"github.com/deatil/go-cryptobin/pubkey/ecgdsa"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -183,6 +183,7 @@ import (
 	"github.com/pedroalbanese/radio_gatun"
 	"github.com/pedroalbanese/randomart"
 	"github.com/pedroalbanese/rc2"
+	"github.com/pedroalbanese/secp256k1"
 	"github.com/pedroalbanese/shacal2"
 	"github.com/pedroalbanese/shavite"
 	"github.com/pedroalbanese/simd"
@@ -199,6 +200,8 @@ import (
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/zeebo/blake3"
+
+	"git.sr.ht/~sircmpwn/go-bare"
 )
 
 var (
@@ -297,7 +300,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.2e  26 Sep 2024")
+		fmt.Println("EDGE Toolkit v1.5.2f  30 Sep 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -5775,6 +5778,178 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *pkey == "keygen" && strings.ToUpper(*alg) == "KOBLITZ" {
+		privateKey, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
+		if err != nil {
+			log.Fatal("Error generating private key:", err)
+		}
+
+		pk := secp256k1.NewPrivateKey(privateKey)
+
+		pubkey := pk.PublicKey
+		pripem, _ := EncodeKOBLITZPrivateKey(pk)
+		ioutil.WriteFile(*priv, pripem, 0644)
+
+		pubpem, _ := EncodeKOBLITZPublicKey(&pubkey)
+		ioutil.WriteFile(*pub, pubpem, 0644)
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err := os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, _ := pem.Decode(pubpem)
+		if block == nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(block)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
+		os.Exit(0)
+	}
+
+	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "KOBLITZ") {
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		public, err := DecodeKOBLITZPublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := bytes.NewBuffer(nil)
+		data := inputfile
+		io.Copy(buf, data)
+		scanner := string(buf.Bytes())
+		ciphertxt, err := public.ToECDSA().EncryptAsn1([]byte(scanner), rand.Reader)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", ciphertxt)
+		os.Exit(0)
+	}
+
+	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "KOBLITZ") {
+		var privatekey *secp256k1.PrivateKey
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		privatekey, err = DecodeKOBLITZPrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := bytes.NewBuffer(nil)
+		data := inputfile
+		io.Copy(buf, data)
+		scanner := string(buf.Bytes())
+		str := string(scanner)
+		plaintxt, err := privatekey.ToECDSAPrivateKey().DecryptAsn1([]byte(str))
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("%s", plaintxt)
+		os.Exit(0)
+	}
+
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "KOBLITZ") {
+		var privatekey *secp256k1.PrivateKey
+		var h hash.Hash
+		h = myHash()
+		if _, err := io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeKOBLITZPrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		signature, err := ecdsa.SignASN1(rand.Reader, privatekey.ToECDSAPrivateKey(), h.Sum(nil))
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(strings.ToUpper(*alg)+"-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
+		os.Exit(0)
+	}
+
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "KOBLITZ") {
+		var h hash.Hash
+		h = myHash()
+		if _, err := io.Copy(h, inputfile); err != nil {
+			log.Fatal(err)
+		}
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		public, err := DecodeKOBLITZPublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sig, _ := hex.DecodeString(*sig)
+		verifystatus := ecdsa.VerifyASN1(public.ToECDSA(), h.Sum(nil), sig)
+		if verifystatus == true {
+			fmt.Printf("Verified: %v\n", verifystatus)
+			os.Exit(0)
+		} else {
+			fmt.Printf("Verified: %v\n", verifystatus)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
+	if *pkey == "derive" && strings.ToUpper(*alg) == "KOBLITZ" {
+		var privatekey *secp256k1.PrivateKey
+		file, err := ioutil.ReadFile(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		public, err := DecodeKOBLITZPublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		file2, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeKOBLITZPrivateKey(file2)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sharedKey, err := secp256k1.ECDH(privatekey.ToECDSAPrivateKey(), public.ToECDSA())
+		if err != nil {
+			log.Fatal("Error computing shared key:", err)
+		}
+		fmt.Printf("%x\n", sharedKey)
+		os.Exit(0)
+	}
+
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "BIGN") && (*length == 256 || *length == 384 || *length == 512) {
 		var BignCurve elliptic.Curve
 		if *length == 256 {
@@ -8338,6 +8513,8 @@ Subcommands:
 			*alg = "NUMS"
 		} else if strings.Contains(s, "ANSSI") {
 			*alg = "ANSSI"
+		} else if strings.Contains(s, "KOBLITZ") {
+			*alg = "KOBLITZ"
 		} else if strings.Contains(s, "BIGN") {
 			*alg = "BIGN"
 		} else if strings.Contains(s, "ECKCDSA PRIVATE") {
@@ -8835,7 +9012,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "EC-ELGAMAL") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "ECKA-EG") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -8995,7 +9172,7 @@ Subcommands:
 				curve = curves.BLS12381G1()
 			case "BLS12381G2":
 				curve = curves.BLS12381G2()
-			case "P256", "ECDSA", "EC", "SECP256R1":
+			case "P-256", "ECDSA", "EC", "SECP256R1":
 				curve = curves.P256()
 			default:
 				fmt.Println("Unsupported curve:", *curveFlag)
@@ -9069,12 +9246,23 @@ Subcommands:
 					os.Exit(1)
 				}
 
-				domain := []byte(*id)
-				dk := new(elgamal.DecryptionKey)
-
-				err = dk.UnmarshalBinary(keyBytes)
+				var privKeyMarshal privateKeyMarshal
+				if err := bare.Unmarshal(keyBytes, &privKeyMarshal); err != nil {
+					fmt.Println("Error deserializing private key:", err)
+					return
+				}
+				var curve *curves.Curve
+				curveStr := string(privKeyMarshal.Curve)
+				if curveStr == "P-256" {
+					curve = curves.P256()
+				} else if curveStr == "BLS12381G1" {
+					curve = curves.BLS12381G1()
+				} else if curveStr == "BLS12381G2" {
+					curve = curves.BLS12381G2()
+				}
+				privateScalar, err := curve.Scalar.SetBytes(privKeyMarshal.Value)
 				if err != nil {
-					fmt.Println("Error decoding private key:", err)
+					fmt.Println("Error converting private key from bytes:", err)
 					return
 				}
 
@@ -9084,20 +9272,32 @@ Subcommands:
 					os.Exit(1)
 				}
 
-				cs := new(elgamal.CipherText)
-
-				err = cs.UnmarshalBinary(ciphertextBytes)
-				if err != nil {
-					fmt.Println("Error decoding ciphertext:", err)
-					os.Exit(1)
+				var decodedCiphertext Ciphertext
+				if _, err := asn1.Unmarshal(ciphertextBytes, &decodedCiphertext); err != nil {
+					fmt.Println("Error decoding from ASN.1:", err)
+					return
 				}
 
-				dbytes, _, err := dk.VerifiableDecryptWithDomain(domain, cs)
+				C2Point, err := curve.Point.FromAffineCompressed(decodedCiphertext.C2)
 				if err != nil {
-					fmt.Println("Error decrypting:", err)
-					os.Exit(1)
+					fmt.Println("Error converting C2 from affine:", err)
+					return
 				}
-				fmt.Printf("Shared= %x\n", dbytes)
+
+				xDecrypted := decrypt(privateScalar, new(big.Int).SetBytes(decodedCiphertext.C1), C2Point)
+
+				decryptedBytes := xDecrypted.Bytes()
+
+				expectedLength := len(decodedCiphertext.C1) / 8
+
+				if len(decryptedBytes) < expectedLength {
+					paddedBytes := make([]byte, expectedLength)
+					copy(paddedBytes[expectedLength-len(decryptedBytes):], decryptedBytes)
+					decryptedBytes = paddedBytes
+				}
+				decryptedHex := fmt.Sprintf("%x", decryptedBytes)
+				fmt.Printf("Shared= %s\n", decryptedHex)
+
 				os.Exit(0)
 			} else {
 				if *key == "" {
@@ -9111,12 +9311,23 @@ Subcommands:
 					return
 				}
 
-				domain := []byte(*id)
-				ek := new(elgamal.EncryptionKey)
-
-				err = ek.UnmarshalBinary(keyBytes)
+				var pubKeyMarshal encryptionKeyMarshal
+				if err := bare.Unmarshal(keyBytes, &pubKeyMarshal); err != nil {
+					fmt.Println("Error deserializing public key:", err)
+					return
+				}
+				var curve *curves.Curve
+				curveStr := string(pubKeyMarshal.Curve)
+				if curveStr == "P-256" {
+					curve = curves.P256()
+				} else if curveStr == "BLS12381G1" {
+					curve = curves.BLS12381G1()
+				} else if curveStr == "BLS12381G2" {
+					curve = curves.BLS12381G2()
+				}
+				publicKey, err := curve.Point.FromAffineCompressed(pubKeyMarshal.Value)
 				if err != nil {
-					fmt.Println("Error decoding public key:", err)
+					fmt.Println("Error converting public key from affine:", err)
 					return
 				}
 
@@ -9125,36 +9336,29 @@ Subcommands:
 				if err != nil {
 					return
 				}
+				x := new(big.Int).SetBytes(msgBytes)
 
-				cs, proof, err := ek.VerifiableEncrypt(msgBytes, &elgamal.EncryptParams{
-					Domain:          domain,
-					MessageIsHashed: true,
-					GenProof:        true,
-					ProofNonce:      domain,
-				})
+				C1, C2 := encrypt(curve, x, curve.Point.Generator(), publicKey)
 
+				ciphertext := Ciphertext{
+					C1: C1.Bytes(),
+					C2: C2.ToAffineCompressed(),
+				}
+
+				asn1Data, err := asn1.Marshal(ciphertext)
 				if err != nil {
-					fmt.Println("Error encrypting:", err)
+					fmt.Println("Error encoding to ASN.1:", err)
 					return
 				}
 
-				res3, _ := cs.MarshalBinary()
-
-				fmt.Fprint(os.Stderr, "Verified: ")
-				rtn := ek.VerifyDomainEncryptProof(domain, cs, proof)
-				if rtn == nil {
-					fmt.Fprintln(os.Stderr, "true")
-				} else {
-					fmt.Fprintln(os.Stderr, "false")
-				}
-				fmt.Printf("Cipher= %x\n", res3)
+				fmt.Printf("Cipher= %x\n", asn1Data)
 				fmt.Printf("Shared= %x\n", msgBytes)
 				os.Exit(0)
 			}
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "EC-ELGAMAL-ALT") && (*pkey == "wrapkey" || *pkey == "unwrapkey") {
+	if (strings.ToUpper(*alg) == "ECKA-EG-ALT") && (*pkey == "wrapkey" || *pkey == "unwrapkey") {
 		if *pkey == "unwrapkey" {
 			if *key == "" {
 				fmt.Println("A key is required for decryption.")
@@ -9225,6 +9429,103 @@ Subcommands:
 			}
 
 			cs, proof, err := ek.VerifiableEncrypt(msgBytes, &elgamalAlt.EncryptParams{
+				Domain:          domain,
+				MessageIsHashed: true,
+				GenProof:        true,
+				ProofNonce:      domain,
+			})
+
+			if err != nil {
+				fmt.Println("Error encrypting:", err)
+				return
+			}
+
+			res3, _ := cs.MarshalBinary()
+
+			fmt.Fprint(os.Stderr, "Verified: ")
+			rtn := ek.VerifyDomainEncryptProof(domain, cs, proof)
+			if rtn == nil {
+				fmt.Fprintln(os.Stderr, "true")
+			} else {
+				fmt.Fprintln(os.Stderr, "false")
+			}
+			fmt.Printf("Cipher= %x\n", res3)
+			fmt.Printf("Shared= %x\n", msgBytes)
+			os.Exit(0)
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "ECKA-EG-SCHNORR") && (*pkey == "wrapkey" || *pkey == "unwrapkey") {
+		if *pkey == "unwrapkey" {
+			if *key == "" {
+				fmt.Println("A key is required for decryption.")
+				os.Exit(3)
+			}
+
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			domain := []byte(*id)
+			dk := new(elgamal.DecryptionKey)
+
+			err = dk.UnmarshalBinary(keyBytes)
+			if err != nil {
+				fmt.Println("Error decoding private key:", err)
+				return
+			}
+
+			ciphertextBytes, err := hex.DecodeString(*cph)
+			if err != nil {
+				fmt.Println("Error decoding ciphertext:", err)
+				os.Exit(1)
+			}
+
+			cs := new(elgamal.CipherText)
+
+			err = cs.UnmarshalBinary(ciphertextBytes)
+			if err != nil {
+				fmt.Println("Error decoding ciphertext:", err)
+				os.Exit(1)
+			}
+
+			dbytes, _, err := dk.VerifiableDecryptWithDomain(domain, cs)
+			if err != nil {
+				fmt.Println("Error decrypting:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Shared= %x\n", dbytes)
+			os.Exit(0)
+		} else {
+			if *key == "" {
+				fmt.Println("A key is required for encryption.")
+				return
+			}
+
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				return
+			}
+
+			domain := []byte(*id)
+			ek := new(elgamal.EncryptionKey)
+
+			err = ek.UnmarshalBinary(keyBytes)
+			if err != nil {
+				fmt.Println("Error decoding public key:", err)
+				return
+			}
+
+			msgBytes := make([]byte, *length/8)
+			_, err = rand.Read(msgBytes)
+			if err != nil {
+				return
+			}
+
+			cs, proof, err := ek.VerifiableEncrypt(msgBytes, &elgamal.EncryptParams{
 				Domain:          domain,
 				MessageIsHashed: true,
 				GenProof:        true,
@@ -10688,6 +10989,10 @@ Subcommands:
 				pub, err := frp256v1.ParsePublicKey(b)
 				return pub, err
 			},
+			func(b []byte) (interface{}, error) {
+				pub, err := secp256k1.ParsePublicKey(b)
+				return pub, err
+			},
 		}
 		var publicInterface interface{}
 		for _, parser := range parsers {
@@ -10715,6 +11020,10 @@ Subcommands:
 			publicKey := publicInterface.(*frp256v1.PublicKey)
 			curve := publicKey.Curve
 			fmt.Printf("ANSSI (%v-bit)\n", curve.Params().BitSize)
+		case *secp256k1.PublicKey:
+			publicKey := publicInterface.(*secp256k1.PublicKey)
+			curve := publicKey.Curve
+			fmt.Printf("KOBLITZ (%v-bit)\n", curve.Params().BitSize)
 		case *eckcdsa.PublicKey:
 			publicKey := publicInterface.(*eckcdsa.PublicKey)
 			curve := publicKey.Curve
@@ -10790,6 +11099,10 @@ Subcommands:
 				pub, err := frp256v1.ParsePublicKey(b)
 				return pub, err
 			},
+			func(b []byte) (interface{}, error) {
+				pub, err := secp256k1.ParsePublicKey(b)
+				return pub, err
+			},
 		}
 		var publicInterface interface{}
 		for _, parser := range parsers {
@@ -10811,6 +11124,8 @@ Subcommands:
 		case *nums.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		case *frp256v1.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case *secp256k1.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		case *eckcdsa.PublicKey:
 			fingerprint = calculateFingerprint(buf)
@@ -10875,6 +11190,10 @@ Subcommands:
 				pub, err := frp256v1.ParsePublicKey(b)
 				return pub, err
 			},
+			func(b []byte) (interface{}, error) {
+				pub, err := secp256k1.ParsePublicKey(b)
+				return pub, err
+			},
 		}
 		var publicInterface interface{}
 		for _, parser := range parsers {
@@ -10908,6 +11227,8 @@ Subcommands:
 			*alg = "NUMS"
 		case *frp256v1.PublicKey:
 			*alg = "ANSSI"
+		case *secp256k1.PublicKey:
+			*alg = "KOBLITZ"
 		case *bign.PublicKey:
 			*alg = "BIGN"
 		case *gost3410.PublicKey:
@@ -10932,6 +11253,11 @@ Subcommands:
 			os.Exit(0)
 		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ANSSI") {
 			var publicKey = publicInterface.(*frp256v1.PublicKey)
+			fmt.Printf("Public.X=%X\n", publicKey.X)
+			fmt.Printf("Public.Y=%X\n", publicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "KOBLITZ") {
+			var publicKey = publicInterface.(*secp256k1.PublicKey)
 			fmt.Printf("Public.X=%X\n", publicKey.X)
 			fmt.Printf("Public.Y=%X\n", publicKey.Y)
 			os.Exit(0)
@@ -11273,7 +11599,62 @@ Subcommands:
 			fmt.Printf("Curve: %s\n", publicKey.Params().Name)
 		} else if strings.ToUpper(*alg) == "ANSSI" {
 			publicKey := publicInterface.(*frp256v1.PublicKey)
-			curve := frp256v1.P256()
+			curve := publicKey.Curve
+			derBytes, err := publicKey.MarshalPKCS8PublicKey(curve)
+			if err != nil {
+				log.Fatal(err)
+			}
+			block := &pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: derBytes,
+			}
+			public := pem.EncodeToMemory(block)
+			fmt.Printf(string(public))
+
+			fmt.Printf("Public-Key: (%v-bit)\n", curve.Params().BitSize)
+			x := publicKey.X.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], x...)
+			}
+			c := []byte{}
+			c = append(c, x...)
+			fmt.Printf("pub.X: \n")
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			y := publicKey.Y.Bytes()
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, y...)
+			fmt.Printf("pub.Y: \n")
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("pub: \n")
+			x = publicKey.X.Bytes()
+			y = publicKey.Y.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], x...)
+			}
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, x...)
+			c = append(c, y...)
+			c = append([]byte{0x04}, c...)
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Curve.Params().Name)
+		} else if strings.ToUpper(*alg) == "KOBLITZ" {
+			publicKey := publicInterface.(*secp256k1.PublicKey)
+			curve := publicKey.Curve
 			derBytes, err := publicKey.MarshalPKCS8PublicKey(curve)
 			if err != nil {
 				log.Fatal(err)
@@ -11662,7 +12043,67 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			curve := frp256v1.P256()
+			curve := privKey.PublicKey.Curve
+
+			pub := &privKey.PublicKey
+			derBytes, err := pub.MarshalPKCS8PublicKey(curve)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", privKey.PublicKey.X)
+				fmt.Printf("Public.Y=%X\n", privKey.PublicKey.Y)
+				os.Exit(0)
+			}
+			fmt.Printf(string(privPEM))
+			d := privKey.D.Bytes()
+			if n := len(d); n < 24 && n < 32 && n < 48 && n < 64 {
+				d = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], d...)
+			}
+			c := []byte{}
+			c = append(c, d...)
+			fmt.Printf("Private-Key: (%v-bit)\n", curve.Params().BitSize)
+			fmt.Printf("priv: \n")
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			publicKey := privKey.PublicKey
+			fmt.Printf("pub: \n")
+			x := publicKey.X.Bytes()
+			y := publicKey.Y.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], x...)
+			}
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, x...)
+			c = append(c, y...)
+			c = append([]byte{0x04}, c...)
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Curve.Params().Name)
+			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nKeyID: %x \n", skid)
+		} else if strings.ToUpper(*alg) == "KOBLITZ" {
+			var privKey, err = secp256k1.ParsePrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			curve := privKey.PublicKey.Curve
 
 			pub := &privKey.PublicKey
 			derBytes, err := pub.MarshalPKCS8PublicKey(curve)
@@ -13319,7 +13760,7 @@ Subcommands:
 					Organization:       []string{""},
 					OrganizationalUnit: []string{""},
 				},
-				EmailAddresses: []string{"pedroalbanese@hotmail.com"},
+				EmailAddresses: []string{email},
 
 				NotBefore: time.Now(),
 				NotAfter:  NotAfter,
@@ -14872,6 +15313,88 @@ func DecodeANSSIPublicKey(encodedKey []byte) (*frp256v1.PublicKey, error) {
 	return public, nil
 }
 
+func EncodeKOBLITZPrivateKey(key *secp256k1.PrivateKey) ([]byte, error) {
+	derKey, err := key.MarshalPKCS8PrivateKey(key.PublicKey.Curve)
+	if err != nil {
+		return nil, err
+	}
+	keyBlock := &pem.Block{
+		Type:  "KOBLITZ PRIVATE KEY",
+		Bytes: derKey,
+	}
+	if *pwd != "" {
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(encryptedBlock), nil
+	} else {
+		return pem.EncodeToMemory(keyBlock), nil
+	}
+}
+
+func DecodeKOBLITZPrivateKey(encodedKey []byte) (*secp256k1.PrivateKey, error) {
+	var skippedTypes []string
+	var block *pem.Block
+	for {
+		block, encodedKey = pem.Decode(encodedKey)
+		if block == nil {
+			return nil, fmt.Errorf("failed to find EC PRIVATE KEY in PEM data after skipping types %v", skippedTypes)
+		}
+
+		if block.Type == "KOBLITZ PRIVATE KEY" {
+			break
+		} else {
+			skippedTypes = append(skippedTypes, block.Type)
+			continue
+		}
+	}
+	var privKey *secp256k1.PrivateKey
+	var privKeyBytes []byte
+	var err error
+	if IsEncryptedPEMBlock(block) {
+		privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+		if err != nil {
+			return nil, errors.New("could not decrypt private key")
+		}
+		privKey, _ = secp256k1.ParsePrivateKey(privKeyBytes)
+	} else {
+		privKey, _ = secp256k1.ParsePrivateKey(block.Bytes)
+	}
+	return privKey, nil
+}
+
+func EncodeKOBLITZPublicKey(key *secp256k1.PublicKey) ([]byte, error) {
+	curve := key.Curve
+	if curve == nil {
+		return nil, errors.New("unsupported key length")
+	}
+
+	derBytes, err := key.MarshalPKCS8PublicKey(curve)
+	if err != nil {
+		return nil, err
+	}
+
+	block := &pem.Block{
+		Type:  "KOBLITZ PUBLIC KEY",
+		Bytes: derBytes,
+	}
+	return pem.EncodeToMemory(block), nil
+}
+
+func DecodeKOBLITZPublicKey(encodedKey []byte) (*secp256k1.PublicKey, error) {
+	block, _ := pem.Decode(encodedKey)
+	if block == nil || block.Type != "KOBLITZ PUBLIC KEY" {
+		return nil, fmt.Errorf("marshal: could not decode PEM block type %s", block.Type)
+
+	}
+	public, err := secp256k1.ParsePublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return public, nil
+}
+
 func Hkdf(master, salt, info []byte) ([128]byte, error) {
 	var myHash func() hash.Hash
 	switch *md {
@@ -16360,6 +16883,10 @@ func printKeyDetails(block *pem.Block) {
 			pub, err := frp256v1.ParsePublicKey(b)
 			return pub, err
 		},
+		func(b []byte) (interface{}, error) {
+			pub, err := secp256k1.ParsePublicKey(b)
+			return pub, err
+		},
 	}
 	var publicInterface interface{}
 	for _, parser := range parsers {
@@ -16401,6 +16928,9 @@ func printKeyDetails(block *pem.Block) {
 	case *frp256v1.PublicKey:
 		publicKey := publicInterface.(*frp256v1.PublicKey)
 		fmt.Fprintf(os.Stderr, "ANSSI (%v-bit)\n", publicKey.Curve.Params().BitSize)
+	case *secp256k1.PublicKey:
+		publicKey := publicInterface.(*secp256k1.PublicKey)
+		fmt.Fprintf(os.Stderr, "KOBLITZ (%v-bit)\n", publicKey.Curve.Params().BitSize)
 	default:
 		log.Fatal("unknown type of public key")
 	}
@@ -17257,7 +17787,7 @@ func EncryptPEMBlock(rand io.Reader, blockType string, data, password []byte, al
 				"Proc-Type": "4,ENCRYPTED",
 				"DEK-Info":  ciph.name + "," + hex.EncodeToString(iv),
 			}
-			if strings.ToUpper(*alg) == "EC-ELGAMAL" {
+			if strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "ECKA-EG" {
 				headers["Curve"] = strings.ToUpper(*curveFlag)
 			}
 			return headers
@@ -18245,6 +18775,43 @@ func (this PKCS8Key) ParsePrivateKey(der []byte) (key *PrivateKey, err error) {
 
 func ParsePKCS8PrivateKey(derBytes []byte) (key *PrivateKey, err error) {
 	return NewPKCS8Key().ParsePrivateKey(derBytes)
+}
+
+type Ciphertext struct {
+	C1 []byte
+	C2 []byte
+}
+
+type privateKeyMarshal struct {
+	Value []byte `bare:"value"`
+	Curve []byte `bare:"curve"`
+}
+
+type encryptionKeyMarshal struct {
+	Value []byte `bare:"value"`
+	Curve []byte `bare:"curve"`
+}
+
+func encrypt(c *curves.Curve, x *big.Int, G curves.Point, Y curves.Point) (K *big.Int, C curves.Point) {
+	if c == nil || G == nil || Y == nil || x == nil {
+		panic("one or more input parameters are null")
+	}
+
+	r := c.Scalar.Random(rand.Reader)
+
+	rY := Y.Mul(r)
+	rG := G.Mul(r)
+	rYval := new(big.Int).SetBytes(rY.ToAffineUncompressed())
+	K = new(big.Int).Add(rYval, x)
+	C = rG
+	return
+}
+
+func decrypt(y curves.Scalar, K *big.Int, C curves.Point) *big.Int {
+	yC := C.Mul(y)
+	yCval := new(big.Int).SetBytes(yC.ToAffineUncompressed())
+	p := new(big.Int).Sub(K, yCval)
+	return p
 }
 
 func isHexDump(input string) bool {
