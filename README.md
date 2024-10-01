@@ -468,7 +468,7 @@ This works because:
 $M = C_2 - y \cdot C_1 = r \cdot y \cdot G + M - y \cdot r \cdot G = M$
 </details>
 
-#### EC-ELGamal with Verifiable Encryption
+#### EC-ElGamal with Verifiable Encryption
 
 Initially, each party generates its private key as a random number $x$ and computes its corresponding public key $Q = x \cdot G$, where $G$ is a base point on the elliptic curve. To encrypt a message $M$, the sender selects a random value $r$ and computes $t = r \cdot Q$ and $C2 = M \cdot H + r \cdot Q$, where $H$ is another point on the elliptic curve. These values are then combined to form the additional authentication data (AAD), which is used along with the message for symmetric encryption. A nonce value is also generated to ensure randomness in the cipher. The receiver uses their private key $x$ to derive $t = x \cdot C1$ and from it, the symmetric key used to decrypt the message. The algorithm also includes a zero-knowledge proof (ZKP) mechanism based on Schnorr, allowing the receiver to verify the authenticity of the received message without revealing their private key.
 
