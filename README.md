@@ -131,6 +131,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | B-409 (sect409r1)     |         |           | O          |           |
     | B-571 (sect571r1)     |         |           | O          |           |
     | BLS12-381             |         |           |            | O         |
+    | Ed25519               |         |           |            | O         |
+    | Pallas                |         |           |            | O         |
     | ANSSI (frp256v1)      | O       |           |            |           |
     | Koblitz (secp256k1)   | O       |           |            |           |
     | SM2 (sm2p256v1)       | O       |           |            |           |
