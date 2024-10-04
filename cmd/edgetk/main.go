@@ -300,7 +300,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.2f  30 Sep 2024")
+		fmt.Println("EDGE Toolkit v1.5.2f  04 Oct 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -9033,6 +9033,14 @@ Subcommands:
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
+
+			var pubKeyMarshal encryptionKeyMarshal
+			if err := bare.Unmarshal(keyBytes, &pubKeyMarshal); err != nil {
+				fmt.Println("Error deserializing public key:", err)
+				return
+			}
+			curveStr := string(pubKeyMarshal.Curve)
+
 			pubKeyPEM := pem.Block{Type: "EC-ELGAMAL ENCRYPTION KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
 			fmt.Print(keyPEMText)
@@ -9042,6 +9050,7 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
+			fmt.Println("Curve:", curveStr)
 			os.Exit(0)
 		} else if *pkey == "text" && *key != "" && blockType == "EC-ELGAMAL DECRYPTION KEY" {
 			keyBytes, err := ioutil.ReadFile(*key)
@@ -9053,23 +9062,27 @@ Subcommands:
 			if block == nil {
 				log.Fatal(err)
 			}
-
-			curve, ok := block.Headers["Curve"]
-			if !ok {
-				fmt.Println("Curve not found in headers.")
-			}
-
+			/*
+				curve, ok := block.Headers["Curve"]
+				if !ok {
+					fmt.Println("Curve not found in headers.")
+				}
+			*/
 			keyBytes, err = readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
+
+			var privKeyMarshal privateKeyMarshal
+			if err := bare.Unmarshal(keyBytes, &privKeyMarshal); err != nil {
+				fmt.Println("Error deserializing private key:", err)
+				return
+			}
+			curveStr := string(privKeyMarshal.Curve)
 			privKeyPEM := pem.Block{
 				Type:  "EC-ELGAMAL DECRYPTION KEY",
 				Bytes: keyBytes,
-				Headers: map[string]string{
-					"Curve": curve,
-				},
 			}
 			keyPEMText := string(pem.EncodeToMemory(&privKeyPEM))
 			fmt.Print(keyPEMText)
@@ -9096,6 +9109,7 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
+			fmt.Println("Curve:", curveStr)
 			os.Exit(0)
 		}
 		if *pkey == "modulus" && *key != "" && blockType == "EC-ELGAMAL ENCRYPTION KEY" {
@@ -9141,7 +9155,7 @@ Subcommands:
 				return
 			}
 			keySize := len(keyBytes) * 8
-			if keySize != 320 {
+			if keySize != 352 && keySize != 328 && keySize != 320 {
 				fmt.Println("EC-ElGamal (381-bit)")
 			} else {
 				fmt.Println("EC-ElGamal (256-bit)")
@@ -9174,6 +9188,12 @@ Subcommands:
 				curve = curves.BLS12381G2()
 			case "P-256", "ECDSA", "EC", "SECP256R1":
 				curve = curves.P256()
+			case "ED25519":
+				curve = curves.ED25519()
+			case "PALLAS":
+				curve = curves.PALLAS()
+			case "KOBLITZ", "SECP256K1":
+				curve = curves.K256()
 			default:
 				fmt.Println("Unsupported curve:", *curveFlag)
 				os.Exit(3)
@@ -9208,12 +9228,11 @@ Subcommands:
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
 
 			keySize := len(pubBytes) * 8
-			if keySize != 320 {
+			if keySize != 352 && keySize != 328 && keySize != 320 {
 				fmt.Println("EC-ElGamal (381-bit)")
 			} else {
 				fmt.Println("EC-ElGamal (256-bit)")
 			}
-
 			pubFile, err := os.Open(*pub)
 			if err != nil {
 				fmt.Println("Error opening public key file:", err)
@@ -9259,6 +9278,12 @@ Subcommands:
 					curve = curves.BLS12381G1()
 				} else if curveStr == "BLS12381G2" {
 					curve = curves.BLS12381G2()
+				} else if curveStr == "ed25519" {
+					curve = curves.ED25519()
+				} else if curveStr == "pallas" {
+					curve = curves.PALLAS()
+				} else if curveStr == "secp256k1" {
+					curve = curves.K256()
 				}
 				privateScalar, err := curve.Scalar.SetBytes(privKeyMarshal.Value)
 				if err != nil {
@@ -9324,6 +9349,12 @@ Subcommands:
 					curve = curves.BLS12381G1()
 				} else if curveStr == "BLS12381G2" {
 					curve = curves.BLS12381G2()
+				} else if curveStr == "ed25519" {
+					curve = curves.ED25519()
+				} else if curveStr == "pallas" {
+					curve = curves.PALLAS()
+				} else if curveStr == "secp256k1" {
+					curve = curves.K256()
 				}
 				publicKey, err := curve.Point.FromAffineCompressed(pubKeyMarshal.Value)
 				if err != nil {
@@ -17770,30 +17801,31 @@ func EncryptPEMBlock(rand io.Reader, blockType string, data, password []byte, al
 		encrypted = append(encrypted, byte(pad))
 	}
 	enc.CryptBlocks(encrypted, encrypted)
+
+	return &pem.Block{
+		Type: blockType,
+		Headers: map[string]string{
+			"Proc-Type": "4,ENCRYPTED",
+			"DEK-Info":  ciph.name + "," + hex.EncodeToString(iv),
+		},
+		Bytes: encrypted,
+	}, nil
 	/*
 		return &pem.Block{
 			Type: blockType,
-			Headers: map[string]string{
-				"Proc-Type": "4,ENCRYPTED",
-				"DEK-Info":  ciph.name + "," + hex.EncodeToString(iv),
-			},
+			Headers: func() map[string]string {
+				headers := map[string]string{
+					"Proc-Type": "4,ENCRYPTED",
+					"DEK-Info":  ciph.name + "," + hex.EncodeToString(iv),
+				}
+				if strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "ECKA-EG" {
+					headers["Curve"] = strings.ToUpper(*curveFlag)
+				}
+				return headers
+			}(),
 			Bytes: encrypted,
 		}, nil
 	*/
-	return &pem.Block{
-		Type: blockType,
-		Headers: func() map[string]string {
-			headers := map[string]string{
-				"Proc-Type": "4,ENCRYPTED",
-				"DEK-Info":  ciph.name + "," + hex.EncodeToString(iv),
-			}
-			if strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "ECKA-EG" {
-				headers["Curve"] = strings.ToUpper(*curveFlag)
-			}
-			return headers
-		}(),
-		Bytes: encrypted,
-	}, nil
 }
 
 func cipherByName(name string) *rfc1423Algo {
