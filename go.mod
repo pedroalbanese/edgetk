@@ -3,10 +3,11 @@ module github.com/pedroalbanese/edgetk
 go 1.20
 
 require (
+	git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9
 	gitee.com/Trisia/gotlcp v1.3.17
 	github.com/RyuaNerin/elliptic2 v1.0.0
 	github.com/RyuaNerin/go-krypto v1.3.0
-	github.com/deatil/go-cryptobin v1.0.3026
+	github.com/deatil/go-cryptobin v1.0.4018
 	github.com/emmansun/certinfo v0.1.0
 	github.com/emmansun/gmsm v0.24.2
 	github.com/emmansun/go-pkcs12 v0.3.0
@@ -35,7 +36,7 @@ require (
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
 	github.com/pedroalbanese/echo v0.0.0-20240329160327-5e65f19de84b
-	github.com/pedroalbanese/ecka-eg v0.0.3
+	github.com/pedroalbanese/ecka-eg v0.0.3003
 	github.com/pedroalbanese/esch v0.0.0-20240403151441-bc287e464d49
 	github.com/pedroalbanese/frp256v1 v0.0.2-0.20240924173051-9a21c6c1586f
 	github.com/pedroalbanese/fugue v0.0.0-20240518170253-4e3af93fc75a
@@ -79,6 +80,7 @@ require (
 	github.com/pedroalbanese/radio_gatun v0.0.0-20240520204859-03d5d3af41c3
 	github.com/pedroalbanese/randomart v0.0.0-20130402080559-540116cac932
 	github.com/pedroalbanese/rc2 v0.0.0-20131011165748-24b9757f5521
+	github.com/pedroalbanese/secp256k1 v0.1.3
 	github.com/pedroalbanese/shacal2 v0.0.0-20240911175924-cbeaa118c471
 	github.com/pedroalbanese/shavite v0.0.0-20240518173728-5c0c7c528bc7
 	github.com/pedroalbanese/simd v0.0.0-20240518173711-b73ebc90aae8
@@ -99,9 +101,8 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
-	git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9 // indirect
-	github.com/bwesterb/go-ristretto v1.2.0 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/bwesterb/go-ristretto v1.2.3 // indirect
 	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
 	github.com/nixberg/chacha-rng-go v0.1.0 // indirect
