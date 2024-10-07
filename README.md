@@ -563,7 +563,7 @@ GOST refers to a set of technical standards maintained by the Euro-Asian Council
 ### Key sizes
 - **Bit-length Equivalence**
 
-    | Symmetric Key Size  | RSA and DSA Key Size  | ECC Key Size   | 
+    | Symmetric Key Size  | RSA and EG Key Size   | ECC Key Size   | 
     |:-------------------:|:---------------------:|:--------------:| 
     | 80                  | 1024                  | 160            | 
     | 112                 | 2048                  | 224            | 
