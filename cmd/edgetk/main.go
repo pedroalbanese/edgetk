@@ -9062,12 +9062,7 @@ Subcommands:
 			if block == nil {
 				log.Fatal(err)
 			}
-			/*
-				curve, ok := block.Headers["Curve"]
-				if !ok {
-					fmt.Println("Curve not found in headers.")
-				}
-			*/
+
 			keyBytes, err = readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
@@ -9313,7 +9308,7 @@ Subcommands:
 
 				decryptedBytes := xDecrypted.Bytes()
 
-				expectedLength := len(decodedCiphertext.C1) / 8
+				expectedLength := len(C2Point.ToAffineCompressed()) / 8
 
 				if len(decryptedBytes) < expectedLength {
 					paddedBytes := make([]byte, expectedLength)
