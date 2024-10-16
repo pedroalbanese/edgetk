@@ -317,8 +317,8 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  anssi             ed25519/ph        kyber             sm9sign/ph
-  bign              ed448/ph          dilithium         sm9encrypt
+  anssi             ed25519/ph        ml-kem            sm9sign/ph
+  bign              ed448/ph          ml-dsa            sm9encrypt
   ecdsa             elgamal           nums/nums-te      sphincs
   ecgdsa            ec-elgamal        rsa (default)     x25519
   eckcdsa           gost2012          sm2/ph            x448
@@ -1441,6 +1441,10 @@ Subcommands:
 
 	if (strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "NUMS-TE") && *pkey == "keygen" && *length == 0 {
 		*length = 256
+	}
+
+	if strings.ToUpper(*alg) == "ML-KEM" && *pkey == "wrapkey" && *cph == "aes" {
+		*cph = ""
 	}
 
 	if strings.ToUpper(*alg) == "MAKWA" && *length == 0 {
@@ -2923,7 +2927,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "shacal2" || *cph == "belt") && (strings.ToUpper(*mode) == "SIV") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "shacal2" || *cph == "belt" || *cph == "safer+" || *cph == "saferplus") && (strings.ToUpper(*mode) == "SIV") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -8505,10 +8509,10 @@ Subcommands:
 			*alg = "EC-ELGAMAL"
 		} else if strings.Contains(s, "ELGAMAL") {
 			*alg = "ELGAMAL"
-		} else if strings.Contains(s, "KYBER") {
-			*alg = "KYBER"
-		} else if strings.Contains(s, "DILITHIUM") {
-			*alg = "DILITHIUM"
+		} else if strings.Contains(s, "ML-KEM") {
+			*alg = "ML-KEM"
+		} else if strings.Contains(s, "ML-DSA") {
+			*alg = "ML-DSA"
 		} else if strings.Contains(s, "NUMS") {
 			*alg = "NUMS"
 		} else if strings.Contains(s, "ANSSI") {
@@ -9199,7 +9203,6 @@ Subcommands:
 			pubBytes, _ := ek.MarshalBinary()
 
 			privKeyPEM := pem.Block{Type: "EC-ELGAMAL DECRYPTION KEY", Bytes: privBytes}
-			privKeyPEM.Headers = map[string]string{"Curve": strings.ToUpper(*curveFlag)}
 
 			pubKeyPEM := pem.Block{Type: "EC-ELGAMAL ENCRYPTION KEY", Bytes: pubBytes}
 
@@ -9578,7 +9581,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "KYBER") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "ML-KEM") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -9593,13 +9596,13 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
-		if *pkey == "text" && *key != "" && blockType == "KYBER SECRET KEY" {
+		if *pkey == "text" && *key != "" && blockType == "ML-KEM SECRET KEY" {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
-			pubKeyPEM := pem.Block{Type: "KYBER SECRET KEY", Bytes: keyBytes}
+			pubKeyPEM := pem.Block{Type: "ML-KEM SECRET KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
 			fmt.Print(keyPEMText)
 			fmt.Println("SecretKey:")
@@ -9609,13 +9612,13 @@ Subcommands:
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			os.Exit(0)
-		} else if *pkey == "text" && *key != "" && blockType == "KYBER PUBLIC KEY" {
+		} else if *pkey == "text" && *key != "" && blockType == "ML-KEM PUBLIC KEY" {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
-			pubKeyPEM := pem.Block{Type: "KYBER PUBLIC KEY", Bytes: keyBytes}
+			pubKeyPEM := pem.Block{Type: "ML-KEM PUBLIC KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
 			fmt.Print(keyPEMText)
 			fmt.Println("PublicKey:")
@@ -9644,8 +9647,6 @@ Subcommands:
 			}
 			defer pubFile.Close()
 
-			fmt.Println("Kyber (1568-bit)")
-
 			pubInfo, err := pubFile.Stat()
 			if err != nil {
 				fmt.Println("Error getting public key file info:", err)
@@ -9653,16 +9654,40 @@ Subcommands:
 			}
 
 			pubBuf := make([]byte, pubInfo.Size())
+
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			var keySize string
+			switch len(pk) {
+			case 800:
+				keySize = "512-bit"
+			case 1184:
+				keySize = "768-bit"
+			case 1568:
+				keySize = "1024-bit"
+			default:
+				keySize = "unknown size"
+			}
+
+			fmt.Printf("ML-KEM (%s)\n", keySize)
 			pubFile.Read(pubBuf)
 			randomArt := randomart.FromString(string(pubBuf))
 			fmt.Println(randomArt)
 			os.Exit(0)
 		}
 		if *pkey == "keygen" {
-			pk, sk := GenerateKyber()
+			pk, sk, err := GenerateKyber(*length)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
 
 			block := &pem.Block{
-				Type:  "KYBER SECRET KEY",
+				Type:  "ML-KEM SECRET KEY",
 				Bytes: sk,
 			}
 			if err := savePEMToFile(*priv, block, true); err != nil {
@@ -9671,7 +9696,7 @@ Subcommands:
 			}
 
 			block = &pem.Block{
-				Type:  "KYBER PUBLIC KEY",
+				Type:  "ML-KEM PUBLIC KEY",
 				Bytes: pk,
 			}
 
@@ -9697,7 +9722,7 @@ Subcommands:
 			fingerprint := calculateFingerprint(pk)
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
 
-			fmt.Println("Kyber (1568-bit)")
+			fmt.Printf("ML-KEM (%d-bit)\n", *length)
 
 			pubFile, err := os.Open(*pub)
 			if err != nil {
@@ -9745,7 +9770,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "DILITHIUM") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "verify" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "ML-DSA") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "verify" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -9760,13 +9785,13 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
-		if *pkey == "text" && *key != "" && blockType == "DILITHIUM SECRET KEY" {
+		if *pkey == "text" && *key != "" && blockType == "ML-DSA SECRET KEY" {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
-			pubKeyPEM := pem.Block{Type: "DILITHIUM SECRET KEY", Bytes: keyBytes}
+			pubKeyPEM := pem.Block{Type: "ML-DSA SECRET KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
 			fmt.Print(keyPEMText)
 			fmt.Println("SecretKey:")
@@ -9776,13 +9801,13 @@ Subcommands:
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			os.Exit(0)
-		} else if *pkey == "text" && *key != "" && blockType == "DILITHIUM PUBLIC KEY" {
+		} else if *pkey == "text" && *key != "" && blockType == "ML-DSA PUBLIC KEY" {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
 			}
-			pubKeyPEM := pem.Block{Type: "DILITHIUM PUBLIC KEY", Bytes: keyBytes}
+			pubKeyPEM := pem.Block{Type: "ML-DSA PUBLIC KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
 			fmt.Print(keyPEMText)
 			fmt.Println("PublicKey:")
@@ -9811,7 +9836,25 @@ Subcommands:
 			}
 			defer pubFile.Close()
 
-			fmt.Println("Dilithium (2592-bit)")
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			var keySize string
+			switch len(pk) {
+			case 1312:
+				keySize = "2048-bit"
+			case 1952:
+				keySize = "3072-bit"
+			case 2592:
+				keySize = "4096-bit"
+			default:
+				keySize = "unknown size"
+			}
+
+			fmt.Printf("ML-DSA (%s)\n", keySize)
 
 			pubInfo, err := pubFile.Stat()
 			if err != nil {
@@ -9826,10 +9869,14 @@ Subcommands:
 			os.Exit(0)
 		}
 		if *pkey == "keygen" {
-			pk, sk := GenerateDilithium()
+			pk, sk, err := GenerateDilithium(*length)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
 
 			block := &pem.Block{
-				Type:  "DILITHIUM SECRET KEY",
+				Type:  "ML-DSA SECRET KEY",
 				Bytes: sk,
 			}
 			if err := savePEMToFile(*priv, block, true); err != nil {
@@ -9838,7 +9885,7 @@ Subcommands:
 			}
 
 			block = &pem.Block{
-				Type:  "DILITHIUM PUBLIC KEY",
+				Type:  "ML-DSA PUBLIC KEY",
 				Bytes: pk,
 			}
 
@@ -9864,7 +9911,19 @@ Subcommands:
 			fingerprint := calculateFingerprint(pk)
 			fmt.Printf("Fingerprint: %s\n", fingerprint)
 
-			fmt.Println("Dilithium (2592-bit)")
+			var keySize string
+			switch len(pk) {
+			case 1312:
+				keySize = "2048-bit"
+			case 1952:
+				keySize = "3072-bit"
+			case 2592:
+				keySize = "4096-bit"
+			default:
+				keySize = "unknown size"
+			}
+
+			fmt.Printf("ML-DSA (%s)\n", keySize)
 
 			pubFile, err := os.Open(*pub)
 			if err != nil {
@@ -18502,37 +18561,6 @@ func readElGamalParamsFromPEM(fileName string) (*ElGamalParams, error) {
 	return bytesToParams(block.Bytes)
 }
 
-/*
-func savePEMToFile(fileName string, block *pem.Block) error {
-	file, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	err = pem.Encode(file, block)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func readKeyFromPEM(fileName string) ([]byte, error) {
-	fileData, err := ioutil.ReadFile(fileName)
-	if err != nil {
-		return nil, err
-	}
-
-	block, _ := pem.Decode(fileData)
-	if block == nil {
-		return nil, fmt.Errorf("failed to decode PEM block")
-	}
-
-	return block.Bytes, nil
-}
-*/
-
 func savePEMToFile(fileName string, block *pem.Block, isPrivateKey bool) error {
 	file, err := os.Create(fileName)
 	if err != nil {
@@ -18577,18 +18605,41 @@ func readKeyFromPEM(fileName string, isPrivateKey bool) ([]byte, error) {
 	return block.Bytes, nil
 }
 
-func GenerateKyber() ([]byte, []byte) {
+func GenerateKyber(size int) ([]byte, []byte, error) {
 	seed := make([]byte, 32)
-	rand.Read(seed)
+	if _, err := rand.Read(seed); err != nil {
+		return nil, nil, err
+	}
 
-	d := kyber.NewKyber1024()
+	var d *kyber.Kyber
+	switch size {
+	case 512:
+		d = kyber.NewKyber512()
+	case 768:
+		d = kyber.NewKyber768()
+	case 1024:
+		d = kyber.NewKyber1024()
+	default:
+		return nil, nil, fmt.Errorf("invalid key size: %d", size)
+	}
+
 	pk, sk := d.KeyGen(seed)
-
-	return pk, sk
+	return pk, sk, nil
 }
 
 func WrapKey(pk []byte) error {
-	k := kyber.NewKyber1024()
+	var k *kyber.Kyber
+
+	switch len(pk) {
+	case 800:
+		k = kyber.NewKyber512()
+	case 1184:
+		k = kyber.NewKyber768()
+	case 1568:
+		k = kyber.NewKyber1024()
+	default:
+		return fmt.Errorf("invalid public key size: %d", len(pk))
+	}
 
 	seed := make([]byte, 32)
 	rand.Read(seed)
@@ -18596,7 +18647,7 @@ func WrapKey(pk []byte) error {
 	ciphertext, ss := k.Encaps(pk, seed)
 
 	ciphertextBlock := &pem.Block{
-		Type:  "KYBER ENCRYPTED KEY",
+		Type:  "ML-KEM ENCRYPTED KEY",
 		Bytes: ciphertext,
 	}
 
@@ -18632,21 +18683,56 @@ func UnwrapKey(sk []byte, cipherFile string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to decode PEM block")
 	}
 
-	k := kyber.NewKyber1024()
+	var k *kyber.Kyber
+
+	switch len(sk) {
+	case 1632:
+		k = kyber.NewKyber512()
+	case 2400:
+		k = kyber.NewKyber768()
+	case 3168:
+		k = kyber.NewKyber1024()
+	default:
+		return nil, fmt.Errorf("invalid public key size: %d", len(sk))
+	}
 
 	unwrappedSecret := k.Decaps(sk, block.Bytes)
 
 	return unwrappedSecret, nil
 }
 
-func GenerateDilithium() ([]byte, []byte) {
-	seed := make([]byte, 32)
-	rand.Read(seed)
+const (
+	Dilithium2Size = 2048
+	Dilithium3Size = 3072
+	Dilithium5Size = 4096
+)
 
-	d := dilithium.NewDilithium5()
+func GetDilithium(size int) *dilithium.Dilithium {
+	switch size {
+	case Dilithium2Size:
+		return dilithium.NewDilithium2()
+	case Dilithium3Size:
+		return dilithium.NewDilithium3()
+	case Dilithium5Size:
+		return dilithium.NewDilithium5()
+	default:
+		return nil
+	}
+}
+
+func GenerateDilithium(length int) ([]byte, []byte, error) {
+	seed := make([]byte, 32)
+	if _, err := rand.Read(seed); err != nil {
+		return nil, nil, err
+	}
+
+	d := GetDilithium(length)
+	if d == nil {
+		return nil, nil, fmt.Errorf("invalid key size: %d", length)
+	}
 	pk, sk := d.KeyGen(seed)
 
-	return pk, sk
+	return pk, sk, nil
 }
 
 func Sign(sk []byte, msgInput io.Reader) ([]byte, error) {
@@ -18655,7 +18741,18 @@ func Sign(sk []byte, msgInput io.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	d := dilithium.NewDilithium5()
+	var d *dilithium.Dilithium
+	switch len(sk) {
+	case 2528:
+		d = dilithium.NewDilithium2()
+	case 4000:
+		d = dilithium.NewDilithium3()
+	case 4864:
+		d = dilithium.NewDilithium5()
+	default:
+		return nil, fmt.Errorf("invalid secret key size: %d", len(sk))
+	}
+
 	signature := d.Sign(sk, msg)
 
 	return signature, nil
@@ -18669,23 +18766,30 @@ func Verify(pk []byte, signatureFile string, msg []byte) error {
 
 	block, _ := pem.Decode(signatureBytes)
 	if block == nil {
-		fmt.Println("Error decoding signature PEM block")
 		return fmt.Errorf("failed to decode PEM block")
 	}
 
-	if block.Type != "DILITHIUM SIGNATURE" {
-		fmt.Println("Unexpected PEM block type:", block.Type)
-		return fmt.Errorf("unexpected PEM block type")
+	if block.Type != "ML-DSA SIGNATURE" {
+		return fmt.Errorf("unexpected PEM block type: %s", block.Type)
 	}
 
 	signature := block.Bytes
 
-	d := dilithium.NewDilithium5()
-	verified := d.Verify(pk, msg, signature)
+	var d *dilithium.Dilithium
+	switch len(pk) {
+	case 1312:
+		d = dilithium.NewDilithium2()
+	case 1952:
+		d = dilithium.NewDilithium3()
+	case 2592:
+		d = dilithium.NewDilithium5()
+	default:
+		return fmt.Errorf("invalid public key size: %d", len(pk))
+	}
 
+	verified := d.Verify(pk, msg, signature)
 	if !verified {
-		fmt.Println("Verified: false")
-		os.Exit(1)
+		return fmt.Errorf("verification failed")
 	}
 
 	return nil
@@ -18693,7 +18797,7 @@ func Verify(pk []byte, signatureFile string, msg []byte) error {
 
 func SaveSignatureToPEM(signature []byte, filename string) error {
 	signatureBlock := &pem.Block{
-		Type:  "DILITHIUM SIGNATURE",
+		Type:  "ML-DSA SIGNATURE",
 		Bytes: signature,
 	}
 
