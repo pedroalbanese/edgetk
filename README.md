@@ -90,6 +90,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 76. US FIPS 197 Advanced Encryption Standard (AES)
 77. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
 78. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
+79. US FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism
+80. US FIPS 204 Module-Lattice-Based Digital Signature Standard
 
 </details>
 
