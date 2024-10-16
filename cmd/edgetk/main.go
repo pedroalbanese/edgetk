@@ -1447,6 +1447,14 @@ Subcommands:
 		*cph = ""
 	}
 
+	if strings.ToUpper(*alg) == "ML-KEM" && *pkey == "keygen" && *length == 0 {
+		*length = 768
+	}
+
+	if strings.ToUpper(*alg) == "ML-DSA" && *pkey == "keygen" && *length == 0 {
+		*length = 3072
+	}
+
 	if strings.ToUpper(*alg) == "MAKWA" && *length == 0 {
 		*length = 2048
 	}
