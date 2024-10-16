@@ -116,7 +116,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM2                 | O   |     | O   | O       | O        | O   |
     | SM9                 | O   |     | O   | O       | O        |     |
     | NUMS                | O   | O   | O   | O       | O        |     |
-    | CRYSTALS            |     |     |     | O       | O        |     |
+    | ML                  |     |     |     | O       | O        |     |
     | ElGamal             |     |     |     | O       | O        |     |
     | EC-ElGamal          | O   |     |     |         | O        |     |
     | SPHINCS+            | O   |     |     | O       |          |     |
@@ -630,6 +630,9 @@ Keying material is in general to include things like shared Diffie-Hellman secre
 
 ### MAC
 MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
+
+### ML-KEM, ML-DSA
+Module-lattice-based algorithms, such as KEM (Key Encapsulation Mechanism) and DSA (Digital Signature Algorithm), are promising solutions in post-quantum cryptography that provide security against attacks from quantum computers. KEM facilitates secure key exchange by encapsulating a secret key in an object, leveraging complex mathematical problems like the Shortest Vector Problem (SVP) or Learning With Errors (LWE) to ensure security and efficiency. Meanwhile, DSA generates and verifies digital signatures, ensuring the authenticity and integrity of messages while also using lattice structures for protection against quantum algorithms. Together, these approaches represent a significant advancement for information security in the future.
 
 ### NUMS
 **Microsoft Nothing Up My Sleeve Elliptic curves**  
