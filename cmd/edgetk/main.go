@@ -44,6 +44,7 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"flag"
@@ -300,7 +301,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.2f  04 Oct 2024")
+		fmt.Println("EDGE Toolkit v1.5.2  20 Oct 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -845,6 +846,7 @@ Subcommands:
 		myHash = bash.New384
 	case "bash512":
 		myHash = bash.New512
+	case "haraka", "haraka256", "haraka512":
 	default:
 		log.Fatalf("Message digest type %s not recognized", *md)
 	}
@@ -1051,6 +1053,7 @@ Subcommands:
 		h = bash.New384()
 	case "bash512":
 		h = bash.New512()
+	case "haraka", "haraka256", "haraka512":
 	default:
 		log.Fatalf("Message digest type %s not recognized", *md)
 	}
@@ -9589,6 +9592,31 @@ Subcommands:
 		}
 	}
 
+	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" {
+
+		if data, err := ioutil.ReadFile(*key); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "ML-KEM") {
+					*alg = "ML-KEM"
+				} else if strings.Contains(block.Type, "ML-DSA") {
+					*alg = "ML-DSA"
+				}
+			}
+		}
+		if data, err := ioutil.ReadFile(*crl); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "ML-DSA") {
+				}
+			}
+		}
+		if data, err := ioutil.ReadFile(*cert); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "ML-DSA") {
+				}
+			}
+		}
+	}
+
 	if (strings.ToUpper(*alg) == "ML-KEM") && (*pkey == "keygen" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
@@ -9619,6 +9647,21 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
+
+			var oid string
+			switch len(keyBytes) {
+			case 1632:
+				oid = "ML-KEM-512"
+			case 2400:
+				oid = "ML-KEM-768"
+			case 3168:
+				oid = "ML-KEM-1024"
+			default:
+				fmt.Errorf("invalid public key size: %d", len(keyBytes))
+			}
+
+			fmt.Printf("ASN.1 OID: %s\n", oid)
+
 			os.Exit(0)
 		} else if *pkey == "text" && *key != "" && blockType == "ML-KEM PUBLIC KEY" {
 			keyBytes, err := readKeyFromPEM(*key, false)
@@ -9635,6 +9678,22 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
+
+			var oid string
+			switch len(keyBytes) {
+			case 800:
+				oid = "ML-KEM-512"
+			case 1184:
+				oid = "ML-KEM-768"
+			case 1568:
+				oid = "ML-KEM-1024"
+			default:
+				fmt.Errorf("invalid public key size: %d", len(keyBytes))
+			}
+			fmt.Printf("ASN.1 OID: %s\n", oid)
+
+			skid := sha3.Sum256(keyBytes)
+			fmt.Printf("\nKeyID: %x \n", skid[:20])
 			os.Exit(0)
 		}
 		if *pkey == "fingerprint" && *key != "" {
@@ -9778,7 +9837,73 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "ML-DSA") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "verify" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	var validity string
+
+	if (strings.ToUpper(*alg) == "ML-DSA") && (*pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl") {
+		if *pkey == "certgen" || *pkey == "req" {
+			if *subj == "" {
+				println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
+
+				scanner := bufio.NewScanner(os.Stdin)
+
+				print("Common Name: ")
+				scanner.Scan()
+				name = scanner.Text()
+
+				print("Country Name (2 letter code) [AU]: ")
+				scanner.Scan()
+				country = scanner.Text()
+
+				print("State or Province Name (full name) [Some-State]: ")
+				scanner.Scan()
+				province = scanner.Text()
+
+				print("Locality Name (eg, city): ")
+				scanner.Scan()
+				locality = scanner.Text()
+
+				print("Organization Name (eg, company) [Internet Widgits Pty Ltd]: ")
+				scanner.Scan()
+				organization = scanner.Text()
+
+				print("Organizational Unit Name (eg, section): ")
+				scanner.Scan()
+				organizationunit = scanner.Text()
+
+				print("Email Address []: ")
+				scanner.Scan()
+				email = scanner.Text()
+
+				print("StreetAddress: ")
+				scanner.Scan()
+				street = scanner.Text()
+
+				print("PostalCode: ")
+				scanner.Scan()
+				postalcode = scanner.Text()
+
+				print("SerialNumber: ")
+				scanner.Scan()
+				number = scanner.Text()
+			} else {
+				name, number, country, province, locality, organization, organizationunit, street, email, postalcode, err = parseSubjectString(*subj)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+
+		if *pkey == "certgen" || *pkey == "x509" || *pkey == "crl" {
+			if *days > 0 {
+				validity = fmt.Sprintf("%d", *days)
+			} else {
+				fmt.Print("Validity (in Days): ")
+				fmt.Scanln(&validity)
+			}
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "ML-DSA") && (*pkey == "keygen" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "check" || *pkey == "crl" || *pkey == "validate" || *pkey == "sign" || *pkey == "verify" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -9808,6 +9933,20 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
+
+			var oid string
+			switch len(keyBytes) {
+			case 2528:
+				oid = "ML-DSA-2048"
+			case 4000:
+				oid = "ML-DSA-3072"
+			case 4864:
+				oid = "ML-DSA-4096"
+			default:
+				fmt.Errorf("invalid public key size: %d", len(keyBytes))
+			}
+			fmt.Printf("ASN.1 OID: %s\n", oid)
+
 			os.Exit(0)
 		} else if *pkey == "text" && *key != "" && blockType == "ML-DSA PUBLIC KEY" {
 			keyBytes, err := readKeyFromPEM(*key, false)
@@ -9824,6 +9963,30 @@ Subcommands:
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
+
+			var oid string
+			switch len(keyBytes) {
+			case 1312:
+				oid = "ML-DSA-2048"
+			case 1952:
+				oid = "ML-DSA-3072"
+			case 2592:
+				oid = "ML-DSA-4096"
+			default:
+				fmt.Errorf("invalid public key size: %d", len(keyBytes))
+			}
+			fmt.Printf("ASN.1 OID: %s\n", oid)
+
+			skid := sha3.Sum256(keyBytes)
+			fmt.Printf("\nKeyID: %x \n", skid[:20])
+			os.Exit(0)
+		} else if *pkey == "text" && *key == "" && *crl != "" {
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				log.Fatalf("Erro ao ler o CRL: %v", err)
+			}
+
+			PrintCRLInfo(crl)
 			os.Exit(0)
 		}
 		if *pkey == "fingerprint" && *key != "" {
@@ -9954,39 +10117,273 @@ Subcommands:
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
-				return
+				os.Exit(1)
 			}
 
 			signature, err := Sign(sk, inputfile)
 			if err != nil {
 				fmt.Println("Error signing message:", err)
-				return
+				os.Exit(1)
 			}
 
 			if err := SaveSignatureToPEM(signature, *sig); err != nil {
 				fmt.Println("Error saving signature:", err)
-				return
 			}
 		} else if *pkey == "verify" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
-				return
+				os.Exit(1)
 			}
 
 			msg, err := ioutil.ReadAll(inputfile)
 			if err != nil {
 				fmt.Println("Error reading message:", err)
-				return
+				os.Exit(1)
 			}
 
 			err = Verify(pk, *sig, msg)
 			if err != nil {
 				fmt.Println("Error verifying signature:", err)
+				os.Exit(1)
+			}
+			fmt.Println("Verified: true")
+		} else if *pkey == "certgen" {
+			pk, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
 				return
 			}
 
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			ca := NewCA(sk, pk, validity)
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			certificate, err := ca.IssueCertificate(subject, email, pk, sk, true, validity)
+			if err != nil {
+				fmt.Println("Error issuing certificate:", err)
+				return
+			}
+
+			err = SaveCertificateToPEM(certificate, *cert)
+			if err != nil {
+				fmt.Println("Error saving certificate:", err)
+				return
+			}
+
+			fmt.Println("Certificate issued and saved successfully.")
+			os.Exit(0)
+		} else if *pkey == "check" && *crl == "" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Erro ao ler o certificado:", err)
+				return
+			}
+
+			err = VerifyCertificate(certificate, pk)
+			if err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(1)
+			} else {
+				fmt.Println("Verified: true")
+				os.Exit(0)
+			}
+		} else if *pkey == "text" && *cert != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Erro ao ler o certificado:", err)
+				return
+			}
+
+			PrintCertificateInfo(certificate)
+			os.Exit(0)
+		} else if *pkey == "req" {
+			caPrivateKey, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			publicKey, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			csr, err := CreateCSR(subject, email, publicKey, caPrivateKey)
+			if err != nil {
+				log.Fatalf("Failed to create CSR: %v", err)
+			}
+
+			err = SaveCSRToPEM(csr, *cert)
+			if err != nil {
+				log.Fatalf("Failed to save CSR: %v", err)
+			}
+
+			fmt.Println("CSR created and saved to", *cert)
+			os.Exit(0)
+		} else if *pkey == "x509" {
+			caPrivateKey, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+
+			caCert, err := ReadCertificateFromPEM(*root)
+			if err != nil {
+				log.Fatalf("Failed to read CA certificate: %v", err)
+			}
+
+			csr, err := ReadCSRFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read CSR: %v", err)
+			}
+
+			ca := &CA{
+				PrivateKey:  caPrivateKey,
+				Certificate: *caCert,
+			}
+
+			signedCert, err := SignCSR(csr, ca, caPrivateKey, validity)
+			if err != nil {
+				log.Fatalf("Failed to sign CSR: %v", err)
+			}
+
+			outputFilename := strings.TrimSuffix(*cert, filepath.Ext(*cert)) + ".crt"
+
+			err = SaveCertificateToPEM(signedCert, outputFilename)
+			if err != nil {
+				log.Fatalf("Failed to save certificate: %v", err)
+			}
+
+			fmt.Println("Certificate signed and saved to", outputFilename)
+			os.Exit(0)
+		} else if *pkey == "crl" {
+			pk, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				return
+			}
+
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading private key:", err)
+				return
+			}
+
+			cert, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read CA certificate: %v", err)
+			}
+
+			ca := NewCA(sk, pk, validity)
+
+			crl, err := NewCRL(ca, *crl, validity)
+			if err != nil {
+				fmt.Println("Error generating CRL:", err)
+				return
+			}
+
+			revokedSerials, err := readRevokedSerials(flag.Arg(0))
+			if err != nil {
+				fmt.Printf("Error reading revoked serial numbers: %v\n", err)
+				return
+			}
+
+			for _, serial := range revokedSerials {
+				crl.RevokeCertificate(serial)
+			}
+
+			if err := crl.Sign(ca, cert); err != nil {
+				fmt.Printf("Error signing CRL: %v\n", err)
+				return
+			}
+
+			var outputFile string
+			if len(flag.Args()) > 0 {
+				outputFile = flag.Arg(1)
+			}
+
+			if err := SaveCRLToPEM(crl, outputFile); err != nil {
+				fmt.Printf("Error saving CRL: %v\n", err)
+				return
+			}
+
+			fmt.Println("CRL generated and saved successfully.")
+			os.Exit(0)
+		} else if *pkey == "validate" {
+			certToValidate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Printf("Error reading certificate: %v\n", err)
+				return
+			}
+
+			readCRL, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				return
+			}
+
+			if readCRL.IsRevoked(certToValidate.SerialNumber) {
+				fmt.Println("The certificate has been revoked")
+				os.Exit(1)
+			} else {
+				fmt.Println("The certificate is not revoked")
+				os.Exit(0)
+			}
+		} else if *pkey == "check" && *crl != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Error reading certificate:", err)
+				return
+			}
+
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := CheckCRL(crl, certificate.PublicKey); err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(3)
+			}
+
 			fmt.Println("Verified: true")
+			os.Exit(0)
 		}
 	}
 
@@ -13666,15 +14063,15 @@ Subcommands:
 		}
 
 		fmt.Println("CRL:")
-		fmt.Println("  Data:")
-		fmt.Printf("    Number             : %d (%X)\n", revocationList.Number, revocationList.Number)
-		fmt.Println("    Last Update        :", crl.TBSCertList.ThisUpdate)
-		fmt.Println("    Next Update        :", crl.TBSCertList.NextUpdate)
+		fmt.Println("    Data:")
+		fmt.Printf("        Number             : %d (%X)\n", revocationList.Number, revocationList.Number)
+		fmt.Println("        Last Update        :", crl.TBSCertList.ThisUpdate)
+		fmt.Println("        Next Update        :", crl.TBSCertList.NextUpdate)
 
-		fmt.Println("    Issuer")
-		fmt.Println("       ", crl.TBSCertList.Issuer)
+		fmt.Println("        Issuer")
+		fmt.Println("            ", crl.TBSCertList.Issuer)
 
-		fmt.Printf("    Authority Key ID   : %x\n", akid)
+		fmt.Printf("        Authority Key ID   : %x\n", akid)
 
 		algoName := getAlgorithmName(crl.SignatureAlgorithm.Algorithm.String())
 		fmt.Println("    Signature Algorithm:", algoName)
@@ -13684,10 +14081,10 @@ Subcommands:
 			fmt.Printf("        %-10s            \n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 
-		fmt.Println("  Revoked Certificates:")
+		fmt.Println("    Revoked Certificates:")
 		for _, revokedCert := range revocationList.RevokedCertificates {
-			fmt.Printf("  - Serial Number: %X\n", revokedCert.SerialNumber)
-			fmt.Println("    Revocation Time:", revokedCert.RevocationTime)
+			fmt.Printf("    - Serial Number: %X\n", revokedCert.SerialNumber)
+			fmt.Println("      Revocation Time:", revokedCert.RevocationTime)
 		}
 	}
 
@@ -18628,7 +19025,7 @@ func GenerateKyber(size int) ([]byte, []byte, error) {
 	case 1024:
 		d = kyber.NewKyber1024()
 	default:
-		return nil, nil, fmt.Errorf("invalid key size: %d", size)
+		return nil, nil, fmt.Errorf("invalid key size: %d. Valid sizes are: 512, 768 or 1024-bit.", size)
 	}
 
 	pk, sk := d.KeyGen(seed)
@@ -18655,7 +19052,7 @@ func WrapKey(pk []byte) error {
 	ciphertext, ss := k.Encaps(pk, seed)
 
 	ciphertextBlock := &pem.Block{
-		Type:  "ML-KEM ENCRYPTED KEY",
+		Type:  "ML-KEM ENCAPSULATED KEY",
 		Bytes: ciphertext,
 	}
 
@@ -18736,7 +19133,7 @@ func GenerateDilithium(length int) ([]byte, []byte, error) {
 
 	d := GetDilithium(length)
 	if d == nil {
-		return nil, nil, fmt.Errorf("invalid key size: %d", length)
+		return nil, nil, fmt.Errorf("invalid key size: %d. Valid sizes are: 2048, 3072 or 4096-bit.", length)
 	}
 	pk, sk := d.KeyGen(seed)
 
@@ -18951,6 +19348,519 @@ func decrypt(y curves.Scalar, K *big.Int, C curves.Point) *big.Int {
 	yCval := new(big.Int).SetBytes(yC.ToAffineUncompressed())
 	p := new(big.Int).Sub(K, yCval)
 	return p
+}
+
+type Certificate struct {
+	SerialNumber   *big.Int
+	Subject        pkix.Name
+	Issuer         pkix.Name
+	NotBefore      time.Time
+	NotAfter       time.Time
+	PublicKey      []byte
+	Signature      []byte
+	SubjectKeyID   []byte
+	AuthorityKeyID []byte
+	SubjectEmail   string
+}
+
+type CA struct {
+	PrivateKey  []byte
+	Certificate Certificate
+}
+
+func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, privateKey []byte, isCA bool, validityDays string) (*Certificate, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 160)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		log.Fatalf("Failed to generate serial number: %v", err)
+	}
+
+	hash := sha3.Sum256(publicKey)
+	subjectKeyID := hash[:20]
+
+	caHash := sha3.Sum256(ca.Certificate.PublicKey)
+	authorityKeyID := caHash[:20]
+
+	validity, err := strconv.Atoi(validityDays)
+	if err != nil {
+		log.Fatalf("Invalid validity: %v", err)
+	}
+	notAfter := time.Now().Add(time.Duration(validity) * 24 * time.Hour)
+
+	cert := &Certificate{
+		SerialNumber:   serialNumber,
+		Subject:        subject,
+		SubjectEmail:   email,
+		Issuer:         subject,
+		NotBefore:      time.Now(),
+		NotAfter:       notAfter,
+		PublicKey:      publicKey,
+		SubjectKeyID:   subjectKeyID,
+		AuthorityKeyID: authorityKeyID,
+	}
+
+	if !isCA {
+		cert.Issuer = ca.Certificate.Subject
+	}
+
+	dataToSign := struct {
+		SerialNumber *big.Int  `json:"serial_number"`
+		Subject      pkix.Name `json:"subject"`
+		Issuer       pkix.Name `json:"issuer"`
+		NotBefore    time.Time `json:"not_before"`
+		NotAfter     time.Time `json:"not_after"`
+	}{
+		SerialNumber: cert.SerialNumber,
+		Subject:      cert.Subject,
+		Issuer:       cert.Issuer,
+		NotBefore:    cert.NotBefore,
+		NotAfter:     cert.NotAfter,
+	}
+
+	certData, err := json.Marshal(dataToSign)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao serializar os dados para assinatura: %v", err)
+	}
+
+	signature, err := Sign(privateKey, bytes.NewReader(certData))
+	if err != nil {
+		return nil, err
+	}
+	cert.Signature = signature
+
+	return cert, nil
+}
+
+func SaveCertificateToPEM(cert *Certificate, filename string) error {
+	certData, err := json.Marshal(cert)
+	if err != nil {
+		return fmt.Errorf("erro ao serializar o certificado: %v", err)
+	}
+
+	certBlock := &pem.Block{
+		Type:  "ML-DSA CERTIFICATE",
+		Bytes: certData,
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return pem.Encode(file, certBlock)
+}
+
+func NewCA(privateKey, publicKey []byte, validityDays string) *CA {
+	validity, err := strconv.Atoi(validityDays)
+	if err != nil {
+		log.Fatalf("Invalid validity: %v", err)
+	}
+	notAfter := time.Now().Add(time.Duration(validity) * 24 * time.Hour)
+	return &CA{
+		PrivateKey: privateKey,
+		Certificate: Certificate{
+			SerialNumber: big.NewInt(1),
+			Subject:      pkix.Name{},
+			Issuer:       pkix.Name{},
+			NotBefore:    time.Now(),
+			NotAfter:     notAfter,
+			PublicKey:    publicKey,
+		},
+	}
+}
+
+func VerifyCertificate(cert *Certificate, publicKey []byte) error {
+	dataToVerify := struct {
+		SerialNumber *big.Int  `json:"serial_number"`
+		Subject      pkix.Name `json:"subject"`
+		Issuer       pkix.Name `json:"issuer"`
+		NotBefore    time.Time `json:"not_before"`
+		NotAfter     time.Time `json:"not_after"`
+	}{
+		SerialNumber: cert.SerialNumber,
+		Subject:      cert.Subject,
+		Issuer:       cert.Issuer,
+		NotBefore:    cert.NotBefore,
+		NotAfter:     cert.NotAfter,
+	}
+
+	certData, err := json.Marshal(dataToVerify)
+	if err != nil {
+		return fmt.Errorf("erro ao serializar os dados do certificado: %v", err)
+	}
+
+	signature := cert.Signature
+
+	return VerifyBytes(publicKey, signature, certData)
+}
+
+func ReadCertificateFromPEM(filename string) (*Certificate, error) {
+	certBytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(certBytes)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	if block.Type != "ML-DSA CERTIFICATE" {
+		return nil, errors.New("unexpected PEM block type")
+	}
+
+	var cert Certificate
+	err = json.Unmarshal(block.Bytes, &cert)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao deserializar o certificado: %v", err)
+	}
+
+	return &cert, nil
+}
+
+func VerifyBytes(pk []byte, signature []byte, msg []byte) error {
+	var d *dilithium.Dilithium
+	switch len(pk) {
+	case 1312:
+		d = dilithium.NewDilithium2()
+	case 1952:
+		d = dilithium.NewDilithium3()
+	case 2592:
+		d = dilithium.NewDilithium5()
+	default:
+		return fmt.Errorf("invalid public key size: %d", len(pk))
+	}
+
+	verified := d.Verify(pk, msg, signature)
+	if !verified {
+		return fmt.Errorf("verification failed")
+	}
+
+	return nil
+}
+
+func (cert *Certificate) IsValid() bool {
+	now := time.Now()
+	return now.After(cert.NotBefore) && now.Before(cert.NotAfter)
+}
+
+func PrintCertificateInfo(cert *Certificate) {
+	fmt.Printf("Certificate:\n")
+	fmt.Printf("    Data:\n")
+	fmt.Printf("        Serial Number: %s (0x%x)\n", cert.SerialNumber.String(), cert.SerialNumber)
+	fmt.Printf("        Issuer: %s\n", cert.Issuer)
+	fmt.Printf("        Authority Key ID: %x\n", cert.AuthorityKeyID)
+	fmt.Printf("        Validity\n")
+	fmt.Printf("            Not Before: %s\n", cert.NotBefore.Format(time.RFC3339))
+	fmt.Printf("            Not After : %s\n", cert.NotAfter.Format(time.RFC3339))
+	fmt.Printf("        Subject: %s\n", cert.Subject)
+	fmt.Printf("        Subject Key ID:   %x\n", cert.SubjectKeyID)
+	fmt.Printf("        Subject Email:    %s\n", cert.SubjectEmail)
+	fmt.Printf("    Signature Algorithm: ML-DSA\n")
+	fmt.Printf("    Public Key:\n")
+	splitz := SplitSubN(hex.EncodeToString(cert.PublicKey), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+	fmt.Printf("    Signature:\n")
+	splitz = SplitSubN(hex.EncodeToString(cert.Signature), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+
+	fmt.Printf("IsValid: %t\n", cert.IsValid())
+}
+
+type CSR struct {
+	Subject   pkix.Name
+	PublicKey []byte
+	Signature []byte
+	Email     string
+}
+
+func CreateCSR(subject pkix.Name, email string, publicKey, privateKey []byte) (*CSR, error) {
+	csr := &CSR{
+		Subject:   subject,
+		PublicKey: publicKey,
+		Email:     email,
+	}
+
+	dataToSign := struct {
+		Subject   pkix.Name `json:"subject"`
+		PublicKey []byte    `json:"public_key"`
+	}{
+		Subject:   csr.Subject,
+		PublicKey: csr.PublicKey,
+	}
+
+	certData, err := json.Marshal(dataToSign)
+	if err != nil {
+		return nil, fmt.Errorf("error serializing CSR data: %v", err)
+	}
+
+	signature, err := Sign(privateKey, bytes.NewReader(certData))
+	if err != nil {
+		return nil, fmt.Errorf("error signing CSR: %v", err)
+	}
+
+	csr.Signature = signature
+
+	return csr, nil
+}
+
+func SignCSR(csr *CSR, ca *CA, privateKey []byte, validityDays string) (*Certificate, error) {
+	signedCert, err := ca.IssueCertificate(csr.Subject, csr.Email, csr.PublicKey, privateKey, false, validityDays)
+	if err != nil {
+		return nil, fmt.Errorf("failed to issue certificate: %v", err)
+	}
+
+	return signedCert, nil
+}
+
+func SaveCSRToPEM(csr *CSR, filename string) error {
+	csrData, err := json.Marshal(csr)
+	if err != nil {
+		return fmt.Errorf("error serializing CSR: %v", err)
+	}
+
+	csrBlock := &pem.Block{
+		Type:  "ML-DSA CERTIFICATE REQUEST",
+		Bytes: csrData,
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return pem.Encode(file, csrBlock)
+}
+
+func ReadCSRFromPEM(filename string) (*CSR, error) {
+	csrBytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(csrBytes)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	if block.Type != "ML-DSA CERTIFICATE REQUEST" {
+		return nil, errors.New("unexpected PEM block type")
+	}
+
+	var csr CSR
+	err = json.Unmarshal(block.Bytes, &csr)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing CSR: %v", err)
+	}
+
+	return &csr, nil
+}
+
+type CRL struct {
+	RevokedCertificates []RevokedCertificate
+	Issuer              pkix.Name
+	NotBefore           time.Time
+	NotAfter            time.Time
+	Signature           []byte
+	RawData             []byte
+	SerialNumber        *big.Int
+	AuthorityKeyID      []byte
+}
+
+type RevokedCertificate struct {
+	SerialNumber   *big.Int
+	RevocationTime time.Time
+}
+
+func NewCRL(ca *CA, oldCRLFile string, validityDays string) (*CRL, error) {
+	var revokedCertificates []RevokedCertificate
+
+	validity, err := strconv.Atoi(validityDays)
+	if err != nil {
+		log.Fatalf("Invalid validity: %v", err)
+	}
+	notAfter := time.Now().Add(time.Duration(validity) * 24 * time.Hour)
+
+	if oldCRLFile != "" {
+		oldCRL, err := ReadCRLFromPEM(oldCRLFile)
+		if err != nil {
+			return nil, fmt.Errorf("erro ao ler CRL antiga: %v", err)
+		}
+		revokedCertificates = oldCRL.RevokedCertificates
+	}
+
+	newCRL := &CRL{
+		RevokedCertificates: revokedCertificates,
+		Issuer:              ca.Certificate.Subject,
+		NotBefore:           time.Now(),
+		NotAfter:            notAfter,
+		SerialNumber:        big.NewInt(1),
+		AuthorityKeyID:      ca.Certificate.AuthorityKeyID,
+	}
+
+	return newCRL, nil
+}
+
+func (crl *CRL) RevokeCertificate(serialNumber *big.Int) {
+	crl.RevokedCertificates = append(crl.RevokedCertificates, RevokedCertificate{
+		SerialNumber:   serialNumber,
+		RevocationTime: time.Now(),
+	})
+}
+
+func (crl *CRL) Sign(ca *CA, cert *Certificate) error {
+	crl.AuthorityKeyID = cert.AuthorityKeyID
+
+	crl.Issuer = cert.Issuer
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 80)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return fmt.Errorf("erro ao gerar número de série da CRL: %v", err)
+	}
+	crl.SerialNumber = serialNumber
+
+	crlData := struct {
+		RevokedCertificates []RevokedCertificate `json:"revoked_certificates"`
+		Issuer              pkix.Name            `json:"issuer"`
+		NotBefore           time.Time            `json:"not_before"`
+		NotAfter            time.Time            `json:"not_after"`
+		SerialNumber        *big.Int             `json:"serial_number"`
+		AuthorityKeyID      []byte               `json:"authority_key_id"`
+	}{
+		RevokedCertificates: crl.RevokedCertificates,
+		Issuer:              crl.Issuer,
+		NotBefore:           crl.NotBefore,
+		NotAfter:            crl.NotAfter,
+		SerialNumber:        crl.SerialNumber,
+		AuthorityKeyID:      crl.AuthorityKeyID,
+	}
+
+	crlBytes, err := json.Marshal(crlData)
+	if err != nil {
+		return fmt.Errorf("error serializing CRL data: %v", err)
+	}
+
+	signature, err := Sign(ca.PrivateKey, bytes.NewReader(crlBytes))
+	if err != nil {
+		return fmt.Errorf("error signing CRL: %v", err)
+	}
+	crl.Signature = signature
+	crl.RawData = crlBytes
+
+	return nil
+}
+
+func SaveCRLToPEM(crl *CRL, filename string) error {
+	crlData, err := json.Marshal(crl)
+	if err != nil {
+		return fmt.Errorf("error serializing CRL: %v", err)
+	}
+
+	crlBlock := &pem.Block{
+		Type:  "ML-DSA CRL",
+		Bytes: crlData,
+	}
+
+	file, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return pem.Encode(file, crlBlock)
+}
+
+func ReadCRLFromPEM(filename string) (*CRL, error) {
+	crlBytes, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(crlBytes)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	if block.Type != "ML-DSA CRL" {
+		return nil, errors.New("unexpected PEM block type")
+	}
+
+	var crl CRL
+	err = json.Unmarshal(block.Bytes, &crl)
+	if err != nil {
+		return nil, fmt.Errorf("error deserializing CRL: %v", err)
+	}
+
+	return &crl, nil
+}
+
+func (crl *CRL) IsRevoked(serialNumber *big.Int) bool {
+	for _, revoked := range crl.RevokedCertificates {
+		if revoked.SerialNumber.Cmp(serialNumber) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func readRevokedSerials(filename string) ([]*big.Int, error) {
+	var serials []*big.Int
+
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if line != "" {
+			serial, ok := new(big.Int).SetString(line, 10)
+			if ok {
+				serials = append(serials, serial)
+			} else {
+				fmt.Printf("Invalid serial number format: %s\n", line)
+			}
+		}
+	}
+
+	return serials, nil
+}
+
+func CheckCRL(crl *CRL, publicKey []byte) error {
+	if err := VerifyBytes(publicKey, crl.Signature, crl.RawData); err != nil {
+		return fmt.Errorf("CRL signature verification failed: %v", err)
+	}
+	return nil
+}
+
+func PrintCRLInfo(crl *CRL) {
+	fmt.Printf("CRL:\n")
+	fmt.Printf("    Data:\n")
+	fmt.Printf("        Number             : %s (%X)\n", crl.SerialNumber.String(), crl.SerialNumber)
+	fmt.Printf("        Last Update        : %s\n", crl.NotBefore.Format(time.RFC3339))
+	fmt.Printf("        Next Update        : %s\n", crl.NotAfter.Format(time.RFC3339))
+	fmt.Printf("        Issuer\n")
+	fmt.Printf("            %s\n", crl.Issuer)
+	fmt.Printf("        Authority Key ID   : %x\n", crl.AuthorityKeyID)
+	fmt.Printf("    Signature Algorithm: ML-DSA\n")
+	fmt.Printf("    Signature:\n")
+	splitz := SplitSubN(hex.EncodeToString(crl.Signature), 2)
+	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	}
+
+	fmt.Printf("    Revoked Certificates:\n")
+	for _, revoked := range crl.RevokedCertificates {
+		fmt.Printf("    - Serial Number: %s\n", revoked.SerialNumber.String())
+		fmt.Printf("      Revocation Time: %s\n", revoked.RevocationTime.Format(time.RFC3339))
+	}
 }
 
 func isHexDump(input string) bool {
