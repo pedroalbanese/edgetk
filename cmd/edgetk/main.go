@@ -19404,17 +19404,25 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 	}
 
 	dataToSign := struct {
-		SerialNumber *big.Int  `json:"serial_number"`
-		Subject      pkix.Name `json:"subject"`
-		Issuer       pkix.Name `json:"issuer"`
-		NotBefore    time.Time `json:"not_before"`
-		NotAfter     time.Time `json:"not_after"`
+		SerialNumber   *big.Int  `json:"serial_number"`
+		Subject        pkix.Name `json:"subject"`
+		Issuer         pkix.Name `json:"issuer"`
+		NotBefore      time.Time `json:"not_before"`
+		NotAfter       time.Time `json:"not_after"`
+		PublicKey      []byte    `json:"public_key"`
+		SubjectKeyID   []byte    `json:"subject_key_id"`
+		AuthorityKeyID []byte    `json:"authority_key_id"`
+		SubjectEmail   string    `json:"email"`
 	}{
-		SerialNumber: cert.SerialNumber,
-		Subject:      cert.Subject,
-		Issuer:       cert.Issuer,
-		NotBefore:    cert.NotBefore,
-		NotAfter:     cert.NotAfter,
+		SerialNumber:   cert.SerialNumber,
+		Subject:        cert.Subject,
+		Issuer:         cert.Issuer,
+		NotBefore:      cert.NotBefore,
+		NotAfter:       cert.NotAfter,
+		PublicKey:      publicKey,
+		SubjectKeyID:   subjectKeyID,
+		AuthorityKeyID: authorityKeyID,
+		SubjectEmail:   email,
 	}
 
 	certData, err := json.Marshal(dataToSign)
@@ -19472,17 +19480,25 @@ func NewCA(privateKey, publicKey []byte, validityDays string) *CA {
 
 func VerifyCertificate(cert *Certificate, publicKey []byte) error {
 	dataToVerify := struct {
-		SerialNumber *big.Int  `json:"serial_number"`
-		Subject      pkix.Name `json:"subject"`
-		Issuer       pkix.Name `json:"issuer"`
-		NotBefore    time.Time `json:"not_before"`
-		NotAfter     time.Time `json:"not_after"`
+		SerialNumber   *big.Int  `json:"serial_number"`
+		Subject        pkix.Name `json:"subject"`
+		Issuer         pkix.Name `json:"issuer"`
+		NotBefore      time.Time `json:"not_before"`
+		NotAfter       time.Time `json:"not_after"`
+		PublicKey      []byte    `json:"public_key"`
+		SubjectKeyID   []byte    `json:"subject_key_id"`
+		AuthorityKeyID []byte    `json:"authority_key_id"`
+		SubjectEmail   string    `json:"email"`
 	}{
-		SerialNumber: cert.SerialNumber,
-		Subject:      cert.Subject,
-		Issuer:       cert.Issuer,
-		NotBefore:    cert.NotBefore,
-		NotAfter:     cert.NotAfter,
+		SerialNumber:   cert.SerialNumber,
+		Subject:        cert.Subject,
+		Issuer:         cert.Issuer,
+		NotBefore:      cert.NotBefore,
+		NotAfter:       cert.NotAfter,
+		PublicKey:      cert.PublicKey,
+		SubjectKeyID:   cert.SubjectKeyID,
+		AuthorityKeyID: cert.AuthorityKeyID,
+		SubjectEmail:   cert.SubjectEmail,
 	}
 
 	certData, err := json.Marshal(dataToVerify)
