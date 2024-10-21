@@ -101,7 +101,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Public key algorithms:**  
 
-    |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption| TLS |
+    |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption|X.509|
     |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O       | O        | O   |
     | ECGDSA              | O   | O   |     | O       |          |     |
@@ -116,7 +116,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM2                 | O   |     | O   | O       | O        | O   |
     | SM9                 | O   |     | O   | O       | O        |     |
     | NUMS                | O   | O   | O   | O       | O        |     |
-    | ML                  |     |     |     | O       | O        |     |
+    | ML                  |     |     |     | O       | O        | O   |
     | ElGamal             |     |     |     | O       | O        |     |
     | EC-ElGamal          | O   |     |     |         | O        |     |
     | SPHINCS+            | O   |     |     | O       |          |     |
