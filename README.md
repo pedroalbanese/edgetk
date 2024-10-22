@@ -119,7 +119,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ML                  |     |     |     | O       | O        | O   |
     | ElGamal             |     |     |     | O       | O        |     |
     | EC-ElGamal          | O   |     |     |         | O        |     |
-    | FALCON              |     |     |     | O       |          |     |
+    | Falcon              |     |     |     | O       |          |     |
     | SPHINCS+            | O   |     |     | O       |          |     |
 
 - **Subjacent Elliptic Curves:**
