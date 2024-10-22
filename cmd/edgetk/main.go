@@ -1446,7 +1446,7 @@ Subcommands:
 		*length = 256
 	}
 
-	if strings.ToUpper(*alg) == "ML-KEM" && *pkey == "wrapkey" && *cph == "aes" {
+	if *pkey == "wrapkey" && *cph == "aes" {
 		*cph = ""
 	}
 
@@ -19427,7 +19427,7 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 
 	certData, err := json.Marshal(dataToSign)
 	if err != nil {
-		return nil, fmt.Errorf("erro ao serializar os dados para assinatura: %v", err)
+		return nil, fmt.Errorf("error serializing the data for signing: %v", err)
 	}
 
 	signature, err := Sign(privateKey, bytes.NewReader(certData))
@@ -19442,7 +19442,7 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 func SaveCertificateToPEM(cert *Certificate, filename string) error {
 	certData, err := json.Marshal(cert)
 	if err != nil {
-		return fmt.Errorf("erro ao serializar o certificado: %v", err)
+		return fmt.Errorf("error serializing the certificate: %v", err)
 	}
 
 	certBlock := &pem.Block{
@@ -19503,7 +19503,7 @@ func VerifyCertificate(cert *Certificate, publicKey []byte) error {
 
 	certData, err := json.Marshal(dataToVerify)
 	if err != nil {
-		return fmt.Errorf("erro ao serializar os dados do certificado: %v", err)
+		return fmt.Errorf("error serializing the certificate data: %v", err)
 	}
 
 	signature := cert.Signature
@@ -19706,7 +19706,7 @@ func NewCRL(ca *CA, oldCRLFile string, validityDays string) (*CRL, error) {
 	if oldCRLFile != "" {
 		oldCRL, err := ReadCRLFromPEM(oldCRLFile)
 		if err != nil {
-			return nil, fmt.Errorf("erro ao ler CRL antiga: %v", err)
+			return nil, fmt.Errorf("error reading the old CRL: %v", err)
 		}
 		revokedCertificates = oldCRL.RevokedCertificates
 	}
@@ -19738,7 +19738,7 @@ func (crl *CRL) Sign(ca *CA, cert *Certificate) error {
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 80)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		return fmt.Errorf("erro ao gerar número de série da CRL: %v", err)
+		return fmt.Errorf("error generating the serial number for the CRL: %v", err)
 	}
 	crl.SerialNumber = serialNumber
 
