@@ -250,7 +250,7 @@ var (
 	root       = flag.String("root", "", "Root CA Certificate path.")
 	salt       = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
 	sig        = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
-	subj       = flag.String("subj", "", "Subject: Identity for which a digital certificate.")
+	subj       = flag.String("subj", "", "Subject: Identity. (Example: \"/C=/ST=/L=/O=/OU=/CN=/emailAddress=\")")
 	tcpip      = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
 	tweakStr   = flag.String("tweak", "", "Additional 128-bit parameter input. (for THREEFISH encryption)")
 	vector     = flag.String("iv", "", "Initialization Vector. (for symmetric encryption)")
@@ -318,11 +318,11 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  anssi             ed25519/ph        ml-kem            sm9sign/ph
-  bign              ed448/ph          ml-dsa            sm9encrypt
-  ecdsa             elgamal           nums/nums-te      sphincs
+  anssi             ed25519[ph]       ml-kem            sm9sign[ph]
+  bign              ed448[ph]         ml-dsa            sm9encrypt
+  ecdsa             elgamal           nums/nums-te      slh-dsa
   ecgdsa            ec-elgamal        rsa (default)     x25519
-  eckcdsa           gost2012          sm2/ph            x448
+  eckcdsa           gost2012          sm2[ph]           x448
 
 Stream Ciphers:
   ascon (aead)      grain128a         rabbit            spritz
@@ -1472,10 +1472,6 @@ Subcommands:
 
 	if *digest && *md == "spritz" && *length == 0 {
 		*length = 256
-	}
-
-	if *pkey == "keygen" && strings.ToUpper(*alg) == "SPHINCS" && *iter == 1 {
-		*iter = 16384
 	}
 
 	if (*pkey == "wrapkey" || *pkey == "unwrapkey") && *length == 0 {
@@ -8514,8 +8510,8 @@ Subcommands:
 			*alg = "SM9ENCRYPT"
 		} else if strings.Contains(s, "SM9 SIGN") {
 			*alg = "SM9SIGN"
-		} else if strings.Contains(s, "SPHINCS") {
-			*alg = "SPHINCS"
+		} else if strings.Contains(s, "SLH-DSA") {
+			*alg = "SLH-DSA"
 		} else if strings.Contains(s, "EC-ELGAMAL") {
 			*alg = "EC-ELGAMAL"
 		} else if strings.Contains(s, "ELGAMAL") {
@@ -8545,19 +8541,19 @@ Subcommands:
 		}
 	}
 
-	if strings.ToUpper(*alg) == "SPHINCS" && *pkey == "keygen" {
+	if strings.ToUpper(*alg) == "SLH-DSA" && *pkey == "keygen" {
 		generateKeyPair(*priv, *pub)
 	}
 
-	if strings.ToUpper(*alg) == "SPHINCS" && *pkey == "sign" {
+	if strings.ToUpper(*alg) == "SLH-DSA" && *pkey == "sign" {
 		signMessage(inputfile, *key)
 	}
 
-	if strings.ToUpper(*alg) == "SPHINCS" && *pkey == "verify" {
+	if strings.ToUpper(*alg) == "SLH-DSA" && *pkey == "verify" {
 		verifySignature(inputfile, *key, *sig)
 	}
 
-	if *pkey == "modulus" && strings.ToUpper(*alg) == "SPHINCS" {
+	if *pkey == "modulus" && strings.ToUpper(*alg) == "SLH-DSA" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -8574,7 +8570,7 @@ Subcommands:
 			log.Fatal("failed to parse PEM block containing the key")
 		}
 
-		isPrivateKey := block.Type == "SPHINCS SECRET KEY"
+		isPrivateKey := block.Type == "SLH-DSA SECRET KEY"
 
 		loadedKeyBytes, err := readKeyFromPEM(*key, isPrivateKey)
 		if err != nil {
@@ -8585,7 +8581,7 @@ Subcommands:
 		}
 	}
 
-	if *pkey == "text" && strings.ToUpper(*alg) == "SPHINCS" {
+	if *pkey == "text" && strings.ToUpper(*alg) == "SLH-DSA" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -8602,7 +8598,7 @@ Subcommands:
 			log.Fatal("failed to parse PEM block containing the key")
 		}
 
-		isPrivateKey := block.Type == "SPHINCS SECRET KEY"
+		isPrivateKey := block.Type == "SLH-DSA SECRET KEY"
 
 		loadedKeyBytes, err := readKeyFromPEM(*key, isPrivateKey)
 		if err != nil {
@@ -8613,7 +8609,7 @@ Subcommands:
 		}
 	}
 
-	if *pkey == "randomart" && strings.ToUpper(*alg) == "SPHINCS" {
+	if *pkey == "randomart" && strings.ToUpper(*alg) == "SLH-DSA" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -8624,13 +8620,13 @@ Subcommands:
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
-		println("SPHINCS+ (256-bit)")
+		println("SLH-DSA (256-bit)")
 		randomArt := randomart.FromString(string(buf))
 		println(randomArt)
 		os.Exit(0)
 	}
 
-	if *pkey == "fingerprint" && strings.ToUpper(*alg) == "SPHINCS" {
+	if *pkey == "fingerprint" && strings.ToUpper(*alg) == "SLH-DSA" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -10128,6 +10124,7 @@ Subcommands:
 
 			if err := SaveSignatureToPEM(signature, *sig); err != nil {
 				fmt.Println("Error saving signature:", err)
+				os.Exit(1)
 			}
 		} else if *pkey == "verify" {
 			pk, err := readKeyFromPEM(*key, false)
@@ -10519,36 +10516,66 @@ Subcommands:
 		switch keyType := privateKey.(type) {
 		case *sm9.EncryptPrivateKey:
 			fmt.Println("Encrypt Private-Key: (256-bit)")
+			fmt.Println("priv:")
+			privKeyHex := fmt.Sprintf("%x", keyType.PrivateKey.Marshal())
+			splitz := SplitSubN(privKeyHex, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
 			fmt.Println("pub:")
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
-			splitz := SplitSubN(pubKeyHex, 2)
+			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		case *sm9.SignPrivateKey:
 			fmt.Println("Sign Private-Key: (256-bit)")
+			fmt.Println("priv:")
+			privKeyHex := fmt.Sprintf("%x", keyType.PrivateKey.Marshal())
+			splitz := SplitSubN(privKeyHex, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
 			fmt.Println("pub:")
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
-			splitz := SplitSubN(pubKeyHex, 2)
+			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		case *sm9.EncryptMasterPrivateKey:
 			fmt.Println("Encrypt Master-Key: (256-bit)")
+			fmt.Println("master:")
+			privKeyHex, err := keyType.MarshalASN1()
+			if err != nil {
+				log.Fatal(err)
+			}
+			splitz := SplitSubN(hex.EncodeToString(privKeyHex), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
 			fmt.Println("pub:")
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
-			splitz := SplitSubN(pubKeyHex, 2)
+			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
 		case *sm9.SignMasterPrivateKey:
 			fmt.Println("Sign Master-Key: (256-bit)")
+			fmt.Println("master:")
+			privKeyHex, err := keyType.MarshalASN1()
+			if err != nil {
+				log.Fatal(err)
+			}
+			splitz := SplitSubN(hex.EncodeToString(privKeyHex), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
 			fmt.Println("pub:")
 			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
-			splitz := SplitSubN(pubKeyHex, 2)
+			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
@@ -17437,7 +17464,7 @@ func savePEMKey(filename string, keyBytes []byte, blockType string) error {
 
 func savePEMPublicKey(filename string, keyBytes []byte) error {
 	block := &pem.Block{
-		Type:  "SPHINCS PUBLIC KEY",
+		Type:  "SLH-DSA PUBLIC KEY",
 		Bytes: keyBytes,
 	}
 
@@ -17446,7 +17473,7 @@ func savePEMPublicKey(filename string, keyBytes []byte) error {
 
 func generateKeyPair(privPath, pubPath string) {
 	params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
-	fmt.Printf("SPHINCS+ Parameters\nN=%d, W=%d, Hprime=%d, H=%d, D=%d, K=%d, T=%d, LogT=%d, A=%d\n", params.N, params.W, params.Hprime,
+	fmt.Printf("SLH-DSA Parameters\nN=%d, W=%d, Hprime=%d, H=%d, D=%d, K=%d, T=%d, LogT=%d, A=%d\n", params.N, params.W, params.Hprime,
 		params.H, params.D, params.K, params.T, params.LogT, params.A)
 	sk, pk := sphincs.Spx_keygen(params)
 
@@ -17459,7 +17486,7 @@ func generateKeyPair(privPath, pubPath string) {
 		log.Fatal(err)
 	}
 
-	err = savePEMKey(privPath, serializedSK, "SPHINCS SECRET KEY")
+	err = savePEMKey(privPath, serializedSK, "SLH-DSA SECRET KEY")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -17493,7 +17520,7 @@ func generateKeyPair(privPath, pubPath string) {
 	fingerprint := calculateFingerprint(buf)
 	print("Fingerprint: ")
 	println(fingerprint)
-	println("SPHINCS+ (256-bit)")
+	println("SLH-DSA (256-bit)")
 	randomArt := randomart.FromString(string(buf))
 	println(randomArt)
 }
@@ -17536,7 +17563,7 @@ func signMessage(input io.Reader, keyPath string) {
 		}
 	*/
 	block := &pem.Block{
-		Type:  "SPHINCS SIGNATURE",
+		Type:  "SLH-DSA SIGNATURE",
 		Bytes: serializedSignature,
 	}
 	pemSignature := pem.EncodeToMemory(block)
@@ -17646,7 +17673,7 @@ func printPublicKeyParamsFull(pk *sphincs.SPHINCS_PK) {
 	}
 
 	block := &pem.Block{
-		Type:  "SPHINCS PUBLIC KEY",
+		Type:  "SLH-DSA PUBLIC KEY",
 		Bytes: serializedPK,
 	}
 	pem.Encode(os.Stdout, block)
@@ -17679,7 +17706,7 @@ func printPrivateKeyParamsFull(sk *sphincs.SPHINCS_SK) {
 	}
 
 	block := &pem.Block{
-		Type:  "SPHINCS SECRET KEY",
+		Type:  "SLH-DSA SECRET KEY",
 		Bytes: serializedSK,
 	}
 	pem.Encode(os.Stdout, block)
