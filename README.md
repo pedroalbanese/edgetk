@@ -50,17 +50,18 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 36. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
 37. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 38. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-39. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-40. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-41. RFC 2612: The CAST-256 Encryption Algorithm
-42. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-43. RFC 4009: The SEED Encryption Algorithm (KISA)
-44. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-45. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-46. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-47. RFC 4543: Galois Message Authentication Code (GMAC)
-48. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-49. RFC 4648: Base16, Base32, and Base64 Data Encodings
+39. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+40. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+41. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+42. RFC 2612: The CAST-256 Encryption Algorithm
+43. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+44. RFC 4009: The SEED Encryption Algorithm (KISA)
+45. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+46. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+47. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+48. RFC 4543: Galois Message Authentication Code (GMAC)
+49. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+50. RFC 4648: Base16, Base32, and Base64 Data Encodings
 51. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
 52. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 50. RFC 5297: Synthetic Initialization Vector (SIV Mode) 
@@ -90,8 +91,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 76. US FIPS 197 Advanced Encryption Standard (AES)
 77. US FIPS 180-2 Secure Hash Standard (SHS) SHA1 and SHA2 Algorithms
 78. US FIPS 202 SHA-3 Permutation-Based Hash (instance of the Keccak)
-79. US FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism
-80. US FIPS 204 Module-Lattice-Based Digital Signature Standard
+79. US FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM)
+80. US FIPS 204 Module-Lattice-Based Digital Signature Standard (ML-DSA)
+81. US FIPS 205 Stateless Hash-Based Digital Signature Standard (SLH-DSA)
 
 </details>
 
@@ -116,10 +118,10 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM2                 | O   |     | O   | O       | O        | O   |
     | SM9                 | O   |     | O   | O       | O        |     |
     | NUMS                | O   | O   | O   | O       | O        |     |
-    | ML                  |     |     |     | O       | O        | O   |
     | ElGamal             |     |     |     | O       | O        |     |
     | EC-ElGamal          | O   |     |     |         | O        |     |
-    | SPHINCS+            | O   |     |     | O       |          |     |
+    | ML-DSA/KEM          |     |     |     | O       | O        | O   |
+    | SLH-DSA             | O   |     |     | O       |          |     |
 
 - **Subjacent Elliptic Curves:**
 
