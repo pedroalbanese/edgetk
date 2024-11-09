@@ -121,7 +121,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | ElGamal             |     |     |     | O       | O        |     |
     | EC-ElGamal          | O   |     |     |         | O        |     |
     | ML-DSA/KEM          |     |     |     | O       | O        | O   |
-    | SLH-DSA             | O   |     |     | O       |          |     |
+    | SLH-DSA             | O   |     |     | O       |          | O   |
 
 - **Subjacent Elliptic Curves:**
 
