@@ -301,7 +301,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.3-alpha  07 Nov 2024")
+		fmt.Println("EDGE Toolkit v1.5.3-alpha  10 Nov 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -8919,14 +8919,19 @@ Subcommands:
 				log.Fatalf("Failed to sign CSR: %v", err)
 			}
 
-			outputFilename := strings.TrimSuffix(*cert, filepath.Ext(*cert)) + ".crt"
+			var outputFilename string
+			if flag.Arg(0) == "" {
+				outputFilename = "stdout"
+			} else {
+				outputFilename = flag.Arg(0)
+			}
 
 			err = SaveCertificateToPEM(signedCert, outputFilename)
 			if err != nil {
 				log.Fatalf("Failed to save certificate: %v", err)
 			}
 
-			fmt.Println("Certificate signed and saved to", outputFilename)
+			fmt.Fprintf(os.Stderr, "Certificate signed and saved to %s\n", outputFilename)
 			os.Exit(0)
 		} else if *pkey == "crl" {
 			pk, err := readKeyFromPEM(*pub, false)
@@ -10569,14 +10574,19 @@ Subcommands:
 				log.Fatalf("Failed to sign CSR: %v", err)
 			}
 
-			outputFilename := strings.TrimSuffix(*cert, filepath.Ext(*cert)) + ".crt"
+			var outputFilename string
+			if flag.Arg(0) == "" {
+				outputFilename = "stdout"
+			} else {
+				outputFilename = flag.Arg(0)
+			}
 
-			err = SaveCertificateToPEM(signedCert, outputFilename)
+			err = SaveCertificateToPEM(signedCert, flag.Arg(0))
 			if err != nil {
 				log.Fatalf("Failed to save certificate: %v", err)
 			}
 
-			fmt.Println("Certificate signed and saved to", outputFilename)
+			fmt.Fprintf(os.Stderr, "Certificate signed and saved to %s\n", outputFilename)
 			os.Exit(0)
 		} else if *pkey == "crl" {
 			pk, err := readKeyFromPEM(*pub, false)
@@ -19776,7 +19786,7 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 		cert.Issuer = ca.Certificate.Subject
 	}
 
-	dataToSign := struct {
+	TBS := struct {
 		SerialNumber   *big.Int  `json:"serial_number"`
 		Subject        pkix.Name `json:"subject"`
 		Issuer         pkix.Name `json:"issuer"`
@@ -19798,7 +19808,7 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 		SubjectEmail:   email,
 	}
 
-	certData, err := json.Marshal(dataToSign)
+	certData, err := json.Marshal(TBS)
 	if err != nil {
 		return nil, fmt.Errorf("error serializing the data for signing: %v", err)
 	}
@@ -19839,13 +19849,25 @@ func SaveCertificateToPEM(cert *Certificate, filename string) error {
 		Bytes: certData,
 	}
 
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	if filename == "stdout" {
+		err := pem.Encode(os.Stdout, certBlock)
+		if err != nil {
+			return fmt.Errorf("error printing the certificate to stdout: %v", err)
+		}
+	} else {
+		file, err := os.Create(filename)
+		if err != nil {
+			return fmt.Errorf("error creating the file: %v", err)
+		}
+		defer file.Close()
 
-	return pem.Encode(file, certBlock)
+		err = pem.Encode(file, certBlock)
+		if err != nil {
+			return fmt.Errorf("error writing the certificate to the file: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func NewCA(privateKey, publicKey []byte, validityDays string) *CA {
@@ -19868,7 +19890,7 @@ func NewCA(privateKey, publicKey []byte, validityDays string) *CA {
 }
 
 func VerifyCertificate(cert *Certificate, publicKey []byte) error {
-	dataToVerify := struct {
+	TBS := struct {
 		SerialNumber   *big.Int  `json:"serial_number"`
 		Subject        pkix.Name `json:"subject"`
 		Issuer         pkix.Name `json:"issuer"`
@@ -19890,7 +19912,7 @@ func VerifyCertificate(cert *Certificate, publicKey []byte) error {
 		SubjectEmail:   cert.SubjectEmail,
 	}
 
-	certData, err := json.Marshal(dataToVerify)
+	certData, err := json.Marshal(TBS)
 	if err != nil {
 		return fmt.Errorf("error serializing the certificate data: %v", err)
 	}
