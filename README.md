@@ -103,7 +103,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Public key algorithms:**  
 
-    |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption|X.509|
+    |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption| PKI |
     |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O       | O        | O   |
     | ECGDSA              | O   | O   |     | O       |          |     |
