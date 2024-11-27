@@ -673,7 +673,7 @@ Parameters for the sm9p256v1 Elliptic curve
 SM9 is a Chinese National Identity Based Cryptography Standard and was originally published using a 256-bit Barreto-Naehrig Curve as its primary example. The new paper suggests that because attacks against some Barreto-Naehrig curves have improved that the SM9 standard should adopt a 384-bit Barreto-Naehrig Curve. The authors go on to suggest that this curve offers roughly 118 bits of security.
 
 <details>
-  <summary>How the SM9 Algorithm Works</summary>  
+  <summary>Theory</summary>  
 
 #### Digital Signature with SM9
 
