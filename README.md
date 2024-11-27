@@ -673,11 +673,11 @@ Parameters for the sm9p256v1 Elliptic curve
 SM9 is a Chinese National Identity Based Cryptography Standard and was originally published using a 256-bit Barreto-Naehrig Curve as its primary example. The new paper suggests that because attacks against some Barreto-Naehrig curves have improved that the SM9 standard should adopt a 384-bit Barreto-Naehrig Curve. The authors go on to suggest that this curve offers roughly 118 bits of security.
 
 <details>
-  <summary>Theory</summary>  
+  <summary>SM9 Theory</summary>  
 
 #### Digital Signature with SM9
 
-The SM9 algorithm is a digital signature scheme based on elliptic curves and bilinear pairings. It is used in various security systems and public key infrastructure (PKI). The SM9 algorithm involves the following main steps: Key Generation, Signing, and Verification.
+The SM9 algorithm is a digital signature scheme based on elliptic curves and bilinear pairings. It is used in various security systems and identity-based public key infrastructure (IBE). The SM9 algorithm involves the following main steps: Key Generation, Signing, and Verification.
 
 #### 1. Key Generation
 
