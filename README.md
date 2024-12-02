@@ -664,83 +664,6 @@ Quantum computing is in an early stage of development and faces significant chal
     |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
     |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
 
-<details><summary>PQC Usage Examples</summary>  
-
-#### Post-Quantum Digital Signature with ML-DSA or SLH-DSA:
-```sh
-edgetk -pkey keygen -algorithm [ml-dsa|slh-dsa] -prv Private.pem -pub Public.pem
-edgetk -pkey sign -key Private.pem -pass "pass" -signature sign.txt FILE
-edgetk -pkey verify -key Public.pem -signature sign.txt FILE
-```
-#### Post-Quantum Key Encapsulation Mechanism (ML-KEM):
-```sh
-edgetk -pkey keygen -algorithm ml-kem -prv Private.pem -pub Public.pem
-edgetk -pkey wrapkey -key Public.pem -cipher cipher.txt
-edgetk -pkey unwrapkey -key Private.pem -pass "pass" -cipher cipher.txt
-```
-
-#### Key Generation:
-```sh
-edgetk -pkey keygen -algorithm [ml-dsa|slh-dsa] -prv CAPrivate.pem -pub CAPublic.pem
-```
-#### Self-Signed Certificate Generation:
-```sh
-edgetk -pkey certgen -key CAPrivate.pem -pub CAPublic.pem -cert CACert.crt
-```
-#### Check Certificate Authenticity:
-```sh
-edgetk -pkey check -cert CACert.crt -key CAPublic.pem
-echo $?
-```
-#### Certificate Signing Request (CSR):
-```sh
-edgetk -pkey req -key Private.pem -pub Public.pem -cert Cert.csr
-```
-#### Display CSR Information:
-```sh
-edgetk -pkey text -cert Cert.csr
-```
-#### X.509 Certificate Signing:
-```sh
-edgetk -pkey x509 -key CAPrivate.pem -root CACert.crt -cert Cert.csr Cert.crt
-```
-#### Display Certificate Information:
-```sh
-edgetk -pkey text -cert Cert.crt
-echo $?
-```
-#### Check Certificate Authenticity:
-```sh
-edgetk -pkey check -cert Cert.crt -key CAPublic.pem
-echo $?
-```
-#### Generate Certificate Revocation List (CRL):
-```sh
-edgetk -pkey crl -key CAPrivate.pem pub CAPublic.pem -cert CACert.crt serials.txt NewCRL.pem
-```
-#### Display CRL Information:
-```sh
-edgetk -pkey text -crl NewCRL.pem
-```
-#### Check CRL Authenticity:
-```sh
-edgetk -pkey check -crl NewCRL.pem -cert CACert.crt
-echo $?
-```
-#### Validate Certificate Against CRL:
-```sh
-edgetk -pkey validate -cert Cert.crt -crl NewCRL.pem
-echo $?
-```
-
-For non-interactive scripts, you must use the flags -pass, -days and -subj:
-```
--pass "passphrase"
--days 365
--subj "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=test@test.com"
-```
-</details>
-
 ### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
 SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
 
@@ -911,7 +834,71 @@ edgetk -pkey keygen -algorithm ml-kem -prv Private.pem -pub Public.pem
 edgetk -pkey wrapkey -key Public.pem -cipher cipher.txt
 edgetk -pkey unwrapkey -key Private.pem -pass "pass" -cipher cipher.txt
 ```
-Check more examples of PQC PKI [here](https://github.com/pedroalbanese/edgetk#post-quantum-cryptography-pqc).
+
+<details><summary>PQC Public Key Infaestructure (PKI)</summary>  
+
+#### Key Generation:
+```sh
+edgetk -pkey keygen -algorithm [ml-dsa|slh-dsa] -prv CAPrivate.pem -pub CAPublic.pem
+```
+#### Self-Signed Certificate Generation:
+```sh
+edgetk -pkey certgen -key CAPrivate.pem -pub CAPublic.pem -cert CACert.crt
+```
+#### Check Certificate Authenticity:
+```sh
+edgetk -pkey check -cert CACert.crt -key CAPublic.pem
+echo $?
+```
+#### Certificate Signing Request (CSR):
+```sh
+edgetk -pkey req -key Private.pem -pub Public.pem -cert Cert.csr
+```
+#### Display CSR Information:
+```sh
+edgetk -pkey text -cert Cert.csr
+```
+#### X.509 Certificate Signing:
+```sh
+edgetk -pkey x509 -key CAPrivate.pem -root CACert.crt -cert Cert.csr Cert.crt
+```
+#### Display Certificate Information:
+```sh
+edgetk -pkey text -cert Cert.crt
+echo $?
+```
+#### Check Certificate Authenticity:
+```sh
+edgetk -pkey check -cert Cert.crt -key CAPublic.pem
+echo $?
+```
+#### Generate Certificate Revocation List (CRL):
+```sh
+edgetk -pkey crl -key CAPrivate.pem pub CAPublic.pem -cert CACert.crt serials.txt NewCRL.pem
+```
+#### Display CRL Information:
+```sh
+edgetk -pkey text -crl NewCRL.pem
+```
+#### Check CRL Authenticity:
+```sh
+edgetk -pkey check -crl NewCRL.pem -cert CACert.crt
+echo $?
+```
+#### Validate Certificate Against CRL:
+```sh
+edgetk -pkey validate -cert Cert.crt -crl NewCRL.pem
+echo $?
+```
+
+For non-interactive scripts, you must use the flags -pass, -days and -subj:
+```
+-pass "passphrase"
+-days 365
+-subj "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=test@test.com"
+```
+</details>
+
 #### Asymmetric EG keypair generation:
 ```sh
 ./edgetk -pkey setup -algorithm elgamal [-bits 4096] > ElGamalParams.pem
