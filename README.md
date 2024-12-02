@@ -899,6 +899,19 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 
 ## Examples
 
+#### Post-Quantum Digital Signature with ML-DSA or SLH-DSA:
+```sh
+edgetk -pkey keygen -algorithm [ml-dsa|slh-dsa] -prv Private.pem -pub Public.pem
+edgetk -pkey sign -key Private.pem -pass "pass" -signature sign.txt FILE
+edgetk -pkey verify -key Public.pem -signature sign.txt FILE
+```
+#### Post-Quantum Key Encapsulation Mechanism (ML-KEM):
+```sh
+edgetk -pkey keygen -algorithm ml-kem -prv Private.pem -pub Public.pem
+edgetk -pkey wrapkey -key Public.pem -cipher cipher.txt
+edgetk -pkey unwrapkey -key Private.pem -pass "pass" -cipher cipher.txt
+```
+Check more examples of PQC PKI [here](https://github.com/pedroalbanese/edgetk#post-quantum-cryptography-pqc).
 #### Asymmetric EG keypair generation:
 ```sh
 ./edgetk -pkey setup -algorithm elgamal [-bits 4096] > ElGamalParams.pem
