@@ -835,7 +835,7 @@ edgetk -pkey wrapkey -key Public.pem -cipher cipher.txt
 edgetk -pkey unwrapkey -key Private.pem -pass "pass" -cipher cipher.txt
 ```
 
-<details><summary>PQC Public Key Infaestructure (PKI)</summary>  
+<details><summary>PQC Public Key Infrastructure (PKI)</summary>  
 
 #### Key Generation:
 ```sh
