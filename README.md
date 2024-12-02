@@ -453,7 +453,7 @@ The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that
 #### Pure EC-ElGamal
 EC-ElGamal encryption using elliptic curves allows secure message transmission by having Alice generate a private key $y$ and a public key $Y = y \cdot G$, while Bob encrypts a message $M$ with a random value $r$, computing $C_1 = r \cdot G$ and $C_2 = r \cdot Y + M$, and Alice decrypts using $M = C_2 - y \cdot C_1$.
 
-With ElGamal encryption using elliptic curves, Alice generates a private key $y$ and a public key of:  
+First, Alice generates a private key $y$ and a public key of:  
 
 $Y = y \cdot G$
 
