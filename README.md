@@ -648,6 +648,22 @@ PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic
 ### Post-Quantum Cryptography (PQC)
 Quantum computing is in an early stage of development and faces significant challenges, including the control and correction of quantum errors. Predictions vary, but many experts agree that we are still several years, or even decades, away from having the ability to build a quantum computer large enough to threaten public key cryptography algorithms currently considered secure. Scalable, sufficiently powerful quantum computers have not yet been constructed. Therefore, post-quantum cryptography is more of a precautionary measure, as classical algorithms remain secure for most everyday applications. Understand which algorithms have been compromised with the advent of quantum algorithms like Shor and Grover:
 
+- **Security Level**
+
+    |Name           | Function      |pre-quantum    | post-quantum   |
+    |:--------------|:--------------|:-------------:|:--------------:|
+    |AES-128        | block cipher  | 128           | 64 (Grover)    |
+    |AES-256        | block cipher  | 256           | 128 (Grover)   |
+    |Salsa20        | stream cipher | 256           | 128 (Grover)   |
+    |GMAC           | MAC           | 128           | 128            |
+    |Poly1305       | MAC           | 128           | 128            |
+    |SHA-256        | hash function | 256           | 128 (Grover)   |
+    |SHA-3          | hash function | 256           | 128 (Grover)   |
+    |RSA-3072       | encryption    | 128           | broken (Shor)  |
+    |RSA-3072       | signature     | 128           | broken (Shor)  |
+    |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
+    |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
+
 <details><summary>PQC Usage Examples</summary>  
 
 #### Post-Quantum Digital Signature with ML-DSA or SLH-DSA:
@@ -724,22 +740,6 @@ For non-interactive scripts, you must use the flags -pass, -days and -subj:
 -subj "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=test@test.com"
 ```
 </details>
-
-- **Security Level**
-
-    |Name           | Function      |pre-quantum    | post-quantum   |
-    |:--------------|:--------------|:-------------:|:--------------:|
-    |AES-128        | block cipher  | 128           | 64 (Grover)    |
-    |AES-256        | block cipher  | 256           | 128 (Grover)   |
-    |Salsa20        | stream cipher | 256           | 128 (Grover)   |
-    |GMAC           | MAC           | 128           | 128            |
-    |Poly1305       | MAC           | 128           | 128            |
-    |SHA-256        | hash function | 256           | 128 (Grover)   |
-    |SHA-3          | hash function | 256           | 128 (Grover)   |
-    |RSA-3072       | encryption    | 128           | broken (Shor)  |
-    |RSA-3072       | signature     | 128           | broken (Shor)  |
-    |256-bit ECDH   | key exchange  | 128           | broken (Shor)  |
-    |256-bit ECDSA  | signature     | 128           | broken (Shor)  |
 
 ### ShangMi (SM) National secret SM2/SM3/SM4 algorithms
 SM2 is a public key cryptographic algorithm based on elliptic curves, used for e.g. generation and verification of digital signatures; SM3, a hashing algorithm comparable to SHA-256; and SM4, a block cipher algorithm for symmetric cryptography comparable to AES-128. These standards are becoming widely used in Chinese commercial applications such as banking and telecommunications and are sometimes made mandatory for products procured by Chinese government agencies. SM4 is part of the ARMv8.4-A expansion to the ARM architecture.
