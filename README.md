@@ -648,7 +648,8 @@ PBKDF2 (Password-Based Key Derivation Function 2) is a widely used cryptographic
 ### Post-Quantum Cryptography (PQC)
 Quantum computing is in an early stage of development and faces significant challenges, including the control and correction of quantum errors. Predictions vary, but many experts agree that we are still several years, or even decades, away from having the ability to build a quantum computer large enough to threaten public key cryptography algorithms currently considered secure. Scalable, sufficiently powerful quantum computers have not yet been constructed. Therefore, post-quantum cryptography is more of a precautionary measure, as classical algorithms remain secure for most everyday applications. Understand which algorithms have been compromised with the advent of quantum algorithms like Shor and Grover:
 
-<details><summary>PQC Usage</summary>  
+<details><summary>PQC Usage Examples</summary>  
+
 #### Post-Quantum Digital Signature with ML-DSA or SLH-DSA:
 ```sh
 edgetk -pkey keygen -algorithm [ml-dsa|slh-dsa] -prv Private.pem -pub Public.pem
@@ -717,9 +718,11 @@ echo $?
 ```
 
 For non-interactive scripts, you must use the flags -pass, -days and -subj:
+```
 -pass "passphrase"
 -days 365
 -subj "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=test@test.com"
+```
 </details>
 
 - **Security Level**
