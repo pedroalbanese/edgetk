@@ -368,6 +368,99 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 ### ANSSI 
 Parameters for the [ANSSI FRP256v1](https://www.alvestrand.no/objectid/1.2.250.1.223.101.256.1.html) Elliptic curve, Agence nationale de la sécurité des systèmes d'information. "Publication d'un paramétrage de courbe elliptique visant des applications de passeport électronique et de l'administration électronique française." 21 November 2011.
 
+### BignV1
+
+The Bign algorithm is a Schnorr-type signature scheme adopted as the standard in Belarus (STB 34.101.45). Below are the equations and descriptions associated with the signing and verification phases of Bign.
+
+<details><summary>BignV1</summary>
+
+#### Parameters
+
+- $l \in \{128, 192, 256\}$ — Security level.
+- $q$ — A $2l$-bit prime number.
+- $G$ — A generator of an Abelian group $\langle G \rangle$ of order $q$.
+- $H$ — An external hash function: $H: \{0, 1\}^* \to \{0, 1\}^{2l}$.
+- $OID(H)$ — An identifier uniquely identifying the hash function $H$ (an ASN.1 object identifier).
+- $h$ — An internal hash function: $h: \{0, 1\}^* \to \{0, 1\}^l$.
+
+##### Private Key
+
+- $d$ — A secret random/pseudorandom element from $\{1, 2, \dots, q-1\}$.
+
+##### Public Key
+
+- $Q = dG$ — The public key associated with the private key $d$.
+
+##### Message to be signed
+
+- $X \in \{0, 1\}^*$.
+
+#### Signing
+
+The signature $s$ of a message $X$ is generated as follows:
+
+1. Choose $k$:  
+   Select a random (or pseudorandom) value $k$ from $\{1, 2, \dots, q-1\}$.
+
+2. Calculate $R$:  
+   $R = kG$ — The point $R$ is calculated by multiplying the random value $k$ by the generator $G$.
+
+3. Calculate $s_0$:  
+   $s_0 = h(OID(H) \| R \| H(X))$ — Here, $s_0$ is computed by the internal hash function $h$, which involves the identifier of $H$, $R$, and the hash of the message $H(X)$.
+
+4. Calculate $s_1$:  
+   $s_1 = (k - H(X) - (s_0 + 2^l) d) \mod q$ — The value $s_1$ is computed using $k$, $H(X)$, $s_0$, and the private key $d$, with a modular operation based on the prime $q$.
+
+5. Final signature:  
+   $s = s_0 \| s_1$ — The final signature $s$ is the concatenation of $s_0$ and $s_1$.
+
+6. Return the signature:  
+   The signature $s$ is returned.
+
+#### Verification
+
+To verify the signature $s = s_0 \| s_1$ of a message $X$ with public key $Q$:
+
+1. Verify the length of $s$:  
+   If $|s| \neq 3l$, return 0 (invalid signature).
+
+2. Extract $s_0$ and $s_1$:  
+   Split $s = s_0 \| s_1$, where $|s_0| = l$ and $|s_1| = 2l$.
+
+3. Verify $s_1$:  
+   If $s_1 \geq q$, return 0 (invalid signature).
+
+4. Calculate $R$:  
+   Compute $R = (s_1 + H(X))G + (s_0 + 2^l)Q$.
+
+5. Verify $R$:  
+   If $R = O$ (the identity element of the group), return 0 (invalid signature).
+
+6. Verify the hash:  
+   If $h(OID(H) \| R \| H(X)) \neq s_0$, return 0 (invalid signature).
+
+7. Valid signature:  
+   If all checks pass, return 1 (valid signature).
+
+#### Design Rationale
+
+1. Short signatures:  
+   The algorithm uses Schnorr's compression and reduces the length of $s_0$ from $2l$ to $l$ bits, resulting in shorter signatures and faster verification (1.5 exponentiations instead of 2).
+
+2. Pre-hashing:  
+   Instead of directly using $h(R \| X)$, the algorithm uses pre-hashing: $s_0 = h(OID(H) \| R \| H(X))$. This protects against multiple-target preimage attacks and facilitates integration with existing APIs and data formats.
+
+3. "Whitening" the signature:  
+   The second part of the signature ($s_1$) is "whitened" by using $Y = H(X)$. This makes finding collisions more difficult, providing security with strength $2^l$.
+
+4. Use of $Q$ during verification:  
+   While hashing $Q$ during signature generation could help protect against certain attacks, this approach is rejected, as key distribution should already provide protection, and hashing $Q$ would duplicate the proof of possession during key distribution.
+
+5. Deterministic signature:  
+   The generation of the ephemeral public key $k$ can be made deterministic using a special key generation algorithm $genk$. This involves hashing and symmetric encryption of data such as $OID(H)$, $d$, and $H(X)$ to produce a unique $k$.
+
+</details>
+
 ### Curupira
 
 Curupira is a 96-bit block cipher, with keys of 96, 144 or 192 bits, and variable number of rounds, an algorithm described at [SBRC 2007](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=2cff321bfa378138088bd82d6f9d80ac1b762327) by Paulo S. L. M. Barreto and Marcos A. Simplício Jr., from Escola Politécnica da Universidade de São Paulo (USP), São Paulo, Brazil.
