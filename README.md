@@ -372,7 +372,7 @@ Parameters for the [ANSSI FRP256v1](https://www.alvestrand.no/objectid/1.2.250.1
 
 The Bign algorithm is a Schnorr-type signature scheme adopted as the standard in Belarus (STB 34.101.45). Below are the equations and descriptions associated with the signing and verification phases of Bign.
 
-<details><summary>BignV1</summary>
+<details><summary>BignV1 Theory</summary>
 
 #### Parameters
 
