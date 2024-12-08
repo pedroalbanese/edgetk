@@ -134,6 +134,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | B-283 (sect283r1)     |         |           | O          |           |
     | B-409 (sect409r1)     |         |           | O          |           |
     | B-571 (sect571r1)     |         |           | O          |           |
+    | K-283 (sect283k1)     |         |           | O          |           |
+    | K-409 (sect409k1)     |         |           | O          |           |
+    | K-571 (sect571k1)     |         |           | O          |           |
     | Brainpool (P256r1)    |         | O         |            |           |
     | Brainpool (P384r1)    |         | O         |            |           |
     | Brainpool (P512r1)    |         | O         |            |           |
