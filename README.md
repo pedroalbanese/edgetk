@@ -140,9 +140,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Brainpool (P256r1)    |         | O         |            |           |
     | Brainpool (P384r1)    |         | O         |            |           |
     | Brainpool (P512r1)    |         | O         |            |           |
-    | Brainpool (P256t1)    |         | O         |            |           |
-    | Brainpool (P384t1)    |         | O         |            |           |
-    | Brainpool (P512t1)    |         | O         |            |           |
+    | Brainpool TE (P256t1)    |         | O         |            |           |
+    | Brainpool TE (P384t1)    |         | O         |            |           |
+    | Brainpool TE (P512t1)    |         | O         |            |           |
     | BLS12-381             |         |           |            | O         |
     | Ed25519               |         |           |            | O         |
     | Pallas                |         |           |            | O         |
