@@ -146,8 +146,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | BLS12-381             |         |           |            | O         |
     | Ed25519               |         |           |            | O         |
     | Pallas                |         |           |            | O         |
-    | ANSSI (frp256v1)      | O       |           |            |           |
-    | Koblitz (secp256k1)   | O       |           |            | O         |
+    | ANSSI (frp256v1)      | O       | O         |            |           |
+    | Koblitz (secp256k1)   | O       | O         |            | O         |
     | SM2 (sm2p256v1)       | O       |           |            |           |
 
 - **Supported ParamSets:**
