@@ -107,6 +107,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O       | O        | O   |
     | ECGDSA              | O   | O   |     | O       |          |     |
+    | ECSDSA              | O   | O   |     | O       |          |     |
+    | BIP0340             | O   | O   |     | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
     | ANSSI               | O   |     | O   | O       | O        |     |
     | Koblitz             | O   |     | O   | O       | O        |     |
@@ -125,7 +127,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Subjacent Elliptic Curves:**
 
-    |  Curve                |  ECDSA  |  EC-GDSA  |  EC-KCDSA  |  ECKA-EG  |
+    |  Curve                |  ECDSA  | EC-S/GDSA |  EC-KCDSA  |  ECKA-EG  |
     |:----------------------|:-------:|:---------:|:----------:|:---------:|
     | P-224 (secp224r1)     | O       | O         | O          |           |
     | P-256 (secp256r1)     | O       | O         | O          | O         |
