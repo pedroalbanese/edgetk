@@ -107,8 +107,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O       | O        | O   |
     | ECGDSA              | O   | O   |     | O       |          |     |
-    | ECSDSA              | O   | O   | O   | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
+    | ECSDSA              | O   | O   | O   | O       |          |     |
     | ANSSI               | O   |     | O   | O       | O        |     |
     | Koblitz             | O   |     | O   | O       | O        |     |
     | BignV1              | O   | O   | O   | O       |          |     |
