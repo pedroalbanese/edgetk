@@ -93,7 +93,6 @@ import (
 	"github.com/RyuaNerin/go-krypto/lsh512"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
 	"github.com/deatil/go-cryptobin/cipher/saferplus"
-	"github.com/deatil/go-cryptobin/pubkey/ecgdsa"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -112,7 +111,9 @@ import (
 	belthash "github.com/pedroalbanese/belt/hash/belt"
 	"github.com/pedroalbanese/bign"
 	bigncurves "github.com/pedroalbanese/bign/curves"
+	"github.com/pedroalbanese/bip0340"
 	"github.com/pedroalbanese/bmw"
+	"github.com/pedroalbanese/brainpool"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast256"
 	"github.com/pedroalbanese/cast5"
@@ -134,10 +135,12 @@ import (
 	"github.com/pedroalbanese/e2"
 	"github.com/pedroalbanese/eax"
 	"github.com/pedroalbanese/ecb"
+	"github.com/pedroalbanese/ecgdsa"
 	"github.com/pedroalbanese/echo"
 	"github.com/pedroalbanese/ecka-eg/core/curves"
 	"github.com/pedroalbanese/ecka-eg/elgamal"
 	elgamalAlt "github.com/pedroalbanese/ecka-eg/elgamal-alt"
+	"github.com/pedroalbanese/ecsdsa"
 	"github.com/pedroalbanese/esch"
 	"github.com/pedroalbanese/frp256v1"
 	"github.com/pedroalbanese/fugue"
@@ -173,6 +176,7 @@ import (
 	"github.com/pedroalbanese/luffa"
 	"github.com/pedroalbanese/lyra2re"
 	"github.com/pedroalbanese/lyra2rev2"
+	"github.com/pedroalbanese/magenta"
 	"github.com/pedroalbanese/makwa-go"
 	"github.com/pedroalbanese/mars"
 	"github.com/pedroalbanese/md6"
@@ -216,7 +220,7 @@ var (
 	cph        = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
 	crl        = flag.String("crl", "", "Certificate Revocation List path.")
 	crypt      = flag.String("crypt", "", "Bulk Encryption with Stream and Block ciphers. [enc|dec|help]")
-	curveFlag  = flag.String("curve", "secp256r1", "Subjacent curve (secp256r1, bls12381g1/g2.)")
+	curveFlag  = flag.String("curve", "", "Subjacent curve (secp256r1, secp256k1, bls12381g1/g2.)")
 	digest     = flag.Bool("digest", false, "Target file/wildcard to generate hashsum list. ('-' for STDIN)")
 	encode     = flag.String("hex", "", "Encode binary string to hex format and vice-versa. [enc|dump|dec]")
 	b85        = flag.String("base85", "", "Encode binary string to Base85 format and vice-versa. [enc|dec]")
@@ -307,7 +311,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.3-beta  26 Nov 2024")
+		fmt.Println("EDGE Toolkit v1.5.3  10 Dec 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -324,11 +328,11 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  anssi             ed25519[ph]       ml-kem            sm9sign[ph]
-  bign/dbign        ed448[ph]         ml-dsa            sm9encrypt
-  ecdsa             elgamal           nums/nums-te      slh-dsa
-  ecgdsa            ec-elgamal        rsa (default)     x25519
-  eckcdsa           gost2012          sm2[ph]           x448
+  bign/dbign        ed25519[ph]       ml-kem            sm9sign[ph]
+  ecdsa             ed448[ph]         ml-dsa            sm9encrypt
+  ecgdsa            elgamal           nums/nums-te      slh-dsa
+  eckcdsa           ec-elgamal        rsa (default)     x25519
+  ecsdsa/bip0340    gost2012          sm2[ph]           x448
 
 Stream Ciphers:
   ascon (aead)      grain128a         rabbit            spritz
@@ -342,17 +346,17 @@ Modes of Operation:
   ocb1/3 (aead)     ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              curupira          khazad            rc6
-  aes (default)     des [obsolete]    kuznechik         safer+
-  anubis            e2                lea               seed
-  aria              gost89            loki97            serpent
-  belt              hight             magma             shacal2
-  blowfish          idea [obsolete]   mars              sm4
-  camellia          kalyna128_128     misty1            threefish256
-  cast5             kalyna128_256     noekeon           threefish512
-  cast256           kalyna256_256     present           threefish1024
-  clefia            kalyna256_512     rc2 [obsolete]    twine
-  crypton           kalyna512_512     rc5               twofish
+  3des              curupira          kuznechik         rc6
+  aes (default)     e2                lea               safer+
+  anubis            gost89            loki97            seed
+  aria              hight             magenta           serpent
+  belt              idea [obsolete]   magma             shacal2
+  blowfish          kalyna128_128     mars              sm4
+  camellia          kalyna128_256     misty1            threefish256
+  cast5             kalyna256_256     noekeon           threefish512
+  cast256           kalyna256_512     present           threefish1024
+  clefia            kalyna512_512     rc2 [obsolete]    twine
+  crypton           khazad            rc5               twofish
 
 Key Derivation Functions:
   hkdf              pbkdf2            scrypt            gost
@@ -1450,7 +1454,7 @@ Subcommands:
 		}
 	}
 
-	if (*cph == "aes" || *cph == "aria" || *cph == "mars" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "crypton" || *cph == "e2" || *cph == "loki97" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6" || *cph == "belt") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
+	if (*cph == "aes" || *cph == "aria" || *cph == "mars" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "crypton" || *cph == "e2" || *cph == "loki97" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "camellia" || *cph == "chacha20poly1305" || *cph == "chacha20" || *cph == "salsa20" || *cph == "twofish" || *cph == "lea" || *cph == "hc256" || *cph == "eea256" || *cph == "zuc256" || *cph == "skein" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "belt") && *pkey != "keygen" && (*length != 256 && *length != 192 && *length != 128) && *crypt != "" {
 		*length = 256
 	}
 
@@ -1558,7 +1562,7 @@ Subcommands:
 		*length = 256
 	}
 
-	if (strings.ToUpper(*alg) == "GOST2012" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "ECGDSA" || strings.ToUpper(*alg) == "ECKCDSA" || strings.ToUpper(*alg) == "BIGN") && *pkey == "keygen" && *length == 0 {
+	if (strings.ToUpper(*alg) == "GOST2012" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "ECGDSA" || strings.ToUpper(*alg) == "ECSDSA" || strings.ToUpper(*alg) == "BIP0340" || strings.ToUpper(*alg) == "ECKCDSA" || strings.ToUpper(*alg) == "BIGN") && *pkey == "keygen" && *length == 0 {
 		*length = 256
 	}
 
@@ -3002,7 +3006,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "shacal2" || *cph == "belt" || *cph == "safer+" || *cph == "saferplus") && (strings.ToUpper(*mode) == "SIV") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "shacal2" || *cph == "belt" || *cph == "safer+" || *cph == "saferplus") && (strings.ToUpper(*mode) == "SIV") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -3129,6 +3133,15 @@ Subcommands:
 				log.Fatal(err)
 			}
 			macBlock, err = rc6.NewCipher(macKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+		case "magenta":
+			ciph, err = magenta.NewCipher(blockKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			macBlock, err = magenta.NewCipher(macKey)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -3456,7 +3469,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "crypton" || *cph == "e2" || *cph == "saferplus" || *cph == "safer+" || *cph == "belt") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "crypton" || *cph == "e2" || *cph == "saferplus" || *cph == "safer+" || *cph == "belt") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -3519,6 +3532,9 @@ Subcommands:
 			n = 8
 		case "rc6":
 			ciph, err = rc6.NewCipher(key)
+			n = 16
+		case "magenta":
+			ciph, err = magenta.NewCipher(key)
 			n = 16
 		case "khazad":
 			ciph, err = khazad.NewCipher(key)
@@ -3710,6 +3726,9 @@ Subcommands:
 		case "rc6":
 			ciph, err = rc6.NewCipher(key)
 			n = 16
+		case "magenta":
+			ciph, err = magenta.NewCipher(key)
+			n = 16
 		case "idea":
 			ciph, _ = idea.NewCipher(key)
 			n = 8
@@ -3862,7 +3881,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "shacal2" || *cph == "saferplus" || *cph == "safer+" || *cph == "belt") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "shacal2" || *cph == "saferplus" || *cph == "safer+" || *cph == "belt") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -3909,6 +3928,9 @@ Subcommands:
 			iv = make([]byte, 16)
 		case "rc6":
 			ciph, err = rc6.NewCipher(key)
+			iv = make([]byte, 16)
+		case "magenta":
+			ciph, err = magenta.NewCipher(key)
 			iv = make([]byte, 16)
 		case "magma":
 			ciph = gost341264.NewCipher(key)
@@ -4833,6 +4855,8 @@ Subcommands:
 			c, err = serpent.NewCipher([]byte(*key))
 		case "rc6":
 			c, err = rc6.NewCipher([]byte(*key))
+		case "magenta":
+			c, err = magenta.NewCipher([]byte(*key))
 		case "misty1":
 			c, err = misty1.New([]byte(*key))
 		case "magma":
@@ -4947,6 +4971,8 @@ Subcommands:
 			c, err = serpent.NewCipher([]byte(*key))
 		case "rc6":
 			c, err = rc6.NewCipher([]byte(*key))
+		case "magenta":
+			c, err = magenta.NewCipher([]byte(*key))
 		case "misty1":
 			c, err = misty1.New([]byte(*key))
 		case "magma":
@@ -5080,6 +5106,8 @@ Subcommands:
 			c, err = serpent.NewCipher(key)
 		case "rc6":
 			c, err = rc6.NewCipher(key)
+		case "magenta":
+			c, err = magenta.NewCipher(key)
 		case "grasshopper", "kuznechik":
 			c, err = kuznechik.NewCipher(key)
 		case "anubis":
@@ -5180,6 +5208,9 @@ Subcommands:
 			n = 16
 		case "rc6":
 			c, err = rc6.NewCipher(key)
+			n = 16
+		case "magenta":
+			c, err = magenta.NewCipher(key)
 			n = 16
 		case "magma":
 			c = gost341264.NewCipher(key)
@@ -5326,6 +5357,8 @@ Subcommands:
 			c, err = serpent.NewCipher([]byte(*key))
 		case "rc6":
 			c, err = rc6.NewCipher([]byte(*key))
+		case "magenta":
+			c, err = magenta.NewCipher([]byte(*key))
 		case "misty1":
 			c, err = misty1.New([]byte(*key))
 		case "magma":
@@ -5467,20 +5500,42 @@ Subcommands:
 	var public *ecdsa.PublicKey
 	var pubkeyCurve elliptic.Curve
 
-	if *pkey == "keygen" && *length == 224 {
-		pubkeyCurve = elliptic.P224()
-	} else if *pkey == "keygen" && *length == 256 {
-		pubkeyCurve = elliptic.P256()
-	} else if *pkey == "keygen" && *length == 384 {
-		pubkeyCurve = elliptic.P384()
-	} else if *pkey == "keygen" && *length == 521 {
-		pubkeyCurve = elliptic.P521()
-	} else if *pkey == "keygen" && *length == 283 {
+	if *pkey == "keygen" && *curveFlag == "sect283k1" {
+		pubkeyCurve = nist.K283()
+	} else if *pkey == "keygen" && *length == 283 || *curveFlag == "sect283r1" {
 		pubkeyCurve = nist.B283()
-	} else if *pkey == "keygen" && *length == 409 {
+	} else if *pkey == "keygen" && *curveFlag == "sect409k1" {
+		pubkeyCurve = nist.K409()
+	} else if *pkey == "keygen" && *length == 409 || *curveFlag == "sect409r1" {
 		pubkeyCurve = nist.B409()
-	} else if *pkey == "keygen" && *length == 571 {
+	} else if *pkey == "keygen" && *curveFlag == "sect571k1" {
+		pubkeyCurve = nist.K571()
+	} else if *pkey == "keygen" && *length == 571 || *curveFlag == "sect571r1" {
 		pubkeyCurve = nist.B571()
+	} else if *pkey == "keygen" && *curveFlag == "brainpoolp256r1" {
+		pubkeyCurve = brainpool.P256r1()
+	} else if *pkey == "keygen" && *curveFlag == "brainpoolp256t1" {
+		pubkeyCurve = brainpool.P256t1()
+	} else if *pkey == "keygen" && *curveFlag == "brainpoolp384r1" {
+		pubkeyCurve = brainpool.P384r1()
+	} else if *pkey == "keygen" && *curveFlag == "brainpoolp384t1" {
+		pubkeyCurve = brainpool.P384t1()
+	} else if *pkey == "keygen" && *curveFlag == "brainpoolp512r1" {
+		pubkeyCurve = brainpool.P512r1()
+	} else if *pkey == "keygen" && *curveFlag == "brainpoolp512t1" {
+		pubkeyCurve = brainpool.P512t1()
+	} else if *pkey == "keygen" && *curveFlag == "secp256k1" {
+		pubkeyCurve = secp256k1.S256()
+	} else if *pkey == "keygen" && *curveFlag == "frp256v1" {
+		pubkeyCurve = frp256v1.P256()
+	} else if *pkey == "keygen" && *length == 224 || *curveFlag == "secp224r1" {
+		pubkeyCurve = elliptic.P224()
+	} else if *pkey == "keygen" && *length == 384 || *curveFlag == "secp384r1" {
+		pubkeyCurve = elliptic.P384()
+	} else if *pkey == "keygen" && *length == 521 || *curveFlag == "secp521r1" {
+		pubkeyCurve = elliptic.P521()
+	} else if *pkey == "keygen" && *length == 256 || *curveFlag == "secp256r1" {
+		pubkeyCurve = elliptic.P256()
 	}
 
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521) {
@@ -5637,7 +5692,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECGDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECGDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) {
 		privateKey, err := ecgdsa.GenerateKey(rand.Reader, pubkeyCurve)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -5648,6 +5703,102 @@ Subcommands:
 		ioutil.WriteFile(*priv, pripem, 0644)
 
 		pubpem, _ := EncodeECGDSAPublicKey(&pubkey)
+		ioutil.WriteFile(*pub, pubpem, 0644)
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err := os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, _ := pem.Decode(pubpem)
+		if block == nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(block)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
+		os.Exit(0)
+	}
+
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECSDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) {
+		privateKey, err := ecsdsa.GenerateKey(rand.Reader, pubkeyCurve)
+		if err != nil {
+			log.Fatal("Error generating private key:", err)
+		}
+
+		pubkey := privateKey.PublicKey
+		pripem, _ := EncodeECSDSAPrivateKey(privateKey)
+		ioutil.WriteFile(*priv, pripem, 0644)
+
+		pubpem, _ := EncodeECSDSAPublicKey(&pubkey)
+		ioutil.WriteFile(*pub, pubpem, 0644)
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err := os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		block, _ := pem.Decode(pubpem)
+		if block == nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(block)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
+		os.Exit(0)
+	}
+
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "BIP0340") && (*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) {
+		privateKey, err := bip0340.GenerateKey(rand.Reader, pubkeyCurve)
+		if err != nil {
+			log.Fatal("Error generating private key:", err)
+		}
+
+		pubkey := privateKey.PublicKey
+		pripem, _ := EncodeBIP0340PrivateKey(privateKey)
+		ioutil.WriteFile(*priv, pripem, 0644)
+
+		pubpem, _ := EncodeBIP0340PublicKey(&pubkey)
 		ioutil.WriteFile(*pub, pubpem, 0644)
 
 		absPrivPath, err := filepath.Abs(*priv)
@@ -5854,6 +6005,54 @@ Subcommands:
 			log.Fatal("Error computing shared key:", err)
 		}
 		fmt.Printf("%x\n", sharedKey)
+		os.Exit(0)
+	}
+
+	if *pkey == "derive" && strings.ToUpper(*alg) == "BIP0340" {
+		var privatekey *bip0340.PrivateKey
+		file, err := ioutil.ReadFile(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		public, err := DecodeBIP0340PublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		file2, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeBIP0340PrivateKey(file2)
+		if err != nil {
+			log.Fatal(err)
+		}
+		b, _ := public.Curve.ScalarMult(public.X, public.Y, privatekey.D.Bytes())
+		fmt.Printf("%x\n", b.Bytes())
+		os.Exit(0)
+	}
+
+	if *pkey == "derive" && strings.ToUpper(*alg) == "ECSDSA" {
+		var privatekey *ecsdsa.PrivateKey
+		file, err := ioutil.ReadFile(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		public, err := DecodeECSDSAPublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		file2, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeECSDSAPrivateKey(file2)
+		if err != nil {
+			log.Fatal(err)
+		}
+		b, _ := public.Curve.ScalarMult(public.X, public.Y, privatekey.D.Bytes())
+		fmt.Printf("%x\n", b.Bytes())
 		os.Exit(0)
 	}
 
@@ -6196,19 +6395,19 @@ Subcommands:
 		var curve elliptic.Curve
 
 		if strings.ToUpper(*alg) == "NUMS" {
-			if *length == 256 {
+			if *length == 256 || *curveFlag == "numsp256d1" {
 				curve = nums.P256d1()
-			} else if *length == 384 {
+			} else if *length == 384 || *curveFlag == "numsp384d1" {
 				curve = nums.P384d1()
-			} else if *length == 512 {
+			} else if *length == 512 || *curveFlag == "numsp512d1" {
 				curve = nums.P512d1()
 			}
 		} else if strings.ToUpper(*alg) == "NUMS-TE" {
-			if *length == 256 {
+			if *length == 256 || *curveFlag == "numsp256t1" {
 				curve = nums.P256t1()
-			} else if *length == 384 {
+			} else if *length == 384 || *curveFlag == "numsp384t1" {
 				curve = nums.P384t1()
-			} else if *length == 512 {
+			} else if *length == 512 || *curveFlag == "numsp512t1" {
 				curve = nums.P512t1()
 			}
 		}
@@ -7614,6 +7813,112 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "ECSDSA") {
+		var privatekey *ecsdsa.PrivateKey
+
+		input, err := ioutil.ReadAll(inputfile)
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeECSDSAPrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		opts := &ecsdsa.SignerOpts{
+			Hash: myHash,
+		}
+		signature, err := privatekey.Sign(rand.Reader, input, opts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(strings.ToUpper(*alg)+"-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
+		os.Exit(0)
+	}
+
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "ECSDSA") {
+
+		input, err := ioutil.ReadAll(inputfile)
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		opts := &ecsdsa.SignerOpts{
+			Hash: myHash,
+		}
+		publica, err := DecodeECSDSAPublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sig, err := hex.DecodeString(*sig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		verifystatus, err := publica.Verify(input, sig, opts)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Verified: %v\n", verifystatus)
+		os.Exit(0)
+	}
+
+	if *pkey == "sign" && (strings.ToUpper(*alg) == "BIP0340") {
+		var privatekey *bip0340.PrivateKey
+
+		input, err := ioutil.ReadAll(inputfile)
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		privatekey, err = DecodeBIP0340PrivateKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		opts := &bip0340.SignerOpts{
+			Hash: myHash,
+		}
+		signature, err := privatekey.Sign(rand.Reader, input, opts)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(strings.ToUpper(*alg)+"-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
+		os.Exit(0)
+	}
+
+	if *pkey == "verify" && (strings.ToUpper(*alg) == "BIP0340") {
+
+		input, err := ioutil.ReadAll(inputfile)
+		file, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		opts := &bip0340.SignerOpts{
+			Hash: myHash,
+		}
+		publica, err := DecodeBIP0340PublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+		sig, err := hex.DecodeString(*sig)
+		if err != nil {
+			log.Fatal(err)
+		}
+		verifystatus, err := publica.Verify(input, sig, opts)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Verified: %v\n", verifystatus)
+		os.Exit(0)
+	}
+
 	if *pkey == "sign" && (strings.ToUpper(*alg) == "BIGN") {
 		var privatekey *bign.PrivateKey
 
@@ -8600,6 +8905,10 @@ Subcommands:
 			*alg = "ECKCDSA"
 		} else if strings.Contains(s, "ECGDSA PRIVATE") {
 			*alg = "ECGDSA"
+		} else if strings.Contains(s, "ECSDSA PRIVATE") {
+			*alg = "ECSDSA"
+		} else if strings.Contains(s, "BIP0340 PRIVATE") {
+			*alg = "BIP0340"
 		} else if strings.Contains(s, "ED448 PRIVATE") {
 			*alg = "ED448"
 		} else if strings.Contains(s, "X448 PRIVATE") {
@@ -9659,8 +9968,7 @@ Subcommands:
 			case "KOBLITZ", "SECP256K1":
 				curve = curves.K256()
 			default:
-				fmt.Println("Unsupported curve:", *curveFlag)
-				os.Exit(3)
+				curve = curves.P256()
 			}
 			ek, dk, _ := elgamal.NewKeys(curve)
 
@@ -11875,6 +12183,14 @@ Subcommands:
 				return pub, err
 			},
 			func(b []byte) (interface{}, error) {
+				pub, err := ecsdsa.ParsePublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
+				pub, err := bip0340.ParsePublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
 				pub, err := bign.ParsePublicKey(b)
 				return pub, err
 			},
@@ -11925,6 +12241,14 @@ Subcommands:
 			publicKey := publicInterface.(*ecgdsa.PublicKey)
 			curve := publicKey.Curve
 			fmt.Printf("ECGDSA (%v-bit)\n", curve.Params().BitSize)
+		case *ecsdsa.PublicKey:
+			publicKey := publicInterface.(*ecsdsa.PublicKey)
+			curve := publicKey.Curve
+			fmt.Printf("ECSDSA (%v-bit)\n", curve.Params().BitSize)
+		case *bip0340.PublicKey:
+			publicKey := publicInterface.(*bip0340.PublicKey)
+			curve := publicKey.Curve
+			fmt.Printf("BIP0340 (%v-bit)\n", curve.Params().BitSize)
 		case *bign.PublicKey:
 			publicKey := publicInterface.(*bign.PublicKey)
 			curve := publicKey.Curve
@@ -11985,6 +12309,14 @@ Subcommands:
 				return pub, err
 			},
 			func(b []byte) (interface{}, error) {
+				pub, err := ecsdsa.ParsePublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
+				pub, err := bip0340.ParsePublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
 				pub, err := bign.ParsePublicKey(b)
 				return pub, err
 			},
@@ -12023,6 +12355,10 @@ Subcommands:
 		case *eckcdsa.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		case *ecgdsa.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case *ecsdsa.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case *bip0340.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		case ed448.PublicKey:
 			fingerprint = calculateFingerprint(buf)
@@ -12076,6 +12412,14 @@ Subcommands:
 				return pub, err
 			},
 			func(b []byte) (interface{}, error) {
+				pub, err := ecsdsa.ParsePublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
+				pub, err := bip0340.ParsePublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
 				pub, err := bign.ParsePublicKey(b)
 				return pub, err
 			},
@@ -12116,6 +12460,10 @@ Subcommands:
 			*alg = "ECKCDSA"
 		case *ecgdsa.PublicKey:
 			*alg = "ECGDSA"
+		case *ecsdsa.PublicKey:
+			*alg = "ECSDSA"
+		case *bip0340.PublicKey:
+			*alg = "BIP0340"
 		case *nums.PublicKey:
 			*alg = "NUMS"
 		case *frp256v1.PublicKey:
@@ -12166,6 +12514,16 @@ Subcommands:
 			os.Exit(0)
 		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ECGDSA") {
 			var publicKey = publicInterface.(*ecgdsa.PublicKey)
+			fmt.Printf("Public.X=%X\n", publicKey.X)
+			fmt.Printf("Public.Y=%X\n", publicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ECSDSA") {
+			var publicKey = publicInterface.(*ecsdsa.PublicKey)
+			fmt.Printf("Public.X=%X\n", publicKey.X)
+			fmt.Printf("Public.Y=%X\n", publicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "BIP0340") {
+			var publicKey = publicInterface.(*bip0340.PublicKey)
 			fmt.Printf("Public.X=%X\n", publicKey.X)
 			fmt.Printf("Public.Y=%X\n", publicKey.Y)
 			os.Exit(0)
@@ -12443,6 +12801,114 @@ Subcommands:
 		} else if strings.ToUpper(*alg) == "ECGDSA" {
 			publicKey := publicInterface.(*ecgdsa.PublicKey)
 			derBytes, err := ecgdsa.MarshalPublicKey(publicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			block := &pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: derBytes,
+			}
+			public := pem.EncodeToMemory(block)
+			fmt.Printf(string(public))
+
+			fmt.Printf("Public-Key: (%v-bit)\n", publicKey.Curve.Params().BitSize)
+			x := publicKey.X.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], x...)
+			}
+			c := []byte{}
+			c = append(c, x...)
+			fmt.Printf("pub.X: \n")
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			y := publicKey.Y.Bytes()
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, y...)
+			fmt.Printf("pub.Y: \n")
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("pub: \n")
+			x = publicKey.X.Bytes()
+			y = publicKey.Y.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], x...)
+			}
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, x...)
+			c = append(c, y...)
+			c = append([]byte{0x04}, c...)
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Params().Name)
+		} else if strings.ToUpper(*alg) == "ECSDSA" {
+			publicKey := publicInterface.(*ecsdsa.PublicKey)
+			derBytes, err := ecsdsa.MarshalPublicKey(publicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			block := &pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: derBytes,
+			}
+			public := pem.EncodeToMemory(block)
+			fmt.Printf(string(public))
+
+			fmt.Printf("Public-Key: (%v-bit)\n", publicKey.Curve.Params().BitSize)
+			x := publicKey.X.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], x...)
+			}
+			c := []byte{}
+			c = append(c, x...)
+			fmt.Printf("pub.X: \n")
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			y := publicKey.Y.Bytes()
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, y...)
+			fmt.Printf("pub.Y: \n")
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("pub: \n")
+			x = publicKey.X.Bytes()
+			y = publicKey.Y.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], x...)
+			}
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, x...)
+			c = append(c, y...)
+			c = append([]byte{0x04}, c...)
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Params().Name)
+		} else if strings.ToUpper(*alg) == "BIP0340" {
+			publicKey := publicInterface.(*bip0340.PublicKey)
+			derBytes, err := bip0340.MarshalPublicKey(publicKey)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -12884,6 +13350,120 @@ Subcommands:
 				log.Fatal(err)
 			}
 			derBytes, err := ecgdsa.MarshalPublicKey(&privKey.PublicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", privKey.PublicKey.X)
+				fmt.Printf("Public.Y=%X\n", privKey.PublicKey.Y)
+				os.Exit(0)
+			}
+			fmt.Printf(string(privPEM))
+			d := privKey.D.Bytes()
+			if n := len(d); n < 24 && n < 32 && n < 48 && n < 64 {
+				d = append(zeroByteSlice()[:(privKey.Curve.Params().BitSize/8)-n], d...)
+			}
+			c := []byte{}
+			c = append(c, d...)
+			fmt.Printf("Private-Key: (%v-bit)\n", privKey.Curve.Params().BitSize)
+			fmt.Printf("priv: \n")
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			publicKey := privKey.PublicKey
+			fmt.Printf("pub: \n")
+			x := publicKey.X.Bytes()
+			y := publicKey.Y.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], x...)
+			}
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, x...)
+			c = append(c, y...)
+			c = append([]byte{0x04}, c...)
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Params().Name)
+			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nKeyID: %x \n", skid)
+		} else if strings.ToUpper(*alg) == "ECSDSA" {
+			var privKey, err = ecsdsa.ParsePrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			derBytes, err := ecsdsa.MarshalPublicKey(&privKey.PublicKey)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", privKey.PublicKey.X)
+				fmt.Printf("Public.Y=%X\n", privKey.PublicKey.Y)
+				os.Exit(0)
+			}
+			fmt.Printf(string(privPEM))
+			d := privKey.D.Bytes()
+			if n := len(d); n < 24 && n < 32 && n < 48 && n < 64 {
+				d = append(zeroByteSlice()[:(privKey.Curve.Params().BitSize/8)-n], d...)
+			}
+			c := []byte{}
+			c = append(c, d...)
+			fmt.Printf("Private-Key: (%v-bit)\n", privKey.Curve.Params().BitSize)
+			fmt.Printf("priv: \n")
+			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			publicKey := privKey.PublicKey
+			fmt.Printf("pub: \n")
+			x := publicKey.X.Bytes()
+			y := publicKey.Y.Bytes()
+			if n := len(x); n < 24 && n < 32 && n < 48 && n < 64 {
+				x = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], x...)
+			}
+			if n := len(y); n < 24 && n < 32 && n < 48 && n < 64 {
+				y = append(zeroByteSlice()[:(publicKey.Curve.Params().BitSize/8)-n], y...)
+			}
+			c = []byte{}
+			c = append(c, x...)
+			c = append(c, y...)
+			c = append([]byte{0x04}, c...)
+			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Params().Name)
+			skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nKeyID: %x \n", skid)
+		} else if strings.ToUpper(*alg) == "BIP0340" {
+			var privKey, err = bip0340.ParsePrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			derBytes, err := bip0340.MarshalPublicKey(&privKey.PublicKey)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -16210,6 +16790,158 @@ func DecodeECGDSAPublicKey(encodedKey []byte) (*ecgdsa.PublicKey, error) {
 	return public, nil
 }
 
+func EncodeECSDSAPrivateKey(key *ecsdsa.PrivateKey) ([]byte, error) {
+	derKey, err := ecsdsa.MarshalPrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	keyBlock := &pem.Block{
+		Type:  "ECSDSA PRIVATE KEY",
+		Bytes: derKey,
+	}
+	if *pwd != "" {
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(encryptedBlock), nil
+	} else {
+		return pem.EncodeToMemory(keyBlock), nil
+	}
+}
+
+func DecodeECSDSAPrivateKey(encodedKey []byte) (*ecsdsa.PrivateKey, error) {
+	var skippedTypes []string
+	var block *pem.Block
+	for {
+		block, encodedKey = pem.Decode(encodedKey)
+		if block == nil {
+			return nil, fmt.Errorf("failed to find EC PRIVATE KEY in PEM data after skipping types %v", skippedTypes)
+		}
+
+		if block.Type == "ECSDSA PRIVATE KEY" {
+			break
+		} else {
+			skippedTypes = append(skippedTypes, block.Type)
+			continue
+		}
+	}
+	var privKey *ecsdsa.PrivateKey
+	var privKeyBytes []byte
+	var err error
+	if IsEncryptedPEMBlock(block) {
+		privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+		if err != nil {
+			return nil, errors.New("could not decrypt private key")
+		}
+		privKey, _ = ecsdsa.ParsePrivateKey(privKeyBytes)
+	} else {
+		privKey, _ = ecsdsa.ParsePrivateKey(block.Bytes)
+	}
+	return privKey, nil
+}
+
+func EncodeECSDSAPublicKey(key *ecsdsa.PublicKey) ([]byte, error) {
+	derBytes, err := ecsdsa.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	block := &pem.Block{
+		Type:  "ECSDSA PUBLIC KEY",
+		Bytes: derBytes,
+	}
+	return pem.EncodeToMemory(block), nil
+}
+
+func DecodeECSDSAPublicKey(encodedKey []byte) (*ecsdsa.PublicKey, error) {
+	block, _ := pem.Decode(encodedKey)
+	if block == nil || block.Type != "ECSDSA PUBLIC KEY" {
+		return nil, fmt.Errorf("marshal: could not decode PEM block type %s", block.Type)
+
+	}
+	public, err := ecsdsa.ParsePublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return public, nil
+}
+
+func EncodeBIP0340PrivateKey(key *bip0340.PrivateKey) ([]byte, error) {
+	derKey, err := bip0340.MarshalPrivateKey(key)
+	if err != nil {
+		return nil, err
+	}
+	keyBlock := &pem.Block{
+		Type:  "BIP0340 PRIVATE KEY",
+		Bytes: derKey,
+	}
+	if *pwd != "" {
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, keyBlock.Type, keyBlock.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(encryptedBlock), nil
+	} else {
+		return pem.EncodeToMemory(keyBlock), nil
+	}
+}
+
+func DecodeBIP0340PrivateKey(encodedKey []byte) (*bip0340.PrivateKey, error) {
+	var skippedTypes []string
+	var block *pem.Block
+	for {
+		block, encodedKey = pem.Decode(encodedKey)
+		if block == nil {
+			return nil, fmt.Errorf("failed to find EC PRIVATE KEY in PEM data after skipping types %v", skippedTypes)
+		}
+
+		if block.Type == "BIP0340 PRIVATE KEY" {
+			break
+		} else {
+			skippedTypes = append(skippedTypes, block.Type)
+			continue
+		}
+	}
+	var privKey *bip0340.PrivateKey
+	var privKeyBytes []byte
+	var err error
+	if IsEncryptedPEMBlock(block) {
+		privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+		if err != nil {
+			return nil, errors.New("could not decrypt private key")
+		}
+		privKey, _ = bip0340.ParsePrivateKey(privKeyBytes)
+	} else {
+		privKey, _ = bip0340.ParsePrivateKey(block.Bytes)
+	}
+	return privKey, nil
+}
+
+func EncodeBIP0340PublicKey(key *bip0340.PublicKey) ([]byte, error) {
+	derBytes, err := bip0340.MarshalPublicKey(key)
+	if err != nil {
+		return nil, err
+	}
+	block := &pem.Block{
+		Type:  "BIP0340 PUBLIC KEY",
+		Bytes: derBytes,
+	}
+	return pem.EncodeToMemory(block), nil
+}
+
+func DecodeBIP0340PublicKey(encodedKey []byte) (*bip0340.PublicKey, error) {
+	block, _ := pem.Decode(encodedKey)
+	if block == nil || block.Type != "BIP0340 PUBLIC KEY" {
+		return nil, fmt.Errorf("marshal: could not decode PEM block type %s", block.Type)
+
+	}
+	public, err := bip0340.ParsePublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return public, nil
+}
+
 func EncodeBIGNPrivateKey(key *bign.PrivateKey) ([]byte, error) {
 	derKey, err := bign.MarshalPrivateKey(key)
 	if err != nil {
@@ -17306,6 +18038,10 @@ func csrToCrt() error {
 		return err
 	}
 
+	if !caCRT.BasicConstraintsValid || !caCRT.IsCA {
+		return fmt.Errorf("root certificate is not a valid CA")
+	}
+
 	caPrivateKeyFile, err := ioutil.ReadFile(*key)
 	if err != nil {
 		return err
@@ -17494,6 +18230,10 @@ func csrToCrt2() error {
 	caCRT, err := x509.ParseCertificate(pemBlock.Bytes)
 	if err != nil {
 		return err
+	}
+
+	if !caCRT.BasicConstraintsValid || !caCRT.IsCA {
+		return fmt.Errorf("root certificate is not a valid CA")
 	}
 
 	caPrivateKeyFile, err := ioutil.ReadFile(*key)
@@ -17858,7 +18598,7 @@ func parseSubjectString(subject string) (name, number, country, province, locali
 
 func PKCS7Padding(ciphertext []byte) []byte {
 	var padding int
-	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" || *cph == "crypton" || *cph == "noekeon" || *cph == "loki97" || *cph == "mars" || *cph == "e2" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "cast256" || *cph == "cast6" || *cph == "belt" {
+	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "crypton" || *cph == "noekeon" || *cph == "loki97" || *cph == "mars" || *cph == "e2" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "cast256" || *cph == "cast6" || *cph == "belt" {
 		padding = 16 - len(ciphertext)%16
 	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "saferplus" || *cph == "safer+" {
 		padding = 8 - len(ciphertext)%8
@@ -18017,6 +18757,14 @@ func printKeyDetails(block *pem.Block) {
 			return pub, err
 		},
 		func(b []byte) (interface{}, error) {
+			pub, err := ecsdsa.ParsePublicKey(b)
+			return pub, err
+		},
+		func(b []byte) (interface{}, error) {
+			pub, err := bip0340.ParsePublicKey(b)
+			return pub, err
+		},
+		func(b []byte) (interface{}, error) {
 			pub, err := bign.ParsePublicKey(b)
 			return pub, err
 		},
@@ -18052,6 +18800,12 @@ func printKeyDetails(block *pem.Block) {
 	case *ecgdsa.PublicKey:
 		publicKey := publicInterface.(*ecgdsa.PublicKey)
 		fmt.Fprintf(os.Stderr, "ECGDSA (%v-bit)\n", publicKey.Curve.Params().BitSize)
+	case *ecsdsa.PublicKey:
+		publicKey := publicInterface.(*ecsdsa.PublicKey)
+		fmt.Fprintf(os.Stderr, "ECSDSA (%v-bit)\n", publicKey.Curve.Params().BitSize)
+	case *bip0340.PublicKey:
+		publicKey := publicInterface.(*bip0340.PublicKey)
+		fmt.Fprintf(os.Stderr, "BIP0340 (%v-bit)\n", publicKey.Curve.Params().BitSize)
 	case *ecdh.PublicKey:
 		fmt.Fprintln(os.Stderr, "X25519 (256-bit)")
 	case ed25519.PublicKey:
@@ -18477,6 +19231,9 @@ const (
 	PEMCipherRC6128
 	PEMCipherRC6192
 	PEMCipherRC6256
+	PEMCipherMAGENTA128
+	PEMCipherMAGENTA192
+	PEMCipherMAGENTA256
 	PEMCipherCRYPTON128
 	PEMCipherCRYPTON192
 	PEMCipherCRYPTON256
@@ -18674,6 +19431,24 @@ var rfc1423Algos = []rfc1423Algo{{
 	cipher:     PEMCipherRC6256,
 	name:       "RC6-256-CBC",
 	cipherFunc: rc6.NewCipher,
+	keySize:    32,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherMAGENTA128,
+	name:       "MAGENTA-128-CBC",
+	cipherFunc: magenta.NewCipher,
+	keySize:    16,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherMAGENTA192,
+	name:       "MAGENTA-192-CBC",
+	cipherFunc: magenta.NewCipher,
+	keySize:    24,
+	blockSize:  16,
+}, {
+	cipher:     PEMCipherMAGENTA256,
+	name:       "MAGENTA-256-CBC",
+	cipherFunc: magenta.NewCipher,
 	keySize:    32,
 	blockSize:  16,
 }, {
@@ -19027,6 +19802,10 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 		"rc6-192":       PEMCipherRC6192,
 		"rc6-256":       PEMCipherRC6256,
 		"rc6":           PEMCipherRC6256,
+		"magenta-128":   PEMCipherMAGENTA128,
+		"magenta-192":   PEMCipherMAGENTA192,
+		"magenta-256":   PEMCipherMAGENTA256,
+		"magenta":       PEMCipherMAGENTA256,
 		"crypton128":    PEMCipherCRYPTON128,
 		"crypton192":    PEMCipherCRYPTON192,
 		"crypton256":    PEMCipherCRYPTON256,
@@ -19140,7 +19919,13 @@ func EncryptBlockWithCipher(rand io.Reader, blockType string, blockBytes, passwo
 	case "rc6192":
 		cipher = PEMCipherRC6192
 	case "rc6", "rc6256":
-		cipher = PEMCipherRC6256
+		cipher = PEMCipherMAGENTA256
+	case "magenta128":
+		cipher = PEMCipherMAGENTA128
+	case "magenta192":
+		cipher = PEMCipherMAGENTA192
+	case "magenta", "magenta256":
+		cipher = PEMCipherMAGENTA256
 	case "crypton128":
 		cipher = PEMCipherCRYPTON128
 	case "crypton192":
@@ -20442,7 +21227,7 @@ func VerifyCSR(csr *CSR) error {
 	case "SLH-DSA":
 		return VerifySLH(csr.PublicKey, csr.Signature, certData)
 	default:
-		return fmt.Errorf("unsupported algorithm: %s", "ML-DSA")
+		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
 }
 
