@@ -43,28 +43,30 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 29. ISO/IEC 29192-3:2012 Trivium Stream cipher with 80-bit key
 30. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
 31. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
-32. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
-33. ISO/IEC 15946-5:2022 Barreto-Naehrig and Barreto-Lynn-Scott Curves
-34. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
-35. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
-36. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
-37. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
-38. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-39. RFC 1423: Privacy Enhancement for Internet Electronic Mail
-40. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-41. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-42. RFC 2612: The CAST-256 Encryption Algorithm
-43. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-44. RFC 4009: The SEED Encryption Algorithm (KISA)
-45. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-46. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-47. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-48. RFC 4543: Galois Message Authentication Code (GMAC)
-49. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-50. RFC 4648: Base16, Base32, and Base64 Data Encodings
-51. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-52. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
-50. RFC 5297: Synthetic Initialization Vector (SIV Mode) 
+32. ISO/IEC 14888-3:2018 EC-SDSA Schnorr-based Signature Scheme
+33. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
+34. ISO/IEC 15946-5:2022 Barreto-Naehrig and Barreto-Lynn-Scott Curves
+35. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
+36. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
+37. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
+38. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
+39. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
+40. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+41. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+42. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+43. RFC 2612: The CAST-256 Encryption Algorithm
+44. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+45. RFC 4009: The SEED Encryption Algorithm (KISA)
+46. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+47. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+48. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+49. RFC 4543: Galois Message Authentication Code (GMAC)
+50. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+51. RFC 4648: Base16, Base32, and Base64 Data Encodings
+52. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+53. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+50. RFC 5297: Synthetic Initialization Vector (SIV Mode)
+51. RFC 5639: Elliptic Curve Cryptography (ECC) Brainpool Standard Curves
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
 54. RFC 6114: The 128-Bit Blockcipher CLEFIA (Sony)
 55. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
