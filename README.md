@@ -492,16 +492,18 @@ Here are the main differences between ECDSA, ECGDSA, and ECKCDSA:
 $\text{ECDSA: Compute } r = x([k]B); \text{ s must be a root of } H(m)s^{-1} + rs^{-1}a - k \text{ modulo } n,$
 $\text{ so compute } s \equiv k^{-1} \left( H(m) + ra \right) \pmod{n}.$
 
-$\text{ECGDSA: Compute } r = x([k]B); \text{ s must be a root of } r^{-1}H(m) + r^{-1}sa - k \text{ modulo } n,$
+$\text{EC-GDSA: Compute } r = x([k]B); \text{ s must be a root of } r^{-1}H(m) + r^{-1}sa - k \text{ modulo } n,$
 $\text{ so compute } s \equiv a^{-1} \left( kr - H(m) \right) \pmod{n}.$
 
-$\text{ECKCDSA: Compute } r = H(x([k]B)); \text{ s must be a root of } r \oplus H(m,h) + sa - k \text{ modulo } n,$
+$\text{EC-KCDSA: Compute } r = H(x([k]B)); \text{ s must be a root of } r \oplus H(m,h) + sa - k \text{ modulo } n,$
 $\text{ so compute } s \equiv a^{-1} \left( k - r \oplus H(m,h) \right) \pmod{n}.$
 
 #### Schnorr-based algorithms
 
 $\text{BignV1: Compute }  R = [k]G; s_0 \text{ must be a root of } h(OID(H) \parallel R \parallel H(X)),$ 
 $\text{ so compute } s_1 \equiv (k - H(X) - (s_0 + 2^l)d) \mod q.$
+
+$\text{EC-SDSA: Compute } r = Q_x, \, h = H(M \parallel Q_x), \, s \equiv k - h \cdot d \mod n, \text{ where } H \text{ is a hash function and } d \text{ is the private key.}$
 
 $\text{EdDSA: Compute } R = [k] G; S \equiv k + H(R \parallel m) \cdot d \mod q, \text{where } H \text{ is a hash function and } d \text{ is the private key}.$
 
