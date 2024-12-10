@@ -108,9 +108,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption| PKI |
     |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
     | ECDSA               | O   | O   | O   | O       | O        | O   |
-    | ECGDSA              | O   | O   |     | O       |          |     |
+    | EC-GDSA             | O   | O   |     | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
-    | ECSDSA              | O   | O   | O   | O       |          |     |
+    | EC-SDSA             | O   | O   | O   | O       |          |     |
     | ANSSI               | O   |     | O   | O       | O        |     |
     | Koblitz             | O   |     | O   | O       | O        |     |
     | BignV1              | O   | O   | O   | O       |          |     |
