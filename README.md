@@ -13,7 +13,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 <details><summary>Implements</summary>  
     
 1. Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
-2. BSI TR-03111 ECKA-EG (Elliptic Curve Key Agreement based on ElGamal)
+2. BSI TR-03111 Elliptic Curve Cryptography (ECC) Technical Guideline
 3. CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
 4. CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
 5. DSTU 7564:2014 A New Standard of Ukraine: The Kupyna Hash Function
