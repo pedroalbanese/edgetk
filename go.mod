@@ -17,7 +17,9 @@ require (
 	github.com/pedroalbanese/bash v0.0.0-20240917213542-359ea9ed86ee
 	github.com/pedroalbanese/belt v0.0.0-20240917222837-2f97e6235d6c
 	github.com/pedroalbanese/bign v0.0.0-20240918155826-90ccb6b122b9
+	github.com/pedroalbanese/bip0340 v0.0.0-20241210175635-d2ef3194b7de
 	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
+	github.com/pedroalbanese/brainpool v0.0.0-20220826183126-be5c94625a31
 	github.com/pedroalbanese/camellia v0.0.0-20220911183557-30cc05c20118
 	github.com/pedroalbanese/cast256 v0.0.0-20240325185652-e35cf700d5fe
 	github.com/pedroalbanese/cast5 v0.0.0-20220924202825-3e5c3c00277c
@@ -35,8 +37,10 @@ require (
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
+	github.com/pedroalbanese/ecgdsa v0.0.0-20241210175441-06f3e901c677
 	github.com/pedroalbanese/echo v0.0.0-20240329160327-5e65f19de84b
 	github.com/pedroalbanese/ecka-eg v0.0.3003
+	github.com/pedroalbanese/ecsdsa v0.0.0-20241210175528-7c8b62d098d0
 	github.com/pedroalbanese/esch v0.0.0-20240403151441-bc287e464d49
 	github.com/pedroalbanese/frp256v1 v0.0.2-0.20240924173051-9a21c6c1586f
 	github.com/pedroalbanese/fugue v0.0.0-20240518170253-4e3af93fc75a
@@ -67,6 +71,7 @@ require (
 	github.com/pedroalbanese/luffa v0.0.0-20240518171333-cf7dac6a64ae
 	github.com/pedroalbanese/lyra2re v0.0.0-20240520232624-5764a75dde63
 	github.com/pedroalbanese/lyra2rev2 v0.0.0-20240608181906-fe968f886565
+	github.com/pedroalbanese/magenta v0.0.0-20241208214047-a79e5e9ef277
 	github.com/pedroalbanese/makwa-go v0.0.0-20240816162209-f803984910a2
 	github.com/pedroalbanese/mars v0.0.0-20240325185557-fe8b863ed824
 	github.com/pedroalbanese/md6 v0.0.0-20240815222317-052c055905a4
@@ -97,7 +102,7 @@ require (
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.27.0
+	golang.org/x/crypto v0.30.0
 )
 
 require (
@@ -110,6 +115,6 @@ require (
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/term v0.24.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/term v0.27.0 // indirect
 )
