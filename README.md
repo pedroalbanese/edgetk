@@ -115,7 +115,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Koblitz             | O   |     | O   | O       | O        |     |
     | BignV1              | O   | O   | O   | O       |          |     |
     | BIP0340             | O   | O   | O   | O       |          |     |
-    | BN256               | O   |     |     | O       |          |     |
+    | BN256               | O   |     | O   | O       |          |     |
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
