@@ -475,6 +475,31 @@ To verify the signature $s = s_0 \| s_1$ of a message $X$ with public key $Q$:
 
 </details>
 
+### BN256 (Barreto-Naehrig)
+
+The BN256 (ISO/IEC 15946-5:2022) is an elliptic curve used in cryptography, particularly for pairing-based cryptographic protocols like identity-based encryption and short signatures. It was introduced by Paulo S. L. M. Barreto and Michael Naehrig as part of their work on constructing efficient elliptic curves for pairings. 
+
+<details><summary>BN256 Theory</summary>
+  
+### Key Generation  
+1. Private Key (sk): Randomly selected from $r \in \mathbb{Z}_n$, where $n$ is the curve order. It must remain secret.  
+2. Public Key (pk): $pk = sk * G2$, where $G2$ is the generator point of the curve.
+
+### Signing  
+1. Choose $k \in \mathbb{Z}_n$, keep it secret, and ensure it's never reused.  
+2. Compute $σ = k * H(M)$, then $r = x1 \mod n$, where $(x1, y1) = k * G1$. If $r = 0$, choose a new $k$.  
+3. Signature: $σ = H(M) * sk$.  
+4. Final signature: $σ$ is the result of multiplying $sk$ by $H(M)$.
+
+### Verification  
+1. Verify the signature: $e(σ, G2) = e(H(M), pk)$, where $e$ is the bilinear pairing.  
+2. If the pairing holds, the signature is valid; otherwise, it’s invalid.
+
+### Verification Equation:  
+$e(sk * H(M), G2) = e(H(M), sk * G2)$, or equivalently, $e(H(M), pk) = e(H(M), pk)$. If true, the signature is valid.
+
+</details>
+
 ### Curupira
 
 Curupira is a 96-bit block cipher, with keys of 96, 144 or 192 bits, and variable number of rounds, an algorithm described at [SBRC 2007](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=2cff321bfa378138088bd82d6f9d80ac1b762327) by Paulo S. L. M. Barreto and Marcos A. Simplício Jr., from Escola Politécnica da Universidade de São Paulo (USP), São Paulo, Brazil.
