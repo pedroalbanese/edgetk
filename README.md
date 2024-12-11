@@ -481,21 +481,21 @@ The BN256 (ISO/IEC 15946-5:2022) is an elliptic curve used in cryptography, part
 
 <details><summary>BN256 Theory</summary>
   
-### Key Generation  
+#### Key Generation  
 1. Private Key (sk): Randomly selected from $r \in \mathbb{Z}_n$, where $n$ is the curve order. It must remain secret.  
 2. Public Key (pk): $pk = sk * G2$, where $G2$ is the generator point of the curve.
 
-### Signing  
+#### Signing  
 1. Choose $k \in \mathbb{Z}_n$, keep it secret, and ensure it's never reused.  
 2. Compute $σ = k * H(M)$, then $r = x1 \mod n$, where $(x1, y1) = k * G1$. If $r = 0$, choose a new $k$.  
 3. Signature: $σ = H(M) * sk$.  
 4. Final signature: $σ$ is the result of multiplying $sk$ by $H(M)$.
 
-### Verification  
+#### Verification  
 1. Verify the signature: $e(σ, G2) = e(H(M), pk)$, where $e$ is the bilinear pairing.  
 2. If the pairing holds, the signature is valid; otherwise, it’s invalid.
 
-### Verification Equation:  
+#### Verification Equation:  
 $e(sk * H(M), G2) = e(H(M), sk * G2)$, or equivalently, $e(H(M), pk) = e(H(M), pk)$. If true, the signature is valid.
 
 </details>
