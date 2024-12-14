@@ -488,8 +488,8 @@ The BN256 (ISO/IEC 15946-5:2022) is an elliptic curve used in cryptography, part
 
 #### Signing  
 1. Choose $k \in \mathbb{Z}_n$, keep it secret, and ensure it's never reused.
-2. Compute $ \sigma = k \cdot H(M) $, where $ H(M) $ is the hash of the message $ M $.
-3. The final signature is $ \sigma = sk \cdot H(M) $, where $ sk $ is the private key and $ H(M) $ is the hash of the message.
+2. Compute $\sigma = k \cdot H(M)$, where $H(M)$ is the hash of the message $M$.
+3. The final signature is $\sigma = sk \cdot H(M)$, where $sk$ is the private key and $H(M)$ is the hash of the message.
 
 #### Verification  
 1. Verify the signature: $e(σ, G2) = e(H(M), pk)$, where $e$ is the bilinear pairing.  
