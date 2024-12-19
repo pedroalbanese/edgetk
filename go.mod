@@ -1,12 +1,15 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.20
+go 1.22.0
+
+toolchain go1.23.3
 
 require (
 	git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9
 	gitee.com/Trisia/gotlcp v1.3.17
 	github.com/RyuaNerin/elliptic2 v1.0.0
 	github.com/RyuaNerin/go-krypto v1.3.0
+	github.com/cloudflare/circl v1.5.0
 	github.com/deatil/go-cryptobin v1.0.4018
 	github.com/emmansun/certinfo v0.1.0
 	github.com/emmansun/gmsm v0.24.2
@@ -19,6 +22,7 @@ require (
 	github.com/pedroalbanese/bign v0.0.0-20240918155826-90ccb6b122b9
 	github.com/pedroalbanese/bip0340 v0.0.0-20241210175635-d2ef3194b7de
 	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
+	github.com/pedroalbanese/bn256 v0.0.0-20241211180157-f48a503b4cc5
 	github.com/pedroalbanese/brainpool v0.0.0-20220826183126-be5c94625a31
 	github.com/pedroalbanese/camellia v0.0.0-20220911183557-30cc05c20118
 	github.com/pedroalbanese/cast256 v0.0.0-20240325185652-e35cf700d5fe
@@ -102,7 +106,7 @@ require (
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.30.0
+	golang.org/x/crypto v0.31.0
 )
 
 require (
@@ -118,3 +122,5 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 )
+
+replace golang.org/x/crypto => golang.org/x/crypto v0.31.0
