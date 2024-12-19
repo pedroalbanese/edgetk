@@ -91,6 +91,9 @@ import (
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
+	"github.com/cloudflare/circl/ecc/bls12381"
+	"github.com/cloudflare/circl/ecc/bls12381/ff"
+	"github.com/cloudflare/circl/sign/bls"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
 	"github.com/deatil/go-cryptobin/cipher/saferplus"
 	"github.com/emmansun/certinfo"
@@ -113,6 +116,7 @@ import (
 	bigncurves "github.com/pedroalbanese/bign/curves"
 	"github.com/pedroalbanese/bip0340"
 	"github.com/pedroalbanese/bmw"
+	bn256i "github.com/pedroalbanese/bn256"
 	"github.com/pedroalbanese/brainpool"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast256"
@@ -211,6 +215,28 @@ import (
 	"git.sr.ht/~sircmpwn/go-bare"
 )
 
+type PubPaths []string
+
+func (p *PubPaths) String() string {
+	return fmt.Sprintf("%v", *p)
+}
+
+func (p *PubPaths) Set(value string) error {
+	*p = append(*p, value)
+	return nil
+}
+
+type MsgsPaths []string
+
+func (m *MsgsPaths) String() string {
+	return fmt.Sprintf("%v", *m)
+}
+
+func (m *MsgsPaths) Set(value string) error {
+	*m = append(*m, value)
+	return nil
+}
+
 var (
 	alg        = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
 	cacert     = flag.String("cacert", "", "CA Certificate path. (for TLCP Protocol)")
@@ -308,10 +334,16 @@ func handleConnectionTLCP(c net.Conn) {
 }
 
 func main() {
+
+	var pubs PubPaths
+	var msgs MsgsPaths
+	flag.Var(&pubs, "pubs", "Paths to the public keys (can be passed multiple times)")
+	flag.Var(&msgs, "msgs", "Messages to be signed (can be passed multiple times)")
+
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.3  10 Dec 2024")
+		fmt.Println("EDGE Toolkit v1.5.4-alpha  18 Dec 2024")
 	}
 
 	if len(os.Args) < 2 {
@@ -328,11 +360,12 @@ Public Key Subcommands:
   decrypt           x509              verify            help
 
 Public Key Algorithms:
-  bign/dbign        ed25519[ph]       ml-kem            sm9sign[ph]
-  ecdsa             ed448[ph]         ml-dsa            sm9encrypt
-  ecgdsa            elgamal           nums/nums-te      slh-dsa
-  eckcdsa           ec-elgamal        rsa (default)     x25519
-  ecsdsa/bip0340    gost2012          sm2[ph]           x448
+  bign/dbign        eckcdsa           gost2012          sm2[ph]
+  bip0340           ecsdsa            koblitz           sm9sign[ph]
+  bls12381[ph]      ed25519[ph]       ml-dsa            sm9encrypt
+  bn256[ph]         ed448[ph]         ml-kem            slh-dsa
+  ecdsa             elgamal           nums/nums-te      x25519
+  ecgdsa            ec-elgamal        rsa (default)     x448
 
 Stream Ciphers:
   ascon (aead)      grain128a         rabbit            spritz
@@ -593,7 +626,7 @@ Subcommands:
 		*pwd2 = string(pass)
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "") && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "") && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -3906,6 +3939,7 @@ Subcommands:
 		var ciph cipher.Block
 		var iv []byte
 		var tweak []byte
+		tweak = make([]byte, 16)
 
 		switch *cph {
 		case "aes":
@@ -4147,6 +4181,7 @@ Subcommands:
 			fmt.Fprintf(os.Stderr, "IV= %x\n", iv)
 		}
 		var stream cipher.Stream
+		modeUpper := strings.ToUpper(*mode)
 
 		switch {
 		case modeUpper == "CTR":
@@ -8568,7 +8603,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "derive" && strings.ToUpper(*alg) != "GOST2012" {
+	if *pkey == "derive" && strings.ToUpper(*alg) != "GOST2012" && strings.ToUpper(*alg) != "BN256" && strings.ToUpper(*alg) != "BLS12381" {
 		var privatekey *ecdsa.PrivateKey
 		file, err := ioutil.ReadFile(*pub)
 		if err != nil {
@@ -8885,6 +8920,10 @@ Subcommands:
 			*alg = "SM9SIGN"
 		} else if strings.Contains(s, "SLH-DSA") {
 			*alg = "SLH-DSA"
+		} else if strings.Contains(s, "BN256") {
+			*alg = "BN256"
+		} else if strings.Contains(s, "BLS12381") {
+			*alg = "BLS12381"
 		} else if strings.Contains(s, "EC-ELGAMAL") {
 			*alg = "EC-ELGAMAL"
 		} else if strings.Contains(s, "ELGAMAL") {
@@ -8918,36 +8957,52 @@ Subcommands:
 		}
 	}
 
-	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" {
+	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" {
 
-		if data, err := ioutil.ReadFile(*key); err == nil {
-			if block, _ := pem.Decode(data); block != nil {
-				if strings.Contains(block.Type, "SLH-DSA") {
-					*alg = "SLH-DSA"
-				} else if strings.Contains(block.Type, "ML-KEM") {
-					*alg = "ML-KEM"
-				} else if strings.Contains(block.Type, "ML-DSA") {
-					*alg = "ML-DSA"
+		if strings.ToUpper(*alg) != "BN256PH" && strings.ToUpper(*alg) != "BLS12381PH" {
+			if data, err := ioutil.ReadFile(*key); err == nil {
+				if block, _ := pem.Decode(data); block != nil {
+					if strings.Contains(block.Type, "SLH-DSA") {
+						*alg = "SLH-DSA"
+					} else if strings.Contains(block.Type, "ML-KEM") {
+						*alg = "ML-KEM"
+					} else if strings.Contains(block.Type, "ML-DSA") {
+						*alg = "ML-DSA"
+					} else if strings.Contains(block.Type, "BN256") {
+						*alg = "BN256"
+					} else if strings.Contains(block.Type, "BLS12381") {
+						*alg = "BLS12381"
+					}
 				}
 			}
-		}
 
-		if data, err := ioutil.ReadFile(*crl); err == nil {
-			if block, _ := pem.Decode(data); block != nil {
-				if strings.Contains(block.Type, "SLH-DSA") {
-					*alg = "SLH-DSA"
-				} else if strings.Contains(block.Type, "ML-DSA") {
-					*alg = "ML-DSA"
+			if data, err := ioutil.ReadFile(*crl); err == nil {
+				if block, _ := pem.Decode(data); block != nil {
+					if strings.Contains(block.Type, "SLH-DSA") {
+						*alg = "SLH-DSA"
+					} else if strings.Contains(block.Type, "ML-DSA") {
+						*alg = "ML-DSA"
+					} else if strings.Contains(block.Type, "BN256") {
+						*alg = "BN256"
+					} else if strings.Contains(block.Type, "BLS12381") {
+						*alg = "BLS12381"
+					}
 				}
 			}
-		}
 
-		if data, err := ioutil.ReadFile(*cert); err == nil {
-			if block, _ := pem.Decode(data); block != nil {
-				if strings.Contains(block.Type, "SLH-DSA") {
-					*alg = "SLH-DSA"
-				} else if strings.Contains(block.Type, "ML-DSA") {
-					*alg = "ML-DSA"
+			if *pkey != "certgen" && *pkey != "req" {
+				if data, err := ioutil.ReadFile(*cert); err == nil {
+					if block, _ := pem.Decode(data); block != nil {
+						if strings.Contains(block.Type, "SLH-DSA") {
+							*alg = "SLH-DSA"
+						} else if strings.Contains(block.Type, "ML-DSA") {
+							*alg = "ML-DSA"
+						} else if strings.Contains(block.Type, "BN256") {
+							*alg = "BN256"
+						} else if strings.Contains(block.Type, "BLS12381") {
+							*alg = "BLS12381"
+						}
+					}
 				}
 			}
 		}
@@ -9057,7 +9112,7 @@ Subcommands:
 
 	var validity string
 
-	if (strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA") && (*pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl") {
+	if (strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "BN256" || strings.ToUpper(*alg) == "BLS12381") && (*pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl") {
 		if *pkey == "certgen" || *pkey == "req" {
 			if *subj == "" {
 				println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
@@ -11065,6 +11120,1391 @@ Subcommands:
 
 			fmt.Println("Verified: true")
 			os.Exit(0)
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "BLS12381") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart" || *pkey == "certgen" || *pkey == "x509" || *pkey == "req" || *pkey == "check" || *pkey == "text" || *pkey == "crl" || *pkey == "validate") {
+		var blockType string
+		if *key != "" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				os.Exit(1)
+			}
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				fmt.Println("Error decoding PEM block")
+				os.Exit(1)
+			}
+			blockType = block.Type
+		}
+		if *pkey == "text" && *key != "" && blockType == "BLS12381 SECRET KEY" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			var privKey bls.PrivateKey[bls.G2]
+			privKey.UnmarshalBinary(keyBytes)
+
+			pubKey := privKey.PublicKey()
+
+			keyPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("SecretKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			pubBytes, err := pubKey.MarshalBinary()
+			if err != nil {
+				log.Fatalf("Erro ao serializar chave pública: %v", err)
+			}
+			fmt.Println("PublicKey:")
+			p = fmt.Sprintf("%x", pubBytes)
+			splitz = SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Curve: %s\n", "BLS12381")
+
+			os.Exit(0)
+		} else if *pkey == "text" && *key != "" && (blockType == "BLS12381 PUBLIC KEY" || blockType == "BLS12381 AGGREGATED PUBLIC KEY") {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			pubKeyPEM := pem.Block{Type: "BLS12381 PUBLIC KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("PublicKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Curve: %s\n", "BLS12381")
+
+			skid := sha3.Sum256(keyBytes)
+			fmt.Printf("\nKeyID: %x \n", skid[:20])
+			os.Exit(0)
+		} else if *pkey == "fingerprint" && *key != "" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+			os.Exit(0)
+		}
+
+		if *pkey == "randomart" && *key != "" {
+			pubFile, err := os.Open(*key)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			fmt.Println("BLS12 381-bit")
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+			os.Exit(0)
+		} else if *pkey == "text" && *key == "" && *crl != "" {
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				log.Fatalf("Erro ao ler o CRL: %v", err)
+			}
+
+			PrintCRLInfo(crl)
+			os.Exit(0)
+		}
+		if *pkey == "keygen" {
+			ikm := make([]byte, 32)
+			_, err := rand.Read(ikm)
+			if err != nil {
+				log.Fatal("Erro ao gerar IKM aleatório:", err)
+			}
+			salt := []byte(*salt)
+
+			privKey, err := bls.KeyGen[bls.G2](ikm, salt, nil)
+			if err != nil {
+				log.Fatal("Error generating private key: ", err)
+			}
+
+			pubKey := privKey.PublicKey()
+
+			privBytes, err := privKey.MarshalBinary()
+			if err != nil {
+				log.Fatal("Error serializing private key: ", err)
+			}
+			pubBytes, err := pubKey.MarshalBinary()
+			if err != nil {
+				log.Fatal("Error serializing public key: ", err)
+			}
+
+			privPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: privBytes}
+			pubPEM := pem.Block{Type: "BLS12381 PUBLIC KEY", Bytes: pubBytes}
+
+			if err := savePEMToFile(*priv, &privPEM, true); err != nil {
+				fmt.Println("Error saving private key:", err)
+				return
+			}
+			if err := savePEMToFile(*pub, &pubPEM, false); err != nil {
+				fmt.Println("Error saving public key:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+
+			pubPath, err := filepath.Abs(*pub)
+			if err != nil {
+				fmt.Println("Error getting absolute path for public key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+
+			fingerprint := calculateFingerprint(pubBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			fmt.Println("BLS12 381-bit")
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+		} else if *pkey == "sign" {
+			privKeyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var privKey bls.PrivateKey[bls.G2]
+			err = privKey.UnmarshalBinary(privKeyBytes)
+			if err != nil {
+				fmt.Println("Error unmarshaling private key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			signature := bls.Sign(&privKey, msg)
+
+			fmt.Println("PureBLS12381("+inputdesc+")=", hex.EncodeToString(signature))
+			os.Exit(0)
+		} else if *pkey == "aggregate" {
+			privKeyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var privKey bls.PrivateKey[bls.G2]
+			err = privKey.UnmarshalBinary(privKeyBytes)
+			if err != nil {
+				fmt.Println("Error deserializing private key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error loading input file:", err)
+				os.Exit(1)
+			}
+
+			signature := bls.Sign(&privKey, msg)
+			fmt.Println("Individual_BLS12381=", hex.EncodeToString(signature))
+
+			aggregatedSignature := signature
+			if *sig != "" {
+				aggregatedSigData, err := hex.DecodeString(*sig)
+				if err != nil {
+					log.Fatalf("Error decoding aggregated signature: %v", err)
+				}
+
+				existingAggregatedSig := aggregatedSigData
+
+				aggregatedSignature, err = bls.Aggregate(bls.G2{}, []bls.Signature{existingAggregatedSig, signature})
+				if err != nil {
+					log.Fatalf("Error aggregating signatures: %v", err)
+				}
+			}
+
+			fmt.Println("Aggregated_BLS12381=", hex.EncodeToString(aggregatedSignature[:]))
+		} else if *pkey == "verify-aggregate" {
+			if len(pubs) != len(msgs) {
+				log.Fatal("The number of public keys and messages must be the same.")
+			}
+
+			var pubKeys []*bls.PublicKey[bls.G2]
+			for _, pubPath := range pubs {
+				pubKeyBytes, err := readKeyFromPEM(pubPath, false)
+				if err != nil {
+					fmt.Println("Error loading public key from", pubPath, ":", err)
+					os.Exit(1)
+				}
+
+				var pubKey bls.PublicKey[bls.G2]
+				err = pubKey.UnmarshalBinary(pubKeyBytes)
+				if err != nil {
+					fmt.Println("Error deserializing public key from", pubPath, ":", err)
+					os.Exit(1)
+				}
+
+				pubKeys = append(pubKeys, &pubKey)
+			}
+
+			var msgsData [][]byte
+			for _, msgPath := range msgs {
+				msg, err := ioutil.ReadFile(msgPath)
+				if err != nil {
+					log.Fatalf("Error loading message %s: %v", msgPath, err)
+				}
+				msgsData = append(msgsData, msg)
+			}
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			valid := bls.VerifyAggregate(pubKeys, msgsData, sigBytes)
+			if valid {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+			}
+			os.Exit(0)
+		} else if *pkey == "verify" {
+			pubKeyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bls.PublicKey[bls.G2]
+			err = pubKey.UnmarshalBinary(pubKeyBytes)
+			if err != nil {
+				fmt.Println("Error unmarshaling public key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				os.Exit(1)
+			}
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			valid := bls.Verify(&pubKey, msg, sigBytes)
+			if valid {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+			}
+			os.Exit(0)
+		} else if *pkey == "derive" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading secret key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			skScalar := new(ff.Scalar)
+			skScalar.SetBytes(skBigInt.Bytes())
+
+			pk, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bls12381.G2
+			err = pubKey.SetBytes(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			baseG1 := bls12381.G1Generator()
+
+			pairing := bls12381.Pair(baseG1, &pubKey)
+
+			sharedKey := new(bls12381.Gt)
+			sharedKey.Exp(pairing, skScalar)
+
+			sharedBytes, err := sharedKey.MarshalBinary()
+			if err != nil {
+				log.Fatalf("Error marshaling shared key: %v", err)
+			}
+			fmt.Printf("Shared= %x\n", sharedBytes)
+		} else if *pkey == "certgen" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			var privKey bls.PrivateKey[bls.G2]
+			privKey.UnmarshalBinary(keyBytes)
+
+			pubKey := privKey.PublicKey()
+			pubKeyBytes, err := pubKey.MarshalBinary()
+			if err != nil {
+				fmt.Println("Error marshaling public key from PEM:", err)
+				os.Exit(1)
+			}
+			ca := NewCA(keyBytes, pubKeyBytes, validity)
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			certificate, err := ca.IssueCertificate(subject, email, pubKeyBytes, keyBytes, true, validity)
+			if err != nil {
+				fmt.Println("Error issuing certificate:", err)
+				return
+			}
+
+			err = SaveCertificateToPEM(certificate, *cert)
+			if err != nil {
+				fmt.Println("Error saving certificate:", err)
+				return
+			}
+
+			fmt.Println("Certificate issued and saved successfully.")
+			os.Exit(0)
+		} else if *pkey == "check" && *crl == "" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Erro ao ler o certificado:", err)
+				return
+			}
+
+			err = VerifyCertificate(certificate, pk)
+			if err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(1)
+			} else {
+				fmt.Println("Verified: true")
+				os.Exit(0)
+			}
+		} else if *pkey == "text" && *cert != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				csr, err := ReadCSRFromPEM(*cert)
+				if err != nil {
+					fmt.Println("Error loading certificate or CSR:", err)
+					return
+				}
+				PrintInfo(csr)
+			} else {
+				PrintInfo(certificate)
+			}
+			os.Exit(0)
+		} else if *pkey == "req" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			var caPrivateKey bls.PrivateKey[bls.G2]
+			caPrivateKey.UnmarshalBinary(keyBytes)
+
+			pubKey := caPrivateKey.PublicKey()
+			pubKeyBytes, err := pubKey.MarshalBinary()
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			csr, err := CreateCSR(subject, email, pubKeyBytes, keyBytes)
+			if err != nil {
+				log.Fatalf("Failed to create CSR: %v", err)
+			}
+
+			err = SaveCSRToPEM(csr, *cert)
+			if err != nil {
+				log.Fatalf("Failed to save CSR: %v", err)
+			}
+
+			fmt.Println("CSR created and saved to", *cert)
+			os.Exit(0)
+		} else if *pkey == "x509" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			var privKey bls.PrivateKey[bls.G2]
+			privKey.UnmarshalBinary(keyBytes)
+
+			caCert, err := ReadCertificateFromPEM(*root)
+			if err != nil {
+				log.Fatalf("Failed to read CA certificate: %v", err)
+			}
+
+			csr, err := ReadCSRFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read CSR: %v", err)
+			}
+
+			ca := &CA{
+				PrivateKey:  keyBytes,
+				Certificate: *caCert,
+			}
+
+			signedCert, err := SignCSR(csr, ca, keyBytes, validity)
+			if err != nil {
+				log.Fatalf("Failed to sign CSR: %v", err)
+			}
+
+			var outputFilename string
+			if flag.Arg(0) == "" {
+				outputFilename = "stdout"
+			} else {
+				outputFilename = flag.Arg(0)
+			}
+
+			err = SaveCertificateToPEM(signedCert, flag.Arg(0))
+			if err != nil {
+				log.Fatalf("Failed to save certificate: %v", err)
+			}
+
+			fmt.Fprintf(os.Stderr, "Certificate signed and saved to %s\n", outputFilename)
+			os.Exit(0)
+		} else if *pkey == "crl" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			var caPrivateKey bls.PrivateKey[bls.G2]
+			caPrivateKey.UnmarshalBinary(keyBytes)
+
+			pubKey := caPrivateKey.PublicKey()
+			pubKeyBytes, err := pubKey.MarshalBinary()
+
+			cert, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read CA certificate: %v", err)
+			}
+
+			ca := NewCA(keyBytes, pubKeyBytes, validity)
+
+			crl, err := NewCRL(ca, *crl, validity)
+			if err != nil {
+				fmt.Println("Error generating CRL:", err)
+				return
+			}
+
+			revokedSerials, err := readRevokedSerials(flag.Arg(0))
+			if err != nil {
+				fmt.Printf("Error reading revoked serial numbers: %v\n", err)
+				return
+			}
+
+			for _, serial := range revokedSerials {
+				crl.RevokeCertificate(serial)
+			}
+
+			if err := crl.Sign(ca, cert); err != nil {
+				fmt.Printf("Error signing CRL: %v\n", err)
+				return
+			}
+
+			var outputFile string
+			if len(flag.Args()) > 0 {
+				outputFile = flag.Arg(1)
+			}
+
+			if err := SaveCRLToPEM(crl, outputFile); err != nil {
+				fmt.Printf("Error saving CRL: %v\n", err)
+				return
+			}
+
+			fmt.Println("CRL generated and saved successfully.")
+			os.Exit(0)
+		} else if *pkey == "validate" {
+			certToValidate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Printf("Error reading certificate: %v\n", err)
+				return
+			}
+
+			readCRL, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				return
+			}
+
+			if readCRL.IsRevoked(certToValidate.SerialNumber) {
+				fmt.Println("The certificate has been revoked")
+				os.Exit(1)
+			} else {
+				fmt.Println("The certificate is not revoked")
+				os.Exit(0)
+			}
+		} else if *pkey == "check" && *crl != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Error reading certificate:", err)
+				return
+			}
+
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := CheckCRL(crl, certificate.PublicKey); err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(3)
+			}
+
+			fmt.Println("Verified: true")
+			os.Exit(0)
+		}
+	}
+
+	if strings.ToUpper(*alg) == "BLS12381PH" && (*pkey == "sign" || *pkey == "verify") {
+		if *pkey == "sign" {
+			privKeyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var privKey bls.PrivateKey[bls.G2]
+			err = privKey.UnmarshalBinary(privKeyBytes)
+			if err != nil {
+				fmt.Println("Error unmarshaling private key:", err)
+				os.Exit(1)
+			}
+
+			inputfile, err := os.Open(inputdesc)
+			if err != nil {
+				fmt.Println("Error opening input file:", err)
+				os.Exit(1)
+			}
+			defer inputfile.Close()
+
+			prehash := myHash()
+			if _, err := io.Copy(prehash, inputfile); err != nil {
+				log.Fatal(err)
+			}
+			hashBytes := prehash.Sum(nil)
+
+			signature := bls.Sign(&privKey, hashBytes)
+
+			fmt.Println("BLS12381-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature))
+			os.Exit(0)
+
+		} else if *pkey == "verify" {
+			pubKeyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bls.PublicKey[bls.G2]
+			err = pubKey.UnmarshalBinary(pubKeyBytes)
+			if err != nil {
+				fmt.Println("Error unmarshaling public key:", err)
+				os.Exit(1)
+			}
+
+			inputfile, err := os.Open(inputdesc)
+			if err != nil {
+				fmt.Println("Error opening input file:", err)
+				os.Exit(1)
+			}
+			defer inputfile.Close()
+
+			prehash := myHash()
+			if _, err := io.Copy(prehash, inputfile); err != nil {
+				log.Fatal(err)
+			}
+			hashBytes := prehash.Sum(nil)
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			valid := bls.Verify(&pubKey, hashBytes, sigBytes)
+			if valid {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+			}
+			os.Exit(0)
+		}
+	}
+
+	if (strings.ToUpper(*alg) == "BN256") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart" || *pkey == "certgen" || *pkey == "x509" || *pkey == "req" || *pkey == "check" || *pkey == "text" || *pkey == "crl" || *pkey == "validate") {
+		var blockType string
+		if *key != "" {
+			pemData, err := ioutil.ReadFile(*key)
+			if err != nil {
+				fmt.Println("Error reading PEM file:", err)
+				os.Exit(1)
+			}
+			block, _ := pem.Decode(pemData)
+			if block == nil {
+				fmt.Println("Error decoding PEM block")
+				os.Exit(1)
+			}
+			blockType = block.Type
+		}
+		if *pkey == "text" && *key != "" && blockType == "BN256 SECRET KEY" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+
+			var privKey big.Int
+			privKey.SetBytes(keyBytes)
+
+			pubKey := new(bn256i.G2).ScalarBaseMult(&privKey)
+
+			keyPEM := pem.Block{Type: "BN256 SECRET KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("SecretKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("PublicKey:")
+			p = fmt.Sprintf("%x", pubKey.Marshal())
+			splitz = SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Curve: %s\n", "BN256")
+
+			os.Exit(0)
+		} else if *pkey == "text" && *key != "" && (blockType == "BN256 PUBLIC KEY" || blockType == "BN256 AGGREGATED PUBLIC KEY") {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			pubKeyPEM := pem.Block{Type: "BN256 PUBLIC KEY", Bytes: keyBytes}
+			keyPEMText := string(pem.EncodeToMemory(&pubKeyPEM))
+			fmt.Print(keyPEMText)
+			fmt.Println("PublicKey:")
+			p := fmt.Sprintf("%x", keyBytes)
+			splitz := SplitSubN(p, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Curve: %s\n", "BN256")
+
+			skid := sha3.Sum256(keyBytes)
+			fmt.Printf("\nKeyID: %x \n", skid[:20])
+			os.Exit(0)
+		}
+		if *pkey == "fingerprint" && *key != "" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading key from PEM:", err)
+				os.Exit(1)
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+			os.Exit(0)
+		}
+		if *pkey == "randomart" && *key != "" {
+			pubFile, err := os.Open(*key)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			fmt.Println("Barreto-Naehrig 256")
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+			os.Exit(0)
+		} else if *pkey == "text" && *key == "" && *crl != "" {
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				log.Fatalf("Erro ao ler o CRL: %v", err)
+			}
+
+			PrintCRLInfo(crl)
+			os.Exit(0)
+		}
+		if *pkey == "keygen" {
+			sk, _, _ := bn256i.RandomG2(rand.Reader)
+			pk := new(bn256i.G2).ScalarBaseMult(sk)
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+
+			block := &pem.Block{
+				Type:  "BN256 SECRET KEY",
+				Bytes: sk.Bytes(),
+			}
+			if err := savePEMToFile(*priv, block, true); err != nil {
+				fmt.Println("Error saving keys:", err)
+				return
+			}
+
+			block = &pem.Block{
+				Type:  "BN256 PUBLIC KEY",
+				Bytes: pk.Marshal(),
+			}
+
+			if err := savePEMToFile(*pub, block, false); err != nil {
+				fmt.Println("Error saving keys:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+
+			pubPath, err := filepath.Abs(*pub)
+			if err != nil {
+				fmt.Println("Error getting absolute path for public key:", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+
+			fingerprint := calculateFingerprint(pk.Marshal())
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+
+			fmt.Printf("Barreto-Naehrig %d\n", 256)
+
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+		} else if *pkey == "aggregate" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			hash := bn256i.HashG1(msg, []byte(*salt))
+			signature := hash.ScalarMult(hash, skBigInt)
+			if err != nil {
+				fmt.Println("Error signing message:", err)
+				os.Exit(1)
+			}
+
+			fmt.Println("Individual_BN256("+inputdesc+")=", hex.EncodeToString(signature.Marshal()))
+
+			aggregatedSignature := signature
+
+			if *sig != "" {
+				aggregatedSigData, err := hex.DecodeString(*sig)
+				if err != nil {
+					log.Fatalf("Error decoding aggregated signature from hex: %v", err)
+				}
+				existingAggregatedSig := new(bn256i.G1)
+				_, err = existingAggregatedSig.Unmarshal(aggregatedSigData)
+				if err != nil {
+					log.Fatalf("Error unmarshalling aggregated signature: %v", err)
+				}
+				aggregatedSignature.Add(aggregatedSignature, existingAggregatedSig)
+			}
+
+			pubKey := new(bn256i.G2).ScalarBaseMult(skBigInt)
+
+			aggregatedPubKey := pubKey
+			if *pub != "" {
+				aggregatedPubKeyData, err := readKeyFromPEM(*root, false)
+				if err != nil {
+					log.Fatalf("Error loading aggregated public key: %v", err)
+				}
+				existingAggregatedPubKey := new(bn256i.G2)
+				_, err = existingAggregatedPubKey.Unmarshal(aggregatedPubKeyData)
+				if err != nil {
+					log.Fatalf("Error unmarshalling aggregated public key: %v", err)
+				}
+				aggregatedPubKey.Add(aggregatedPubKey, existingAggregatedPubKey)
+			}
+
+			block := &pem.Block{
+				Type:  "BN256 AGGREGATED PUBLIC KEY",
+				Bytes: aggregatedPubKey.Marshal(),
+			}
+
+			if err := savePEMToFile(*pub, block, false); err != nil {
+				fmt.Println("Error saving aggregated public key:", err)
+				return
+			}
+
+			fmt.Println("Aggregated_BN256("+inputdesc+")=", hex.EncodeToString(signature.Marshal()))
+		} else if *pkey == "sign" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			hash := bn256i.HashG1(msg, []byte(*salt))
+			signature := hash.ScalarMult(hash, skBigInt)
+			if err != nil {
+				fmt.Println("Error signing message:", err)
+				os.Exit(1)
+			}
+
+			fmt.Println("PureBN256("+inputdesc+")=", hex.EncodeToString(signature.Marshal()))
+		} else if *pkey == "verify" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bn256i.G2
+			_, err = pubKey.Unmarshal(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			var signature bn256i.G1
+			signature.Unmarshal(sigBytes)
+
+			h := bn256i.HashG1(msg, []byte(*salt))
+			rhs := bn256i.Pair(h, &pubKey)
+			lhs := bn256i.Pair(&signature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+
+			if bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+			}
+		} else if *pkey == "derive-scalar" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			pk, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bn256i.G2
+			_, err = pubKey.Unmarshal(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			sharedKey := new(bn256i.G2).ScalarMult(&pubKey, skBigInt)
+			fmt.Printf("Shared= %x\n", sharedKey.Marshal())
+		} else if *pkey == "derive" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			pk, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bn256i.G2
+			_, err = pubKey.Unmarshal(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			baseG1 := new(bn256i.G1).ScalarBaseMult(big.NewInt(1048576))
+
+			pairing := bn256i.Pair(baseG1, &pubKey)
+
+			sharedKey := new(bn256i.GT)
+			sharedKey.ScalarMult(pairing, skBigInt)
+
+			fmt.Printf("Shared= %x\n", sharedKey.Marshal())
+		} else if *pkey == "encrypt" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bn256i.G2
+			_, err = pubKey.Unmarshal(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			C1, C2, encryptedMessage := encryptBN(string(msg), &pubKey, myHash)
+			serialized, err := serializeToASN1(C1, C2, encryptedMessage)
+			if err != nil {
+				log.Fatal("Failed to serialize ciphertext: " + err.Error())
+			}
+
+			fmt.Printf("%s\n", serialized)
+		} else if *pkey == "decrypt" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			serialized, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			deserializedC1, deserializedC2, deserializedMessage, err := deserializeFromASN1(serialized)
+			if err != nil {
+				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
+			}
+
+			decryptedMessage := decryptBN(deserializedC1, deserializedC2, deserializedMessage, skBigInt, myHash)
+			fmt.Printf("%s", decryptedMessage)
+		} else if *pkey == "certgen" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var privKey big.Int
+			privKey.SetBytes(sk)
+			pk := new(bn256i.G2).ScalarBaseMult(&privKey)
+
+			ca := NewCA(sk, pk.Marshal(), validity)
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			certificate, err := ca.IssueCertificate(subject, email, pk.Marshal(), sk, true, validity)
+			if err != nil {
+				fmt.Println("Error issuing certificate:", err)
+				return
+			}
+
+			err = SaveCertificateToPEM(certificate, *cert)
+			if err != nil {
+				fmt.Println("Error saving certificate:", err)
+				return
+			}
+
+			fmt.Println("Certificate issued and saved successfully.")
+			os.Exit(0)
+		} else if *pkey == "check" && *crl == "" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				return
+			}
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Erro ao ler o certificado:", err)
+				return
+			}
+
+			err = VerifyCertificate(certificate, pk)
+			if err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(1)
+			} else {
+				fmt.Println("Verified: true")
+				os.Exit(0)
+			}
+		} else if *pkey == "text" && *cert != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				csr, err := ReadCSRFromPEM(*cert)
+				if err != nil {
+					fmt.Println("Error loading certificate or CSR:", err)
+					return
+				}
+				PrintInfo(csr)
+			} else {
+				PrintInfo(certificate)
+			}
+			os.Exit(0)
+		} else if *pkey == "req" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			var privKey big.Int
+			privKey.SetBytes(sk)
+			pk := new(bn256i.G2).ScalarBaseMult(&privKey)
+
+			csr, err := CreateCSR(subject, email, pk.Marshal(), sk)
+			if err != nil {
+				log.Fatalf("Failed to create CSR: %v", err)
+			}
+
+			err = SaveCSRToPEM(csr, *cert)
+			if err != nil {
+				log.Fatalf("Failed to save CSR: %v", err)
+			}
+
+			fmt.Println("CSR created and saved to", *cert)
+			os.Exit(0)
+		} else if *pkey == "x509" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			caCert, err := ReadCertificateFromPEM(*root)
+			if err != nil {
+				log.Fatalf("Failed to read CA certificate: %v", err)
+			}
+
+			csr, err := ReadCSRFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read CSR: %v", err)
+			}
+
+			ca := &CA{
+				PrivateKey:  sk,
+				Certificate: *caCert,
+			}
+
+			signedCert, err := SignCSR(csr, ca, sk, validity)
+			if err != nil {
+				log.Fatalf("Failed to sign CSR: %v", err)
+			}
+
+			var outputFilename string
+			if flag.Arg(0) == "" {
+				outputFilename = "stdout"
+			} else {
+				outputFilename = flag.Arg(0)
+			}
+
+			err = SaveCertificateToPEM(signedCert, flag.Arg(0))
+			if err != nil {
+				log.Fatalf("Failed to save certificate: %v", err)
+			}
+
+			fmt.Fprintf(os.Stderr, "Certificate signed and saved to %s\n", outputFilename)
+			os.Exit(0)
+		} else if *pkey == "crl" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var privKey big.Int
+			privKey.SetBytes(sk)
+			pk := new(bn256i.G2).ScalarBaseMult(&privKey)
+
+			cert, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read CA certificate: %v", err)
+			}
+
+			ca := NewCA(sk, pk.Marshal(), validity)
+
+			crl, err := NewCRL(ca, *crl, validity)
+			if err != nil {
+				fmt.Println("Error generating CRL:", err)
+				return
+			}
+
+			revokedSerials, err := readRevokedSerials(flag.Arg(0))
+			if err != nil {
+				fmt.Printf("Error reading revoked serial numbers: %v\n", err)
+				return
+			}
+
+			for _, serial := range revokedSerials {
+				crl.RevokeCertificate(serial)
+			}
+
+			if err := crl.Sign(ca, cert); err != nil {
+				fmt.Printf("Error signing CRL: %v\n", err)
+				return
+			}
+
+			var outputFile string
+			if len(flag.Args()) > 0 {
+				outputFile = flag.Arg(1)
+			}
+
+			if err := SaveCRLToPEM(crl, outputFile); err != nil {
+				fmt.Printf("Error saving CRL: %v\n", err)
+				return
+			}
+
+			fmt.Println("CRL generated and saved successfully.")
+			os.Exit(0)
+		} else if *pkey == "validate" {
+			certToValidate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Printf("Error reading certificate: %v\n", err)
+				return
+			}
+
+			readCRL, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				return
+			}
+
+			if readCRL.IsRevoked(certToValidate.SerialNumber) {
+				fmt.Println("The certificate has been revoked")
+				os.Exit(1)
+			} else {
+				fmt.Println("The certificate is not revoked")
+				os.Exit(0)
+			}
+		} else if *pkey == "check" && *crl != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Error reading certificate:", err)
+				return
+			}
+
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := CheckCRL(crl, certificate.PublicKey); err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(3)
+			}
+
+			fmt.Println("Verified: true")
+			os.Exit(0)
+		}
+	}
+
+	if strings.ToUpper(*alg) == "BN256PH" && (*pkey == "sign" || *pkey == "verify") {
+		if *pkey == "sign" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			prehash := myHash()
+			if _, err := io.Copy(prehash, inputfile); err != nil {
+				log.Fatal(err)
+			}
+			hashBytes := prehash.Sum(nil)
+
+			hashG1 := bn256i.HashG1(hashBytes, []byte(*salt))
+			signature := hashG1.ScalarMult(hashG1, skBigInt)
+			if err != nil {
+				fmt.Println("Error signing message:", err)
+				os.Exit(1)
+			}
+
+			fmt.Println("BN256-"+strings.ToUpper(*md)+"("+inputdesc+")=", hex.EncodeToString(signature.Marshal()))
+		} else if *pkey == "verify" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bn256i.G2
+			_, err = pubKey.Unmarshal(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			var signature bn256i.G1
+			signature.Unmarshal(sigBytes)
+
+			prehash := myHash()
+			if _, err := io.Copy(prehash, inputfile); err != nil {
+				log.Fatal(err)
+			}
+			hashBytes := prehash.Sum(nil)
+
+			h := bn256i.HashG1(hashBytes, []byte(*salt))
+			lhs := bn256i.Pair(&signature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+
+			if bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+			}
 		}
 	}
 
@@ -20839,6 +22279,102 @@ func decrypt(y curves.Scalar, K *big.Int, C curves.Point) *big.Int {
 	return p
 }
 
+func encryptBN(message string, publicKey *bn256i.G2, hashFunc func() hash.Hash) (*bn256i.G1, *big.Int, []byte) {
+	messageBytes := []byte(message)
+
+	k, err := rand.Int(rand.Reader, bn256i.Order)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	C1 := new(bn256i.G1).ScalarBaseMult(k)
+
+	pairingResult := bn256i.Pair(C1, publicKey)
+
+	hashInstance := hashFunc()
+
+	hashInstance.Write(pairingResult.Marshal())
+	sessionKey := hashInstance.Sum(nil)
+
+	encryptedMessage := make([]byte, len(messageBytes))
+	for i := range messageBytes {
+		encryptedMessage[i] = messageBytes[i] ^ sessionKey[i%len(sessionKey)]
+	}
+
+	hashInstance.Reset()
+	hashInstance.Write(messageBytes)
+	hashInstance.Write(sessionKey[:])
+	hash := hashInstance.Sum(nil)
+
+	return C1, new(big.Int).SetBytes(hash), encryptedMessage
+}
+
+func decryptBN(C1 *bn256i.G1, C2 *big.Int, encryptedMessage []byte, privateKey *big.Int, hashFunc func() hash.Hash) string {
+	C1MulPrivate := new(bn256i.G1).ScalarMult(C1, privateKey)
+
+	pairingResult := bn256i.Pair(C1MulPrivate, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+
+	hashInstance := hashFunc()
+
+	hashInstance.Write(pairingResult.Marshal())
+	sessionKey := hashInstance.Sum(nil)
+
+	decryptedMessage := make([]byte, len(encryptedMessage))
+	for i := range encryptedMessage {
+		decryptedMessage[i] = encryptedMessage[i] ^ sessionKey[i%len(sessionKey)]
+	}
+
+	hashInstance.Reset()
+	hashInstance.Write(decryptedMessage)
+	hashInstance.Write(sessionKey[:])
+	hash := hashInstance.Sum(nil)
+	if new(big.Int).SetBytes(C2.Bytes()).Cmp(new(big.Int).SetBytes(hash)) != 0 {
+		log.Fatal("Message integrity has been compromised!")
+	}
+
+	return string(decryptedMessage)
+}
+
+type CiphertextBN struct {
+	C1 []byte
+	C2 *big.Int
+	C3 []byte
+}
+
+func serializeToASN1(C1 *bn256i.G1, C2 *big.Int, encryptedMessage []byte) ([]byte, error) {
+	C1Bytes := C1.Marshal()
+
+	cipher := CiphertextBN{
+		C1: C1Bytes,
+		C2: C2,
+		C3: encryptedMessage,
+	}
+
+	serialized, err := asn1.Marshal(cipher)
+	if err != nil {
+		return nil, err
+	}
+
+	return serialized, nil
+}
+
+func deserializeFromASN1(serialized []byte) (*bn256i.G1, *big.Int, []byte, error) {
+	var cipher CiphertextBN
+
+	_, err := asn1.Unmarshal(serialized, &cipher)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	C1 := new(bn256i.G1)
+	_, err = C1.Unmarshal(cipher.C1)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return C1, cipher.C2, cipher.C3, nil
+}
+
 type Certificate struct {
 	SerialNumber   *big.Int  `asn1:"explicit,tag:0"`
 	Subject        pkix.Name `asn1:"explicit,tag:1"`
@@ -20940,6 +22476,21 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign with SLH-DSA: %v", err)
 		}
+	case "BN256":
+		skBigInt := new(big.Int).SetBytes(privateKey)
+		hash := bn256i.HashG1(certData, []byte(*salt))
+		signatureBN := hash.ScalarMult(hash, skBigInt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with BN256: %v", err)
+		}
+		signature = signatureBN.Marshal()
+	case "BLS12381":
+		var privKey bls.PrivateKey[bls.G2]
+		privKey.UnmarshalBinary(privateKey)
+		signature = bls.Sign(&privKey, certData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with BLS12381: %v", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -21037,6 +22588,10 @@ func VerifyCertificate(cert *Certificate, publicKey []byte) error {
 		return VerifyBytes(publicKey, signature, certData)
 	case "SLH-DSA":
 		return VerifySLH(publicKey, signature, certData)
+	case "BN256":
+		return VerifyBN(publicKey, signature, certData, []byte(*salt))
+	case "BLS12381":
+		return VerifyBLS(publicKey, signature, certData)
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -21099,19 +22654,35 @@ func PrintCertificateInfo(cert *Certificate) {
 	}
 	fmt.Printf("    Signature Algorithm: %s\n", strings.ToUpper(*alg))
 	fmt.Printf("    Public Key:\n")
-	splitz := SplitSubN(hex.EncodeToString(cert.PublicKey[:64]), 2)
-	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	if strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "ML-DSA" {
+		splitz := SplitSubN(hex.EncodeToString(cert.PublicKey[:64]), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+	} else {
+		splitz := SplitSubN(hex.EncodeToString(cert.PublicKey), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
 	}
 	if strings.ToUpper(*alg) == "ML-DSA" {
 		fmt.Println("        [...]")
 	}
 	fmt.Printf("    Signature:\n")
-	splitz = SplitSubN(hex.EncodeToString(cert.Signature[:64]), 2)
-	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	if strings.ToUpper(*alg) == "BLS12381" {
+		splitz := SplitSubN(hex.EncodeToString(cert.Signature), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+	} else {
+		splitz := SplitSubN(hex.EncodeToString(cert.Signature[:64]), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
 	}
-	fmt.Println("        [...]")
+	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" {
+		fmt.Println("        [...]")
+	}
 
 	fmt.Printf("IsValid: %t\n", cert.IsValid())
 }
@@ -21123,19 +22694,35 @@ func PrintCSRInfo(csr *CSR) {
 	fmt.Printf("        Email:   %s\n", csr.Email)
 	fmt.Printf("    Algorithm: %s\n", strings.ToUpper(*alg))
 	fmt.Printf("    Public Key:\n")
-	splitz := SplitSubN(hex.EncodeToString(csr.PublicKey[:64]), 2)
-	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	if strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "ML-DSA" {
+		splitz := SplitSubN(hex.EncodeToString(csr.PublicKey[:64]), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+	} else {
+		splitz := SplitSubN(hex.EncodeToString(csr.PublicKey), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
 	}
 	if strings.ToUpper(*alg) == "ML-DSA" {
 		fmt.Println("        [...]")
 	}
 	fmt.Printf("    Signature:\n")
-	splitz = SplitSubN(hex.EncodeToString(csr.Signature[:64]), 2)
-	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	if strings.ToUpper(*alg) == "BLS12381" {
+		splitz := SplitSubN(hex.EncodeToString(csr.Signature), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+	} else {
+		splitz := SplitSubN(hex.EncodeToString(csr.Signature[:64]), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
 	}
-	fmt.Println("        [...]")
+	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" {
+		fmt.Println("        [...]")
+	}
 }
 
 type CSR struct {
@@ -21179,6 +22766,21 @@ func CreateCSR(subject pkix.Name, email string, publicKey, privateKey []byte) (*
 		signature, err = SignSLH(privateKey, bytes.NewReader(certData))
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign with SLH-DSA: %v", err)
+		}
+	case "BN256":
+		skBigInt := new(big.Int).SetBytes(privateKey)
+		hash := bn256i.HashG1(certData, []byte(*salt))
+		signatureBN := hash.ScalarMult(hash, skBigInt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with BN256: %v", err)
+		}
+		signature = signatureBN.Marshal()
+	case "BLS12381":
+		var privKey bls.PrivateKey[bls.G2]
+		privKey.UnmarshalBinary(privateKey)
+		signature = bls.Sign(&privKey, certData)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with BLS12381: %v", err)
 		}
 	default:
 		return nil, fmt.Errorf("unsupported algorithm: %s", *alg)
@@ -21226,8 +22828,48 @@ func VerifyCSR(csr *CSR) error {
 		return VerifyBytes(csr.PublicKey, csr.Signature, certData)
 	case "SLH-DSA":
 		return VerifySLH(csr.PublicKey, csr.Signature, certData)
+	case "BN256":
+		return VerifyBN(csr.PublicKey, csr.Signature, certData, []byte(*salt))
+	case "BLS12381":
+		return VerifyBLS(csr.PublicKey, csr.Signature, certData)
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
+	}
+}
+
+func VerifyBN(publicKey []byte, signature []byte, certData []byte, salt []byte) error {
+	var pubKey bn256i.G2
+	_, err := pubKey.Unmarshal(publicKey)
+	if err != nil {
+		return fmt.Errorf("error deserializing public key: %v", err)
+	}
+
+	var sig bn256i.G1
+	sig.Unmarshal(signature)
+
+	h := bn256i.HashG1(certData, salt)
+	rhs := bn256i.Pair(h, &pubKey)
+	lhs := bn256i.Pair(&sig, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+
+	if bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
+		return nil
+	} else {
+		return fmt.Errorf("signature verification failed")
+	}
+}
+
+func VerifyBLS(publicKey []byte, signature []byte, certData []byte) error {
+	var pubKey bls.PublicKey[bls.G2]
+	err := pubKey.UnmarshalBinary(publicKey)
+	if err != nil {
+		return fmt.Errorf("error unmarshaling public key: %v", err)
+	}
+
+	valid := bls.Verify(&pubKey, certData, signature)
+	if valid {
+		return nil
+	} else {
+		return fmt.Errorf("signature verification failed")
 	}
 }
 
@@ -21355,6 +22997,7 @@ func (crl *CRL) Sign(ca *CA, cert *Certificate) error {
 		RevokedCertificates: crl.RevokedCertificates,
 	}
 
+	crlData, err := asn1.Marshal(TBS)
 	if err != nil {
 		return fmt.Errorf("error serializing CRL data: %v", err)
 	}
@@ -21370,6 +23013,21 @@ func (crl *CRL) Sign(ca *CA, cert *Certificate) error {
 		signature, err = SignSLH(ca.PrivateKey, bytes.NewReader(crlData))
 		if err != nil {
 			return fmt.Errorf("failed to sign with SLH-DSA: %v", err)
+		}
+	case "BN256":
+		skBigInt := new(big.Int).SetBytes(ca.PrivateKey)
+		hash := bn256i.HashG1(crlData, []byte(*salt))
+		signatureBN := hash.ScalarMult(hash, skBigInt)
+		if err != nil {
+			return fmt.Errorf("failed to sign with BN256: %v", err)
+		}
+		signature = signatureBN.Marshal()
+	case "BLS12381":
+		var privKey bls.PrivateKey[bls.G2]
+		privKey.UnmarshalBinary(ca.PrivateKey)
+		signature = bls.Sign(&privKey, crlData)
+		if err != nil {
+			return fmt.Errorf("failed to sign with BLS12381: %v", err)
 		}
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
@@ -21467,6 +23125,14 @@ func CheckCRL(crl *CRL, publicKey []byte) error {
 		if err := VerifySLH(publicKey, crl.Signature, crl.RawData); err != nil {
 			return fmt.Errorf("CRL signature verification failed using SLH-DSA: %v", err)
 		}
+	case "BN256":
+		if err := VerifyBN(publicKey, crl.Signature, crl.RawData, []byte(*salt)); err != nil {
+			return fmt.Errorf("CRL signature verification failed using BN256: %v", err)
+		}
+	case "BLS12381":
+		if err := VerifyBLS(publicKey, crl.Signature, crl.RawData); err != nil {
+			return fmt.Errorf("CRL signature verification failed using BLS12381: %v", err)
+		}
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -21484,11 +23150,20 @@ func PrintCRLInfo(crl *CRL) {
 	fmt.Printf("        Authority Key ID   : %x\n", crl.AuthorityKeyID)
 	fmt.Printf("    Signature Algorithm: %s\n", strings.ToUpper(*alg))
 	fmt.Printf("    Signature:\n")
-	splitz := SplitSubN(hex.EncodeToString(crl.Signature[:64]), 2)
-	for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-		fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+	if strings.ToUpper(*alg) == "BLS12381" {
+		splitz := SplitSubN(hex.EncodeToString(crl.Signature), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+	} else {
+		splitz := SplitSubN(hex.EncodeToString(crl.Signature[:64]), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
 	}
-	fmt.Println("        [...]")
+	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" {
+		fmt.Println("        [...]")
+	}
 
 	fmt.Printf("    Revoked Certificates:\n")
 	for _, revoked := range crl.RevokedCertificates {
