@@ -215,28 +215,6 @@ import (
 	"git.sr.ht/~sircmpwn/go-bare"
 )
 
-type PubPaths []string
-
-func (p *PubPaths) String() string {
-	return fmt.Sprintf("%v", *p)
-}
-
-func (p *PubPaths) Set(value string) error {
-	*p = append(*p, value)
-	return nil
-}
-
-type MsgsPaths []string
-
-func (m *MsgsPaths) String() string {
-	return fmt.Sprintf("%v", *m)
-}
-
-func (m *MsgsPaths) Set(value string) error {
-	*m = append(*m, value)
-	return nil
-}
-
 var (
 	alg        = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
 	cacert     = flag.String("cacert", "", "CA Certificate path. (for TLCP Protocol)")
@@ -334,11 +312,10 @@ func handleConnectionTLCP(c net.Conn) {
 }
 
 func main() {
-
 	var pubs PubPaths
 	var msgs MsgsPaths
 	flag.Var(&pubs, "pubs", "Paths to the public keys (can be passed multiple times)")
-	flag.Var(&msgs, "msgs", "Messages to be signed (can be passed multiple times)")
+	flag.Var(&msgs, "msgs", "Messages to be verified (can be passed multiple times)")
 
 	flag.Parse()
 
@@ -8603,6 +8580,61 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" {
+
+		if *pkey == "verify-aggregate" {
+			*alg = "BLS12381"
+		}
+
+		if strings.ToUpper(*alg) != "BN256PH" && strings.ToUpper(*alg) != "BLS12381PH" {
+			if data, err := ioutil.ReadFile(*key); err == nil {
+				if block, _ := pem.Decode(data); block != nil {
+					if strings.Contains(block.Type, "SLH-DSA") {
+						*alg = "SLH-DSA"
+					} else if strings.Contains(block.Type, "ML-KEM") {
+						*alg = "ML-KEM"
+					} else if strings.Contains(block.Type, "ML-DSA") {
+						*alg = "ML-DSA"
+					} else if strings.Contains(block.Type, "BN256") {
+						*alg = "BN256"
+					} else if strings.Contains(block.Type, "BLS12381") {
+						*alg = "BLS12381"
+					}
+				}
+			}
+
+			if data, err := ioutil.ReadFile(*crl); err == nil {
+				if block, _ := pem.Decode(data); block != nil {
+					if strings.Contains(block.Type, "SLH-DSA") {
+						*alg = "SLH-DSA"
+					} else if strings.Contains(block.Type, "ML-DSA") {
+						*alg = "ML-DSA"
+					} else if strings.Contains(block.Type, "BN256") {
+						*alg = "BN256"
+					} else if strings.Contains(block.Type, "BLS12381") {
+						*alg = "BLS12381"
+					}
+				}
+			}
+
+			if *pkey != "certgen" && *pkey != "req" {
+				if data, err := ioutil.ReadFile(*cert); err == nil {
+					if block, _ := pem.Decode(data); block != nil {
+						if strings.Contains(block.Type, "SLH-DSA") {
+							*alg = "SLH-DSA"
+						} else if strings.Contains(block.Type, "ML-DSA") {
+							*alg = "ML-DSA"
+						} else if strings.Contains(block.Type, "BN256") {
+							*alg = "BN256"
+						} else if strings.Contains(block.Type, "BLS12381") {
+							*alg = "BLS12381"
+						}
+					}
+				}
+			}
+		}
+	}
+
 	if *pkey == "derive" && strings.ToUpper(*alg) != "GOST2012" && strings.ToUpper(*alg) != "BN256" && strings.ToUpper(*alg) != "BLS12381" {
 		var privatekey *ecdsa.PrivateKey
 		file, err := ioutil.ReadFile(*pub)
@@ -8954,57 +8986,6 @@ Subcommands:
 			*alg = "X448"
 		} else if strings.Contains(s, "PRIVATE") {
 			*alg = "ED25519"
-		}
-	}
-
-	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" {
-
-		if strings.ToUpper(*alg) != "BN256PH" && strings.ToUpper(*alg) != "BLS12381PH" {
-			if data, err := ioutil.ReadFile(*key); err == nil {
-				if block, _ := pem.Decode(data); block != nil {
-					if strings.Contains(block.Type, "SLH-DSA") {
-						*alg = "SLH-DSA"
-					} else if strings.Contains(block.Type, "ML-KEM") {
-						*alg = "ML-KEM"
-					} else if strings.Contains(block.Type, "ML-DSA") {
-						*alg = "ML-DSA"
-					} else if strings.Contains(block.Type, "BN256") {
-						*alg = "BN256"
-					} else if strings.Contains(block.Type, "BLS12381") {
-						*alg = "BLS12381"
-					}
-				}
-			}
-
-			if data, err := ioutil.ReadFile(*crl); err == nil {
-				if block, _ := pem.Decode(data); block != nil {
-					if strings.Contains(block.Type, "SLH-DSA") {
-						*alg = "SLH-DSA"
-					} else if strings.Contains(block.Type, "ML-DSA") {
-						*alg = "ML-DSA"
-					} else if strings.Contains(block.Type, "BN256") {
-						*alg = "BN256"
-					} else if strings.Contains(block.Type, "BLS12381") {
-						*alg = "BLS12381"
-					}
-				}
-			}
-
-			if *pkey != "certgen" && *pkey != "req" {
-				if data, err := ioutil.ReadFile(*cert); err == nil {
-					if block, _ := pem.Decode(data); block != nil {
-						if strings.Contains(block.Type, "SLH-DSA") {
-							*alg = "SLH-DSA"
-						} else if strings.Contains(block.Type, "ML-DSA") {
-							*alg = "ML-DSA"
-						} else if strings.Contains(block.Type, "BN256") {
-							*alg = "BN256"
-						} else if strings.Contains(block.Type, "BLS12381") {
-							*alg = "BLS12381"
-						}
-					}
-				}
-			}
 		}
 	}
 
@@ -11241,9 +11222,8 @@ Subcommands:
 			if err != nil {
 				log.Fatal("Erro ao gerar IKM aleatório:", err)
 			}
-			salt := []byte(*salt)
 
-			privKey, err := bls.KeyGen[bls.G2](ikm, salt, nil)
+			privKey, err := bls.KeyGen[bls.G2](ikm, []byte(*salt), []byte(*info))
 			if err != nil {
 				log.Fatal("Error generating private key: ", err)
 			}
@@ -11351,7 +11331,7 @@ Subcommands:
 			}
 
 			signature := bls.Sign(&privKey, msg)
-			fmt.Println("Individual_BLS12381=", hex.EncodeToString(signature))
+			fmt.Println("Individual_BLS12381("+inputdesc+")=", hex.EncodeToString(signature))
 
 			aggregatedSignature := signature
 			if *sig != "" {
@@ -11482,6 +11462,55 @@ Subcommands:
 				log.Fatalf("Error marshaling shared key: %v", err)
 			}
 			fmt.Printf("Shared= %x\n", sharedBytes)
+		} else if *pkey == "encrypt" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading public key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bls12381.G2
+			err = pubKey.SetBytes(pk)
+			if err != nil {
+				log.Fatalf("Error deserializing public key: %v", err)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			C1, C2, encryptedMessage := encryptBLS(string(msg), &pubKey, myHash)
+
+			serialized, err := serializeToASN1BLS(C1, C2, encryptedMessage)
+			if err != nil {
+				log.Fatal("Failed to serialize ciphertext: " + err.Error())
+			}
+
+			fmt.Printf("%s\n", serialized)
+		} else if *pkey == "decrypt" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skBigInt := new(big.Int).SetBytes(sk)
+
+			serialized, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			deserializedC1, deserializedC2, deserializedMessage, err := deserializeFromASN1BLS(serialized)
+			if err != nil {
+				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
+			}
+
+			decryptedMessage := decryptBLS(deserializedC1, deserializedC2, deserializedMessage, skBigInt, myHash)
+
+			fmt.Printf("%s", decryptedMessage)
 		} else if *pkey == "certgen" {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
@@ -22375,6 +22404,123 @@ func deserializeFromASN1(serialized []byte) (*bn256i.G1, *big.Int, []byte, error
 	return C1, cipher.C2, cipher.C3, nil
 }
 
+func encryptBLS(message string, publicKey *bls12381.G2, hashFunc func() hash.Hash) (*bls12381.G1, *big.Int, []byte) {
+	messageBytes := []byte(message)
+
+	order := new(big.Int).SetBytes(bls12381.Order())
+	k, err := rand.Int(rand.Reader, order)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	kScalar := new(ff.Scalar)
+	kScalar.SetBytes(k.Bytes())
+
+	baseG1 := bls12381.G1Generator()
+
+	C1 := new(bls12381.G1)
+	C1.ScalarMult(kScalar, baseG1)
+
+	pairingResult := bls12381.Pair(C1, publicKey)
+
+	hashInstance := hashFunc()
+
+	pariringResultBytes, err := pairingResult.MarshalBinary()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hashInstance.Write(pariringResultBytes)
+	sessionKey := hashInstance.Sum(nil)
+
+	encryptedMessage := make([]byte, len(messageBytes))
+	for i := range messageBytes {
+		encryptedMessage[i] = messageBytes[i] ^ sessionKey[i%len(sessionKey)]
+	}
+
+	hashInstance.Reset()
+	hashInstance.Write(messageBytes)
+	hashInstance.Write(sessionKey[:])
+	hash := hashInstance.Sum(nil)
+
+	return C1, new(big.Int).SetBytes(hash), encryptedMessage
+}
+
+func decryptBLS(C1 *bls12381.G1, C2 *big.Int, encryptedMessage []byte, privateKey *big.Int, hashFunc func() hash.Hash) string {
+	skScalar := new(bls12381.Scalar)
+	skScalar.SetBytes(privateKey.Bytes())
+
+	C1MulPrivate := new(bls12381.G1)
+	C1MulPrivate.ScalarMult(skScalar, C1)
+
+	pairingResult := bls12381.Pair(C1MulPrivate, bls12381.G2Generator())
+
+	hashInstance := hashFunc()
+
+	pariringResultBytes, err := pairingResult.MarshalBinary()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	hashInstance.Write(pariringResultBytes)
+	sessionKey := hashInstance.Sum(nil)
+
+	decryptedMessage := make([]byte, len(encryptedMessage))
+	for i := range encryptedMessage {
+		decryptedMessage[i] = encryptedMessage[i] ^ sessionKey[i%len(sessionKey)]
+	}
+
+	hashInstance.Reset()
+	hashInstance.Write(decryptedMessage)
+	hashInstance.Write(sessionKey[:])
+	hash := hashInstance.Sum(nil)
+	if new(big.Int).SetBytes(C2.Bytes()).Cmp(new(big.Int).SetBytes(hash)) != 0 {
+		log.Fatal("Message integrity has been compromised!")
+	}
+
+	return string(decryptedMessage)
+}
+
+type CiphertextBLS struct {
+	C1 []byte
+	C2 *big.Int
+	C3 []byte
+}
+
+func serializeToASN1BLS(C1 *bls12381.G1, C2 *big.Int, encryptedMessage []byte) ([]byte, error) {
+	C1Bytes := C1.Bytes()
+
+	cipher := CiphertextBLS{
+		C1: C1Bytes,
+		C2: C2,
+		C3: encryptedMessage,
+	}
+
+	serialized, err := asn1.Marshal(cipher)
+	if err != nil {
+		return nil, err
+	}
+
+	return serialized, nil
+}
+
+func deserializeFromASN1BLS(serialized []byte) (*bls12381.G1, *big.Int, []byte, error) {
+	var cipher CiphertextBLS
+
+	_, err := asn1.Unmarshal(serialized, &cipher)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	C1 := new(bls12381.G1)
+	_ = C1.SetBytes(cipher.C1)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	return C1, cipher.C2, cipher.C3, nil
+}
+
 type Certificate struct {
 	SerialNumber   *big.Int  `asn1:"explicit,tag:0"`
 	Subject        pkix.Name `asn1:"explicit,tag:1"`
@@ -23954,6 +24100,28 @@ func ChangePrivateKeyPassword(keyFile, oldPassword, newPassword string) error {
 		}
 	}
 
+	return nil
+}
+
+type PubPaths []string
+
+func (p *PubPaths) String() string {
+	return fmt.Sprintf("%v", *p)
+}
+
+func (p *PubPaths) Set(value string) error {
+	*p = append(*p, value)
+	return nil
+}
+
+type MsgsPaths []string
+
+func (m *MsgsPaths) String() string {
+	return fmt.Sprintf("%v", *m)
+}
+
+func (m *MsgsPaths) Set(value string) error {
+	*m = append(*m, value)
 	return nil
 }
 
