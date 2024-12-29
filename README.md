@@ -1137,6 +1137,61 @@ echo $?
 ```sh
 ./edgetk -kdf hkdf -bits 128 -key "IKM" [-salt "salt"] [-info "AD"]
 ```
+#### IBE (Identity-Based Encryption)
+##### Master Key Pair Generation:
+
+- Generate a master key pair for BLS12-381.
+```
+./edgetk -pkey setup -algorithm bls12381 -master "Master.pem" [-pass "passphrase"] -pub "MasterPublic.pem"
+```
+
+##### User's Private Key Generation:
+
+- Generate a private key for a user, associated with their UID.
+```
+./edgetk -pkey keygen -algorithm bls12381 -master "Master.pem" [-pass "pass"] -prv "Private.pem" [-passout "pass"] -id "UID"
+```
+
+##### Key Parsing:
+
+- Parse the master key, user private key, or master public key to view their details.
+```
+./edgetk -pkey text -key "Master.pem" [-pass "passphrase"]
+./edgetk -pkey text -key "Private.pem" [-pass "passphrase"]
+./edgetk -pkey text -key "MasterPublic.pem"
+```
+
+##### Message Encryption with User Public Key:
+
+- Encrypt a message using the master public key and the user’s UID.
+```
+./edgetk -pkey encrypt -algorithm bls12381 -key "MasterPublic.pem" -id "UID" "plaintext.ext" > "ciphertext.enc"
+```
+
+##### Message Decryption with User Private Key:
+
+- Decrypt a message using the user’s private key.
+```
+./edgetk -pkey decrypt -algorithm bls12381 -key "Private.pem" [-pass "passphrase"] "ciphertext.enc"
+echo $?
+```
+
+##### Key Agreement (ECDH):
+
+- Perform an Elliptic Curve Diffie-Hellman (ECDH) key agreement to derive a shared secret with a peer, using the user’s private key and the master public key.
+```
+./edgetk -pkey derive -algorithm bls12381 -key "Private.pem" [-pass "pass"] -pub "MasterPublic.pem" -id "PeerUID"
+```
+
+##### Digital Signature Generation:
+
+- Generate a BLS (Boneh-Lynn-Shacham) digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
+```
+./edgetk -pkey sign -algorithm bls12381 -key "Private.pem" FILE > sign.txt
+sign=$(cat sign.txt | awk '{print $2}')
+./edgetk -pkey verify -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -signature $sign FILE
+echo $?
+```
 
 #### SM9 (Chinese IBE Standard)
 ##### Private Key Generation:
