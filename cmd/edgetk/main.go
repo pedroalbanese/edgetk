@@ -320,7 +320,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.4-beta  28 Dec 2024")
+		fmt.Println("EDGE Toolkit v1.5.4  08 Jan 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -11483,7 +11483,7 @@ Subcommands:
 			if err != nil {
 				log.Fatalf("Error marshaling shared key: %v", err)
 			}
-			fmt.Printf("Shared= %x\n", sharedBytes)
+			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedBytes))
 		} else if *pkey == "encrypt" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -12645,7 +12645,7 @@ Subcommands:
 			}
 
 			sharedKey := new(bn256i.G2).ScalarMult(&pubKey, skBigInt)
-			fmt.Printf("Shared= %x\n", sharedKey.Marshal())
+			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedKey.Marshal()))
 		} else if *pkey == "derive" {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
@@ -12673,7 +12673,7 @@ Subcommands:
 			sharedKey := new(bn256i.GT)
 			sharedKey.ScalarMult(pairing, skBigInt)
 
-			fmt.Printf("Shared= %x\n", sharedKey.Marshal())
+			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedKey.Marshal()))
 		} else if *pkey == "encrypt" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -13040,7 +13040,7 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
-		if *pkey == "text" && *key != "" && (blockType == "BN256 SECRET KEY" || blockType == "BN256 MASTER SECRET KEY") {
+		if *pkey == "text" && *key != "" && (blockType == "BN256 SECRET KEY" || blockType == "BN256 MASTER KEY") {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
@@ -13052,8 +13052,8 @@ Subcommands:
 
 			pubKey := new(bn256i.G2).ScalarBaseMult(&privKey)
 
-			if blockType == "BN256 MASTER SECRET KEY" {
-				keyPEM := pem.Block{Type: "BN256 MASTER SECRET KEY", Bytes: keyBytes}
+			if blockType == "BN256 MASTER KEY" {
+				keyPEM := pem.Block{Type: "BN256 MASTER KEY", Bytes: keyBytes}
 				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
 				fmt.Print(keyPEMText)
 				fmt.Println("MasterKey:")
@@ -13062,7 +13062,7 @@ Subcommands:
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("MasterPublicKey:")
+				fmt.Println("PublicKey:")
 				p = fmt.Sprintf("%x", pubKey.Marshal())
 				splitz = SplitSubN(p, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -13083,7 +13083,7 @@ Subcommands:
 			fmt.Printf("Curve: %s\n", "BN256")
 
 			os.Exit(0)
-		} else if *pkey == "text" && *key != "" && (blockType == "BN256 PUBLIC KEY" || blockType == "BN256 MASTER PUBLIC KEY") {
+		} else if *pkey == "text" && *key != "" && (blockType == "BN256 PUBLIC KEY" || blockType == "BN256 PUBLIC KEY") {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
@@ -13154,7 +13154,7 @@ Subcommands:
 			}
 
 			block := &pem.Block{
-				Type:  "BN256 MASTER SECRET KEY",
+				Type:  "BN256 MASTER KEY",
 				Bytes: sk.Bytes(),
 			}
 			if err := savePEMToFile(*master, block, true); err != nil {
@@ -13163,7 +13163,7 @@ Subcommands:
 			}
 
 			block = &pem.Block{
-				Type:  "BN256 MASTER PUBLIC KEY",
+				Type:  "BN256 PUBLIC KEY",
 				Bytes: pk.Marshal(),
 			}
 
@@ -13310,7 +13310,7 @@ Subcommands:
 
 			sharedSecret := computeSharedSecret(skBigInt, publicKey)
 
-			fmt.Printf("Shared= %x\n", sharedSecret.Bytes())
+			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedSecret.Bytes()))
 		} else if *pkey == "encrypt" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -13378,7 +13378,7 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
-		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381 MASTER SECRET KEY") {
+		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381 MASTER KEY") {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13391,8 +13391,8 @@ Subcommands:
 			pubKey := new(bls12381.G2)
 			pubKey.ScalarMult(skScalar, bls12381.G2Generator())
 
-			if blockType == "BLS12381IBE MASTER SECRET KEY" {
-				keyPEM := pem.Block{Type: "BLS12381 MASTER SECRET KEY", Bytes: keyBytes}
+			if blockType == "BLS12381 MASTER KEY" {
+				keyPEM := pem.Block{Type: "BLS12381 MASTER KEY", Bytes: keyBytes}
 				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
 				fmt.Print(keyPEMText)
 				fmt.Println("MasterKey:")
@@ -13401,7 +13401,7 @@ Subcommands:
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("MasterPublicKey:")
+				fmt.Println("PublicKey:")
 				p = fmt.Sprintf("%x", pubKey.BytesCompressed())
 				splitz = SplitSubN(p, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -13422,7 +13422,7 @@ Subcommands:
 			fmt.Printf("Curve: %s\n", "BLS12381")
 
 			os.Exit(0)
-		} else if *pkey == "text" && *key != "" && (blockType == "BLS12381 PUBLIC KEY" || blockType == "BLS12381 MASTER PUBLIC KEY") {
+		} else if *pkey == "text" && *key != "" && (blockType == "BLS12381 PUBLIC KEY") {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
@@ -13498,7 +13498,7 @@ Subcommands:
 			pk.ScalarMult(skScalar, bls12381.G2Generator())
 
 			block := &pem.Block{
-				Type:  "BLS12381 MASTER SECRET KEY",
+				Type:  "BLS12381 MASTER KEY",
 				Bytes: ikm,
 			}
 			if err := savePEMToFile(*master, block, true); err != nil {
@@ -13507,7 +13507,7 @@ Subcommands:
 			}
 
 			block = &pem.Block{
-				Type:  "BLS12381 MASTER PUBLIC KEY",
+				Type:  "BLS12381 PUBLIC KEY",
 				Bytes: pk.BytesCompressed(),
 			}
 
@@ -13664,7 +13664,7 @@ Subcommands:
 				log.Fatalf("Error serializing shared secret: %v", err)
 			}
 
-			fmt.Printf("Shared= %x\n", sharedSecretBytes)
+			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedSecretBytes))
 		} else if *pkey == "encrypt" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
