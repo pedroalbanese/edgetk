@@ -1,6 +1,6 @@
 /*
    EDGE Toolkit -- Pure Go Command-line Unique Integrated Security Suite
-   Copyright (C) 2020-2024 Pedro F. Albanese <pedroalbanese@hotmail.com>
+   Copyright (C) 2020-2025 Pedro F. Albanese <pedroalbanese@hotmail.com>
 
    This program is free software: you can redistribute it and/or modify it
    under the terms of the ISC License.
@@ -320,7 +320,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.4  08 Jan 2025")
+		fmt.Println("EDGE Toolkit v1.5.4  22 Jan 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -560,7 +560,7 @@ Subcommands:
 		os.Exit(3)
 	}
 
-	if (*pkey == "keygen") && (*alg != "sm9encrypt" && *alg != "sm9sign") && *pwd == "" {
+	if (*pkey == "keygen") && (*alg != "sm9encrypt" && *alg != "sm9sign" && *alg != "bn256" && *alg != "bls12381") && *pwd == "" {
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
@@ -572,9 +572,34 @@ Subcommands:
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
+	} else if (*pkey == "setup") && *pwd == "nil" && strings.ToUpper(*alg) != "ELGAMAL" {
+		*pwd = ""
 	}
 
 	if (*pkey == "keygen") && (*alg == "sm9encrypt" || *alg == "sm9sign") && *pwd == "" {
+		file, err := os.Open(*master)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			errors.New("no valid private key found")
+		}
+		if IsEncryptedPEMBlock(block) {
+			print("MasterKey Passphrase: ")
+			pass, _ := gopass.GetPasswd()
+			*pwd = string(pass)
+		}
+	}
+
+	if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bls12381") && *pwd == "" {
 		file, err := os.Open(*master)
 		if err != nil {
 			log.Fatal(err)
@@ -601,12 +626,16 @@ Subcommands:
 		print("UserKey Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd2 = string(pass)
+	} else if (*pkey == "keygen") && (*alg == "sm9encrypt" || *alg == "sm9sign") && *pwd2 == "nil" {
+		*pwd2 = ""
 	}
 
 	if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bls12381") && *pwd2 == "" {
 		print("UserKey Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd2 = string(pass)
+	} else if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bls12381") && *pwd2 == "nil" {
+		*pwd2 = ""
 	}
 
 	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "") && *pwd == "" {
@@ -12329,6 +12358,461 @@ Subcommands:
 		}
 	}
 
+	if (strings.ToUpper(*alg) == "BN256I") && (*tcpip == "client" || *tcpip == "server") {
+		if *tcpip == "server" {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			port := "8081"
+			if *iport != "" {
+				port = *iport
+			}
+
+			ln, err := net.Listen("tcp", ":"+port)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer ln.Close()
+
+			fmt.Printf("Server(TUPI) up and listening on port %s\n", port)
+
+			for {
+				var serverPrivKey *big.Int
+				serverPrivKey = new(big.Int).SetBytes(keyBytes)
+
+				serverPubKey := new(bn256i.G2).ScalarBaseMult(serverPrivKey)
+				serverPubKeyBytes := serverPubKey.Marshal()
+
+				certificate, err := ReadCertificateFromPEM(*cert)
+				if err != nil {
+					fmt.Println("Erro ao ler o certificado:", err)
+					return
+				}
+				if len(certificate.PublicKey) != len(serverPubKeyBytes) || !bytes.Equal(certificate.PublicKey, serverPubKeyBytes) {
+					log.Fatal("The certificate does not match the private key.")
+				}
+
+				conn, err := ln.Accept()
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer conn.Close()
+
+				certData, err := os.ReadFile(*cert)
+				if err != nil {
+					log.Fatalf("Erro ao ler o certificado: %v", err)
+				}
+
+				_, err = conn.Write(certData)
+				if err != nil {
+					log.Printf("Erro ao enviar o certificado para o cliente: %v", err)
+					return
+				}
+
+				clientPublicKeyBytes := make([]byte, 129)
+				_, err = conn.Read(clientPublicKeyBytes)
+				if err != nil {
+					if err == io.EOF {
+						fmt.Println("Client disconnected.")
+					} else {
+						log.Println("Error reading client's public key:", err)
+					}
+					return
+				}
+
+				var clientPubKey bn256i.G2
+				_, err = clientPubKey.Unmarshal(clientPublicKeyBytes)
+				if err != nil {
+					log.Println("Error processing client's public key:", err)
+					return
+				}
+
+				conn.Write(certificate.PublicKey)
+
+				baseG1 := new(bn256i.G1).ScalarBaseMult(big.NewInt(1))
+				pairingResult := bn256i.Pair(baseG1, &clientPubKey)
+
+				sharedKey := new(bn256i.GT)
+				sharedKey.ScalarMult(pairingResult, serverPrivKey)
+
+				sharedBytes := sharedKey.Marshal()
+
+				handshake := append(clientPublicKeyBytes, serverPubKeyBytes...)
+				handshake = append(handshake, sharedBytes...)
+
+				hash := bn256i.HashG1(handshake, []byte(*salt))
+				signature := hash.ScalarMult(hash, serverPrivKey)
+				if err != nil {
+					fmt.Println("Error signing message:", err)
+					os.Exit(1)
+				}
+				conn.Write(signature.Marshal())
+
+				signatureBytes := make([]byte, 1024)
+				_, err = conn.Read(signatureBytes)
+				if err != nil {
+					log.Fatal("Error reading server's signature:", err)
+				}
+
+				var validClientSignature bn256i.G1
+				validClientSignature.Unmarshal(signatureBytes)
+
+				hash = bn256i.HashG1(handshake, []byte(*salt))
+				rhs := bn256i.Pair(hash, &clientPubKey)
+				lhs := bn256i.Pair(&validClientSignature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+
+				if !bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
+					log.Fatal("Client's signature verification failed")
+				} else {
+					fmt.Println("Handshake completed")
+				}
+
+				clientPubKeyPEM := pem.EncodeToMemory(&pem.Block{
+					Type:  "BN256 PUBLIC KEY",
+					Bytes: clientPublicKeyBytes,
+				})
+
+				fmt.Printf("%s\n", clientPubKeyPEM)
+
+				clientAddr := conn.RemoteAddr()
+				currentTime := time.Now().Format("2006/01/02 15:04:05")
+				fmt.Printf("%s Client(TUPI) %s connected via secure channel.\n", currentTime, clientAddr)
+
+				whirlpoolHash := whirlpool.New()
+				whirlpoolHash.Write(sharedBytes)
+				whirlpoolHashSum := whirlpoolHash.Sum(nil)
+				/*
+					var block cipher.Block
+					var size int
+					if strings.ToUpper(*paramset) == "A" {
+						block, err = anubis.NewWithKeySize(whirlpoolHashSum[:], 40)
+						size = 16
+					} else if strings.ToUpper(*paramset) == "B" {
+						block, err = curupira1.NewCipher(whirlpoolHashSum[:24])
+						size = 12
+					}
+					if err != nil {
+						log.Fatal("Error creating Anubis cipher:", err)
+					}
+
+					aead, err := eax.NewEAX(block, size)
+					if err != nil {
+						log.Fatal("Error creating AEAD:", err)
+					}
+				*/
+
+				cipher, err := curupira1.NewCipher(whirlpoolHashSum[:24])
+				if err != nil {
+					log.Fatal("Error creating Curupira cipher instance:", err)
+				}
+
+				aead := curupira1.NewLetterSoup(cipher)
+
+				for {
+					buf := make([]byte, 1024)
+					n, err := conn.Read(buf)
+					if err != nil {
+						if err == io.EOF {
+							log.Fatal("Client disconnected.")
+						}
+						log.Println("Error reading data from client:", err)
+						return
+					}
+					/*
+						nonce, ciphertext := buf[:aead.NonceSize()], buf[aead.NonceSize():n]
+
+						plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+						if err != nil {
+							log.Println("Error decrypting data:", err)
+							return
+						}
+					*/
+
+					nonce, tag, msg := buf[:12], buf[12:24], buf[24:n]
+
+					aead.SetIV(nonce)
+
+					plaintext := make([]byte, len(msg))
+					aead.Decrypt(plaintext, msg)
+
+					ciphertext := make([]byte, len(plaintext))
+					aead.Encrypt(ciphertext, plaintext)
+					aead.Update(nil)
+					tagEnc := aead.GetTag(nil, 96)
+
+					if !bytes.Equal(tag, tagEnc) {
+						log.Fatal("Error: authentication verification failed!")
+					}
+
+					fmt.Printf("Client response: %s\n", string(plaintext))
+
+					reader := bufio.NewReader(os.Stdin)
+					fmt.Print("Text to be sent: ")
+					response, err := reader.ReadString('\n')
+					if err != nil {
+						log.Fatal("Error reading input:", err)
+					}
+					response = response[:len(response)-1]
+					/*
+						ciphertextResponse := aead.Seal(nonce, nonce, []byte(response), nil)
+					*/
+
+					nonce = make([]byte, 12)
+					if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+						log.Fatal(err)
+					}
+					aead.SetIV(nonce)
+
+					ciphertext = make([]byte, len([]byte(response)))
+					aead.Encrypt(ciphertext, []byte(response))
+					aead.Update(nil)
+					tag = aead.GetTag(nil, 96)
+
+					ciphertextResponse := append(nonce, tag...)
+					ciphertextResponse = append(ciphertextResponse, ciphertext...)
+
+					_, err = conn.Write(ciphertextResponse)
+					if err != nil {
+						log.Fatal("Error sending encrypted data:", err)
+					}
+				}
+			}
+		} else {
+			ipport := "127.0.0.1:8081"
+			if *iport != "" {
+				ipport = *iport
+			}
+			conn, err := net.Dial("tcp", ipport)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer conn.Close()
+
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			var clientPrivKey *big.Int
+			clientPrivKey = new(big.Int).SetBytes(keyBytes)
+
+			clientPubKey := new(bn256i.G2).ScalarBaseMult(clientPrivKey)
+			clientPubKeyBytes := clientPubKey.Marshal()
+
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Erro ao ler o certificado:", err)
+				return
+			}
+			if len(certificate.PublicKey) != len(clientPubKeyBytes) || !bytes.Equal(certificate.PublicKey, clientPubKeyBytes) {
+				log.Fatal("The certificate does not match the private key.")
+			}
+
+			conn.Write(certificate.PublicKey)
+
+			certData := make([]byte, 2048)
+			n, err := conn.Read(certData)
+			if err != nil && err != io.EOF {
+				log.Fatalf("Erro ao ler o certificado do servidor: %v", err)
+			}
+
+			certBlock, _ := pem.Decode(certData)
+			if certBlock == nil {
+				return
+			}
+
+			if certBlock.Type != strings.ToUpper(*alg)+" CERTIFICATE" {
+				return
+			}
+
+			var cert Certificate
+			_, err = asn1.Unmarshal(certBlock.Bytes, &cert)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fmt.Println("Issuer:")
+			fmt.Println("       ", cert.Issuer)
+			fmt.Println("Subject:")
+			fmt.Println("       ", cert.Subject)
+			fmt.Printf("Expiry: %s \n", cert.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
+
+			fmt.Println(string(certData[:n]))
+
+			serverPubKeyBytes := make([]byte, 129)
+			_, err = conn.Read(serverPubKeyBytes)
+			if err != nil {
+				log.Fatal("Error reading server's public key:", err)
+			}
+
+			var serverPubKey bn256i.G2
+			_, err = serverPubKey.Unmarshal(serverPubKeyBytes)
+			if err != nil {
+				log.Println("Error processing server's public key:", err)
+				return
+			}
+
+			baseG1 := new(bn256i.G1).ScalarBaseMult(big.NewInt(1))
+			pairing := bn256i.Pair(baseG1, &serverPubKey)
+
+			clientKeyBytes := clientPrivKey.Bytes()
+
+			clientPrivKeyBigInt := new(big.Int).SetBytes(clientKeyBytes)
+
+			sharedKey := new(bn256i.GT)
+			sharedKey.ScalarMult(pairing, clientPrivKeyBigInt)
+
+			sharedBytes := sharedKey.Marshal()
+
+			var pubKey bn256i.G2
+			_, err = pubKey.Unmarshal(serverPubKeyBytes)
+			if err != nil {
+				fmt.Println("Error unmarshaling public key:", err)
+				os.Exit(1)
+			}
+
+			signatureBytes := make([]byte, 1024)
+			_, err = conn.Read(signatureBytes)
+			if err != nil {
+				log.Fatal("Error reading server's signature:", err)
+			}
+
+			var validClientSignature bn256i.G1
+			validClientSignature.Unmarshal(signatureBytes)
+
+			handshake := append(clientPubKeyBytes, serverPubKeyBytes...)
+			handshake = append(handshake, sharedBytes...)
+
+			hash := bn256i.HashG1(handshake, []byte(*salt))
+			rhs := bn256i.Pair(hash, &pubKey)
+			lhs := bn256i.Pair(&validClientSignature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+
+			if !bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
+				log.Fatal("Server's signature verification failed")
+			}
+
+			hash = bn256i.HashG1(handshake, []byte(*salt))
+			sessionKeySignature := hash.ScalarMult(hash, clientPrivKey)
+			if err != nil {
+				fmt.Println("Error signing message:", err)
+				os.Exit(1)
+			}
+
+			_, err = conn.Write(sessionKeySignature.Marshal())
+			if err != nil {
+				log.Fatal("Error sending session key signature:", err)
+			}
+
+			whirlpoolHash := whirlpool.New()
+			whirlpoolHash.Write(sharedBytes)
+			whirlpoolHashSum := whirlpoolHash.Sum(nil)
+			/*
+				var block cipher.Block
+				var size int
+				if strings.ToUpper(*paramset) == "A" {
+					block, err = anubis.NewWithKeySize(whirlpoolHashSum[:], 40)
+					size = 16
+				} else if strings.ToUpper(*paramset) == "B" {
+					block, err = curupira1.NewCipher(whirlpoolHashSum[:24])
+					size = 12
+				}
+				if err != nil {
+					log.Fatal("Error creating Anubis cipher:", err)
+				}
+
+				aead, err := eax.NewEAX(block, size)
+				if err != nil {
+					log.Fatal("Error creating AEAD:", err)
+				}
+			*/
+
+			cipher, err := curupira1.NewCipher(whirlpoolHashSum[:24])
+			if err != nil {
+				log.Fatal("Error creating Curupira cipher instance:", err)
+			}
+
+			aead := curupira1.NewLetterSoup(cipher)
+
+			for {
+
+				reader := bufio.NewReader(os.Stdin)
+				fmt.Print("Text to be sent: ")
+				message, err := reader.ReadString('\n')
+				if err != nil {
+					log.Fatal("Error reading input:", err)
+				}
+				message = message[:len(message)-1]
+				/*
+					nonce := make([]byte, aead.NonceSize())
+					if _, err := rand.Read(nonce); err != nil {
+						log.Fatal("Error generating nonce:", err)
+					}
+
+					ciphertext := aead.Seal(nonce, nonce, []byte(message), nil)
+				*/
+
+				nonce := make([]byte, 12)
+				if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+					log.Fatal(err)
+				}
+				aead.SetIV(nonce)
+
+				ciphertext := make([]byte, len([]byte(message)))
+				aead.Encrypt(ciphertext, []byte(message))
+				aead.Update(nil)
+				tag := aead.GetTag(nil, 96)
+
+				output := append(nonce, tag...)
+				output = append(output, ciphertext...)
+
+				_, err = conn.Write(output)
+				if err != nil {
+					log.Fatal("Error sending encrypted data:", err)
+				}
+
+				buf := make([]byte, 1024)
+				n, err := conn.Read(buf)
+				if err != nil {
+					if err == io.EOF {
+						fmt.Println("Server closed the connection. Exiting...")
+						break
+					} else {
+						log.Fatal("Error reading data from the server:", err)
+					}
+				}
+				/*
+					nonce, ciphertext = buf[:aead.NonceSize()], buf[aead.NonceSize():n]
+
+					plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
+					if err != nil {
+						log.Fatal("Error decrypting data:", err)
+					}
+				*/
+
+				nonce, tag, msg := buf[:12], buf[12:24], buf[24:n]
+
+				aead.SetIV(nonce)
+
+				plaintext := make([]byte, len(msg))
+				aead.Decrypt(plaintext, msg)
+
+				ciphertext = make([]byte, len(plaintext))
+				aead.Encrypt(ciphertext, plaintext)
+				aead.Update(nil)
+				tagEnc := aead.GetTag(nil, 96)
+
+				if !bytes.Equal(tag, tagEnc) {
+					log.Fatal("Error: authentication verification failed!")
+				}
+
+				fmt.Printf("Server response: %s\n", string(plaintext))
+			}
+			os.Exit(0)
+		}
+	}
+
 	if (strings.ToUpper(*alg) == "BN256I") && (*pkey == "keygen" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart" || *pkey == "certgen" || *pkey == "x509" || *pkey == "req" || *pkey == "check" || *pkey == "text" || *pkey == "crl" || *pkey == "validate") {
 		var blockType string
 		if *key != "" {
@@ -13172,12 +13656,12 @@ Subcommands:
 				return
 			}
 
-			privPath, err := filepath.Abs(*priv)
+			privPath, err := filepath.Abs(*master)
 			if err != nil {
 				fmt.Println("Error getting absolute path for private key:", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Private Key saved to: %s\n", privPath)
+			fmt.Printf("Master Key saved to: %s\n", privPath)
 
 			pubPath, err := filepath.Abs(*pub)
 			if err != nil {
@@ -13516,12 +14000,12 @@ Subcommands:
 				return
 			}
 
-			privPath, err := filepath.Abs(*priv)
+			privPath, err := filepath.Abs(*master)
 			if err != nil {
 				fmt.Println("Error getting absolute path for private key:", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Private Key saved to: %s\n", privPath)
+			fmt.Printf("Master Key saved to: %s\n", privPath)
 
 			pubPath, err := filepath.Abs(*pub)
 			if err != nil {
@@ -23112,7 +23596,7 @@ func savePEMToFile2(fileName string, block *pem.Block, isPrivateKey bool) error 
 	}
 	defer file.Close()
 
-	if isPrivateKey && *pwd != "" {
+	if isPrivateKey && *pwd2 != "" {
 		err = EncryptAndWriteBlock(*cph, block, []byte(*pwd2), file)
 		if err != nil {
 			log.Fatal(err)
