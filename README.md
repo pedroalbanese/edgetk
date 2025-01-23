@@ -111,8 +111,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | EC-GDSA             | O   | O   |     | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
     | EC-SDSA             | O   | O   | O   | O       |          |     |
-    | ANSSI               | O   |     | O   | O       | O        |     |
-    | Koblitz             | O   |     | O   | O       | O        |     |
     | BignV1              | O   | O   | O   | O       |          |     |
     | BIP0340             | O   | O   | O   | O       |          |     |
     | BLS12-381           | O   |     | O   | O       | O        | O   |
