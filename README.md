@@ -760,6 +760,28 @@ The architecture of the IBE Key Management System ensures secure generation of p
 ### IKM (input key material value)
 Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
 
+### Lyra2
+The Lyra2REv2 chained is an enhanced version of the Lyra2REv2 hash algorithm used in cryptocurrency mining, such as Vertcoin. It involves chaining multiple hash functions in sequential steps, increasing the complexity and security of the mining process. This design makes the algorithm more resistant to ASIC mining, encouraging the use of GPUs and maintaining network decentralization. Additionally, the chaining of functions improves cryptographic security, making it harder to execute attacks like collisions or preimage attacks, ensuring that transaction validation and block creation are more robust and secure.
+
+<details><summary>Lyra2REv2 Chained</summary>  
+    <pre>-----------  ------------  --------------
+|BLAKE-256|->|Keccak-256|->|CubeHash-256|
+-----------  ------------  --------------
+                                      \
+                                       v
+                                    -------
+                                    |Lyra2|
+                                    -------
+                                       /
+                                      v
+-----------  --------------  ------------
+|Skein-256|<-|CubeHash-256|<-|  BMW-256 |
+-----------  --------------  ------------
+</pre>
+
+Fig. 1. The Lyra2REv2 chained hashing algorithm.
+</details>
+
 ### MAC
 MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
 
