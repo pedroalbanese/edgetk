@@ -44,7 +44,6 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"flag"
@@ -74,10 +73,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unsafe"
 
@@ -219,6 +216,7 @@ var (
 	alg        = flag.String("algorithm", "RSA", "Public key algorithm: EC, Ed25519, GOST2012, SM2.")
 	cacert     = flag.String("cacert", "", "CA Certificate path. (for TLCP Protocol)")
 	cakey      = flag.String("cakey", "", "CA Private key. (for TLCP Protocol)")
+	change     = flag.Bool("change", false, "Change Passphrase of a Private Key.")
 	cert       = flag.String("cert", "", "Certificate path.")
 	check      = flag.Bool("check", false, "Check hashsum file. ('-' for STDIN)")
 	cph        = flag.String("cipher", "aes", "Symmetric algorithm: aes, blowfish, magma or sm4.")
@@ -242,8 +240,6 @@ var (
 	iter       = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
 	kdf        = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt|argon2|lyra2re2]")
 	key        = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
-	kmsCommand = flag.String("kms", "", "Subcommands: register, revoke, update, check, pps, or new.")
-	kmsID      = flag.String("kms-id", "", "KMS ID for naming the KMS and locating keys")
 	length     = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac        = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
 	master     = flag.String("master", "Master.pem", "Master key path. (for sm9 setup)")
@@ -320,7 +316,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.4  22 Jan 2025")
+		fmt.Println("EDGE Toolkit v1.5.5  06 Feb 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -376,7 +372,7 @@ Password Hash Functions:
   argon2            bcrypt            lyra2re/2         makwa
 
 Message Athentication Code:
-  blake3            gost              pmac              vmac
+  blake3            gost [legacy]     pmac              vmac
   chaskey           hmac              poly1305          xoodyak
   cmac              kmac              siphash           zuc128/eia128
   gmac              mgmac             skein             zuc256/eia256
@@ -697,66 +693,6 @@ Subcommands:
 		}
 	}
 
-	if (*kmsCommand == "register" || *kmsCommand == "revoke" || *kmsCommand == "reissue" || *kmsCommand == "update") && *pwd3 == "" {
-		file, err := os.Open(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		info, err := file.Stat()
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := make([]byte, info.Size())
-		file.Read(buf)
-		var block *pem.Block
-		block, _ = pem.Decode(buf)
-		if block == nil {
-			errors.New("no valid private key found")
-		}
-		if IsEncryptedPEMBlock(block) {
-			print("KGA Key Passphrase: ")
-			pass, _ := gopass.GetPasswd()
-			*pwd3 = string(pass)
-		}
-	}
-
-	if (*kmsCommand == "new") && *pwd == "" {
-		print("MasterKeys Passphrase: ")
-		pass, _ := gopass.GetPasswdMasked()
-		*pwd = string(pass)
-	}
-
-	if (*kmsCommand == "register" || *kmsCommand == "update") && *pwd == "" {
-		print("MasterKeys Passphrase: ")
-		pass, _ := gopass.GetPasswd()
-		*pwd = string(pass)
-	}
-
-	if (*kmsCommand == "reissue") && *pwd == "" {
-		print("MasterKeys Passphrase: ")
-		pass, _ := gopass.GetPasswdMasked()
-		*pwd = string(pass)
-	}
-
-	if (*kmsCommand == "register" || *kmsCommand == "reissue" || *kmsCommand == "update") && *pwd2 == "" {
-		print("Output Passphrase: ")
-		pass, _ := gopass.GetPasswdMasked()
-		*pwd2 = string(pass)
-	}
-
-	if (*kmsCommand == "change") && (*pwd == "" || *pwd2 == "") {
-		if *pwd == "" {
-			print("Current Passphrase: ")
-			pass, _ := gopass.GetPasswd()
-			*pwd = string(pass)
-		}
-		if *pwd2 == "" {
-			print("New Passphrase: ")
-			pass, _ := gopass.GetPasswdMasked()
-			*pwd2 = string(pass)
-		}
-	}
-
 	var myHash func() hash.Hash
 	switch *md {
 	case "sha224":
@@ -963,6 +899,7 @@ Subcommands:
 		myHash = bash.New512
 	case "haraka", "haraka256", "haraka512":
 	case "bcrypt", "lyra2re", "lyra2re2", "argon2":
+	case "blake2s128":
 	default:
 		log.Fatalf("Message digest type %s not recognized", *md)
 	}
@@ -1607,12 +1544,12 @@ Subcommands:
 		*length = 256
 	}
 
-	if (strings.ToUpper(*alg) == "GOST2012" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "ECGDSA" || strings.ToUpper(*alg) == "ECSDSA" || strings.ToUpper(*alg) == "BIP0340" || strings.ToUpper(*alg) == "ECKCDSA" || strings.ToUpper(*alg) == "BIGN") && *pkey == "keygen" && *length == 0 {
+	if (strings.ToUpper(*alg) == "GOST2012" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" || strings.ToUpper(*alg) == "ECGDSA" || strings.ToUpper(*alg) == "ECSDSA" || strings.ToUpper(*alg) == "BIP0340" || strings.ToUpper(*alg) == "ECKCDSA" || strings.ToUpper(*alg) == "BIGN") && *pkey == "keygen" && *length == 0 && *curveFlag == "" {
 		*length = 256
 	}
 
 	if strings.ToUpper(*mac) == "VMAC" && *length == 0 {
-		*length = 128
+		*length = 64
 	}
 
 	if strings.ToUpper(*mode) == "SIV" {
@@ -3068,7 +3005,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			if len(key) != 128 && len(key) != 64 && len(key) != 56 && len(key) != 40 && len(key) != 32 && len(key) != 24 && len(key) != 16 && len(key) != 10 && len(key) != 8 {
+			if len(key) != 128*2 && len(key) != 64*2 && len(key) != 80*2 && len(key) != 56*2 && len(key) != 48*2 && len(key) != 40*2 && len(key) != 32*2 && len(key) != 24*2 && len(key) != 16*2 && len(key) != 10*2 && len(key) != 8*2 {
 				log.Fatal("Invalid key size.")
 			}
 		}
@@ -5543,6 +5480,20 @@ Subcommands:
 		fmt.Printf("%x\n", hash[:*length/8])
 	}
 
+	if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" && (*pkey == "sign" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt") {
+		if data, err := ioutil.ReadFile(*key); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "NUMS") {
+					*alg = "NUMS"
+				} else if strings.Contains(block.Type, "KOBLITZ") {
+					*alg = "KOBLITZ"
+				} else if strings.Contains(block.Type, "ANSSI") {
+					*alg = "ANSSI"
+				}
+			}
+		}
+	}
+
 	var pubkey ecdsa.PublicKey
 	var public *ecdsa.PublicKey
 	var pubkeyCurve elliptic.Curve
@@ -5585,7 +5536,7 @@ Subcommands:
 		pubkeyCurve = elliptic.P256()
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521 || *curveFlag == "secp224r1" || *curveFlag == "secp384r1" || *curveFlag == "secp521r1" || *curveFlag == "secp256r1") && *curveFlag != "frp256v1" && *curveFlag != "secp256k1" && *curveFlag != "numsp256t1" && *curveFlag != "numsp384t1" && *curveFlag != "numsp512t1" && *curveFlag != "numsp256d1" && *curveFlag != "numsp384d1" && *curveFlag != "numsp512d1" {
 		var privatekey *ecdsa.PrivateKey
 		if *key != "" {
 			file, err := ioutil.ReadFile(*key)
@@ -5691,7 +5642,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECKCDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 521 || *length == 283 || *length == 409 || *length == 571) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECKCDSA") && ((*length == 224 || *length == 256 || *length == 384 || *length == 521 || *length == 283 || *length == 409 || *length == 571) || (*curveFlag == "secp224r1" || *curveFlag == "secp384r1" || *curveFlag == "secp521r1" || *curveFlag == "secp256r1" || *curveFlag == "sect283r1" || *curveFlag == "sect409r1" || *curveFlag == "sect571r1" || *curveFlag == "sect283k1" || *curveFlag == "sect409k1" || *curveFlag == "sect571k1")) {
 		privateKey, err := eckcdsa.GenerateKey(pubkeyCurve, rand.Reader)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -5739,7 +5690,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECGDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECGDSA") && ((*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) || (*curveFlag == "secp224r1" || *curveFlag == "secp384r1" || *curveFlag == "secp521r1" || *curveFlag == "secp256r1" || *curveFlag != "frp256v1" || *curveFlag != "secp256k1" || *curveFlag == "brainpoolp256r1" || *curveFlag == "brainpoolp384r1" || *curveFlag == "brainpoolp512r1" || *curveFlag == "brainpoolp256t1" || *curveFlag == "brainpoolp384t1" || *curveFlag == "brainpoolp512t1")) {
 		privateKey, err := ecgdsa.GenerateKey(rand.Reader, pubkeyCurve)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -5787,7 +5738,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECSDSA") && (*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECSDSA") && ((*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) || (*curveFlag == "secp224r1" || *curveFlag == "secp384r1" || *curveFlag == "secp521r1" || *curveFlag == "secp256r1" || *curveFlag != "frp256v1" || *curveFlag != "secp256k1" || *curveFlag == "brainpoolp256r1" || *curveFlag == "brainpoolp384r1" || *curveFlag == "brainpoolp512r1" || *curveFlag == "brainpoolp256t1" || *curveFlag == "brainpoolp384t1" || *curveFlag == "brainpoolp512t1")) {
 		privateKey, err := ecsdsa.GenerateKey(rand.Reader, pubkeyCurve)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -5835,7 +5786,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "BIP0340") && (*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) {
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "BIP0340") && ((*length == 224 || *length == 256 || *length == 384 || *length == 512 || *length == 521) || (*curveFlag == "secp224r1" || *curveFlag == "secp384r1" || *curveFlag == "secp521r1" || *curveFlag == "secp256r1" || *curveFlag != "frp256v1" || *curveFlag != "secp256k1" || *curveFlag == "brainpoolp256r1" || *curveFlag == "brainpoolp384r1" || *curveFlag == "brainpoolp512r1" || *curveFlag == "brainpoolp256t1" || *curveFlag == "brainpoolp384t1" || *curveFlag == "brainpoolp512t1")) {
 		privateKey, err := bip0340.GenerateKey(rand.Reader, pubkeyCurve)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -5883,7 +5834,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && strings.ToUpper(*alg) == "ANSSI" {
+	if *pkey == "keygen" && strings.ToUpper(*alg) == "ANSSI" || (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && *curveFlag == "frp256v1" {
 		privateKey, err := ecdsa.GenerateKey(frp256v1.P256(), rand.Reader)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -6103,7 +6054,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && strings.ToUpper(*alg) == "KOBLITZ" {
+	if *pkey == "keygen" && strings.ToUpper(*alg) == "KOBLITZ" || (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && *curveFlag == "secp256k1" {
 		privateKey, err := ecdsa.GenerateKey(secp256k1.S256(), rand.Reader)
 		if err != nil {
 			log.Fatal("Error generating private key:", err)
@@ -6438,10 +6389,10 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "keygen" && (strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "NUMS-TE") && (*length == 256 || *length == 384 || *length == 512) {
+	if *pkey == "keygen" && ((strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "NUMS-TE") && (*length == 256 || *length == 384 || *length == 512)) || ((strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "numsp256d1" || *curveFlag == "numsp384d1" || *curveFlag == "numsp512d1" || *curveFlag == "numsp256t1" || *curveFlag == "numsp384t1" || *curveFlag == "numsp512t1")) {
 		var curve elliptic.Curve
 
-		if strings.ToUpper(*alg) == "NUMS" {
+		if (strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "numsp256d1" || *curveFlag == "numsp384d1" || *curveFlag == "numsp512d1") {
 			if *length == 256 || *curveFlag == "numsp256d1" {
 				curve = nums.P256d1()
 			} else if *length == 384 || *curveFlag == "numsp384d1" {
@@ -6449,7 +6400,7 @@ Subcommands:
 			} else if *length == 512 || *curveFlag == "numsp512d1" {
 				curve = nums.P512d1()
 			}
-		} else if strings.ToUpper(*alg) == "NUMS-TE" {
+		} else if (strings.ToUpper(*alg) == "NUMS-TE" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "numsp256t1" || *curveFlag == "numsp384t1" || *curveFlag == "numsp512t1") {
 			if *length == 256 || *curveFlag == "numsp256t1" {
 				curve = nums.P256t1()
 			} else if *length == 384 || *curveFlag == "numsp384t1" {
@@ -8618,7 +8569,7 @@ Subcommands:
 	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" {
 
 		if *pkey == "verify-aggregate" {
-			*alg = "BLS12381"
+			*alg = "BLS12381I"
 		}
 
 		if strings.ToUpper(*alg) != "BN256PH" && strings.ToUpper(*alg) != "BLS12381PH" {
@@ -12282,461 +12233,6 @@ Subcommands:
 			aead := curupira1.NewLetterSoup(cipher)
 
 			for {
-				reader := bufio.NewReader(os.Stdin)
-				fmt.Print("Text to be sent: ")
-				message, err := reader.ReadString('\n')
-				if err != nil {
-					log.Fatal("Error reading input:", err)
-				}
-				message = message[:len(message)-1]
-				/*
-					nonce := make([]byte, aead.NonceSize())
-					if _, err := rand.Read(nonce); err != nil {
-						log.Fatal("Error generating nonce:", err)
-					}
-
-					ciphertext := aead.Seal(nonce, nonce, []byte(message), nil)
-				*/
-
-				nonce := make([]byte, 12)
-				if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-					log.Fatal(err)
-				}
-				aead.SetIV(nonce)
-
-				ciphertext := make([]byte, len([]byte(message)))
-				aead.Encrypt(ciphertext, []byte(message))
-				aead.Update(nil)
-				tag := aead.GetTag(nil, 96)
-
-				output := append(nonce, tag...)
-				output = append(output, ciphertext...)
-
-				_, err = conn.Write(output)
-				if err != nil {
-					log.Fatal("Error sending encrypted data:", err)
-				}
-
-				buf := make([]byte, 1024)
-				n, err := conn.Read(buf)
-				if err != nil {
-					if err == io.EOF {
-						fmt.Println("Server closed the connection. Exiting...")
-						break
-					} else {
-						log.Fatal("Error reading data from the server:", err)
-					}
-				}
-				/*
-					nonce, ciphertext = buf[:aead.NonceSize()], buf[aead.NonceSize():n]
-
-					plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
-					if err != nil {
-						log.Fatal("Error decrypting data:", err)
-					}
-				*/
-
-				nonce, tag, msg := buf[:12], buf[12:24], buf[24:n]
-
-				aead.SetIV(nonce)
-
-				plaintext := make([]byte, len(msg))
-				aead.Decrypt(plaintext, msg)
-
-				ciphertext = make([]byte, len(plaintext))
-				aead.Encrypt(ciphertext, plaintext)
-				aead.Update(nil)
-				tagEnc := aead.GetTag(nil, 96)
-
-				if !bytes.Equal(tag, tagEnc) {
-					log.Fatal("Error: authentication verification failed!")
-				}
-
-				fmt.Printf("Server response: %s\n", string(plaintext))
-			}
-			os.Exit(0)
-		}
-	}
-
-	if (strings.ToUpper(*alg) == "BN256I") && (*tcpip == "client" || *tcpip == "server") {
-		if *tcpip == "server" {
-			keyBytes, err := readKeyFromPEM(*key, true)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			port := "8081"
-			if *iport != "" {
-				port = *iport
-			}
-
-			ln, err := net.Listen("tcp", ":"+port)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer ln.Close()
-
-			fmt.Printf("Server(TUPI) up and listening on port %s\n", port)
-
-			for {
-				var serverPrivKey *big.Int
-				serverPrivKey = new(big.Int).SetBytes(keyBytes)
-
-				serverPubKey := new(bn256i.G2).ScalarBaseMult(serverPrivKey)
-				serverPubKeyBytes := serverPubKey.Marshal()
-
-				certificate, err := ReadCertificateFromPEM(*cert)
-				if err != nil {
-					fmt.Println("Erro ao ler o certificado:", err)
-					return
-				}
-				if len(certificate.PublicKey) != len(serverPubKeyBytes) || !bytes.Equal(certificate.PublicKey, serverPubKeyBytes) {
-					log.Fatal("The certificate does not match the private key.")
-				}
-
-				conn, err := ln.Accept()
-				if err != nil {
-					log.Fatal(err)
-				}
-				defer conn.Close()
-
-				certData, err := os.ReadFile(*cert)
-				if err != nil {
-					log.Fatalf("Erro ao ler o certificado: %v", err)
-				}
-
-				_, err = conn.Write(certData)
-				if err != nil {
-					log.Printf("Erro ao enviar o certificado para o cliente: %v", err)
-					return
-				}
-
-				clientPublicKeyBytes := make([]byte, 129)
-				_, err = conn.Read(clientPublicKeyBytes)
-				if err != nil {
-					if err == io.EOF {
-						fmt.Println("Client disconnected.")
-					} else {
-						log.Println("Error reading client's public key:", err)
-					}
-					return
-				}
-
-				var clientPubKey bn256i.G2
-				_, err = clientPubKey.Unmarshal(clientPublicKeyBytes)
-				if err != nil {
-					log.Println("Error processing client's public key:", err)
-					return
-				}
-
-				conn.Write(certificate.PublicKey)
-
-				baseG1 := new(bn256i.G1).ScalarBaseMult(big.NewInt(1))
-				pairingResult := bn256i.Pair(baseG1, &clientPubKey)
-
-				sharedKey := new(bn256i.GT)
-				sharedKey.ScalarMult(pairingResult, serverPrivKey)
-
-				sharedBytes := sharedKey.Marshal()
-
-				handshake := append(clientPublicKeyBytes, serverPubKeyBytes...)
-				handshake = append(handshake, sharedBytes...)
-
-				hash := bn256i.HashG1(handshake, []byte(*salt))
-				signature := hash.ScalarMult(hash, serverPrivKey)
-				if err != nil {
-					fmt.Println("Error signing message:", err)
-					os.Exit(1)
-				}
-				conn.Write(signature.Marshal())
-
-				signatureBytes := make([]byte, 1024)
-				_, err = conn.Read(signatureBytes)
-				if err != nil {
-					log.Fatal("Error reading server's signature:", err)
-				}
-
-				var validClientSignature bn256i.G1
-				validClientSignature.Unmarshal(signatureBytes)
-
-				hash = bn256i.HashG1(handshake, []byte(*salt))
-				rhs := bn256i.Pair(hash, &clientPubKey)
-				lhs := bn256i.Pair(&validClientSignature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
-
-				if !bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
-					log.Fatal("Client's signature verification failed")
-				} else {
-					fmt.Println("Handshake completed")
-				}
-
-				clientPubKeyPEM := pem.EncodeToMemory(&pem.Block{
-					Type:  "BN256 PUBLIC KEY",
-					Bytes: clientPublicKeyBytes,
-				})
-
-				fmt.Printf("%s\n", clientPubKeyPEM)
-
-				clientAddr := conn.RemoteAddr()
-				currentTime := time.Now().Format("2006/01/02 15:04:05")
-				fmt.Printf("%s Client(TUPI) %s connected via secure channel.\n", currentTime, clientAddr)
-
-				whirlpoolHash := whirlpool.New()
-				whirlpoolHash.Write(sharedBytes)
-				whirlpoolHashSum := whirlpoolHash.Sum(nil)
-				/*
-					var block cipher.Block
-					var size int
-					if strings.ToUpper(*paramset) == "A" {
-						block, err = anubis.NewWithKeySize(whirlpoolHashSum[:], 40)
-						size = 16
-					} else if strings.ToUpper(*paramset) == "B" {
-						block, err = curupira1.NewCipher(whirlpoolHashSum[:24])
-						size = 12
-					}
-					if err != nil {
-						log.Fatal("Error creating Anubis cipher:", err)
-					}
-
-					aead, err := eax.NewEAX(block, size)
-					if err != nil {
-						log.Fatal("Error creating AEAD:", err)
-					}
-				*/
-
-				cipher, err := curupira1.NewCipher(whirlpoolHashSum[:24])
-				if err != nil {
-					log.Fatal("Error creating Curupira cipher instance:", err)
-				}
-
-				aead := curupira1.NewLetterSoup(cipher)
-
-				for {
-					buf := make([]byte, 1024)
-					n, err := conn.Read(buf)
-					if err != nil {
-						if err == io.EOF {
-							log.Fatal("Client disconnected.")
-						}
-						log.Println("Error reading data from client:", err)
-						return
-					}
-					/*
-						nonce, ciphertext := buf[:aead.NonceSize()], buf[aead.NonceSize():n]
-
-						plaintext, err := aead.Open(nil, nonce, ciphertext, nil)
-						if err != nil {
-							log.Println("Error decrypting data:", err)
-							return
-						}
-					*/
-
-					nonce, tag, msg := buf[:12], buf[12:24], buf[24:n]
-
-					aead.SetIV(nonce)
-
-					plaintext := make([]byte, len(msg))
-					aead.Decrypt(plaintext, msg)
-
-					ciphertext := make([]byte, len(plaintext))
-					aead.Encrypt(ciphertext, plaintext)
-					aead.Update(nil)
-					tagEnc := aead.GetTag(nil, 96)
-
-					if !bytes.Equal(tag, tagEnc) {
-						log.Fatal("Error: authentication verification failed!")
-					}
-
-					fmt.Printf("Client response: %s\n", string(plaintext))
-
-					reader := bufio.NewReader(os.Stdin)
-					fmt.Print("Text to be sent: ")
-					response, err := reader.ReadString('\n')
-					if err != nil {
-						log.Fatal("Error reading input:", err)
-					}
-					response = response[:len(response)-1]
-					/*
-						ciphertextResponse := aead.Seal(nonce, nonce, []byte(response), nil)
-					*/
-
-					nonce = make([]byte, 12)
-					if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-						log.Fatal(err)
-					}
-					aead.SetIV(nonce)
-
-					ciphertext = make([]byte, len([]byte(response)))
-					aead.Encrypt(ciphertext, []byte(response))
-					aead.Update(nil)
-					tag = aead.GetTag(nil, 96)
-
-					ciphertextResponse := append(nonce, tag...)
-					ciphertextResponse = append(ciphertextResponse, ciphertext...)
-
-					_, err = conn.Write(ciphertextResponse)
-					if err != nil {
-						log.Fatal("Error sending encrypted data:", err)
-					}
-				}
-			}
-		} else {
-			ipport := "127.0.0.1:8081"
-			if *iport != "" {
-				ipport = *iport
-			}
-			conn, err := net.Dial("tcp", ipport)
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer conn.Close()
-
-			keyBytes, err := readKeyFromPEM(*key, true)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			var clientPrivKey *big.Int
-			clientPrivKey = new(big.Int).SetBytes(keyBytes)
-
-			clientPubKey := new(bn256i.G2).ScalarBaseMult(clientPrivKey)
-			clientPubKeyBytes := clientPubKey.Marshal()
-
-			certificate, err := ReadCertificateFromPEM(*cert)
-			if err != nil {
-				fmt.Println("Erro ao ler o certificado:", err)
-				return
-			}
-			if len(certificate.PublicKey) != len(clientPubKeyBytes) || !bytes.Equal(certificate.PublicKey, clientPubKeyBytes) {
-				log.Fatal("The certificate does not match the private key.")
-			}
-
-			conn.Write(certificate.PublicKey)
-
-			certData := make([]byte, 2048)
-			n, err := conn.Read(certData)
-			if err != nil && err != io.EOF {
-				log.Fatalf("Erro ao ler o certificado do servidor: %v", err)
-			}
-
-			certBlock, _ := pem.Decode(certData)
-			if certBlock == nil {
-				return
-			}
-
-			if certBlock.Type != strings.ToUpper(*alg)+" CERTIFICATE" {
-				return
-			}
-
-			var cert Certificate
-			_, err = asn1.Unmarshal(certBlock.Bytes, &cert)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			fmt.Println("Issuer:")
-			fmt.Println("       ", cert.Issuer)
-			fmt.Println("Subject:")
-			fmt.Println("       ", cert.Subject)
-			fmt.Printf("Expiry: %s \n", cert.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
-
-			fmt.Println(string(certData[:n]))
-
-			serverPubKeyBytes := make([]byte, 129)
-			_, err = conn.Read(serverPubKeyBytes)
-			if err != nil {
-				log.Fatal("Error reading server's public key:", err)
-			}
-
-			var serverPubKey bn256i.G2
-			_, err = serverPubKey.Unmarshal(serverPubKeyBytes)
-			if err != nil {
-				log.Println("Error processing server's public key:", err)
-				return
-			}
-
-			baseG1 := new(bn256i.G1).ScalarBaseMult(big.NewInt(1))
-			pairing := bn256i.Pair(baseG1, &serverPubKey)
-
-			clientKeyBytes := clientPrivKey.Bytes()
-
-			clientPrivKeyBigInt := new(big.Int).SetBytes(clientKeyBytes)
-
-			sharedKey := new(bn256i.GT)
-			sharedKey.ScalarMult(pairing, clientPrivKeyBigInt)
-
-			sharedBytes := sharedKey.Marshal()
-
-			var pubKey bn256i.G2
-			_, err = pubKey.Unmarshal(serverPubKeyBytes)
-			if err != nil {
-				fmt.Println("Error unmarshaling public key:", err)
-				os.Exit(1)
-			}
-
-			signatureBytes := make([]byte, 1024)
-			_, err = conn.Read(signatureBytes)
-			if err != nil {
-				log.Fatal("Error reading server's signature:", err)
-			}
-
-			var validClientSignature bn256i.G1
-			validClientSignature.Unmarshal(signatureBytes)
-
-			handshake := append(clientPubKeyBytes, serverPubKeyBytes...)
-			handshake = append(handshake, sharedBytes...)
-
-			hash := bn256i.HashG1(handshake, []byte(*salt))
-			rhs := bn256i.Pair(hash, &pubKey)
-			lhs := bn256i.Pair(&validClientSignature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
-
-			if !bytes.Equal(rhs.Marshal(), lhs.Marshal()) {
-				log.Fatal("Server's signature verification failed")
-			}
-
-			hash = bn256i.HashG1(handshake, []byte(*salt))
-			sessionKeySignature := hash.ScalarMult(hash, clientPrivKey)
-			if err != nil {
-				fmt.Println("Error signing message:", err)
-				os.Exit(1)
-			}
-
-			_, err = conn.Write(sessionKeySignature.Marshal())
-			if err != nil {
-				log.Fatal("Error sending session key signature:", err)
-			}
-
-			whirlpoolHash := whirlpool.New()
-			whirlpoolHash.Write(sharedBytes)
-			whirlpoolHashSum := whirlpoolHash.Sum(nil)
-			/*
-				var block cipher.Block
-				var size int
-				if strings.ToUpper(*paramset) == "A" {
-					block, err = anubis.NewWithKeySize(whirlpoolHashSum[:], 40)
-					size = 16
-				} else if strings.ToUpper(*paramset) == "B" {
-					block, err = curupira1.NewCipher(whirlpoolHashSum[:24])
-					size = 12
-				}
-				if err != nil {
-					log.Fatal("Error creating Anubis cipher:", err)
-				}
-
-				aead, err := eax.NewEAX(block, size)
-				if err != nil {
-					log.Fatal("Error creating AEAD:", err)
-				}
-			*/
-
-			cipher, err := curupira1.NewCipher(whirlpoolHashSum[:24])
-			if err != nil {
-				log.Fatal("Error creating Curupira cipher instance:", err)
-			}
-
-			aead := curupira1.NewLetterSoup(cipher)
-
-			for {
-
 				reader := bufio.NewReader(os.Stdin)
 				fmt.Print("Text to be sent: ")
 				message, err := reader.ReadString('\n')
@@ -19136,208 +18632,12 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *kmsCommand != "" {
-		var userFileName string
-		var pkg *PKG
-		var err error
-
-		if *kmsCommand == "new" {
-			if *kmsID == "" {
-				fmt.Println("Error: -kms-id flag must be provided for new command.")
-				return
-			}
-			pkg, err = NewPKG(*kmsID, *pwd, true, true)
-			if err != nil {
-				fmt.Println("Error initializing PKG:", err)
-				return
-			}
-			userFileName = *kmsID + ".json"
-			fmt.Println("New KMS created with ID:", *kmsID)
-			os.Exit(0)
-		} else if *kmsCommand == "pps" || *kmsCommand == "revoke" || *kmsCommand == "show" || *kmsCommand == "check" {
-			if *kmsID == "" {
-				fmt.Println("Error: -kms-id flag must be provided for this command.")
-				return
-			}
-			pkg, err = NewPKG(*kmsID, *pwd, false, false)
-			if err != nil {
-				fmt.Println("Error initializing PKG:", err)
-				return
-			}
-			userFileName = *kmsID + ".json"
-		} else if *kmsCommand == "reissue" {
-			if *kmsID == "" {
-				fmt.Println("Error: -kms-id flag must be provided for this command.")
-				return
-			}
-			pkg, err = NewPKG(*kmsID, *pwd, false, true)
-			if err != nil {
-				fmt.Println("Error initializing PKG:", err)
-				return
-			}
-			userFileName = *kmsID + ".json"
-		} else if *kmsCommand != "change" {
-			if *kmsID == "" {
-				fmt.Println("Error: -kms-id flag must be provided for other commands.")
-				return
-			}
-			pkg, err = NewPKG(*kmsID, *pwd, true, false)
-			if err != nil {
-				fmt.Println("Error initializing PKG:", err)
-				return
-			}
-			userFileName = *kmsID + ".json"
-		}
-
-		pps := &PPS{PublicParams: make(map[string]map[string]string)}
-		ra := &RA{pkg: pkg, pps: pps}
-
-		if *kmsCommand != "change" {
-			if err := pkg.LoadUsersFromFile(userFileName, pps); err != nil {
-				fmt.Println("No existing users to load, starting fresh.")
-			}
-		}
-
-		switch *kmsCommand {
-		case "register":
-			var privKey *ecdsa.PrivateKey
-			if *key != "" {
-				file, err := ioutil.ReadFile(*key)
-				if err != nil {
-					fmt.Println("Error reading private key file:", err)
-					return
-				}
-
-				privKey, err = DecodePrivateKey2(file)
-				if err != nil {
-					fmt.Println("Error loading private key:", err)
-					return
-				}
-			}
-			if *kmsID == "" || *id == "" {
-				fmt.Println("Error: -kms-id, and -id flags must be provided for registration.")
-				return
-			}
-			ra.RegisterUser(*id, *hierarchy, *info, privKey, *pwd2)
-			if err := pkg.SaveUsersToFile(userFileName); err != nil {
-				fmt.Println("Error saving users after registration:", err)
-			} else {
-				fmt.Println("Users saved successfully after registration.")
-			}
-		case "revoke":
-			var privKey *ecdsa.PrivateKey
-			if *key != "" {
-				file, err := ioutil.ReadFile(*key)
-				if err != nil {
-					fmt.Println("Error reading private key file:", err)
-					return
-				}
-
-				privKey, err = DecodePrivateKey2(file)
-				if err != nil {
-					fmt.Println("Error loading private key:", err)
-					return
-				}
-			}
-			if *kmsID == "" {
-				fmt.Println("Error: -kms-id flag must be provided to revoke a user.")
-				return
-			}
-			ra.RevokeUser(*id, privKey)
-			if err := pkg.SaveUsersToFile(userFileName); err != nil {
-				fmt.Println("Error saving users after revocation:", err)
-			} else {
-				fmt.Println("Users saved successfully after revocation.")
-			}
-		case "pps":
-			var pubKey *ecdsa.PublicKey
-			if *key != "" {
-				file, err := ioutil.ReadFile(*key)
-				if err != nil {
-					fmt.Println("Error reading public key file:", err)
-					return
-				}
-
-				pubKey, err = DecodePublicKey(file)
-				if err != nil {
-					fmt.Println("Error loading public key:", err)
-					return
-				}
-			}
-			pps.PrintPublicParameters(pkg, pubKey)
-			return
-		case "check":
-			var pubKey *ecdsa.PublicKey
-			if *key != "" {
-				file, err := ioutil.ReadFile(*key)
-				if err != nil {
-					fmt.Println("Error reading public key file:", err)
-					return
-				}
-
-				pubKey, err = DecodePublicKey(file)
-				if err != nil {
-					fmt.Println("Error loading public key:", err)
-					return
-				}
-			}
-			handleCheckCommand(pkg, pubKey, *id)
-		case "show":
-			if *id == "" {
-				fmt.Println("Error: -id flag must be provided for the show command.")
-				return
-			}
-			showUser(pkg, *id)
-		case "update":
-			var privKey *ecdsa.PrivateKey
-			if *key != "" {
-				file, err := ioutil.ReadFile(*key)
-				if err != nil {
-					fmt.Println("Error reading private key file:", err)
-					return
-				}
-
-				privKey, err = DecodePrivateKey2(file)
-				if err != nil {
-					fmt.Println("Error loading private key:", err)
-					return
-				}
-			}
-			if *kmsID == "" || *id == "" || *hierarchy == 0 {
-				fmt.Println("Error: -kms-id, -id, and -hid flags must be provided for update.")
-				return
-			}
-			ra.UpdateUser(*id, *hierarchy, *info, privKey, *pwd2)
-			if err := pkg.SaveUsersToFile(userFileName); err != nil {
-				fmt.Println("Error saving users after update:", err)
-			} else {
-				fmt.Println("Users saved successfully after update.")
-			}
-		case "reissue":
-			var privKey *ecdsa.PrivateKey
-			if *key != "" {
-				file, err := ioutil.ReadFile(*key)
-				if err != nil {
-					fmt.Println("Error reading private key file:", err)
-					return
-				}
-
-				privKey, err = DecodePrivateKey2(file)
-				if err != nil {
-					fmt.Println("Error loading private key:", err)
-					return
-				}
-			}
-			ra.ReSignAndRegenKeys(*kmsID, privKey, *pwd, *pwd2)
-		case "change":
-			err := ChangePrivateKeyPassword(*key, *pwd, *pwd2)
-			if err != nil {
-				fmt.Println("Error changing the password:", err)
-			} else {
-				fmt.Println("Password changed successfully.")
-			}
-		default:
-			fmt.Println("Invalid subcommand provided. Use register, revoke, pps, or new.")
+	if *change {
+		err := ChangePrivateKeyPassword(*key, *pwd, *pwd2)
+		if err != nil {
+			fmt.Println("Error changing the password:", err)
+		} else {
+			fmt.Println("Password changed successfully.")
 		}
 	}
 
@@ -25002,745 +24302,6 @@ func PrintCRLInfo(crl *CRL) {
 		fmt.Printf("    - Serial Number: %s\n", revoked.SerialNumber.String())
 		fmt.Printf("      Revocation Time: %s\n", revoked.RevocationTime.Format(time.RFC3339))
 	}
-}
-
-type MasterKeys struct {
-	SignMasterKey    *sm9.SignMasterPrivateKey
-	EncryptMasterKey *sm9.EncryptMasterPrivateKey
-}
-
-type User struct {
-	ID                string `json:"ID"`
-	HID               uint   `json:"HID"`
-	PrivateKeySign    string `json:"-"`
-	PrivateKeyEncrypt string `json:"-"`
-	Registered        bool   `json:"Registered"`
-	Role              string `json:"Role"`
-	Signature         []byte `json:"Signature"`
-}
-
-type PKG struct {
-	MasterKeys *MasterKeys
-	users      map[string]*User
-	mu         sync.Mutex
-}
-
-type RA struct {
-	pkg *PKG
-	pps *PPS
-}
-
-type PPS struct {
-	PublicParams map[string]map[string]string
-}
-
-func (mk *MasterKeys) SaveMasterKeys(signFile, encryptFile, signPubFile, encryptPubFile string, pwd string) error {
-	signBytes, err := smx509.MarshalPKCS8PrivateKey(mk.SignMasterKey)
-	if err != nil {
-		return err
-	}
-	signBlock := &pem.Block{
-		Type:  "SM9 SIGN MASTER PRIVATE KEY",
-		Bytes: signBytes,
-	}
-
-	if pwd != "" {
-		signFileHandle, err := os.Create(signFile)
-		if err != nil {
-			return fmt.Errorf("error opening sign master key file: %w", err)
-		}
-		defer signFileHandle.Close()
-
-		err = EncryptAndWriteBlock(*cph, signBlock, []byte(pwd), signFileHandle)
-		if err != nil {
-			return fmt.Errorf("error encrypting and saving the sign master key: %w", err)
-		}
-	} else {
-		err = writePEMFile(signFile, signBlock)
-		if err != nil {
-			return fmt.Errorf("error saving the sign master key: %w", err)
-		}
-	}
-
-	signPubKey := mk.SignMasterKey.Public()
-	signPubBytes, err := signPubKey.MarshalASN1()
-	if err != nil {
-		return err
-	}
-	signPubBlock := &pem.Block{
-		Type:  "SM9 SIGN PUBLIC KEY",
-		Bytes: signPubBytes,
-	}
-	if err := writePEMFile(signPubFile, signPubBlock); err != nil {
-		return err
-	}
-
-	encryptBytes, err := smx509.MarshalPKCS8PrivateKey(mk.EncryptMasterKey)
-	if err != nil {
-		return err
-	}
-	encryptBlock := &pem.Block{
-		Type:  "SM9 ENCRYPT MASTER PRIVATE KEY",
-		Bytes: encryptBytes,
-	}
-
-	if pwd != "" {
-		encryptFileHandle, err := os.Create(encryptFile)
-		if err != nil {
-			return fmt.Errorf("error opening encrypt master key file: %w", err)
-		}
-		defer encryptFileHandle.Close()
-
-		err = EncryptAndWriteBlock(*cph, encryptBlock, []byte(pwd), encryptFileHandle)
-		if err != nil {
-			return fmt.Errorf("error encrypting and saving the encrypt master key: %w", err)
-		}
-	} else {
-		err = writePEMFile(encryptFile, encryptBlock)
-		if err != nil {
-			return fmt.Errorf("error saving the encrypt master key: %w", err)
-		}
-	}
-
-	encryptPubKey := mk.EncryptMasterKey.Public()
-	encryptPubBytes, err := encryptPubKey.MarshalASN1()
-	if err != nil {
-		return err
-	}
-	encryptPubBlock := &pem.Block{
-		Type:  "SM9 ENCRYPT PUBLIC KEY",
-		Bytes: encryptPubBytes,
-	}
-	return writePEMFile(encryptPubFile, encryptPubBlock)
-}
-
-func writePEMFile(filename string, block *pem.Block) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	if err := pem.Encode(file, block); err != nil {
-		return err
-	}
-	return nil
-}
-
-func LoadMasterKeys(signFile, encryptFile, signPubFile, encryptPubFile, password string) (*MasterKeys, error) {
-	loadKey := func(filename string) (*pem.Block, error) {
-		data, err := ioutil.ReadFile(filename)
-		if err != nil {
-			return nil, fmt.Errorf("error reading file %s: %w", filename, err)
-		}
-
-		block, _ := pem.Decode(data)
-		if block == nil {
-			return nil, fmt.Errorf("failed to parse PEM block from file %s", filename)
-		}
-
-		if IsEncryptedPEMBlock(block) {
-			decryptedBytes, err := DecryptPEMBlock(block, []byte(password))
-			if err != nil {
-				return nil, fmt.Errorf("error decrypting key from %s: %w", filename, err)
-			}
-			return &pem.Block{Type: block.Type, Bytes: decryptedBytes}, nil
-		}
-
-		return block, nil
-	}
-
-	signKeyBlock, err := loadKey(signFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load sign master key: %w", err)
-	}
-
-	encryptKeyBlock, err := loadKey(encryptFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load encrypt master key: %w", err)
-	}
-
-	parsedSignKey, err := smx509.ParsePKCS8PrivateKey(signKeyBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing sign master key: %w", err)
-	}
-
-	signMasterKey, ok := parsedSignKey.(*sm9.SignMasterPrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("invalid private key type for sign master key")
-	}
-
-	parsedEncryptKey, err := smx509.ParsePKCS8PrivateKey(encryptKeyBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing encrypt master key: %w", err)
-	}
-
-	encryptMasterKey, ok := parsedEncryptKey.(*sm9.EncryptMasterPrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("invalid private key type for encrypt master key")
-	}
-
-	return &MasterKeys{
-		SignMasterKey:    signMasterKey,
-		EncryptMasterKey: encryptMasterKey,
-	}, nil
-}
-
-func loadPEMKey(filename string) (interface{}, error) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	block, _ := pem.Decode(data)
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM block")
-	}
-
-	var key interface{}
-	var parseErr error
-	switch block.Type {
-	case "SM9 SIGN MASTER PRIVATE KEY":
-		key, parseErr = smx509.ParsePKCS8PrivateKey(block.Bytes)
-	case "SM9 ENCRYPT MASTER PRIVATE KEY":
-		key, parseErr = smx509.ParsePKCS8PrivateKey(block.Bytes)
-	default:
-		return nil, fmt.Errorf("unsupported PEM type: %s", block.Type)
-	}
-
-	if parseErr != nil {
-		return nil, parseErr
-	}
-	return key, nil
-}
-
-func NewPKG(userID string, password string, loadPrivateKeys bool, genPrivateKeys bool) (*PKG, error) {
-	signMasterFile := userID + "_sign_master.pem"
-	encryptMasterFile := userID + "_encrypt_master.pem"
-	signPubFile := userID + "_sign_pub.pem"
-	encryptPubFile := userID + "_encrypt_pub.pem"
-
-	if loadPrivateKeys {
-		if _, err := os.Stat(signMasterFile); err == nil {
-			masterKeys, err := LoadMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load master keys: %w", err)
-			}
-			return &PKG{MasterKeys: masterKeys, users: make(map[string]*User)}, nil
-		} else if !os.IsNotExist(err) {
-			return nil, fmt.Errorf("error checking for master key files: %w", err)
-		}
-		if genPrivateKeys {
-			return generateNewMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password)
-		}
-	}
-
-	if genPrivateKeys {
-		return generateNewMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password)
-	}
-
-	return &PKG{MasterKeys: nil, users: make(map[string]*User)}, nil
-}
-
-func generateNewMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password string) (*PKG, error) {
-	signMasterKey, err := sm9.GenerateSignMasterKey(rand.Reader)
-	if err != nil {
-		return nil, fmt.Errorf("Error generating SM9 signing master key: %w", err)
-	}
-	encryptMasterKey, err := sm9.GenerateEncryptMasterKey(rand.Reader)
-	if err != nil {
-		return nil, fmt.Errorf("Error generating SM9 encryption master key: %w", err)
-	}
-
-	masterKeys := &MasterKeys{
-		SignMasterKey:    signMasterKey,
-		EncryptMasterKey: encryptMasterKey,
-	}
-
-	if err := masterKeys.SaveMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password); err != nil {
-		return nil, fmt.Errorf("Error saving master keys: %w", err)
-	}
-
-	return &PKG{MasterKeys: masterKeys, users: make(map[string]*User)}, nil
-}
-
-func (pkg *PKG) GeneratePrivateKeys(userID string, hid uint, password string) (string, string, error) {
-	fmt.Printf("Generating private keys for userID: %s, HID: %d\n", userID, hid)
-
-	userKeySign, err := pkg.MasterKeys.SignMasterKey.GenerateUserKey([]byte(userID), byte(hid))
-	if err != nil {
-		return "", "", err
-	}
-
-	privKeyBytesSign, err := smx509.MarshalPKCS8PrivateKey(userKeySign)
-	if err != nil {
-		return "", "", err
-	}
-
-	signBlock := &pem.Block{
-		Type:  "SM9 SIGN PRIVATE KEY",
-		Bytes: privKeyBytesSign,
-	}
-
-	signFile := userID + "_sign.pem"
-	signFileHandle, err := os.Create(signFile)
-	if err != nil {
-		return "", "", err
-	}
-	defer signFileHandle.Close()
-
-	if password != "" {
-		err = EncryptAndWriteBlock(*cph, signBlock, []byte(password), signFileHandle)
-		if err != nil {
-			return "", "", fmt.Errorf("error encrypting and saving signature private key: %w", err)
-		}
-	} else {
-		err = pem.Encode(signFileHandle, signBlock)
-		if err != nil {
-			return "", "", fmt.Errorf("error saving signature private key without encryption: %w", err)
-		}
-	}
-
-	userKeyEncrypt, err := pkg.MasterKeys.EncryptMasterKey.GenerateUserKey([]byte(userID), byte(hid))
-	if err != nil {
-		return "", "", err
-	}
-
-	privKeyBytesEncrypt, err := smx509.MarshalPKCS8PrivateKey(userKeyEncrypt)
-	if err != nil {
-		return "", "", err
-	}
-
-	encryptBlock := &pem.Block{
-		Type:  "SM9 ENCRYPT PRIVATE KEY",
-		Bytes: privKeyBytesEncrypt,
-	}
-
-	encryptFile := userID + "_encrypt.pem"
-	encryptFileHandle, err := os.Create(encryptFile)
-	if err != nil {
-		return "", "", err
-	}
-	defer encryptFileHandle.Close()
-
-	if password != "" {
-		err = EncryptAndWriteBlock(*cph, encryptBlock, []byte(password), encryptFileHandle)
-		if err != nil {
-			return "", "", fmt.Errorf("error encrypting and saving encryption private key: %w", err)
-		}
-	} else {
-		err = pem.Encode(encryptFileHandle, encryptBlock)
-		if err != nil {
-			return "", "", fmt.Errorf("error saving encryption private key without encryption: %w", err)
-		}
-	}
-
-	return signFile, encryptFile, nil
-}
-
-func (ra *RA) RegisterUser(userID string, hid uint, role string, privKey *ecdsa.PrivateKey, password string) {
-	ra.pkg.mu.Lock()
-	defer ra.pkg.mu.Unlock()
-
-	if _, exists := ra.pkg.users[userID]; !exists {
-		message := fmt.Sprintf("register:%s:%d:%s", userID, hid, role)
-
-		hash := sha256.New()
-		hash.Write([]byte(message))
-		hashedMessage := hash.Sum(nil)
-
-		signature, err := ecdsa.SignASN1(rand.Reader, privKey, []byte(hashedMessage))
-		if err != nil {
-			fmt.Printf("Error signing registration for %s: %v\n", userID, err)
-			return
-		}
-
-		privateKeySignFile, privateKeyEncryptFile, err := ra.pkg.GeneratePrivateKeys(userID, hid, password)
-		if err != nil {
-			fmt.Printf("Error generating private key for %s: %v\n", userID, err)
-			return
-		}
-
-		user := &User{
-			ID:                userID,
-			HID:               hid,
-			PrivateKeySign:    privateKeySignFile,
-			PrivateKeyEncrypt: privateKeyEncryptFile,
-			Registered:        true,
-			Role:              role,
-			Signature:         signature,
-		}
-
-		ra.pkg.users[userID] = user
-		fmt.Printf("User %s registered with HID: %d, Role: %s and private keys saved to: %s, %s\n", userID, hid, role, privateKeySignFile, privateKeyEncryptFile)
-	} else {
-		fmt.Printf("User %s is already registered.\n", userID)
-	}
-}
-
-func (ra *RA) RevokeUser(userID string, privKey *ecdsa.PrivateKey) {
-	ra.pkg.mu.Lock()
-	defer ra.pkg.mu.Unlock()
-
-	if user, exists := ra.pkg.users[userID]; exists {
-		message := fmt.Sprintf("revoke:%s:%d:%s", userID, user.HID, user.Role)
-
-		hash := sha256.New()
-		hash.Write([]byte(message))
-		hashedMessage := hash.Sum(nil)
-
-		signature, err := ecdsa.SignASN1(rand.Reader, privKey, []byte(hashedMessage))
-		if err != nil {
-			fmt.Printf("Error signing revocation for %s: %v\n", userID, err)
-			return
-		}
-
-		user.Signature = signature
-		user.Registered = false
-		fmt.Printf("User %s has been revoked. Revocation message: %s\n", userID, message)
-	} else {
-		fmt.Printf("User %s not found for revocation.\n", userID)
-	}
-}
-
-func (pkg *PKG) SaveUsersToFile(filename string) error {
-	pkg.mu.Lock()
-	defer pkg.mu.Unlock()
-
-	data, err := json.MarshalIndent(pkg.users, "", "	")
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filename, data, 0644)
-}
-
-func (pkg *PKG) LoadUsersFromFile(filename string, pps *PPS) error {
-	pkg.mu.Lock()
-	defer pkg.mu.Unlock()
-
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	var users map[string]*User
-	if err := json.NewDecoder(file).Decode(&users); err != nil {
-		return err
-	}
-
-	for id, user := range users {
-		pkg.users[id] = user
-		pps.PublicParams[id] = map[string]string{
-			"role": user.Role,
-		}
-	}
-	return nil
-}
-
-func (ra *RA) CheckUserStatus(userID string, pubKey *ecdsa.PublicKey) {
-	ra.pkg.mu.Lock()
-	defer ra.pkg.mu.Unlock()
-
-	user, exists := ra.pkg.users[userID]
-	if !exists {
-		fmt.Printf("User %s not found.\n", userID)
-		os.Exit(1)
-	}
-
-	if !user.Registered {
-
-		revokeMessage := fmt.Sprintf("revoke:%s:%d:%s", user.ID, user.HID, user.Role)
-		hash := sha256.New()
-		hash.Write([]byte(revokeMessage))
-		hashedMessage := hash.Sum(nil)
-
-		revokeValid := ecdsa.VerifyASN1(pubKey, hashedMessage, user.Signature)
-		if revokeValid {
-			fmt.Printf("User %s has been revoked and their revocation signature is valid.\n", userID)
-			os.Exit(2)
-		} else {
-			fmt.Printf("User %s has been revoked, but revocation signature is invalid.\n", userID)
-			os.Exit(3)
-		}
-	}
-
-	registerMessage := fmt.Sprintf("register:%s:%d:%s", user.ID, user.HID, user.Role)
-	hash := sha256.New()
-	hash.Write([]byte(registerMessage))
-	hashedMessage := hash.Sum(nil)
-
-	isValid := ecdsa.VerifyASN1(pubKey, hashedMessage, user.Signature)
-	if isValid {
-		fmt.Printf("User %s is active and registered.\n", userID)
-	} else {
-		fmt.Printf("User %s is registered, but signature verification failed.\n", userID)
-		os.Exit(4)
-	}
-}
-
-func handleCheckCommand(pkg *PKG, pubKey *ecdsa.PublicKey, userID string) {
-	ra := &RA{pkg: pkg}
-
-	ra.CheckUserStatus(userID, pubKey)
-}
-
-func showUser(pkg *PKG, userID string) {
-	pkg.mu.Lock()
-	defer pkg.mu.Unlock()
-
-	user, exists := pkg.users[userID]
-	if !exists {
-		fmt.Printf("User %s not found.\n", userID)
-		return
-	}
-
-	fmt.Println("User Information:")
-	fmt.Println(strings.Repeat("=", 79))
-	fmt.Printf("UID:       %s\n", user.ID)
-	fmt.Printf("HID:       %d\n", user.HID)
-	fmt.Printf("Role:      %s\n", user.Role)
-	fmt.Printf("Signature: %x\n", user.Signature)
-
-	if user.Registered {
-		fmt.Println("Status:    Active and Registered")
-	} else {
-		fmt.Println("Status:    Revoked")
-	}
-	fmt.Println(strings.Repeat("-", 79))
-}
-
-func (ra *RA) UpdateUser(userID string, hid uint, role string, privKey *ecdsa.PrivateKey, password string) {
-	ra.pkg.mu.Lock()
-	defer ra.pkg.mu.Unlock()
-
-	if user, exists := ra.pkg.users[userID]; exists {
-		message := fmt.Sprintf("register:%s:%d:%s", userID, hid, role)
-
-		hash := sha256.New()
-		hash.Write([]byte(message))
-		hashedMessage := hash.Sum(nil)
-
-		signature, err := ecdsa.SignASN1(rand.Reader, privKey, hashedMessage)
-		if err != nil {
-			fmt.Printf("Error signing update for %s: %v\n", userID, err)
-			return
-		}
-
-		user.HID = hid
-		user.Role = role
-		user.Signature = signature
-
-		privateKeySignFile, privateKeyEncryptFile, err := ra.pkg.GeneratePrivateKeys(userID, hid, password)
-		if err != nil {
-			fmt.Printf("Error generating new private keys for %s: %v\n", userID, err)
-			return
-		}
-
-		user.PrivateKeySign = privateKeySignFile
-		user.PrivateKeyEncrypt = privateKeyEncryptFile
-
-		fmt.Printf("User %s updated: HID: %d, Role: %s. New private keys generated: %s, %s\n", userID, hid, role, privateKeySignFile, privateKeyEncryptFile)
-	} else {
-		fmt.Printf("User %s not found for update.\n", userID)
-	}
-}
-
-func (pps *PPS) PrintPublicParameters(pkg *PKG, pubKey *ecdsa.PublicKey) {
-	fmt.Println("Public Parameters:")
-	fmt.Println(strings.Repeat("=", 79))
-	fmt.Printf("%-65s %-4s %-8s\n", "UID", "HID", "Role")
-	fmt.Println(strings.Repeat("=", 79))
-
-	var users []string
-	for user := range pps.PublicParams {
-		users = append(users, user)
-	}
-	sort.Strings(users)
-
-	for _, user := range users {
-		params := pps.PublicParams[user]
-		userInfo, exists := pkg.users[user]
-
-		if exists {
-			var message string
-			if userInfo.Registered {
-				message = fmt.Sprintf("register:%s:%d:%s", userInfo.ID, userInfo.HID, userInfo.Role)
-			} else {
-				message = fmt.Sprintf("revoke:%s:%d:%s", userInfo.ID, userInfo.HID, userInfo.Role)
-			}
-
-			hash := sha256.Sum256([]byte(message))
-
-			if userInfo.Registered {
-				isValid := ecdsa.VerifyASN1(pubKey, hash[:], userInfo.Signature)
-				if !isValid {
-					fmt.Printf("Signature verification failed for user %s\n", userInfo.ID)
-					continue
-				}
-			} else {
-				revokeValid := ecdsa.VerifyASN1(pubKey, hash[:], userInfo.Signature)
-				if revokeValid {
-					continue
-				} else {
-					fmt.Printf("Revocation signature verification failed for user %s\n", userInfo.ID)
-					continue
-				}
-			}
-
-			fmt.Printf("%-65s %-4d %-8s\n", user, userInfo.HID, params["role"])
-		}
-	}
-	fmt.Println(strings.Repeat("-", 79))
-}
-
-func (ra *RA) ReSignAndRegenKeys(kmsID string, privKey *ecdsa.PrivateKey, password, newPrivateKeyPassword string) error {
-	if ra == nil || ra.pkg == nil {
-		return errors.New("RA or pkg is nil")
-	}
-
-	signMasterFile := kmsID + "_sign_master.pem"
-	encryptMasterFile := kmsID + "_encrypt_master.pem"
-	signPubFile := kmsID + "_sign_pub.pem"
-	encryptPubFile := kmsID + "_encrypt_pub.pem"
-
-	signMasterKey, err := sm9.GenerateSignMasterKey(rand.Reader)
-	if err != nil {
-		return fmt.Errorf("error generating SM9 signing master key: %w", err)
-	}
-	encryptMasterKey, err := sm9.GenerateEncryptMasterKey(rand.Reader)
-	if err != nil {
-		return fmt.Errorf("error generating SM9 encryption master key: %w", err)
-	}
-
-	masterKeys := &MasterKeys{
-		SignMasterKey:    signMasterKey,
-		EncryptMasterKey: encryptMasterKey,
-	}
-
-	if err := masterKeys.SaveMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password); err != nil {
-		return fmt.Errorf("error saving master keys: %w", err)
-	}
-
-	loadedMasterKeys, err := LoadMasterKeys(signMasterFile, encryptMasterFile, signPubFile, encryptPubFile, password)
-	if err != nil {
-		return fmt.Errorf("error loading master keys: %w", err)
-	}
-
-	usersFile := kmsID + ".json"
-	if err := ra.pkg.LoadUsersFromFile(usersFile, ra.pps); err != nil {
-		return fmt.Errorf("error loading users: %w", err)
-	}
-
-	for _, user := range ra.pkg.users {
-		fmt.Printf("Processing user: ID: %s, HID: %d, Registered: %t, Role: %s\n", user.ID, user.HID, user.Registered, user.Role)
-
-		privateKeyPassword := newPrivateKeyPassword
-
-		privateKeySignFile, privateKeyEncryptFile, err := ra.pkg.GeneratePrivateKeysWithMasterKeys(user.ID, user.HID, privateKeyPassword, loadedMasterKeys)
-		if err != nil {
-			return fmt.Errorf("error generating keys for user %s: %w", user.ID, err)
-		}
-		user.PrivateKeySign = privateKeySignFile
-		user.PrivateKeyEncrypt = privateKeyEncryptFile
-
-		var message string
-		if !user.Registered {
-			message = fmt.Sprintf("revoke:%s:%d:%s", user.ID, user.HID, user.Role)
-		} else {
-			message = fmt.Sprintf("register:%s:%d:%s", user.ID, user.HID, user.Role)
-		}
-
-		hash := sha256.Sum256([]byte(message))
-
-		signature, err := ecdsa.SignASN1(rand.Reader, privKey, hash[:])
-		if err != nil {
-			return fmt.Errorf("error signing update for user %s: %v", user.ID, err)
-		}
-
-		hexSignature := hex.EncodeToString(signature)
-		fmt.Printf("Hex signature for user %s: %s\n", user.ID, hexSignature)
-		user.Signature = signature
-	}
-
-	if err := ra.pkg.SaveUsersToFile(usersFile); err != nil {
-		return fmt.Errorf("error saving users: %w", err)
-	}
-
-	fmt.Printf("Master keys and user keys regenerated successfully for KMS ID: %s\n", kmsID)
-	return nil
-}
-
-func (pkg *PKG) GeneratePrivateKeysWithMasterKeys(userID string, hid uint, password string, masterKeys *MasterKeys) (string, string, error) {
-	userKeySign, err := masterKeys.SignMasterKey.GenerateUserKey([]byte(userID), byte(hid))
-	if err != nil {
-		return "", "", fmt.Errorf("error generating user signature key: %w", err)
-	}
-
-	privKeyBytesSign, err := smx509.MarshalPKCS8PrivateKey(userKeySign)
-	if err != nil {
-		return "", "", fmt.Errorf("error marshaling user signature key: %w", err)
-	}
-
-	signBlock := &pem.Block{
-		Type:  "SM9 SIGN PRIVATE KEY",
-		Bytes: privKeyBytesSign,
-	}
-
-	signFile := userID + "_sign.pem"
-	signFileHandle, err := os.Create(signFile)
-	if err != nil {
-		return "", "", fmt.Errorf("error creating signature private key file: %w", err)
-	}
-	defer signFileHandle.Close()
-
-	if password != "" {
-		err = EncryptAndWriteBlock(*cph, signBlock, []byte(password), signFileHandle)
-		if err != nil {
-			return "", "", fmt.Errorf("error encrypting and saving signature private key: %w", err)
-		}
-	} else {
-		err = pem.Encode(signFileHandle, signBlock)
-		if err != nil {
-			return "", "", fmt.Errorf("error saving signature private key without encryption: %w", err)
-		}
-	}
-
-	userKeyEncrypt, err := masterKeys.EncryptMasterKey.GenerateUserKey([]byte(userID), byte(hid))
-	if err != nil {
-		return "", "", fmt.Errorf("error generating user encryption key: %w", err)
-	}
-
-	privKeyBytesEncrypt, err := smx509.MarshalPKCS8PrivateKey(userKeyEncrypt)
-	if err != nil {
-		return "", "", fmt.Errorf("error marshaling user encryption key: %w", err)
-	}
-
-	encryptBlock := &pem.Block{
-		Type:  "SM9 ENCRYPT PRIVATE KEY",
-		Bytes: privKeyBytesEncrypt,
-	}
-
-	encryptFile := userID + "_encrypt.pem"
-	encryptFileHandle, err := os.Create(encryptFile)
-	if err != nil {
-		return "", "", fmt.Errorf("error creating encryption private key file: %w", err)
-	}
-	defer encryptFileHandle.Close()
-
-	if password != "" {
-		err = EncryptAndWriteBlock(*cph, encryptBlock, []byte(password), encryptFileHandle)
-		if err != nil {
-			return "", "", fmt.Errorf("error encrypting and saving encryption private key: %w", err)
-		}
-	} else {
-		err = pem.Encode(encryptFileHandle, encryptBlock)
-		if err != nil {
-			return "", "", fmt.Errorf("error saving encryption private key without encryption: %w", err)
-		}
-	}
-
-	return signFile, encryptFile, nil
 }
 
 func ChangePrivateKeyPassword(keyFile, oldPassword, newPassword string) error {
