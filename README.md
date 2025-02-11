@@ -533,7 +533,7 @@ $\text{EdDSA: Compute } R = [k] G; S \equiv k + H(R \parallel m) \cdot d \mod q,
 
 #### Boneh–Lynn–Shacham Signatures
 
-BLS: Compute $\sigma = H(m) \cdot x$, where $H(m)$ is the message hash and $x$ is the private key.
+$\text{BLS: Compute } \sigma = H(m) \cdot x, \text{ where } H(m) \text{ is the message hash and } x \text{ is the private key.}$
 
 #### Notes
 1. $H(m)$ represents the hash value of the message.
