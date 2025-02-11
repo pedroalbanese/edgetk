@@ -531,6 +531,10 @@ $\text{EC-SDSA: Compute } Q = kG, r = Q_x, h = H(M \parallel Q_x), \text{ so com
 
 $\text{EdDSA: Compute } R = [k] G; S \equiv k + H(R \parallel m) \cdot d \mod q, \text{where } H \text{ is a hash function and } d \text{ is the private key}.$
 
+#### Boneh–Lynn–Shacham Signatures
+
+BLS: Compute $\sigma = H(m) \cdot x$, where $H(m)$ is the message hash and $x$ is the private key.
+
 #### Notes
 1. $H(m)$ represents the hash value of the message.
 2. $k^{-1}$ denotes the modular multiplicative inverse of $k$ modulo $(p-1)$.
