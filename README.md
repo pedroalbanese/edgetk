@@ -527,7 +527,7 @@ $\text{ so compute } s \equiv a^{-1} \left( k - r \oplus H(m,h) \right) \pmod{n}
 $\text{BignV1: Compute }  R = [k]G; s_0 \text{ must be a root of } h(OID(H) \parallel R \parallel H(X)),$ 
 $\text{ so compute } s_1 \equiv (k - H(X) - (s_0 + 2^l)d) \mod q.$
 
-$\text{EC-SDSA: Compute } Q = kG, r = Q_x, \text{ so compute } s \equiv k^{-1} \cdot (H(M) + r \cdot d) \mod n.$
+$\text{EC-SDSA: Compute } W = k \cdot G, r = H(W_x || W_y || m) \mod q, \text{ then compute } s \equiv k^{-1} \cdot (H(M) + r \cdot d) \mod q.$
 
 $\text{EdDSA: Compute } R = [k] G; S \equiv k + H(R \parallel m) \cdot d \mod q, \text{where } H \text{ is a hash function and } d \text{ is the private key}.$
 
