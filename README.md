@@ -141,12 +141,18 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | K-283 (sect283k1)     |         |           | O          |           |
     | K-409 (sect409k1)     |         |           | O          |           |
     | K-571 (sect571k1)     |         |           | O          |           |
-    | Brainpool (P256r1)    |         | O         |            |           |
-    | Brainpool (P384r1)    |         | O         |            |           |
-    | Brainpool (P512r1)    |         | O         |            |           |
-    | Brainpool (P256t1)    |         | O         |            |           |
-    | Brainpool (P384t1)    |         | O         |            |           |
-    | Brainpool (P512t1)    |         | O         |            |           |
+    | BP (brainpoolp256r1)  |         | O         |            |           |
+    | BP (brainpoolp384r1)  |         | O         |            |           |
+    | BP (brainpoolp512r1)  |         | O         |            |           |
+    | BP (brainpoolp256t1)  |         | O         |            |           |
+    | BP (brainpoolp384t1)  |         | O         |            |           |
+    | BP (brainpoolp512t1)  |         | O         |            |           |
+    | NUMS (numsp256d1)     |         | O         |            |           |
+    | NUMS (numsp384d1)     |         | O         |            |           |
+    | NUMS (numsp512d1)     |         | O         |            |           |
+    | NUMS (numsp256t1)     |         | O         |            |           |
+    | NUMS (numsp384t1)     |         | O         |            |           |
+    | NUMS (numsp512t1)     |         | O         |            |           |
     | BLS12-381             |         |           |            | O         |
     | Ed25519               |         |           |            | O         |
     | Pallas                |         |           |            | O         |
