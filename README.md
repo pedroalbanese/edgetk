@@ -81,9 +81,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 64. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
 65. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
 66. SBRC 2007: Curupira 96-bit block cipher with 96/144/192-bit keys
-67. STB 34.101.31-2011 Belorussian standard (Bel-T) block cipher
-68. STB 34.101.45-2013 Belorussian BignV1 public key algorithhm
-69. STB 34.101.77-2020 Belorussian standard BASH hash function
+67. STB 34.101.31-2011 Belarusian standard (Bel-T) block cipher
+68. STB 34.101.45-2013 Belarusian BignV1 public key algorithhm
+69. STB 34.101.77-2020 Belarusian standard BASH hash function
 70. TTAS.KO-12.0004/R1 128-bit Block Cipher SEED (ISO/IEC 18033-3:2010)
 71. TTAS.KO-12.0040/R1 64-bit Block Cipher HIGHT (ISO/IEC 18033-3:2010)
 72. TTAS.KO-12.0011/R2 HAS-160 Korean-standardized hash algorithm
