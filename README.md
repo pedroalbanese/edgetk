@@ -528,7 +528,7 @@ $\text{EC-GDSA: Compute } r = x([k]B); \text{ s must be a root of } r^{-1}H(m) +
 $\text{ so compute } s \equiv a^{-1} \left( kr - H(m) \right) \pmod{n}.$
 
 $\text{EC-KCDSA: Compute } r = H(x([k]G));$  
-$\text{so compute } s \equiv a \cdot \left( k - (r \oplus H(c_Q \parallel M)) \bmod n \right) \bmod n.$
+$\text{ so compute } s \equiv a \cdot \left( k - (r \oplus H(cQ \parallel M)) \bmod n \right) \bmod n.$
 
 #### Schnorr-based algorithms
 
