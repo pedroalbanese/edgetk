@@ -1198,7 +1198,7 @@ echo $?
 ##### Key Parsing:
 
 - Parse the master key, user private key, or master public key to view their details.
-```
+```sh
 ./edgetk -pkey text -key "Master.pem" [-pass "passphrase"]
 ./edgetk -pkey text -key "Private.pem" [-pass "passphrase"]
 ./edgetk -pkey text -key "MasterPublic.pem"
