@@ -1184,14 +1184,14 @@ echo $?
 ##### Master Key Pair Generation:
 
 - Generate a master key pair for BLS12-381.
-```
+```sh
 ./edgetk -pkey setup -algorithm bls12381 -master "Master.pem" [-pass "passphrase"] -pub "MasterPublic.pem"
 ```
 
 ##### User's Private Key Generation:
 
 - Generate a private key for a user, associated with their UID.
-```
+```sh
 ./edgetk -pkey keygen -algorithm bls12381 -master "Master.pem" [-pass "pass"] -prv "Private.pem" [-passout "pass"] -id "UID"
 ```
 
@@ -1207,14 +1207,14 @@ echo $?
 ##### Message Encryption with User Public Key:
 
 - Encrypt a message using the master public key and the user’s UID.
-```
+```sh
 ./edgetk -pkey encrypt -algorithm bls12381 -key "MasterPublic.pem" -id "UID" "plaintext.ext" > "ciphertext.enc"
 ```
 
 ##### Message Decryption with User Private Key:
 
 - Decrypt a message using the user’s private key.
-```
+```sh
 ./edgetk -pkey decrypt -algorithm bls12381 -key "Private.pem" [-pass "passphrase"] "ciphertext.enc"
 echo $?
 ```
@@ -1222,14 +1222,14 @@ echo $?
 ##### Key Agreement (ECDH):
 
 - Perform an Elliptic Curve Diffie-Hellman (ECDH) key agreement to derive a shared secret with a peer, using the user’s private key and the master public key.
-```
+```sh
 ./edgetk -pkey derive -algorithm bls12381 -key "Private.pem" [-pass "pass"] -pub "MasterPublic.pem" -id "PeerUID"
 ```
 
 ##### Digital Signature Generation:
 
 - Generate a BLS (Boneh-Lynn-Shacham) digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
-```
+```sh
 ./edgetk -pkey sign -algorithm bls12381 -key "Private.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
 ./edgetk -pkey verify -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -signature $sign FILE
