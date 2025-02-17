@@ -153,6 +153,8 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | NUMS (numsp256t1)     | O       | O         |            |           |
     | NUMS (numsp384t1)     | O       | O         |            |           |
     | NUMS (numsp512t1)     | O       | O         |            |           |
+    | Tom-256 (tom256)      | O       | O         |            |           |
+    | Tom-384 (tom384)      | O       | O         |            |           |
     | BLS12-381             |         |           |            | O         |
     | Ed25519               |         |           |            | O         |
     | Pallas                |         |           |            | O         |
