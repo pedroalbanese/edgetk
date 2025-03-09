@@ -20,7 +20,7 @@ require (
 	github.com/pedroalbanese/bash v0.0.0-20240917213542-359ea9ed86ee
 	github.com/pedroalbanese/belt v0.0.0-20240917222837-2f97e6235d6c
 	github.com/pedroalbanese/bign v0.0.0-20240918155826-90ccb6b122b9
-	github.com/pedroalbanese/bip0340 v0.0.0-20241210175635-d2ef3194b7de
+	github.com/pedroalbanese/bip0340 v0.0.0-20250309175356-f4246d336869
 	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
 	github.com/pedroalbanese/bn256 v0.0.0-20241211180157-f48a503b4cc5
 	github.com/pedroalbanese/brainpool v0.0.0-20220826183126-be5c94625a31
@@ -41,12 +41,12 @@ require (
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
-	github.com/pedroalbanese/ecgdsa v0.0.0-20241210175441-06f3e901c677
+	github.com/pedroalbanese/ecgdsa v0.0.0-20250309172633-1e9ac31fec97
 	github.com/pedroalbanese/echo v0.0.0-20240329160327-5e65f19de84b
 	github.com/pedroalbanese/ecka-eg v0.0.3003
-	github.com/pedroalbanese/ecsdsa v0.0.0-20241210175528-7c8b62d098d0
+	github.com/pedroalbanese/ecsdsa v0.0.0-20250309175503-d735dfab325a
 	github.com/pedroalbanese/esch v0.0.0-20240403151441-bc287e464d49
-	github.com/pedroalbanese/frp256v1 v0.0.2-0.20240924173051-9a21c6c1586f
+	github.com/pedroalbanese/frp256v1 v0.0.3
 	github.com/pedroalbanese/fugue v0.0.0-20240518170253-4e3af93fc75a
 	github.com/pedroalbanese/gmac v0.0.0-20231030174635-9eb35b8b4542
 	github.com/pedroalbanese/go-ascon v0.0.0-20240325185942-de83d7994a95
@@ -57,7 +57,7 @@ require (
 	github.com/pedroalbanese/go-kcipher2 v0.0.0-20170506094415-4fcf5aa27627
 	github.com/pedroalbanese/go-krcrypt v0.0.0-20170928183100-a0c871728ae1
 	github.com/pedroalbanese/go-misty1 v0.0.0-20150819220543-a3984aec4fae
-	github.com/pedroalbanese/go-nums v0.0.0-20240718212750-f4c240aa5c08
+	github.com/pedroalbanese/go-nums v0.0.0-20250217142054-d8f977c4e11d
 	github.com/pedroalbanese/go-rc5 v0.0.0-20181025211356-a14dd155920a
 	github.com/pedroalbanese/go-ripemd v0.0.0-20200326052756-bd1759ad7d10
 	github.com/pedroalbanese/gogost v0.0.0-20240430171730-f95129c7a5af
@@ -100,13 +100,14 @@ require (
 	github.com/pedroalbanese/spritz v0.0.0-20140823220804-e125bc694ec3
 	github.com/pedroalbanese/threefish v0.0.0-20230828205611-8dc287bb1622
 	github.com/pedroalbanese/tiger v0.0.0-20220128183340-a7e964767a9d
+	github.com/pedroalbanese/tom v0.0.0-20250228211028-987ea6c1589b
 	github.com/pedroalbanese/trivium v0.0.0-20170225064545-3bc0ea456f63
 	github.com/pedroalbanese/twine v0.0.0-20240325185833-a027b56be619
 	github.com/pedroalbanese/vmac v0.0.0-20231111194716-1a03aacdcb4c
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.36.0
 )
 
 require (
