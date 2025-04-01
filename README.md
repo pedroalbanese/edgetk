@@ -530,6 +530,9 @@ $\text{ so compute } s \equiv a^{-1} \left( kr - H(m) \right) \pmod{n}.$
 $\text{EC-KCDSA: Compute } r = H(x([k]G));$  
 $\text{ so compute } s \equiv a \cdot \left( k - (r \oplus H(cQ \parallel M)) \bmod n \right) \bmod n.$
 
+$\text{GOST: Compute } r = x([k]G) \mod q;$  
+$\text{ so compute } s \equiv (r \cdot d + k \cdot H(m)) \mod q.$
+
 #### Schnorr-based algorithms
 
 $\text{BignV1: Compute }  R = [k]G; s_0 \text{ must be a root of } h(OID(H) \parallel R \parallel H(X)),$ 
