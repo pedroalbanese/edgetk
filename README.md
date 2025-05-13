@@ -1150,6 +1150,12 @@ echo $?
 ./edgetk -tcp server -cert Certificate.pem -key Private.pem [-ipport "8081"]
 ./edgetk -tcp client -cert Certificate.pem -key Private.pem [-ipport "127.0.0.1:8081"]
 ```
+Or IPv6
+```sh
+./edgetk -tcp server -cert Certificate.pem -key Private.pem [-ipport "8081"]
+./edgetk -tcp client -cert Certificate.pem -key Private.pem [-ipport "[2001:db8::1]:8081"]
+```
+
 #### Symmetric key generation (256-bit):
 ```sh
 ./edgetk -rand 256
