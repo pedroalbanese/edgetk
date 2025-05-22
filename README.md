@@ -859,7 +859,7 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
 <details>
   <summary>Zero-Knowledge Proof (ZKP) for Bilinear Curves</summary>  
   
-- **Zero-Knowledge Proof (ZKP)**
+..- **Zero-Knowledge Proof (ZKP)**
 
  1. Commitment: $C = r \cdot G_2$, where $r$ is a secure random number, $G_2$ is the elliptic curve base point.
  2. Challenge: $\chi = H(C \parallel m)$, where $H$ is a cryptographic hash function, $m$ is the message/context. 
