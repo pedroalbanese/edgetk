@@ -861,12 +861,11 @@ The Albanese ZKP for bilinear curves (like BLS12-381) is a non-interactive proto
 
 **Zero-Knowledge Proof (ZKP)**
 
-1. **Commitment**
-2. $C = r \cdot G_2$ where $r$: secure random number, $G_2$: elliptic curve base point  
-3. **Challenge** $\chi = H(C \parallel m)$ where $H$: cryptographic hash function, $m$: message/context  
-4. **Response** $s = sk_{user} \cdot \chi$ where $sk_{user}$: user's private key, $\chi$: computed challenge  
-5. **Verification** Check if $e(s \cdot G_1, G_2) = e(G_1, C + (\chi \cdot pk_{user}))$ where $e$: bilinear pairing, $pk_{user} = sk_{user} \cdot G_2$ (public key)  
-6. **Validation** If the equality holds, the proof is valid.
+1. **Commitment** $C = r \cdot G_2$ where $r$: secure random number, $G_2$: elliptic curve base point  
+2. **Challenge** $\chi = H(C \parallel m)$ where $H$: cryptographic hash function, $m$: message/context  
+3. **Response** $s = sk_{user} \cdot \chi$ where $sk_{user}$: user's private key, $\chi$: computed challenge  
+4. **Verification** Check if $e(s \cdot G_1, G_2) = e(G_1, C + (\chi \cdot pk_{user}))$ where $e$: bilinear pairing, $pk_{user} = sk_{user} \cdot G_2$ (public key)  
+5. **Validation** If the equality holds, the proof is valid.
 
 **Verification relies on the properties of bilinear pairing:**
 
