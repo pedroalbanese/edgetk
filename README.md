@@ -1158,6 +1158,12 @@ echo $?
 ```sh
 ./edgetk -pkey crl -cert CACert.pem -key Private.pem -crl old.crl serials.txt > NewCRL.crl
 ```
+For non-interactive scripts, you must use the flags -pass, -days and -subj:
+```
+-pass "passphrase"
+-days 365
+-subj "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=test@test.com"
+```
 #### TLS Layer (TCP/IP):
 ```sh
 ./edgetk -tcp ip > MyExternalIP.txt
