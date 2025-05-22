@@ -852,6 +852,58 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
     |1    |0    |1    |
     |1    |1    |0    |
 
+### Zero-Knowledge Proof (ZKP)
+
+The Albanese ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK) that enables a prover (user) to demonstrate possession of a valid private key ($sk_{user}$) associated with a public key ($pk_{user}$) without revealing the private key. The proof is verifiable by any party using bilinear pairing properties ($e$). Here's the detailed description:
+
+<details>
+  <summary>Zero-Knowledge Proof (ZKP) for Bilinear Curves</summary>
+
+**Zero-Knowledge Proof (ZKP)**
+
+1. **Commitment**  
+   $C = r \cdot G_2$  
+   Where:  
+   - $r$: secure random number  
+   - $G_2$: elliptic curve base point
+
+2. **Challenge**  
+   $\chi = H(C \parallel m)$  
+   Where:  
+   - $H$: cryptographic hash function  
+   - $m$: message/context
+
+3. **Response**  
+   $s = sk_{user} \cdot \chi$  
+   Where:  
+   - $sk_{user}$: user's private key  
+   - $\chi$: computed challenge
+
+4. **Verification**  
+   Check if:  
+   $e(s \cdot G_1, G_2) = e(G_1, C + (\chi \cdot pk_{user}))$  
+   Where:  
+   - $e$: bilinear pairing  
+   - $pk_{user} = sk_{user} \cdot G_2$ (public key)
+
+5. **Validation**  
+   If the equality holds, the proof is valid.
+
+**Verification relies on the properties of bilinear pairing:**
+
+1. **Linearity**  
+   $e(s \cdot G_1, G_2) = e(G_1, G_2)^s$
+
+2. **Substituting $s = sk_{user} \cdot \chi$**  
+   $e(G_1, G_2)^{sk_{user} \cdot \chi} = e(G_1, pk_{user})^\chi$
+
+3. **Right-hand side expansion**  
+   $e(G_1, C + \chi \cdot pk_{user}) = e(G_1, r \cdot G_2 + \chi \cdot sk_{user} \cdot G_2)$  
+   $= e(G_1, G_2)^{r + \chi \cdot sk_{user}}$
+
+   For the equality to hold, the $r$ term must cancel out, which occurs if the prover used the correct $sk_{user}$.
+</details>
+    
 ### ZUC (Zu Chongzhi cipher)
 
   The ZUC-256 cipher is a symmetric key encryption algorithm widely used in 5G communication technologies, providing robust and efficient security. The ZUC-256 algorithm is based on the original ZUC cipher, developed by the Chinese Academy of Sciences and adopted by the 3rd Generation Partnership Project (3GPP) standard to ensure data integrity and confidentiality in fifth-generation mobile networks. Its name pays tribute to Zu Chongzhi, a 5th-century Chinese mathematician and astronomer, renowned for his contributions to mathematics, astronomy, and hydraulic engineering. His remarkable approximation of the value of π (pi) enabled more precise calculations in various scientific fields. 
