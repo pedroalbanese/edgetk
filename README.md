@@ -857,7 +857,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
 The Albanese ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK) that enables a prover (user) to demonstrate possession of a valid private key ($sk_{user}$) associated with a public key ($pk_{user}$) without revealing the private key. The proof is verifiable by any party using bilinear pairing properties ($e$). Here's the detailed description:
 
 <details>
-  <summary>Zero-Knowledge Proof (ZKP) for Bilinear Curves</summary>
+  <summary>Zero-Knowledge Proof (ZKP) for Bilinear Curves</summary>  
 
 **Zero-Knowledge Proof (ZKP)**
 
@@ -865,9 +865,9 @@ The Albanese ZKP for bilinear curves (like BLS12-381) is a non-interactive proto
 2. **Challenge** $\chi = H(C \parallel m)$ where $H$: cryptographic hash function, $m$: message/context  
 3. **Response** $s = sk_{user} \cdot \chi$ where $sk_{user}$: user's private key, $\chi$: computed challenge  
 4. **Verification** Check if $e(s \cdot G_1, G_2) = e(G_1, C + (\chi \cdot pk_{user}))$ where $e$: bilinear pairing, $pk_{user} = sk_{user} \cdot G_2$ (public key)  
-5. **Validation** If the equality holds, the proof is valid.
+5. **Validation** If the equality holds, the proof is valid.  
 
-**Verification relies on the properties of bilinear pairing:**
+**Verification relies on the properties of bilinear pairing:**  
 
 1. **Linearity** $e(s \cdot G_1, G_2) = e(G_1, G_2)^s$  
 2. **Substitution** $e(G_1, G_2)^{sk_{user} \cdot \chi} = e(G_1, pk_{user})^\chi$ when $s = sk_{user} \cdot \chi$  
