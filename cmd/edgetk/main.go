@@ -328,7 +328,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.7-gama  12 May 2025")
+		fmt.Println("EDGE Toolkit v1.5.7-beta  22 May 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -553,6 +553,11 @@ Subcommands:
  Validate a Certificate against the CRL:
   edgetk -pkey validate [-cert <certificate.pem>] [-crl <crl.pem>]
   echo $?
+
+ For non-interactive scripts, you must use the flags -pass, -days and -subj:
+  -pass "passphrase"
+  -days 365
+  -subj "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=test@test.com"
 
  Derive Shared Secret:
   edgetk -pkey <derive|vko|x25519> [-key <privatekey>] [-pub <peerkey>]
