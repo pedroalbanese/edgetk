@@ -126,7 +126,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | EC-ElGamal          | O   |     |     |         | O        |     |
     | ML-DSA/KEM          |     |     |     | O       | O        | O   |
     | SLH-DSA             | O   |     |     | O       |          | O   |
-    | Hyper               |     |     |     | O       | O        | O   |
 
 - **Subjacent Elliptic Curves:**
 
@@ -896,18 +895,26 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
         Encode binary string to Base85 format and vice-versa. [enc|dec]
   -bits int
         Key length. (for keypair generation and symmetric encryption)
+  -blind-factor string
+        Blind Factor in hexadecimal. (for Blind Signatures)
   -cacert string
         CA Certificate path. (for TLCP Protocol)
   -cakey string
         CA Private key. (for TLCP Protocol)
+  -candidates string
+        List of candidates, separated by commas.
   -cert string
         Certificate path.
+  -challenge string
+        Challenge for the proof. (for Zero-Knowledge Proof ZKP)
   -change
         Change Passphrase of a Private Key.
   -check
         Check hashsum file. ('-' for STDIN)
   -cipher string
         Symmetric algorithm: aes, blowfish, magma or sm4. (default "aes")
+  -commitment string
+        Commitment for the proof. (for Zero-Knowledge Proof ZKP)
   -crl string
         Certificate Revocation List path.
   -crypt string
@@ -953,7 +960,7 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
   -modulus string
         Makwa modulus. (Makwa hash Public Parameter)
   -msgs value
-        Messages to be verified (can be passed multiple times)
+        Messages to be verified. (can be passed multiple times)
   -nopad
         No padding. (for Base64 and Base32 encoding)
   -params string
@@ -962,8 +969,6 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
         Elliptic curve ParamSet: A, B, C, D. (for GOST2012) (default "A")
   -pass string
         Password/Passphrase. (for Private key PEM encryption)
-  -passin string
-        Input SM2 Private Key Password (for SM9 Cryptosystem KMS)
   -passout string
         User Password. (for SM9 User Private Key PEM encryption)
   -peerid string
@@ -974,14 +979,18 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
         Private key path. (for keypair generation) (default "Private.pem")
   -pub string
         Public key path. (for keypair generation) (default "Public.pem")
+  -pub2 string
+        Public key 2 path. (for keypair generation)
   -pubs value
-        Paths to the public keys (can be passed multiple times)
+        Paths to the public keys. (can be passed multiple times)
   -rand int
         Generate random cryptographic key with given bit length.
   -recover
         Recover Passphrase from Makwa hash with Private Parameters.
   -recursive
         Process directories recursively. (for DIGEST command only)
+  -response string
+        Response for the proof. (for Zero-Knowledge Proof ZKP)
   -root string
         Root CA Certificate path.
   -salt string
@@ -992,10 +1001,14 @@ XOR (Exclusive OR) is a logical operator that works on bits. Let’s denote it b
         Subject: Identity. (Example: "/CN=/OU=/O=/ST=/L=/C=/emailAddress=")
   -tcp string
         Encrypted TCP/IP Transfer Protocol. [server|ip|client]
+  -token string
+        Token containing an encrypted symmetric key.
   -tweak string
         Additional 128-bit parameter input. (for THREEFISH encryption)
   -version
         Print version info.
+  -votes string
+        Comma-separated list of vote counters.
   -wrap int
         Wrap lines after N columns. (for Base64/32 encoding) (default 64)</pre>
 
