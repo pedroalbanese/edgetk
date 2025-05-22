@@ -1,6 +1,6 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.22.0
+go 1.23.0
 
 toolchain go1.23.3
 
@@ -39,6 +39,7 @@ require (
 	github.com/pedroalbanese/curupira1 v0.0.0-gama
 	github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
+	github.com/pedroalbanese/eac v0.0.0-20250428171516-10a5a5e733cd
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
 	github.com/pedroalbanese/ecgdsa v0.0.0-20250309172633-1e9ac31fec97
@@ -48,6 +49,7 @@ require (
 	github.com/pedroalbanese/esch v0.0.0-20240403151441-bc287e464d49
 	github.com/pedroalbanese/frp256v1 v0.0.3
 	github.com/pedroalbanese/fugue v0.0.0-20240518170253-4e3af93fc75a
+	github.com/pedroalbanese/ginga v0.0.0-20250410135940-30eb7da0c88d
 	github.com/pedroalbanese/gmac v0.0.0-20231030174635-9eb35b8b4542
 	github.com/pedroalbanese/go-ascon v0.0.0-20240325185942-de83d7994a95
 	github.com/pedroalbanese/go-chaskey v0.0.0-20230117155006-a9e41c18223c
@@ -108,6 +110,7 @@ require (
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/zeebo/blake3 v0.2.3
 	golang.org/x/crypto v0.36.0
+	golang.org/x/term v0.29.0
 )
 
 require (
@@ -120,8 +123,7 @@ require (
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 )
 
-replace golang.org/x/crypto => golang.org/x/crypto v0.31.0
+replace golang.org/x/crypto => golang.org/x/crypto v0.35.0
