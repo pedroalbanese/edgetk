@@ -709,7 +709,7 @@ Subcommands:
 		*pwd2 = ""
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "proof" || *pkey == "aggregate-vote-proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -8912,7 +8912,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-signatures" || *pkey == "verify-aggregate" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "verify-aggregate-vote" || *pkey == "verify-proof" || *pkey == "blind" || *pkey == "unblind" || *pkey == "unblind-signature" || *pkey == "sign-blinded" || *pkey == "verify-blinded" || *pkey == "count" || *pkey == "input" || *pkey == "count-total" || *pkey == "add" || *pkey == "sum" || *pkey == "hash" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" {
+	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-signatures" || *pkey == "verify-aggregate" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "verify-aggregate-vote" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "verify-proof-message" || *pkey == "blind" || *pkey == "unblind" || *pkey == "unblind-signature" || *pkey == "sign-blinded" || *pkey == "verify-blinded" || *pkey == "count" || *pkey == "input" || *pkey == "count-total" || *pkey == "add" || *pkey == "sum" || *pkey == "hash" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" {
 
 		if *pkey == "unblind" || *pkey == "unblind-signature" || *pkey == "sign-blinded" || *pkey == "verify-blinded" || *pkey == "verify-aggregate" || *pkey == "blind" || *pkey == "hash" || *pkey == "count" || *pkey == "count-total" || *pkey == "input" || *pkey == "add" || *pkey == "sum" || *pkey == "aggregate-signatures" {
 			*alg = "BLS12381"
@@ -14024,7 +14024,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "BLS12381") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "sign" || *pkey == "sign-blinded" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-signatures" || *pkey == "verify-aggregate" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "verify-aggregate-vote" || *pkey == "verify-proof" || *pkey == "blind" || *pkey == "unblind" || *pkey == "verify-blinded" || *pkey == "unblind-signature" || *pkey == "count" || *pkey == "input" || *pkey == "count-total" || *pkey == "add" || *pkey == "sum" || *pkey == "hash" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "BLS12381") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "sign" || *pkey == "sign-blinded" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-signatures" || *pkey == "verify-aggregate" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "verify-aggregate-vote" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "verify-proof-message" || *pkey == "blind" || *pkey == "unblind" || *pkey == "verify-blinded" || *pkey == "unblind-signature" || *pkey == "count" || *pkey == "input" || *pkey == "count-total" || *pkey == "add" || *pkey == "sum" || *pkey == "hash" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -14579,9 +14579,10 @@ Subcommands:
 			signature := signMessageBLS(originalG1.BytesCompressed(), skScalar)
 			fmt.Println("Individual_BLS12381("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
 
-			commitment := generateCommitment(randomScalar(), bls12381.G2Generator())
+			random := randomScalar()
+			commitment := generateCommitment(random, bls12381.G2Generator())
 			challenge := generateChallenge(commitment, msg)
-			response := generateResponse(skScalar, challenge)
+			response := generateResponse(random, skScalar, challenge)
 
 			aggregatedSignature := signature
 			if *sig != "" {
@@ -14689,9 +14690,10 @@ Subcommands:
 			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
-			commitment := generateCommitment(randomScalar(), bls12381.G2Generator())
-			challenge := generateChallenge(commitment, msg)
-			response := generateResponse(skScalar, challenge)
+			random := randomScalar()
+			commitment := generateCommitment(random, bls12381.G2Generator())
+			challenge := generateChallenge(commitment, blindedMessage.BytesCompressed())
+			response := generateResponse(random, skScalar, challenge)
 
 			aggregatedSignature := blindedSignature
 			if *sig != "" {
@@ -14779,9 +14781,10 @@ Subcommands:
 			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
-			commitment := generateCommitment(randomScalar(), bls12381.G2Generator())
-			challenge := generateChallenge(commitment, msg)
-			response := generateResponse(skScalar, challenge)
+			random := randomScalar()
+			commitment := generateCommitment(random, bls12381.G2Generator())
+			challenge := generateChallenge(commitment, blindedMessage.BytesCompressed())
+			response := generateResponse(random, skScalar, challenge)
 
 			aggregatedSignature := blindedSignature
 			if *sig != "" {
@@ -14903,9 +14906,10 @@ Subcommands:
 			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
-			commitment := generateCommitment(randomScalar(), bls12381.G2Generator())
-			challenge := generateChallenge(commitment, msg)
-			response := generateResponse(skScalar, challenge)
+			random := randomScalar()
+			commitment := generateCommitment(random, bls12381.G2Generator())
+			challenge := generateChallenge(commitment, blindedMessage.BytesCompressed())
+			response := generateResponse(random, skScalar, challenge)
 
 			aggregatedSignature := blindedSignature
 			if *sig != "" {
@@ -14980,6 +14984,42 @@ Subcommands:
 			fmt.Printf("Commitment= %x\n", commitment.BytesCompressed())
 			fmt.Printf("Challenge= %x\n", challengeBytes)
 			fmt.Printf("Response= %x\n", responseBytes)
+		} else if *pkey == "proof" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skScalar := new(ff.Scalar)
+			skScalar.SetBytes(sk)
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error loading input file:", err)
+				os.Exit(1)
+			}
+
+			random := randomScalar()
+
+			commitment := generateCommitment(random, bls12381.G2Generator())
+			challenge := generateChallenge(commitment, msg)
+			response := generateResponse(random, skScalar, challenge)
+
+			responseBytes, err := response.MarshalBinary()
+			if err != nil {
+				fmt.Println("Error serializing response:", err)
+				os.Exit(1)
+			}
+
+			challengeBytes, err := challenge.MarshalBinary()
+			if err != nil {
+				fmt.Println("Error serializing challenge:", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Commitment= %x\n", commitment.BytesCompressed())
+			fmt.Printf("Challenge= %x\n", challengeBytes)
+			fmt.Printf("Response= %x\n", responseBytes)
 		} else if *pkey == "verify-proof" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -15010,6 +15050,52 @@ Subcommands:
 				log.Fatalf("Error decoding challenge: %v", err)
 			}
 			challenge.SetBytes(challengeBytes)
+
+			responseBytes, err := hex.DecodeString(*responseFlag)
+			if err != nil {
+				log.Fatalf("Error decoding response: %v", err)
+			}
+			response.SetBytes(responseBytes)
+
+			isValid := verifyProof(commitment, challenge, response, publicKey)
+			if isValid {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+				os.Exit(1)
+			}
+		} else if *pkey == "verify-proof-message" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bls12381.G2
+			pubKey.SetBytes(pk)
+
+			publicKey := generatePublicKeyForUserBLS(&pubKey, *id)
+
+			commitment := new(bls12381.G2)
+			challenge := new(ff.Scalar)
+			response := new(ff.Scalar)
+
+			commitmentBytes, err := hex.DecodeString(*commitmentFlag)
+			if err != nil {
+				log.Fatalf("Error decoding commitment: %v", err)
+			}
+			err = commitment.SetBytes(commitmentBytes)
+			if err != nil {
+				log.Fatalf("Error deserializing commitment: %v", err)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error loading input file:", err)
+				os.Exit(1)
+			}
+
+			challenge = generateChallenge(commitment, msg)
 
 			responseBytes, err := hex.DecodeString(*responseFlag)
 			if err != nil {
@@ -26862,9 +26948,19 @@ func generateChallenge(commitment *bls12381.G2, message []byte) *ff.Scalar {
 	return challenge
 }
 
+/*
 func generateResponse(secret *ff.Scalar, challenge *ff.Scalar) *ff.Scalar {
 	response := new(ff.Scalar)
 	response.Mul(secret, challenge)
+	return response
+}
+*/
+
+func generateResponse(r, secret, challenge *ff.Scalar) *ff.Scalar {
+	tmp := new(ff.Scalar)
+	tmp.Mul(challenge, secret)
+	response := new(ff.Scalar)
+	response.Add(r, tmp)
 	return response
 }
 
@@ -26881,7 +26977,6 @@ func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Sca
 
 	return leftPair.IsEqual(rightPair)
 }
-*/
 
 func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Scalar, publicKey *bls12381.G2) bool {
 	left := new(bls12381.G1)
@@ -26891,6 +26986,21 @@ func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Sca
 	right := new(bls12381.G2)
 	right.Add(commitment, new(bls12381.G2))
 	right.ScalarMult(challenge, publicKey)
+	rightPair := bls12381.Pair(bls12381.G1Generator(), right)
+
+	return leftPair.IsEqual(rightPair)
+}
+*/
+
+func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Scalar, publicKey *bls12381.G2) bool {
+	left := new(bls12381.G1)
+	left.ScalarMult(response, bls12381.G1Generator())
+	leftPair := bls12381.Pair(left, bls12381.G2Generator())
+
+	right := new(bls12381.G2)
+	tmp := new(bls12381.G2)
+	tmp.ScalarMult(challenge, publicKey)
+	right.Add(commitment, tmp)
 	rightPair := bls12381.Pair(bls12381.G1Generator(), right)
 
 	return leftPair.IsEqual(rightPair)
