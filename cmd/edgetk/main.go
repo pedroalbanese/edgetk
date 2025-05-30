@@ -328,7 +328,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.7-beta  22 May 2025")
+		fmt.Println("EDGE Toolkit v1.5.7-beta  30 May 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -670,7 +670,7 @@ Subcommands:
 		}
 	}
 
-	if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bls12381") && *pwd == "" {
+	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bls12381") && *pwd == "" {
 		file, err := os.Open(*master)
 		if err != nil {
 			log.Fatal(err)
@@ -701,7 +701,7 @@ Subcommands:
 		*pwd2 = ""
 	}
 
-	if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bls12381") && *pwd2 == "" {
+	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bls12381") && *pwd2 == "" {
 		print("UserKey Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd2 = string(pass)
@@ -709,7 +709,7 @@ Subcommands:
 		*pwd2 = ""
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "proof" || *pkey == "aggregate-vote-proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "sign-blinded" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "proof" || *pkey == "aggregate-vote-proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -14024,7 +14024,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "BLS12381") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "sign" || *pkey == "sign-blinded" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-signatures" || *pkey == "verify-aggregate" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "verify-aggregate-vote" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "verify-proof-message" || *pkey == "blind" || *pkey == "unblind" || *pkey == "verify-blinded" || *pkey == "unblind-signature" || *pkey == "count" || *pkey == "input" || *pkey == "count-total" || *pkey == "add" || *pkey == "sum" || *pkey == "hash" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "BLS12381") && (*pkey == "keygen" || *pkey == "keygen-blinded" || *pkey == "setup" || *pkey == "sign" || *pkey == "sign-blinded" || *pkey == "aggregate" || *pkey == "aggregate-proof" || *pkey == "aggregate-signatures" || *pkey == "verify-aggregate" || *pkey == "aggregate-vote" || *pkey == "aggregate-vote-encrypted" || *pkey == "aggregate-vote-audit" || *pkey == "aggregate-vote-proof" || *pkey == "verify-aggregate-vote" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "verify-proof-message" || *pkey == "blind" || *pkey == "unblind" || *pkey == "verify-blinded" || *pkey == "unblind-signature" || *pkey == "count" || *pkey == "input" || *pkey == "count-total" || *pkey == "add" || *pkey == "sum" || *pkey == "hash" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -14039,7 +14039,7 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
-		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381 MASTER KEY") {
+		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381 BLINDED SECRET KEY" || blockType == "BLS12381 MASTER KEY") {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -14068,8 +14068,18 @@ Subcommands:
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-			} else {
+			} else if blockType == "BLS12381 SECRET KEY" {
 				keyPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: keyBytes}
+				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+				fmt.Print(keyPEMText)
+				fmt.Println("SecretKey:")
+				p := fmt.Sprintf("%x", keyBytes)
+				splitz := SplitSubN(p, 2)
+				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				}
+			} else {
+				keyPEM := pem.Block{Type: "BLS12381 BLINDED SECRET KEY", Bytes: keyBytes}
 				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
 				fmt.Print(keyPEMText)
 				fmt.Println("SecretKey:")
@@ -14353,6 +14363,53 @@ Subcommands:
 				return
 			}
 			fmt.Printf("Private Key saved to: %s\n", privPath)
+		} else if *pkey == "keygen-blinded" {
+			sk, err := readKeyFromPEM(*master, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			skScalar := new(ff.Scalar)
+			skScalar.SetBytes(sk)
+
+			privateKey := generatePrivateKeyForUserBLS(skScalar, *id)
+
+			if *factorb == "" {
+				fmt.Println("Error: blinding factor must be provided for blinded key generation")
+				os.Exit(1)
+			}
+
+			factor := new(ff.Scalar)
+			if err := factor.UnmarshalBinary([]byte(*factorb)); err != nil {
+				fmt.Println("Error parsing blinding factor:", err)
+				os.Exit(1)
+			}
+
+			factorInv := new(ff.Scalar)
+			factorInv.Inv(factor)
+
+			blindedKey := new(ff.Scalar)
+			blindedKey.Mul(privateKey, factorInv)
+
+			blindedKeyBytes, _ := blindedKey.MarshalBinary()
+
+			block := &pem.Block{
+				Type:  "BLS12381 BLINDED SECRET KEY",
+				Bytes: blindedKeyBytes,
+			}
+
+			if err := savePEMToFile2(*priv, block, true); err != nil {
+				fmt.Println("Error saving blinded private key:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				return
+			}
+			fmt.Printf("Blinded Private Key saved to: %s\n", privPath)
 		} else if *pkey == "sign" {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
@@ -14369,7 +14426,7 @@ Subcommands:
 			}
 			originalG1 := hashToG1(msg)
 
-			signature := signMessageBLS(originalG1.BytesCompressed(), skScalar)
+			signature := signMessageBLS(originalG1, skScalar)
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
 		} else if *pkey == "verify" {
@@ -14403,7 +14460,7 @@ Subcommands:
 				log.Fatalf("Error deserializing signature: %v", err)
 			}
 
-			if verifySignatureBLS(originalG1.BytesCompressed(), signatureCopy, publicKey) {
+			if verifySignatureBLS(originalG1, signatureCopy, publicKey) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -14419,13 +14476,28 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(sk)
 
-			msg, err := ioutil.ReadAll(inputfile)
+			msgBytes, err := ioutil.ReadAll(inputfile)
 			if err != nil {
-				fmt.Println("Error getting input file:", err)
+				fmt.Println("Error reading input file:", err)
 				os.Exit(1)
 			}
 
-			signature := signMessageBLS(msg, skScalar)
+			cleanedHex := strings.TrimSpace(string(msgBytes))
+			blindedPointBytes, err := hex.DecodeString(cleanedHex)
+			if err != nil {
+				fmt.Println("Error decoding blinded message (hex):", err)
+				os.Exit(1)
+			}
+
+			blindedPoint := new(bls12381.G1)
+			err = blindedPoint.SetBytes(blindedPointBytes)
+			if err != nil {
+				fmt.Println("Error deserializing blinded G1 point:", err)
+				os.Exit(1)
+			}
+
+			signature := new(bls12381.G1)
+			signature.ScalarMult(skScalar, blindedPoint)
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
 		} else if *pkey == "verify-blinded" {
@@ -14436,13 +14508,31 @@ Subcommands:
 			}
 
 			var pubKey bls12381.G2
-			pubKey.SetBytes(pk)
+			err = pubKey.SetBytes(pk)
+			if err != nil {
+				fmt.Println("Error deserializing public key:", err)
+				os.Exit(1)
+			}
 
 			publicKey := generatePublicKeyForUserBLS(&pubKey, *id)
 
-			msg, err := ioutil.ReadAll(inputfile)
+			msgBytes, err := ioutil.ReadAll(inputfile)
 			if err != nil {
 				fmt.Println("Error reading input file:", err)
+				os.Exit(1)
+			}
+
+			cleanedHex := strings.TrimSpace(string(msgBytes))
+			blindedPointBytes, err := hex.DecodeString(cleanedHex)
+			if err != nil {
+				fmt.Println("Error decoding blinded message (hex):", err)
+				os.Exit(1)
+			}
+
+			blindedPoint := new(bls12381.G1)
+			err = blindedPoint.SetBytes(blindedPointBytes)
+			if err != nil {
+				fmt.Println("Error deserializing blinded G1 point:", err)
 				os.Exit(1)
 			}
 
@@ -14464,7 +14554,9 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			if verifySignatureBLS(msg, blindedSignature, publicKey) {
+			valid := verifySignatureBLS(blindedPoint, blindedSignature, publicKey)
+
+			if valid {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -14488,7 +14580,7 @@ Subcommands:
 
 			originalG1 := hashToG1(msg)
 
-			signature := signMessageBLS(originalG1.BytesCompressed(), skScalar)
+			signature := signMessageBLS(originalG1, skScalar)
 			fmt.Println("Individual_BLS12381("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
 
 			aggregatedSignature := signature
@@ -14576,7 +14668,7 @@ Subcommands:
 
 			originalG1 := hashToG1(msg)
 
-			signature := signMessageBLS(originalG1.BytesCompressed(), skScalar)
+			signature := signMessageBLS(originalG1, skScalar)
 			fmt.Println("Individual_BLS12381("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
 
 			random := randomScalar()
@@ -14637,7 +14729,10 @@ Subcommands:
 			blindFactor := generateBlindFactor()
 			blindedMessage := blindMessage(originalG1, blindFactor)
 
-			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
+			signature := signMessageBLS(originalG1, skScalar)
+			fmt.Println("Original_Signature("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
+
+			blindedSignature := signMessageBLS(blindedMessage, skScalar)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
 			aggregatedSignature := blindedSignature
@@ -14687,7 +14782,7 @@ Subcommands:
 			blindFactor := generateBlindFactor()
 			blindedMessage := blindMessage(originalG1, blindFactor)
 
-			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
+			blindedSignature := signMessageBLS(blindedMessage, skScalar)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
 			random := randomScalar()
@@ -14778,7 +14873,7 @@ Subcommands:
 				}
 			}
 
-			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
+			blindedSignature := signMessageBLS(blindedMessage, skScalar)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
 			random := randomScalar()
@@ -14858,6 +14953,15 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(sk)
 
+			factor := new(ff.Scalar)
+			if err := factor.UnmarshalBinary([]byte(*factorb)); err != nil {
+				fmt.Println("Error parsing blinding factor:", err)
+				os.Exit(1)
+			}
+
+			unblindedKey := new(ff.Scalar)
+			unblindedKey.Mul(skScalar, factor)
+
 			msg, err := ioutil.ReadAll(inputfile)
 			if err != nil {
 				fmt.Println("Error loading input file:", err)
@@ -14889,7 +14993,7 @@ Subcommands:
 
 						commandHash := hashToG1([]byte(*candidates))
 
-						commandSignature := signMessageBLS(commandHash.BytesCompressed(), skScalar)
+						commandSignature := signMessageBLS(commandHash, unblindedKey)
 
 						fmt.Println("Command_Signature("+*candidates+")=", hex.EncodeToString(commandSignature.BytesCompressed()))
 
@@ -14903,13 +15007,13 @@ Subcommands:
 				}
 			}
 
-			blindedSignature := signMessageBLS(blindedMessage.BytesCompressed(), skScalar)
+			blindedSignature := signMessageBLS(blindedMessage, unblindedKey)
 			fmt.Println("Blinded_Signature("+inputdesc+")=", hex.EncodeToString(blindedSignature.BytesCompressed()))
 
 			random := randomScalar()
 			commitment := generateCommitment(random, bls12381.G2Generator())
 			challenge := generateChallenge(commitment, blindedMessage.BytesCompressed())
-			response := generateResponse(random, skScalar, challenge)
+			response := generateResponse(random, unblindedKey, challenge)
 
 			aggregatedSignature := blindedSignature
 			if *sig != "" {
@@ -14965,7 +15069,13 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			C1, C2, encryptedBlindFactor := encryptBLS(string(blindFactorBytes), userPublicKey, myHash)
+			factorInv := new(ff.Scalar)
+			factorInv.Inv(factor)
+
+			blindedUserPublicKey := new(bls12381.G2)
+			blindedUserPublicKey.ScalarMult(factorInv, userPublicKey)
+
+			C1, C2, encryptedBlindFactor := encryptBLS(string(blindFactorBytes), blindedUserPublicKey, myHash)
 			serializedBlindFactor1, err := serializeToASN1BLS(C1, C2, encryptedBlindFactor)
 			if err != nil {
 				log.Fatal("Failed to serialize encrypted blind factor: " + err.Error())
@@ -26668,7 +26778,10 @@ func ChangePrivateKeyPassword(keyFile, oldPassword, newPassword string) error {
 }
 
 func hashToPoint(id string) *big.Int {
-	hash := bmw.Sum256([]byte(id))
+	hash, err := lyra2re2.Sum([]byte("CRYPTOGRAPHIC_DOMAIN|" + id))
+	if err != nil {
+		log.Fatal(err)
+	}
 	hashInt := new(big.Int).SetBytes(hash[:])
 
 	return hashInt
@@ -26769,26 +26882,8 @@ func generatePublicKeyForUserBLSG1(masterPublicKey *bls12381.G1, userID string) 
 
 /*
 func signMessageBLS(message []byte, privKey *ff.Scalar) *bls12381.G1 {
-	hashMessage := new(bls12381.G1)
-	hashMessage.Hash(message, nil)
-
-	signature := new(bls12381.G1)
-	signature.ScalarMult(privKey, hashMessage)
-	return signature
-}
-
-func verifySignatureBLS(message []byte, signature *bls12381.G1, pubKey *bls12381.G2) bool {
-	hashMessage := new(bls12381.G1)
-	hashMessage.Hash(message, nil)
-
-	e1 := bls12381.Pair(signature, bls12381.G2Generator())
-	e2 := bls12381.Pair(hashMessage, pubKey)
-	return e1.IsEqual(e2)
-}
-*/
-
-func signMessageBLS(message []byte, privKey *ff.Scalar) *bls12381.G1 {
 	point := new(bls12381.G1)
+	point.Hash(message, nil)
 
 	signature := new(bls12381.G1)
 	signature.ScalarMult(privKey, point)
@@ -26798,10 +26893,24 @@ func signMessageBLS(message []byte, privKey *ff.Scalar) *bls12381.G1 {
 
 func verifySignatureBLS(message []byte, signature *bls12381.G1, pubKey *bls12381.G2) bool {
 	point := new(bls12381.G1)
+	point.Hash(message, nil)
 
 	e1 := bls12381.Pair(signature, bls12381.G2Generator())
 	e2 := bls12381.Pair(point, pubKey)
 
+	return e1.IsEqual(e2)
+}
+*/
+
+func signMessageBLS(point *bls12381.G1, privKey *ff.Scalar) *bls12381.G1 {
+	signature := new(bls12381.G1)
+	signature.ScalarMult(privKey, point)
+	return signature
+}
+
+func verifySignatureBLS(point *bls12381.G1, signature *bls12381.G1, pubKey *bls12381.G2) bool {
+	e1 := bls12381.Pair(signature, bls12381.G2Generator())
+	e2 := bls12381.Pair(point, pubKey)
 	return e1.IsEqual(e2)
 }
 
@@ -26898,25 +27007,6 @@ func hashToG1(message []byte) *bls12381.G1 {
 	return hashMessage
 }
 
-/*
-func verifyAggregateSignatureVote(blindedMessages []*bls12381.G1, aggSignature *bls12381.G1, pubKeys []*bls12381.G2) bool {
-	hashMessages := make([]*bls12381.G1, len(blindedMessages))
-	for i, msg := range blindedMessages {
-		hashMessages[i] = new(bls12381.G1)
-		hashMessages[i].Hash(msg.Bytes(), nil)
-	}
-
-	e1 := bls12381.Pair(aggSignature, bls12381.G2Generator())
-	e2 := bls12381.Pair(hashMessages[0], pubKeys[0])
-
-	for i := 1; i < len(hashMessages); i++ {
-		e2.Mul(e2, bls12381.Pair(hashMessages[i], pubKeys[i]))
-	}
-
-	return e1.IsEqual(e2)
-}
-*/
-
 func verifyAggregateSignatureVote(blindedMessages []*bls12381.G1, aggSignature *bls12381.G1, pubKeys []*bls12381.G2) bool {
 	if len(blindedMessages) != len(pubKeys) {
 		fmt.Println("Mismatch between number of messages and public keys.")
@@ -26948,14 +27038,6 @@ func generateChallenge(commitment *bls12381.G2, message []byte) *ff.Scalar {
 	return challenge
 }
 
-/*
-func generateResponse(secret *ff.Scalar, challenge *ff.Scalar) *ff.Scalar {
-	response := new(ff.Scalar)
-	response.Mul(secret, challenge)
-	return response
-}
-*/
-
 func generateResponse(r, secret, challenge *ff.Scalar) *ff.Scalar {
 	tmp := new(ff.Scalar)
 	tmp.Mul(challenge, secret)
@@ -26963,34 +27045,6 @@ func generateResponse(r, secret, challenge *ff.Scalar) *ff.Scalar {
 	response.Add(r, tmp)
 	return response
 }
-
-/*
-func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Scalar, publicKey *bls12381.G2) bool {
-	left := new(bls12381.G2)
-	left.ScalarMult(response, bls12381.G2Generator())
-	leftPair := bls12381.Pair(bls12381.G1Generator(), left)
-
-	right := new(bls12381.G2)
-	right.Add(commitment, new(bls12381.G2))
-	right.ScalarMult(challenge, publicKey)
-	rightPair := bls12381.Pair(bls12381.G1Generator(), right)
-
-	return leftPair.IsEqual(rightPair)
-}
-
-func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Scalar, publicKey *bls12381.G2) bool {
-	left := new(bls12381.G1)
-	left.ScalarMult(response, bls12381.G1Generator())
-	leftPair := bls12381.Pair(left, bls12381.G2Generator())
-
-	right := new(bls12381.G2)
-	right.Add(commitment, new(bls12381.G2))
-	right.ScalarMult(challenge, publicKey)
-	rightPair := bls12381.Pair(bls12381.G1Generator(), right)
-
-	return leftPair.IsEqual(rightPair)
-}
-*/
 
 func verifyProof(commitment *bls12381.G2, challenge *ff.Scalar, response *ff.Scalar, publicKey *bls12381.G2) bool {
 	left := new(bls12381.G1)
