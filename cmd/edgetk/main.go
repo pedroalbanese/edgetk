@@ -19,6 +19,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"compress/zlib"
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
@@ -117,6 +118,7 @@ import (
 	"github.com/pedroalbanese/bmw"
 	bn256i "github.com/pedroalbanese/bn256"
 	"github.com/pedroalbanese/brainpool"
+	"github.com/pedroalbanese/brotli"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast256"
 	"github.com/pedroalbanese/cast5"
@@ -233,6 +235,7 @@ var (
 	b85            = flag.String("base85", "", "Encode binary string to Base85 format and vice-versa. [enc|dec]")
 	b64            = flag.String("base64", "", "Encode binary string to Base64 format and vice-versa. [enc|dec]")
 	b32            = flag.String("base32", "", "Encode binary string to Base32 format and vice-versa. [enc|dec]")
+	zz             = flag.String("zlib", "", "Compress string with zlib algorithm and vice-versa. [enc|dec]")
 	days           = flag.Int("days", 0, "Defines the validity of the certificate from the date of creation.")
 	factorb        = flag.String("blind-factor", "", "Blind Factor in hexadecimal. (for Blind Signatures)")
 	factorPStr     = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
@@ -328,7 +331,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.7-beta  30 May 2025")
+		fmt.Println("EDGE Toolkit v1.5.7-beta  22 May 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -1522,6 +1525,33 @@ Subcommands:
 					os.Stdout.Write(sDec)
 				}
 			}
+		}
+	}
+
+	if *zz == "enc" || *zz == "dec" {
+		var inputData []byte
+
+		data, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			fmt.Println("Error reading the file:", err)
+			os.Exit(1)
+		}
+		inputData = data
+
+		if *zz == "enc" {
+			compressed, err := compressZlib(inputData)
+			if err != nil {
+				fmt.Println("Compression error:", err)
+				os.Exit(1)
+			}
+			os.Stdout.Write(compressed)
+		} else {
+			decompressed, err := decompressZlib(inputData)
+			if err != nil {
+				fmt.Println("Decompression error:", err)
+				os.Exit(1)
+			}
+			os.Stdout.Write(decompressed)
 		}
 	}
 
@@ -27403,6 +27433,44 @@ func decodeHexDump(input string) ([]byte, error) {
 	}
 
 	return decoded, nil
+}
+
+func compressZlib(data []byte) ([]byte, error) {
+	var b bytes.Buffer
+	w := zlib.NewWriter(&b)
+	_, err := w.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	w.Close()
+	return b.Bytes(), nil
+}
+
+func decompressZlib(data []byte) ([]byte, error) {
+	b := bytes.NewReader(data)
+	r, err := zlib.NewReader(b)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return ioutil.ReadAll(r)
+}
+
+func compressBrotli(data []byte) ([]byte, error) {
+	var b bytes.Buffer
+	w := brotli.NewWriter(&b)
+	_, err := w.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	w.Close()
+	return b.Bytes(), nil
+}
+
+func decompressBrotli(data []byte) ([]byte, error) {
+	b := bytes.NewReader(data)
+	r := brotli.NewReader(b)
+	return ioutil.ReadAll(r)
 }
 
 func zeroByteSlice() []byte {
