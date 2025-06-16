@@ -901,7 +901,6 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
    * Base64 encoder/decoder
    * Base85 encoder/decoder
    * Zlib compression
-   * Brotli compression
    * Privacy-Enhanced Mail (PEM format)
    * RandomArt (OpenSSH-like)
 
