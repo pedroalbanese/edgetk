@@ -1269,16 +1269,9 @@ echo $?
 echo $?
 ```
 
-##### Key Agreement (ECDH):
-
-- Perform an Elliptic Curve Diffie-Hellman (ECDH) key agreement to derive a shared secret with a peer, using the user’s private key and the master public key.
-```sh
-./edgetk -pkey derive -algorithm bls12381 -key "Private.pem" [-pass "pass"] -pub "MasterPublic.pem" -id "PeerUID"
-```
-
 ##### Digital Signature Generation:
 
-- Generate a BLS (Boneh-Lynn-Shacham) digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
+- Generate a digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
 ```sh
 ./edgetk -pkey sign -algorithm bls12381 -key "Private.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
