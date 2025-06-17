@@ -24,6 +24,7 @@ require (
 	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
 	github.com/pedroalbanese/bn256 v0.0.0-20241211180157-f48a503b4cc5
 	github.com/pedroalbanese/brainpool v0.0.0-20220826183126-be5c94625a31
+	github.com/pedroalbanese/brotli v1.0.4
 	github.com/pedroalbanese/camellia v0.0.0-20220911183557-30cc05c20118
 	github.com/pedroalbanese/cast256 v0.0.0-20240325185652-e35cf700d5fe
 	github.com/pedroalbanese/cast5 v0.0.0-20220924202825-3e5c3c00277c
@@ -110,7 +111,7 @@ require (
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/zeebo/blake3 v0.2.3
 	golang.org/x/crypto v0.36.0
-	golang.org/x/term v0.29.0
+	golang.org/x/term v0.32.0
 )
 
 require (
@@ -123,7 +124,7 @@ require (
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 )
 
-replace golang.org/x/crypto => golang.org/x/crypto v0.35.0
+replace golang.org/x/crypto => golang.org/x/crypto v0.38.0
