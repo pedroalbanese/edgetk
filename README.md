@@ -51,20 +51,21 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 37. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
 38. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 39. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-40. RFC 1423: Privacy Enhancement for Internet Electronic Mail
-41. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-42. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-43. RFC 2612: The CAST-256 Encryption Algorithm
-44. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-45. RFC 4009: The SEED Encryption Algorithm (KISA)
-46. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-47. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-48. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-49. RFC 4543: Galois Message Authentication Code (GMAC)
-50. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-51. RFC 4648: Base16, Base32, and Base64 Data Encodings
-52. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-53. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+40. LNCS 1838 - A One Round Protocol for Tripartite Diffie-Hellman
+41. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+42. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+43. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+44. RFC 2612: The CAST-256 Encryption Algorithm
+45. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+46. RFC 4009: The SEED Encryption Algorithm (KISA)
+47. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+48. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+49. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+50. RFC 4543: Galois Message Authentication Code (GMAC)
+51. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+52. RFC 4648: Base16, Base32, and Base64 Data Encodings
+53. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+54. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 50. RFC 5297: Synthetic Initialization Vector (SIV Mode)
 51. RFC 5639: Elliptic Curve Cryptography (ECC) Brainpool Standard Curves
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
