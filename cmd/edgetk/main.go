@@ -12126,8 +12126,8 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V := encryptBF(&pubKey, []byte(*id), []byte(msg))
-			serialized, err := serializeToASN1BF(U, V)
+			U, V, H := encryptBF(&pubKey, []byte(*id), []byte(msg))
+			serialized, err := serializeToASN1BF(U, V, H)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
 			}
@@ -12151,12 +12151,15 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			deserializedU, deserializedV, err := deserializeFromASN1BF(serialized)
+			deserializedU, deserializedV, Hash, err := deserializeFromASN1BF(serialized)
 			if err != nil {
 				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
 			}
 
-			decryptedMessage := decryptBF(deserializedU, skG1, deserializedV)
+			decryptedMessage, valid := decryptBF(deserializedU, skG1, deserializedV, Hash)
+			if !valid {
+				log.Fatal("Message integrity has been compromised!")
+			}
 			fmt.Printf("%s", decryptedMessage)
 		}
 	}
@@ -12653,7 +12656,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			C1, C2, encryptedMessage := encryptBLS(string(msg), &pubKey, myHash)
+			C1, C2, encryptedMessage := encryptBLS(string(msg), &pubKey)
 
 			serialized, err := serializeToASN1BLS(C1, C2, encryptedMessage)
 			if err != nil {
@@ -12680,7 +12683,7 @@ Subcommands:
 				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
 			}
 
-			decryptedMessage := decryptBLS(deserializedC1, deserializedC2, deserializedMessage, skBigInt, myHash)
+			decryptedMessage := decryptBLS(deserializedC1, deserializedC2, deserializedMessage, skBigInt)
 
 			fmt.Printf("%s", decryptedMessage)
 		} else if *pkey == "certgen" {
@@ -13988,7 +13991,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			C1, C2, encryptedMessage := encryptBN(string(msg), &pubKey, myHash)
+			C1, C2, encryptedMessage := encryptBN(string(msg), &pubKey)
 			serialized, err := serializeToASN1(C1, C2, encryptedMessage)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -14014,7 +14017,7 @@ Subcommands:
 				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
 			}
 
-			decryptedMessage := decryptBN(deserializedC1, deserializedC2, deserializedMessage, skBigInt, myHash)
+			decryptedMessage := decryptBN(deserializedC1, deserializedC2, deserializedMessage, skBigInt)
 			fmt.Printf("%s", decryptedMessage)
 		} else if *pkey == "certgen" {
 			sk, err := readKeyFromPEM(*key, true)
@@ -14543,8 +14546,8 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V := encryptBF_BN(&pubKey, []byte(*id), msg)
-			serialized, err := serializeToASN1BF_BN(U, V)
+			U, V, H := encryptBF_BN(&pubKey, []byte(*id), msg)
+			serialized, err := serializeToASN1BF_BN(U, V, H)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
 			}
@@ -14569,12 +14572,15 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			deserializedU, deserializedV, err := deserializeFromASN1BF_BN(serialized)
+			deserializedU, deserializedV, Hash, err := deserializeFromASN1BF_BN(serialized)
 			if err != nil {
 				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
 			}
 
-			decryptedMessage := decryptBF_BN(deserializedU, skG1, deserializedV)
+			decryptedMessage, valid := decryptBF_BN(deserializedU, skG1, deserializedV, Hash)
+			if !valid {
+				log.Fatal("Message integrity has been compromised!")
+			}
 			fmt.Printf("%s", decryptedMessage)
 		}
 	}
@@ -15467,7 +15473,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			C1, C2, encryptedBlindFactor := encryptBLS(string(blindFactorBytes), userPublicKey, myHash)
+			C1, C2, encryptedBlindFactor := encryptBLS(string(blindFactorBytes), userPublicKey)
 			serializedBlindFactor, err := serializeToASN1BLS(C1, C2, encryptedBlindFactor)
 			if err != nil {
 				log.Fatal("Failed to serialize encrypted blind factor: " + err.Error())
@@ -15610,13 +15616,13 @@ Subcommands:
 			blindedUserPublicKey := new(bls12381.G2)
 			blindedUserPublicKey.ScalarMult(factorInv, userPublicKey)
 
-			C1, C2, encryptedBlindFactor := encryptBLS(string(blindFactorBytes), blindedUserPublicKey, myHash)
+			C1, C2, encryptedBlindFactor := encryptBLS(string(blindFactorBytes), blindedUserPublicKey)
 			serializedBlindFactor1, err := serializeToASN1BLS(C1, C2, encryptedBlindFactor)
 			if err != nil {
 				log.Fatal("Failed to serialize encrypted blind factor: " + err.Error())
 			}
 
-			C1, C2, encryptedBlindFactor = encryptBLS(string(blindFactorBytes), auditPublicKey, myHash)
+			C1, C2, encryptedBlindFactor = encryptBLS(string(blindFactorBytes), auditPublicKey)
 			serializedBlindFactor2, err := serializeToASN1BLS(C1, C2, encryptedBlindFactor)
 			if err != nil {
 				log.Fatal("Failed to serialize encrypted blind factor: " + err.Error())
@@ -16405,7 +16411,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			C1, C2, encryptedMessage := encryptBLS(string(msg), userPublicKey, myHash)
+			C1, C2, encryptedMessage := encryptBLS(string(msg), userPublicKey)
 			serialized, err := serializeToASN1BLS(C1, C2, encryptedMessage)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -16431,7 +16437,7 @@ Subcommands:
 				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
 			}
 
-			decryptedMessage := decryptBLS(deserializedC1, deserializedC2, deserializedMessage, skBigInt, myHash)
+			decryptedMessage := decryptBLS(deserializedC1, deserializedC2, deserializedMessage, skBigInt)
 			fmt.Printf("%s", decryptedMessage)
 		}
 	}
@@ -26256,7 +26262,7 @@ func decrypt(y curves.Scalar, K *big.Int, C curves.Point) *big.Int {
 	return p
 }
 
-func encryptBN(message string, publicKey *bn256i.G2, hashFunc func() hash.Hash) (*bn256i.G1, *big.Int, []byte) {
+func encryptBN(message string, publicKey *bn256i.G2) (*bn256i.G1, *big.Int, []byte) {
 	messageBytes := []byte(message)
 
 	k, err := rand.Int(rand.Reader, bn256i.Order)
@@ -26268,44 +26274,47 @@ func encryptBN(message string, publicKey *bn256i.G2, hashFunc func() hash.Hash) 
 
 	pairingResult := bn256i.Pair(C1, publicKey)
 
-	hashInstance := hashFunc()
-
-	hashInstance.Write(pairingResult.Marshal())
-	sessionKey := hashInstance.Sum(nil)
+	sessionKey, err := lyra2re2.Sum(pairingResult.Marshal())
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	encryptedMessage := make([]byte, len(messageBytes))
 	for i := range messageBytes {
 		encryptedMessage[i] = messageBytes[i] ^ sessionKey[i%len(sessionKey)]
 	}
 
-	hashInstance.Reset()
-	hashInstance.Write(messageBytes)
-	hashInstance.Write(sessionKey[:])
-	hash := hashInstance.Sum(nil)
+	integrityInput := append(sessionKey, messageBytes...)
+	integrityHash, err := lyra2re2.Sum(integrityInput)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	return C1, new(big.Int).SetBytes(hash), encryptedMessage
+	return C1, new(big.Int).SetBytes(integrityHash), encryptedMessage
 }
 
-func decryptBN(C1 *bn256i.G1, C2 *big.Int, encryptedMessage []byte, privateKey *big.Int, hashFunc func() hash.Hash) string {
+func decryptBN(C1 *bn256i.G1, C2 *big.Int, encryptedMessage []byte, privateKey *big.Int) string {
 	C1MulPrivate := new(bn256i.G1).ScalarMult(C1, privateKey)
 
 	pairingResult := bn256i.Pair(C1MulPrivate, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
 
-	hashInstance := hashFunc()
-
-	hashInstance.Write(pairingResult.Marshal())
-	sessionKey := hashInstance.Sum(nil)
+	sessionKey, err := lyra2re2.Sum(pairingResult.Marshal())
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	decryptedMessage := make([]byte, len(encryptedMessage))
 	for i := range encryptedMessage {
 		decryptedMessage[i] = encryptedMessage[i] ^ sessionKey[i%len(sessionKey)]
 	}
 
-	hashInstance.Reset()
-	hashInstance.Write(decryptedMessage)
-	hashInstance.Write(sessionKey[:])
-	hash := hashInstance.Sum(nil)
-	if new(big.Int).SetBytes(C2.Bytes()).Cmp(new(big.Int).SetBytes(hash)) != 0 {
+	integrityInput := append(sessionKey, decryptedMessage...)
+	integrityHash, err := lyra2re2.Sum(integrityInput)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if new(big.Int).SetBytes(integrityHash).Cmp(C2) != 0 {
 		log.Fatal("Message integrity has been compromised!")
 	}
 
@@ -26352,7 +26361,7 @@ func deserializeFromASN1(serialized []byte) (*bn256i.G1, *big.Int, []byte, error
 	return C1, cipher.C2, cipher.C3, nil
 }
 
-func encryptBLS(message string, publicKey *bls12381.G2, hashFunc func() hash.Hash) (*bls12381.G1, *big.Int, []byte) {
+func encryptBLS(message string, publicKey *bls12381.G2) (*bls12381.G1, *big.Int, []byte) {
 	messageBytes := []byte(message)
 
 	order := new(big.Int).SetBytes(bls12381.Order())
@@ -26365,36 +26374,35 @@ func encryptBLS(message string, publicKey *bls12381.G2, hashFunc func() hash.Has
 	kScalar.SetBytes(k.Bytes())
 
 	baseG1 := bls12381.G1Generator()
-
 	C1 := new(bls12381.G1)
 	C1.ScalarMult(kScalar, baseG1)
 
 	pairingResult := bls12381.Pair(C1, publicKey)
-
-	hashInstance := hashFunc()
-
-	pariringResultBytes, err := pairingResult.MarshalBinary()
+	pairingBytes, err := pairingResult.MarshalBinary()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	hashInstance.Write(pariringResultBytes)
-	sessionKey := hashInstance.Sum(nil)
+	sessionKey, err := lyra2re2.Sum(pairingBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	encryptedMessage := make([]byte, len(messageBytes))
 	for i := range messageBytes {
 		encryptedMessage[i] = messageBytes[i] ^ sessionKey[i%len(sessionKey)]
 	}
 
-	hashInstance.Reset()
-	hashInstance.Write(messageBytes)
-	hashInstance.Write(sessionKey[:])
-	hash := hashInstance.Sum(nil)
+	integrityInput := append(sessionKey, messageBytes...)
+	integrityHash, err := lyra2re2.Sum(integrityInput)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	return C1, new(big.Int).SetBytes(hash), encryptedMessage
+	return C1, new(big.Int).SetBytes(integrityHash), encryptedMessage
 }
 
-func decryptBLS(C1 *bls12381.G1, C2 *big.Int, encryptedMessage []byte, privateKey *big.Int, hashFunc func() hash.Hash) string {
+func decryptBLS(C1 *bls12381.G1, C2 *big.Int, encryptedMessage []byte, privateKey *big.Int) string {
 	skScalar := new(bls12381.Scalar)
 	skScalar.SetBytes(privateKey.Bytes())
 
@@ -26402,27 +26410,27 @@ func decryptBLS(C1 *bls12381.G1, C2 *big.Int, encryptedMessage []byte, privateKe
 	C1MulPrivate.ScalarMult(skScalar, C1)
 
 	pairingResult := bls12381.Pair(C1MulPrivate, bls12381.G2Generator())
-
-	hashInstance := hashFunc()
-
-	pariringResultBytes, err := pairingResult.MarshalBinary()
+	pairingBytes, err := pairingResult.MarshalBinary()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	hashInstance.Write(pariringResultBytes)
-	sessionKey := hashInstance.Sum(nil)
+	sessionKey, err := lyra2re2.Sum(pairingBytes)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	decryptedMessage := make([]byte, len(encryptedMessage))
 	for i := range encryptedMessage {
 		decryptedMessage[i] = encryptedMessage[i] ^ sessionKey[i%len(sessionKey)]
 	}
 
-	hashInstance.Reset()
-	hashInstance.Write(decryptedMessage)
-	hashInstance.Write(sessionKey[:])
-	hash := hashInstance.Sum(nil)
-	if new(big.Int).SetBytes(C2.Bytes()).Cmp(new(big.Int).SetBytes(hash)) != 0 {
+	integrityInput := append(sessionKey, decryptedMessage...)
+	integrityHash, err := lyra2re2.Sum(integrityInput)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if new(big.Int).SetBytes(integrityHash).Cmp(C2) != 0 {
 		log.Fatal("Message integrity has been compromised!")
 	}
 
@@ -26472,12 +26480,14 @@ func deserializeFromASN1BLS(serialized []byte) (*bls12381.G1, *big.Int, []byte, 
 type CiphertextBF struct {
 	U []byte
 	V []byte
+	H []byte
 }
 
-func serializeToASN1BF_BN(U *bn256i.G2, V []byte) ([]byte, error) {
+func serializeToASN1BF_BN(U *bn256i.G2, V, H []byte) ([]byte, error) {
 	cipher := CiphertextBF{
 		U: U.Marshal(),
 		V: V,
+		H: H,
 	}
 
 	serialized, err := asn1.Marshal(cipher)
@@ -26488,27 +26498,28 @@ func serializeToASN1BF_BN(U *bn256i.G2, V []byte) ([]byte, error) {
 	return serialized, nil
 }
 
-func deserializeFromASN1BF_BN(serialized []byte) (*bn256i.G2, []byte, error) {
+func deserializeFromASN1BF_BN(serialized []byte) (*bn256i.G2, []byte, []byte, error) {
 	var cipher CiphertextBF
 
 	_, err := asn1.Unmarshal(serialized, &cipher)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	U := new(bn256i.G2)
 	_, err = U.Unmarshal(cipher.U)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return U, cipher.V, nil
+	return U, cipher.V, cipher.H, nil
 }
 
-func serializeToASN1BF(U *bls12381.G2, V []byte) ([]byte, error) {
+func serializeToASN1BF(U *bls12381.G2, V, H []byte) ([]byte, error) {
 	cipher := CiphertextBF{
 		U: U.BytesCompressed(),
 		V: V,
+		H: H,
 	}
 
 	serialized, err := asn1.Marshal(cipher)
@@ -26519,21 +26530,21 @@ func serializeToASN1BF(U *bls12381.G2, V []byte) ([]byte, error) {
 	return serialized, nil
 }
 
-func deserializeFromASN1BF(serialized []byte) (*bls12381.G2, []byte, error) {
+func deserializeFromASN1BF(serialized []byte) (*bls12381.G2, []byte, []byte, error) {
 	var cipher CiphertextBF
 
 	_, err := asn1.Unmarshal(serialized, &cipher)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	U := new(bls12381.G2)
 	_ = U.SetBytes(cipher.U)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
-	return U, cipher.V, nil
+	return U, cipher.V, cipher.H, nil
 }
 
 type Certificate struct {
@@ -27397,7 +27408,10 @@ func generateMasterPublicKey(masterKey *big.Int) *bn256i.G2 {
 }
 
 func hashToScalar(ID string) *ff.Scalar {
-	hash := bmw.Sum256([]byte(ID))
+	hash, err := lyra2re2.Sum([]byte(ID))
+	if err != nil {
+		log.Fatal(err)
+	}
 	hashInt := new(big.Int).SetBytes(hash[:])
 
 	scalar := new(ff.Scalar)
@@ -27607,7 +27621,7 @@ func verifyBF(id []byte, mpk *bls12381.G2, msg []byte, sig *bls12381.G1) bool {
 	return left.IsEqual(right)
 }
 
-func encryptBF(P_pub *bls12381.G2, id []byte, M []byte) (*bls12381.G2, []byte) {
+func encryptBF(P_pub *bls12381.G2, id []byte, M []byte) (*bls12381.G2, []byte, []byte) {
 	r := new(ff.Scalar)
 	r.Random(rand.Reader)
 
@@ -27620,24 +27634,33 @@ func encryptBF(P_pub *bls12381.G2, id []byte, M []byte) (*bls12381.G2, []byte) {
 	pair.Exp(pair, r)
 
 	k, _ := pair.MarshalBinary()
+	S, _ := lyra2re2.Sum(k)
 	V := make([]byte, len(M))
 	for i := range M {
-		V[i] = M[i] ^ k[i%len(k)]
+		V[i] = M[i] ^ S[i%len(S)]
 	}
 
-	return U, V
+	hInput := append(S, M...)
+	H, _ := lyra2re2.Sum(hInput)
+
+	return U, V, H
 }
 
-func decryptBF(U *bls12381.G2, d_ID *bls12381.G1, V []byte) []byte {
+func decryptBF(U *bls12381.G2, d_ID *bls12381.G1, V, H []byte) ([]byte, bool) {
 	pair := bls12381.Pair(d_ID, U)
 
 	k, _ := pair.MarshalBinary()
+	S, _ := lyra2re2.Sum(k)
 	M := make([]byte, len(V))
 	for i := range V {
-		M[i] = V[i] ^ k[i%len(k)]
+		M[i] = V[i] ^ S[i%len(S)]
 	}
 
-	return M
+	hInput := append(S, M...)
+	Hcheck, _ := lyra2re2.Sum(hInput)
+	valid := bytes.Equal(H, Hcheck)
+
+	return M, valid
 }
 
 func signBF_BN(sk *bn256i.G1, msg []byte) *bn256i.G1 {
@@ -27663,8 +27686,9 @@ func generateCommitment(secret *ff.Scalar, generator *bls12381.G2) *bls12381.G2 
 	return commitment
 }
 
-func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte) (*bn256i.G2, []byte) {
+func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte) (*bn256i.G2, []byte, []byte) {
 	r, _ := rand.Int(rand.Reader, bn256i.Order)
+
 	U := new(bn256i.G2).ScalarBaseMult(r)
 
 	Qid := bn256i.HashG1(id, nil)
@@ -27672,22 +27696,34 @@ func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte) (*bn256i.G2, []byte) {
 	pair.ScalarMult(pair, r)
 
 	k := pair.Marshal()
+	S, _ := lyra2re2.Sum(k)
+
 	V := make([]byte, len(msg))
 	for i := range msg {
-		V[i] = msg[i] ^ k[i%len(k)]
+		V[i] = msg[i] ^ S[i%len(S)]
 	}
-	return U, V
+
+	hInput := append(S, msg...)
+	H, _ := lyra2re2.Sum(hInput)
+
+	return U, V, H
 }
 
-func decryptBF_BN(U *bn256i.G2, sk *bn256i.G1, V []byte) []byte {
+func decryptBF_BN(U *bn256i.G2, sk *bn256i.G1, V, H []byte) ([]byte, bool) {
 	pair := bn256i.Pair(sk, U)
 	k := pair.Marshal()
+	S, _ := lyra2re2.Sum(k)
 
 	M := make([]byte, len(V))
 	for i := range V {
-		M[i] = V[i] ^ k[i%len(k)]
+		M[i] = V[i] ^ S[i%len(S)]
 	}
-	return M
+
+	hInput := append(S, M...)
+	Hcheck, _ := lyra2re2.Sum(hInput)
+	valid := bytes.Equal(H, Hcheck)
+
+	return M, valid
 }
 
 func generateChallenge(commitment *bls12381.G2, message []byte) *ff.Scalar {
