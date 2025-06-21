@@ -330,7 +330,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.7-beta  16 Jun 2025")
+		fmt.Println("EDGE Toolkit v1.5.7-beta  22 Jun 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -348,9 +348,9 @@ Public Key Subcommands:
 
 Public Key Algorithms:
   bign/dbign        eckcdsa           gost2012          sm2[ph]
-  bip0340           ecsdsa            koblitz           sm9sign[ph]
-  bls12381[i][ph]   ed25519[ph]       ml-dsa            sm9encrypt
-  bn256[i][ph]      ed448[ph]         ml-kem            slh-dsa
+  bip0340           ecsdsa            koblitz           sm9sign
+  bls12381[i]       ed25519[ph]       ml-dsa            sm9encrypt
+  bn256[i]          ed448[ph]         ml-kem            slh-dsa
   ecdsa             elgamal           nums/nums-te      x25519
   ecgdsa            ec-elgamal        rsa (default)     x448
 
@@ -593,7 +593,7 @@ Subcommands:
 		os.Exit(3)
 	}
 
-	if (*pkey == "keygen") && (*alg != "sm9encrypt" && *alg != "sm9sign" && *alg != "bn256" && *alg != "bls12381" && *alg != "bls12381v" && *alg != "egphp" && *alg != "elgamalphp") && *pwd == "" {
+	if (*pkey == "keygen") && (*alg != "sm9encrypt" && *alg != "sm9sign" && *alg != "bn256" && *alg != "bls12381" && *alg != "bls12381v" && *alg != "bls12381sign" && *alg != "bls12381encrypt" && *alg != "egphp" && *alg != "elgamalphp") && *pwd == "" {
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
@@ -672,7 +672,7 @@ Subcommands:
 		}
 	}
 
-	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bls12381" || *alg == "bls12381v") && *pwd == "" {
+	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bls12381" || *alg == "bls12381v" || *alg == "bls12381sign" || *alg == "bls12381encrypt") && *pwd == "" {
 		file, err := os.Open(*master)
 		if err != nil {
 			log.Fatal(err)
@@ -703,7 +703,7 @@ Subcommands:
 		*pwd2 = ""
 	}
 
-	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bls12381" || *alg == "bls12381v") && *pwd2 == "" {
+	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bls12381" || *alg == "bls12381v" || *alg == "bls12381sign" || *alg == "bls12381encrypt") && *pwd2 == "" {
 		print("UserKey Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd2 = string(pass)
@@ -7895,7 +7895,7 @@ Subcommands:
 		}
 	}
 
-	if *pkey == "sign" && (strings.ToUpper(*alg) == "SM9SIGN" || strings.ToUpper(*alg) == "SM9SIGNPH") {
+	if *pkey == "sign" && strings.ToUpper(*alg) == "SM9SIGN" {
 		var privPEM []byte
 		file, err := os.Open(*key)
 		if err != nil {
@@ -7907,11 +7907,11 @@ Subcommands:
 		}
 		buf := make([]byte, info.Size())
 		file.Read(buf)
-		var block *pem.Block
-		block, _ = pem.Decode(buf)
+		block, _ := pem.Decode(buf)
 		if block == nil {
-			errors.New("no valid private key found")
+			log.Fatal("no valid private key found")
 		}
+
 		var privKeyBytes []byte
 		if IsEncryptedPEMBlock(block) {
 			privKeyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
@@ -7923,9 +7923,8 @@ Subcommands:
 			privPEM = buf
 		}
 
-		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
-
-		var privKey, _ = smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		privateKeyPemBlock, _ := pem.Decode([]byte(privPEM))
+		privKey, err := smx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -7936,30 +7935,10 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		/*
-			hashed, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading input file:", err)
-				os.Exit(1)
-			}
-		*/
-
-		var hashed []byte
-		if strings.ToUpper(*alg) == "SM9SIGN" {
-			hashed, err = ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading input file:", err)
-				os.Exit(1)
-			}
-		} else {
-			var h hash.Hash
-			h = myHash()
-			_, err = io.Copy(h, inputfile)
-			if err != nil {
-				fmt.Println("Error hashing input file:", err)
-				os.Exit(1)
-			}
-			hashed = h.Sum(nil)
+		hashed, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			fmt.Println("Error reading input file:", err)
+			os.Exit(1)
 		}
 
 		signature, err := sm9.SignASN1(rand.Reader, signPrivateKey, hashed)
@@ -7968,14 +7947,10 @@ Subcommands:
 			os.Exit(1)
 		}
 
-		if strings.ToUpper(*alg) == "SM9SIGN" {
-			fmt.Printf("PureSM9(%s)= %x\n", inputdesc, signature)
-		} else {
-			fmt.Printf("SM9-"+strings.ToUpper(*md)+"(%s)= %x\n", inputdesc, signature)
-		}
+		fmt.Printf("SM9(%s)= %x\n", inputdesc, signature)
 	}
 
-	if *pkey == "verify" && (strings.ToUpper(*alg) == "SM9SIGN" || strings.ToUpper(*alg) == "SM9SIGNPH") {
+	if *pkey == "verify" && strings.ToUpper(*alg) == "SM9SIGN" {
 		fileContent, err := ioutil.ReadFile(*key)
 		if err != nil {
 			fmt.Println("Error reading the file:", err)
@@ -7995,30 +7970,10 @@ Subcommands:
 			return
 		}
 
-		/*
-			hashed, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading input file:", err)
-				os.Exit(1)
-			}
-		*/
-
-		var hashed []byte
-		if strings.ToUpper(*alg) == "SM9SIGN" {
-			hashed, err = ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading input file:", err)
-				os.Exit(1)
-			}
-		} else {
-			var h hash.Hash
-			h = myHash()
-			_, err = io.Copy(h, inputfile)
-			if err != nil {
-				fmt.Println("Error hashing input file:", err)
-				os.Exit(1)
-			}
-			hashed = h.Sum(nil)
+		hashed, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			fmt.Println("Error reading input file:", err)
+			os.Exit(1)
 		}
 
 		signature, err := hex.DecodeString(*sig)
@@ -8964,6 +8919,10 @@ Subcommands:
 						*alg = "BLS12381I"
 					} else if strings.Contains(block.Type, "BLS12381V") {
 						*alg = "BLS12381V"
+					} else if strings.Contains(block.Type, "BLS12381SIGN") {
+						*alg = "BLS12381SIGN"
+					} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
+						*alg = "BLS12381ENCRYPT"
 					} else if strings.Contains(block.Type, "BLS12381") {
 						*alg = "BLS12381"
 					}
@@ -8984,6 +8943,10 @@ Subcommands:
 						*alg = "BLS12381I"
 					} else if strings.Contains(block.Type, "BLS12381V") {
 						*alg = "BLS12381V"
+					} else if strings.Contains(block.Type, "BLS12381SIGN") {
+						*alg = "BLS12381SIGN"
+					} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
+						*alg = "BLS12381ENCRYPT"
 					} else if strings.Contains(block.Type, "BLS12381") {
 						*alg = "BLS12381"
 					}
@@ -9005,6 +8968,10 @@ Subcommands:
 							*alg = "BLS12381I"
 						} else if strings.Contains(block.Type, "BLS12381V") {
 							*alg = "BLS12381V"
+						} else if strings.Contains(block.Type, "BLS12381SIGN") {
+							*alg = "BLS12381SIGN"
+						} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
+							*alg = "BLS12381ENCRYPT"
 						} else if strings.Contains(block.Type, "BLS12381") {
 							*alg = "BLS12381"
 						}
@@ -9339,6 +9306,10 @@ Subcommands:
 			*alg = "BLS12381I"
 		} else if strings.Contains(s, "BLS12381V") {
 			*alg = "BLS12381V"
+		} else if strings.Contains(s, "BLS12381SIGN") {
+			*alg = "BLS12381SIGN"
+		} else if strings.Contains(s, "BLS12381ENCRYPT") {
+			*alg = "BLS12381ENCRYPT"
 		} else if strings.Contains(s, "BLS12381") {
 			*alg = "BLS12381"
 		} else if strings.Contains(s, "EC-ELGAMAL") {
@@ -11819,7 +11790,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "BLS12381") && (*pkey == "setup" || *pkey == "keygen" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "BLS12381" || strings.ToUpper(*alg) == "BLS12381SIGN" || strings.ToUpper(*alg) == "BLS12381ENCRYPT") && (*pkey == "setup" || *pkey == "keygen" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -11834,7 +11805,7 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
-		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381 MASTER KEY") {
+		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381SIGN SECRET KEY" || blockType == "BLS12381ENCRYPT SECRET KEY" || blockType == "BLS12381 MASTER KEY") {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -11865,6 +11836,26 @@ Subcommands:
 				}
 			} else if blockType == "BLS12381 SECRET KEY" {
 				keyPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: keyBytes}
+				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+				fmt.Print(keyPEMText)
+				fmt.Println("SecretKey:")
+				p := fmt.Sprintf("%x", keyBytes)
+				splitz := SplitSubN(p, 2)
+				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				}
+			} else if blockType == "BLS12381SIGN SECRET KEY" {
+				keyPEM := pem.Block{Type: "BLS12381SIGN SECRET KEY", Bytes: keyBytes}
+				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+				fmt.Print(keyPEMText)
+				fmt.Println("SecretKey:")
+				p := fmt.Sprintf("%x", keyBytes)
+				splitz := SplitSubN(p, 2)
+				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				}
+			} else if blockType == "BLS12381ENCRYPT SECRET KEY" {
+				keyPEM := pem.Block{Type: "BLS12381ENCRYPT SECRET KEY", Bytes: keyBytes}
 				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
 				fmt.Print(keyPEMText)
 				fmt.Println("SecretKey:")
@@ -12011,7 +12002,7 @@ Subcommands:
 			fmt.Println(randomArt)
 		}
 
-		if *pkey == "keygen" {
+		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" {
 			sk, err := readKeyFromPEM(*master, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -12026,6 +12017,64 @@ Subcommands:
 
 			block := &pem.Block{
 				Type:  "BLS12381 SECRET KEY",
+				Bytes: privateKeyBytes,
+			}
+
+			if err := savePEMToFile2(*priv, block, true); err != nil {
+				fmt.Println("Error saving private key:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				return
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+		} else if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381ENCRYPT" {
+			sk, err := readKeyFromPEM(*master, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			skScalar := new(ff.Scalar)
+			skScalar.SetBytes(sk)
+
+			privateKey := extract(skScalar, []byte(*id))
+			privateKeyBytes := privateKey.BytesCompressed()
+
+			block := &pem.Block{
+				Type:  "BLS12381ENCRYPT SECRET KEY",
+				Bytes: privateKeyBytes,
+			}
+
+			if err := savePEMToFile2(*priv, block, true); err != nil {
+				fmt.Println("Error saving private key:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting absolute path for private key:", err)
+				return
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+		} else if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381SIGN" {
+			sk, err := readKeyFromPEM(*master, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			skScalar := new(ff.Scalar)
+			skScalar.SetBytes(sk)
+
+			privateKey := extractSM(skScalar, []byte(*id))
+			privateKeyBytes := privateKey.BytesCompressed()
+
+			block := &pem.Block{
+				Type:  "BLS12381SIGN SECRET KEY",
 				Bytes: privateKeyBytes,
 			}
 
@@ -12057,15 +12106,16 @@ Subcommands:
 				fmt.Println("Error getting input file:", err)
 				os.Exit(1)
 			}
-			originalScalar := hashToScalar(string(msg))
-			scalarBytes, err := originalScalar.MarshalBinary()
-			if err != nil {
-				fmt.Println("Error serializing scalar:", err)
-				os.Exit(1)
-			}
-			signature := signBF(skG1, scalarBytes)
 
-			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(signature.BytesCompressed()))
+			h, signature := signSM(skG1, msg)
+
+			asn1Data, err := encodeSignature(h, signature)
+			if err != nil {
+				fmt.Println("Error serializing signature:", err)
+				return
+			}
+
+			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
 		} else if *pkey == "verify" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -12078,12 +12128,6 @@ Subcommands:
 				fmt.Println("Error reading message:", err)
 				os.Exit(1)
 			}
-			originalScalar := hashToScalar(string(msg))
-			scalarBytes, err := originalScalar.MarshalBinary()
-			if err != nil {
-				fmt.Println("Error serializing scalar:", err)
-				os.Exit(1)
-			}
 
 			var pubKey bls12381.G2
 			pubKey.SetBytes(pk)
@@ -12094,13 +12138,13 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			signatureCopy := new(bls12381.G1)
-			err = signatureCopy.SetBytes(sigBytes)
+			decodedH, decodedSig, err := decodeSignature(sigBytes)
 			if err != nil {
-				log.Fatalf("Error deserializing signature: %v", err)
+				fmt.Println("Error deserializing signature:", err)
+				return
 			}
 
-			if verifyBF([]byte(*id), &pubKey, scalarBytes, signatureCopy) {
+			if verifySM(&pubKey, []byte(*id), msg, decodedH, decodedSig) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -12158,7 +12202,7 @@ Subcommands:
 
 			decryptedMessage, valid := decryptBF(deserializedU, skG1, deserializedV, Hash, myHash)
 			if !valid {
-				log.Fatal("Message integrity has been compromised!")
+				log.Fatal("Authentication failed! Message integrity compromised.")
 			}
 			fmt.Printf("%s", decryptedMessage)
 		}
@@ -14261,7 +14305,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "BN256") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "sign" || *pkey == "verify" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "BN256") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -14470,63 +14514,6 @@ Subcommands:
 				return
 			}
 			fmt.Printf("Private Key saved to: %s\n", privPath)
-		} else if *pkey == "sign" {
-			sk, err := readKeyFromPEM(*key, true)
-			if err != nil {
-				fmt.Println("Error loading key:", err)
-				os.Exit(1)
-			}
-			skG1 := new(bn256i.G1)
-			_, err = skG1.Unmarshal(sk)
-			if err != nil {
-				fmt.Println("Error unmarshaling G1 key:", err)
-				os.Exit(1)
-			}
-
-			msg, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error getting input file:", err)
-				os.Exit(1)
-			}
-
-			signature := signBF_BN(skG1, msg)
-
-			fmt.Println("BN256("+inputdesc+")=", hex.EncodeToString(signature.Marshal()))
-		} else if *pkey == "verify" {
-			pk, err := readKeyFromPEM(*key, false)
-			if err != nil {
-				fmt.Println("Error loading key:", err)
-				os.Exit(1)
-			}
-
-			msg, err := ioutil.ReadAll(inputfile)
-			if err != nil {
-				fmt.Println("Error reading message:", err)
-				os.Exit(1)
-			}
-
-			var pubKey bn256i.G2
-			_, err = pubKey.Unmarshal(pk)
-			if err != nil {
-				log.Fatalf("Error deserializing public key: %v", err)
-			}
-
-			sigBytes, err := hex.DecodeString(*sig)
-			if err != nil {
-				fmt.Println("Error decoding signature:", err)
-				os.Exit(1)
-			}
-
-			var signature bn256i.G1
-			signature.Unmarshal(sigBytes)
-
-			if verifyBF_BN([]byte(*id), &pubKey, msg, &signature) {
-				fmt.Println("Verified: true")
-			} else {
-				fmt.Println("Verified: false")
-				os.Exit(1)
-			}
-			os.Exit(0)
 		} else if *pkey == "encrypt" {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -14579,7 +14566,7 @@ Subcommands:
 
 			decryptedMessage, valid := decryptBF_BN(deserializedU, skG1, deserializedV, Hash, myHash)
 			if !valid {
-				log.Fatal("Message integrity has been compromised!")
+				log.Fatal("Authentication failed! Message integrity compromised.")
 			}
 			fmt.Printf("%s", decryptedMessage)
 		}
@@ -27588,31 +27575,12 @@ func extractBN(msk *big.Int, id []byte) *bn256i.G1 {
 	return new(bn256i.G1).ScalarMult(Qid, msk)
 }
 
-func signBF(sk_id *bls12381.G1, msg []byte) *bls12381.G1 {
-	h := hashToScalar(string(msg))
-	sig := new(bls12381.G1)
-	sig.ScalarMult(h, sk_id)
-	return sig
-}
-
-func verifyBF(id []byte, mpk *bls12381.G2, msg []byte, sig *bls12381.G1) bool {
-	h := hashToScalar(string(msg))
-	Hid := hashToG1(id)
-
-	left := bls12381.Pair(sig, bls12381.G2Generator())
-
-	right := bls12381.Pair(Hid, mpk)
-	right.Exp(right, h)
-
-	return left.IsEqual(right)
-}
-
 func deriveKeys(pairRaw []byte, hFunc func() hash.Hash) ([]byte, []byte) {
-	hkdfEnc := hkdf.New(hFunc, pairRaw, nil, []byte("encryption"))
+	hkdfEnc := hkdf.New(hFunc, pairRaw, nil, []byte("IBE:Session-Key/Encryption@v1"))
 	S1 := make([]byte, 32)
 	io.ReadFull(hkdfEnc, S1)
 
-	hkdfMac := hkdf.New(hFunc, pairRaw, nil, []byte("authentication"))
+	hkdfMac := hkdf.New(hFunc, pairRaw, nil, []byte("IBE:Session-Key/Authentication@v1"))
 	S2 := make([]byte, 32)
 	io.ReadFull(hkdfMac, S2)
 
@@ -27667,23 +27635,6 @@ func decryptBF(U *bls12381.G2, d_ID *bls12381.G1, V, T []byte, hFunc func() hash
 	return M, hmac.Equal(T, Tcheck)
 }
 
-func signBF_BN(sk *bn256i.G1, msg []byte) *bn256i.G1 {
-	h := hashToPoint(string(msg))
-	return new(bn256i.G1).ScalarMult(sk, h)
-}
-
-func verifyBF_BN(id []byte, mpk *bn256i.G2, msg []byte, sig *bn256i.G1) bool {
-	h := hashToPoint(string(msg))
-	Hid := bn256i.HashG1(id, nil)
-
-	left := bn256i.Pair(sig, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
-
-	right := bn256i.Pair(Hid, mpk)
-	right.ScalarMult(right, h)
-
-	return left.String() == right.String()
-}
-
 func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte, hFunc func() hash.Hash) (*bn256i.G2, []byte, []byte) {
 	r, _ := rand.Int(rand.Reader, bn256i.Order)
 
@@ -27725,6 +27676,106 @@ func decryptBF_BN(U *bn256i.G2, sk *bn256i.G1, V, T []byte, hFunc func() hash.Ha
 	Tcheck := mac.Sum(nil)
 
 	return M, hmac.Equal(T, Tcheck)
+}
+
+type SignatureSM struct {
+	H []byte `asn1:"tag:0"`
+	S []byte `asn1:"tag:1"`
+}
+
+func extractSM(msk *ff.Scalar, id []byte) *bls12381.G1 {
+	h := hashToScalar(string(id))
+	h.Add(h, msk)
+
+	inv := new(ff.Scalar)
+	inv.Inv(h)
+
+	skid := new(bls12381.G1)
+	skid.ScalarMult(inv, bls12381.G1Generator())
+
+	return skid
+}
+
+func signSM(skid *bls12381.G1, msg []byte) (*ff.Scalar, *bls12381.G1) {
+	r := new(ff.Scalar)
+	r.Random(rand.Reader)
+
+	g := bls12381.Pair(bls12381.G1Generator(), bls12381.G2Generator())
+
+	w := new(bls12381.Gt)
+	w.Exp(g, r)
+
+	wBytes, _ := w.MarshalBinary()
+	h := hashToScalar(string(append(msg, wBytes...)))
+
+	r.Sub(r, h)
+	S := new(bls12381.G1)
+	S.ScalarMult(r, skid)
+
+	return h, S
+}
+
+func verifySM(mpk *bls12381.G2, id []byte, msg []byte, h *ff.Scalar, S *bls12381.G1) bool {
+	Qid := hashToScalar(string(id))
+
+	g := bls12381.Pair(bls12381.G1Generator(), bls12381.G2Generator())
+
+	QidP2 := new(bls12381.G2)
+	QidP2.ScalarMult(Qid, bls12381.G2Generator())
+
+	temp := new(bls12381.G2)
+	temp.Add(mpk, QidP2)
+
+	left := bls12381.Pair(S, temp)
+
+	right := new(bls12381.Gt)
+	right.Exp(g, h)
+
+	wPrime := new(bls12381.Gt)
+	wPrime.Mul(left, right)
+
+	wPrimeBytes, _ := wPrime.MarshalBinary()
+	hPrime := hashToScalar(string(append(msg, wPrimeBytes...)))
+
+	return scalarEqual(h, hPrime)
+}
+
+func encodeSignature(h *ff.Scalar, S *bls12381.G1) ([]byte, error) {
+	hBytes, _ := h.MarshalBinary()
+	SBytes := S.BytesCompressed()
+
+	sig := SignatureSM{
+		H: hBytes,
+		S: SBytes,
+	}
+
+	return asn1.Marshal(sig)
+}
+
+func decodeSignature(data []byte) (*ff.Scalar, *bls12381.G1, error) {
+	var sig SignatureSM
+	_, err := asn1.Unmarshal(data, &sig)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	h := new(ff.Scalar)
+	if err := h.UnmarshalBinary(sig.H); err != nil {
+		return nil, nil, err
+	}
+
+	S := new(bls12381.G1)
+	if err := S.SetBytes(sig.S); err != nil {
+		return nil, nil, fmt.Errorf("invalid G1 point in signature: %v", err)
+	}
+
+	return h, S, nil
+}
+
+func scalarEqual(a, b *ff.Scalar) bool {
+	aBytes, _ := a.MarshalBinary()
+	bBytes, _ := b.MarshalBinary()
+	return bytes.Equal(aBytes, bBytes)
 }
 
 func generateCommitment(secret *ff.Scalar, generator *bls12381.G2) *bls12381.G2 {
