@@ -1274,7 +1274,7 @@ echo $?
 
 - Generate a private key for a user, associated with their UID.
 ```sh
-./edgetk -pkey keygen -algorithm bls12381 -mode sign -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID"
+./edgetk -pkey keygen -algorithm bls12381sign -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID"
 ```
 
 ##### Digital Signature Generation:
