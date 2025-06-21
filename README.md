@@ -1270,11 +1270,18 @@ echo $?
 echo $?
 ```
 
+##### User's Private Key Generation for Digital Signature:
+
+- Generate a private key for a user, associated with their UID.
+```sh
+./edgetk -pkey keygen -algorithm bls12381 -mode sign -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID"
+```
+
 ##### Digital Signature Generation:
 
 - Generate a digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
 ```sh
-./edgetk -pkey sign -algorithm bls12381 -key "Private.pem" FILE > sign.txt
+./edgetk -pkey sign -algorithm bls12381 -key "PrivateSign.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
 ./edgetk -pkey verify -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -signature $sign FILE
 echo $?
