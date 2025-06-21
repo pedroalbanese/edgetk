@@ -27637,7 +27637,6 @@ func decryptBF(U *bls12381.G2, d_ID *bls12381.G1, V, T []byte, hFunc func() hash
 
 func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte, hFunc func() hash.Hash) (*bn256i.G2, []byte, []byte) {
 	r, _ := rand.Int(rand.Reader, bn256i.Order)
-
 	U := new(bn256i.G2).ScalarBaseMult(r)
 
 	Qid := bn256i.HashG1(id, nil)
