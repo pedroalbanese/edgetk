@@ -156,9 +156,6 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | NUMS (numsp512t1)     | O       | O         |            |           |
     | Tom-256 (tom256)      | O       | O         |            | O         |
     | Tom-384 (tom384)      | O       | O         |            |           |
-    | BLS12-381             |         |           |            | O         |
-    | Ed25519               |         |           |            | O         |
-    | Pallas                |         |           |            | O         |
     | ANSSI (frp256v1)      | O       | O         |            | O         |
     | Koblitz (secp256k1)   | O       | O         |            | O         |
     | SM2 (sm2p256v1)       | O       |           |            | O         |
@@ -620,93 +617,6 @@ $M = C_2 - y \cdot C_1$
 This works because:
 
 $M = C_2 - y \cdot C_1 = r \cdot y \cdot G + M - y \cdot r \cdot G = M$  
-
-#### EC-ElGamal with Verifiable Encryption
-
-Initially, each party generates its private key as a random number $x$ and computes its corresponding public key $Q = x \cdot G$, where $G$ is a base point on the elliptic curve. To encrypt a message $M$, the sender selects a random value $r$ and computes $C1 = r \cdot G$ and $C2 = M \cdot H + r \cdot Q$, where $H$ is another point on the elliptic curve. These values are then combined to form the additional authentication data (AAD), which is used along with the message for symmetric encryption. A nonce value is also generated to ensure randomness in the cipher. The receiver uses their private key $x$ to derive $t = x \cdot C1$ and from it, the symmetric key used to decrypt the message. The algorithm also includes a zero-knowledge proof (ZKP) mechanism based on Schnorr, allowing the receiver to verify the authenticity of the received message without revealing their private key.
-
-<details>
-  <summary>EC-ElGamal with Schnorr Proof</summary>    
-  
-We initially create a private key as a random number $x$ and a public key of:  
-
-$Q = x \cdot G$
-
-With standard ElGamal encryption, we generate a random value $r$ to give:
-
-$t = r \cdot Q$
-
-We then create a symmetric key from this elliptic curve point:
-
-$AEADKey = \text{Derive}(t)$
-
-and where $\text{Derive}$ just converts a point on the curve to a byte array value that is the length of the required symmetric encryption key (such as for 32 bytes in the case of 256-bit Anubis).
-
-Next, we compute the ciphertext values of:
-
-$C1 = r \cdot G$  
-$C2 = M \cdot H + r \cdot Q$
-
-and where $M$ is the $msg$ value converted into a scalar value. We then append these together to create the additional data that will be used for the symmetric key encryption of the message:
-
-$AAD = C1 \parallel C2$
-
-We then generate a nonce value ($\text{Nonce}$) and then perform symmetric key encryption on the message:
-
-$cipher = \text{EncAEADKey}(\text{msg}, \text{Nonce}, \text{AAD})$
-
-The ciphertext then has values of $C1$, $C2$, $\text{Nonce}$, and $\text{cipher}$. $C1$, $C2$ are points on the curve, and the $\text{Nonce}$ value and $\text{cipher}$ are byte array values. To decrypt, we take the private key ($x$) and derive:
-
-$t = x \cdot C1$  
-$AEADKey = \text{Derive}(t)$  
-$AAD = C1 \parallel C2$  
-$msg = \text{DecAEADKey}(\text{cipher}, \text{Nonce}, \text{AAD})$
-
-Here is an overview of the method:
-
-To generate the proof, we generate a random value ($r$) and a blinding factor ($b$) to give two points on the elliptic curve:
-
-$R1 = r \cdot G$  
-$R2 = r \cdot Q + b \cdot H$
-
-Next, we create the challenge bytes with:
-
-$chall = C1 \parallel C2 \parallel R1 \parallel R2 \parallel \text{Nonce}$
-
-We take this value and hash it ($H$()), and create a scalar value with ($ek$) to produce:
-
-$c = H(\text{chall}) \cdot ek$
-
-We then create two Schnorr proof values:
-
-$S1 = b - c \cdot m$  
-$S2 = r - c \cdot b$
-
-To verify the proof, we reconstruct $R1$:
-
-$R1 = c \cdot C1 + S2 \cdot G$
-
-We reconstruct $R2$:
-
-$R2 = c \cdot C2 + S1 \cdot Q + S1 \cdot H$
-
-This works because:
-
-$R2 = c \cdot C2 + S1 \cdot Q + S1 \cdot H$  
-$\quad = c \cdot (b \cdot Q + m \cdot H) + (r - cb) \cdot Q + (b - cm) \cdot H$  
-$\quad = (cb + r - cb) \cdot Q + (cm + b - cm) \cdot H$  
-$\quad = r \cdot Q + b \cdot H$
-
-We then reconstruct the challenge with:
-
-$chall = C1 \parallel C2 \parallel R1 \parallel R2 \parallel \text{Nonce}$
-
-We take this value and hash it ($H$()), and create a scalar value with ($ek$) to produce:
-
-$c = H(\text{chall}) \cdot ek$
-
-This value is then checked against the challenge in the proof, and if they are the same, the proof is verified.
-</details>
 
 ### GOST (GOvernment STandard of Russian Federation)
 GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
