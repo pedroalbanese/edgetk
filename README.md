@@ -124,7 +124,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM9                 | O   |     | O   | O       | O        |     |
     | NUMS                | O   | O   | O   | O       | O        |     |
     | ElGamal             |     |     |     | O       | O        |     |
-    | EC-ElGamal          | O   |     |     |         | O        |     |
+    | EC-ElGamal          | O   | O   |     |         | O        |     |
     | ML-DSA/KEM          |     |     |     | O       | O        | O   |
     | SLH-DSA             | O   |     |     | O       |          | O   |
 
