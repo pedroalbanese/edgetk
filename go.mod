@@ -5,7 +5,6 @@ go 1.23.0
 toolchain go1.23.3
 
 require (
-	git.sr.ht/~sircmpwn/go-bare v0.0.0-20210406120253-ab86bc2846d9
 	gitee.com/Trisia/gotlcp v1.3.17
 	github.com/RyuaNerin/elliptic2 v1.0.0
 	github.com/RyuaNerin/go-krypto v1.3.0
@@ -24,7 +23,6 @@ require (
 	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
 	github.com/pedroalbanese/bn256 v0.0.0-20241211180157-f48a503b4cc5
 	github.com/pedroalbanese/brainpool v0.0.0-20220826183126-be5c94625a31
-	github.com/pedroalbanese/brotli v1.0.4
 	github.com/pedroalbanese/camellia v0.0.0-20220911183557-30cc05c20118
 	github.com/pedroalbanese/cast256 v0.0.0-20240325185652-e35cf700d5fe
 	github.com/pedroalbanese/cast5 v0.0.0-20220924202825-3e5c3c00277c
@@ -45,12 +43,10 @@ require (
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
 	github.com/pedroalbanese/ecgdsa v0.0.0-20250309172633-1e9ac31fec97
 	github.com/pedroalbanese/echo v0.0.0-20240329160327-5e65f19de84b
-	github.com/pedroalbanese/ecka-eg v0.0.3003
 	github.com/pedroalbanese/ecsdsa v0.0.0-20250309175503-d735dfab325a
 	github.com/pedroalbanese/esch v0.0.0-20240403151441-bc287e464d49
 	github.com/pedroalbanese/frp256v1 v0.0.3
 	github.com/pedroalbanese/fugue v0.0.0-20240518170253-4e3af93fc75a
-	github.com/pedroalbanese/ginga v0.0.0-20250410135940-30eb7da0c88d
 	github.com/pedroalbanese/gmac v0.0.0-20231030174635-9eb35b8b4542
 	github.com/pedroalbanese/go-ascon v0.0.0-20240325185942-de83d7994a95
 	github.com/pedroalbanese/go-chaskey v0.0.0-20230117155006-a9e41c18223c
@@ -115,11 +111,8 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/bwesterb/go-ristretto v1.2.3 // indirect
 	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
-	github.com/nixberg/chacha-rng-go v0.1.0 // indirect
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
