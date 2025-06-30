@@ -1160,6 +1160,12 @@ echo $?
 ```sh
 ./edgetk -pkey derive -algorithm EC -key Private.pem -pub Peerkey.pem
 ```
+#### EC-ElGamal scheme:
+```sh
+./edgetk -pkey wrapkey -algorithm EC -key Public.pem > cipher.txt
+ciphertext=$(cat cipher.txt|grep "Cipher"|awk '{print $2}')
+./edgetk -pkey unwrapkey -algorithm EC -key Private.pem [-pass "passphrase"] -cipher $ciphertext
+```
 #### Generate Self Signed Certificate:
 ```sh
 ./edgetk -pkey certgen -key Private.pem [-pass "passphrase"] [-cert "output.crt"]
