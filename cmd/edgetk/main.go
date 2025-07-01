@@ -326,7 +326,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.7-beta  22 Jun 2025")
+		fmt.Println("EDGE Toolkit v1.5.8-alpha  02 Jul 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -1643,7 +1643,7 @@ Subcommands:
 	}
 
 	if (*pkey == "wrapkey" || *pkey == "unwrapkey") && *length == 0 {
-		*length = 128
+		*length = 256
 	}
 
 	if (*pkey == "derivea" || *pkey == "deriveb") && *length == 0 {
@@ -6763,22 +6763,21 @@ Subcommands:
 	if *pkey == "keygen" && ((strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "NUMS-TE") && (*length == 256 || *length == 384 || *length == 512)) || ((strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "numsp256d1" || *curveFlag == "numsp384d1" || *curveFlag == "numsp512d1" || *curveFlag == "numsp256t1" || *curveFlag == "numsp384t1" || *curveFlag == "numsp512t1")) {
 		var curve elliptic.Curve
 
-		if (strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "numsp256d1" || *curveFlag == "numsp384d1" || *curveFlag == "numsp512d1") {
-			if *length == 256 || *curveFlag == "numsp256d1" {
-				curve = nums.P256d1()
-			} else if *length == 384 || *curveFlag == "numsp384d1" {
-				curve = nums.P384d1()
-			} else if *length == 512 || *curveFlag == "numsp512d1" {
-				curve = nums.P512d1()
-			}
-		} else if strings.ToUpper(*alg) == "NUMS-TE" || ((strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "NUMS-TE" || strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "numsp256t1" || *curveFlag == "numsp384t1" || *curveFlag == "numsp512t1")) {
-			if *length == 256 || *curveFlag == "numsp256t1" {
-				curve = nums.P256t1()
-			} else if *length == 384 || *curveFlag == "numsp384t1" {
-				curve = nums.P384t1()
-			} else if *length == 512 || *curveFlag == "numsp512t1" {
-				curve = nums.P512t1()
-			}
+		switch {
+		case strings.EqualFold(*curveFlag, "numsp256d1") || (*length == 256 && strings.EqualFold(*alg, "NUMS")):
+			curve = nums.P256d1()
+		case strings.EqualFold(*curveFlag, "numsp384d1") || (*length == 384 && strings.EqualFold(*alg, "NUMS")):
+			curve = nums.P384d1()
+		case strings.EqualFold(*curveFlag, "numsp512d1") || (*length == 512 && strings.EqualFold(*alg, "NUMS")):
+			curve = nums.P512d1()
+		case strings.EqualFold(*curveFlag, "numsp256t1") || (*length == 256 && strings.EqualFold(*alg, "NUMS-TE")):
+			curve = nums.P256t1()
+		case strings.EqualFold(*curveFlag, "numsp384t1") || (*length == 384 && strings.EqualFold(*alg, "NUMS-TE")):
+			curve = nums.P384t1()
+		case strings.EqualFold(*curveFlag, "numsp512t1") || (*length == 512 && strings.EqualFold(*alg, "NUMS-TE")):
+			curve = nums.P512t1()
+		default:
+			log.Fatal("Unsupported curve or bit length. Use -curve or -bits with a valid value.")
 		}
 
 		privateKey, err := ecdsa.GenerateKey(curve, rand.Reader)
@@ -10524,7 +10523,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "FRP256V1" || strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "KOBLITZ" || strings.ToUpper(*alg) == "FRP256V1" || strings.ToUpper(*alg) == "ANSSI" || strings.ToUpper(*alg) == "TOM" || strings.ToUpper(*alg) == "BIGN" || strings.ToUpper(*alg) == "SM2") && (*pkey == "wrapkey" || *pkey == "unwrapkey") {
+	if (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "EC-ELGAMAL" || strings.ToUpper(*alg) == "ECKA-EG" || strings.ToUpper(*alg) == "FRP256V1" || strings.ToUpper(*alg) == "NUMS" || strings.ToUpper(*alg) == "KOBLITZ" || strings.ToUpper(*alg) == "FRP256V1" || strings.ToUpper(*alg) == "ANSSI" || strings.ToUpper(*alg) == "TOM" || strings.ToUpper(*alg) == "BIGN" || strings.ToUpper(*alg) == "SM2" || strings.ToUpper(*alg) == "BIP0340" || strings.ToUpper(*alg) == "ECSDSA") && (*pkey == "wrapkey" || *pkey == "unwrapkey") {
 		if *pkey == "unwrapkey" {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
@@ -10541,6 +10540,8 @@ Subcommands:
 				func(b []byte) (interface{}, error) { return frp256v1.ParsePrivateKey(b) },
 				func(b []byte) (interface{}, error) { return secp256k1.ParsePrivateKey(b) },
 				func(b []byte) (interface{}, error) { return tom.ParsePrivateKey(b) },
+				func(b []byte) (interface{}, error) { return ecsdsa.ParsePrivateKey(b) },
+				func(b []byte) (interface{}, error) { return bip0340.ParsePrivateKey(b) },
 			}
 
 			var privateKey interface{}
@@ -10562,7 +10563,7 @@ Subcommands:
 				curve = k.Curve
 				d = k.D
 			case *nums.PrivateKey:
-				curve = nums.P256t1()
+				curve = k.PublicKey.Curve
 				d = k.D
 			case *frp256v1.PrivateKey:
 				curve = frp256v1.P256()
@@ -10574,9 +10575,15 @@ Subcommands:
 				curve = k.Curve
 				d = k.D
 			case *tom.PrivateKey:
-				curve = tom.P256()
+				curve = k.PublicKey.Curve
 				d = k.D
 			case *sm2.PrivateKey:
+				curve = k.Curve
+				d = k.D
+			case *ecsdsa.PrivateKey:
+				curve = k.Curve
+				d = k.D
+			case *bip0340.PrivateKey:
 				curve = k.Curve
 				d = k.D
 			default:
@@ -10590,11 +10597,20 @@ Subcommands:
 
 			var ct2 CiphertextEC
 			if _, err := asn1.Unmarshal(ctASN1, &ct2); err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 
-			dMx, dMy := decryptECElGamal(curve, d, &ct2)
-			fmt.Printf("Shared= %x%x\n", dMx, dMy)
+			dMx, dMy, err := decryptECElGamal(curve, d, &ct2)
+			if err != nil {
+				fmt.Println("Error decrypting:", err)
+				return
+			}
+			buf := append(dMx.Bytes(), dMy.Bytes()...)
+			hasher := myHash()
+			hasher.Write(buf)
+			result := hasher.Sum(nil)[:*length/8]
+
+			fmt.Printf("Shared= %x\n", result)
 		} else {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
@@ -10610,6 +10626,8 @@ Subcommands:
 				func(b []byte) (interface{}, error) { return frp256v1.ParsePublicKey(b) },
 				func(b []byte) (interface{}, error) { return secp256k1.ParsePublicKey(b) },
 				func(b []byte) (interface{}, error) { return tom.ParsePublicKey(b) },
+				func(b []byte) (interface{}, error) { return ecsdsa.ParsePublicKey(b) },
+				func(b []byte) (interface{}, error) { return bip0340.ParsePublicKey(b) },
 			}
 
 			var publicKey interface{}
@@ -10631,7 +10649,7 @@ Subcommands:
 				curve = k.Curve
 				x, y = k.X, k.Y
 			case *nums.PublicKey:
-				curve = nums.P256t1()
+				curve = k.Curve
 				x, y = k.X, k.Y
 			case *frp256v1.PublicKey:
 				curve = frp256v1.P256()
@@ -10643,7 +10661,13 @@ Subcommands:
 				curve = k.Curve
 				x, y = k.X, k.Y
 			case *tom.PublicKey:
-				curve = tom.P256()
+				curve = k.Curve
+				x, y = k.X, k.Y
+			case *ecsdsa.PublicKey:
+				curve = k.Curve
+				x, y = k.X, k.Y
+			case *bip0340.PublicKey:
+				curve = k.Curve
 				x, y = k.X, k.Y
 			default:
 				log.Fatal("Unsupported public key type")
@@ -10654,16 +10678,21 @@ Subcommands:
 
 			ct, err := encryptECElGamal(curve, x, y, Mx, My)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 
 			ctASN1, err := asn1.Marshal(*ct)
 			if err != nil {
-				panic(err)
+				log.Fatal(err)
 			}
 
 			fmt.Printf("Cipher= %x\n", ctASN1)
-			fmt.Printf("Shared= %x%x\n", Mx, My)
+			buf := append(Mx.Bytes(), My.Bytes()...)
+			hasher := myHash()
+			hasher.Write(buf)
+			result := hasher.Sum(nil)[:*length/8]
+
+			fmt.Printf("Shared= %x\n", result)
 		}
 	}
 
@@ -27941,13 +27970,29 @@ func encryptECElGamal(curve elliptic.Curve, pubX, pubY, Mx, My *big.Int) (*Ciphe
 	return &CiphertextEC{C1x, C1y, C2x, C2y}, nil
 }
 
-func decryptECElGamal(curve elliptic.Curve, priv *big.Int, ct *CiphertextEC) (Mx, My *big.Int) {
+func decryptECElGamal(curve elliptic.Curve, priv *big.Int, ct *CiphertextEC) (Mx, My *big.Int, err error) {
+	if !curve.IsOnCurve(ct.C1x, ct.C1y) {
+		return nil, nil, errors.New("C1 is not on the elliptic curve")
+	}
+	if !curve.IsOnCurve(ct.C2x, ct.C2y) {
+		return nil, nil, errors.New("C2 is not on the elliptic curve")
+	}
+
 	Sx, Sy := curve.ScalarMult(ct.C1x, ct.C1y, priv.Bytes())
+
+	if !curve.IsOnCurve(Sx, Sy) {
+		return nil, nil, errors.New("shared secret S is not on the elliptic curve")
+	}
 
 	negSy := new(big.Int).Neg(Sy)
 	negSy.Mod(negSy, curve.Params().P)
 
 	Mx, My = curve.Add(ct.C2x, ct.C2y, Sx, negSy)
+
+	if !curve.IsOnCurve(Mx, My) {
+		return nil, nil, errors.New("resulting point M is not on the elliptic curve")
+	}
+
 	return
 }
 
