@@ -597,7 +597,8 @@ The ElGamal algorithm is a public-key cryptography system that enables secure co
 
 The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key.  Is a cryptographic scheme that allows secure message transmission over an insecure channel. The algorithm relies on the mathematical properties of elliptic curves to ensure the confidentiality of messages.
 
-#### Pure EC-ElGamal
+<details>
+  <summary>Pure EC-ElGamal</summary> 
 EC-ElGamal encryption using elliptic curves allows secure message transmission by having Alice generate a private key $y$ and a public key $Y = y \cdot G$, while Bob encrypts a message $M$ with a random value $r$, computing $C_1 = r \cdot G$ and $C_2 = r \cdot Y + M$, and Alice decrypts using $M = C_2 - y \cdot C_1$.
 
 First, Alice generates a private key $y$ and a public key of:  
@@ -617,6 +618,7 @@ $M = C_2 - y \cdot C_1$
 This works because:
 
 $M = C_2 - y \cdot C_1 = r \cdot y \cdot G + M - y \cdot r \cdot G = M$  
+</details>
 
 ### GOST (GOvernment STandard of Russian Federation)
 GOST refers to a set of technical standards maintained by the Euro-Asian Council for Standardization, Metrology and Certification (EASC), a regional standards organization operating under the auspices of the Commonwealth of Independent States (CIS).
