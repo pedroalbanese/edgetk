@@ -142,12 +142,12 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | K-283 (sect283k1)     |         | O         | O          |           |
     | K-409 (sect409k1)     |         | O         | O          |           |
     | K-571 (sect571k1)     |         | O         | O          |           |
-    | BP (brainpoolp256r1)  |         | O         |            |           |
-    | BP (brainpoolp384r1)  |         | O         |            |           |
-    | BP (brainpoolp512r1)  |         | O         |            |           |
-    | BP (brainpoolp256t1)  |         | O         |            |           |
-    | BP (brainpoolp384t1)  |         | O         |            |           |
-    | BP (brainpoolp512t1)  |         | O         |            |           |
+    | BP (brainpoolp256r1)  |         | O         |            | O         |
+    | BP (brainpoolp384r1)  |         | O         |            | O         |
+    | BP (brainpoolp512r1)  |         | O         |            | O         |
+    | BP (brainpoolp256t1)  |         | O         |            | O         |
+    | BP (brainpoolp384t1)  |         | O         |            | O         |
+    | BP (brainpoolp512t1)  |         | O         |            | O         |
     | NUMS (numsp256d1)     | O       | O         |            | O         |
     | NUMS (numsp384d1)     | O       | O         |            | O         |
     | NUMS (numsp512d1)     | O       | O         |            | O         |
