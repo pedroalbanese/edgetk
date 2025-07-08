@@ -16,7 +16,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 2. BSI TR-03111 Elliptic Curve Cryptography (ECC) Technical Guideline
 3. CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
 4. CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
-5. CRYPTO 2001: Identity-Based Encryption from the Weil Pairing (IBE)
+5. CRYPTO 2001: Boneh-Franklin Identity-Based Encryption (IBE)
 6. DSTU 7564:2014 A New Standard of Ukraine: The Kupyna Hash Function
 7. DSTU 7624:2014 A Encryption Standard of Ukraine: Kalyna Block Cipher
 8. GB/T 32907-2016 - SM4 128-bit Block Cipher
