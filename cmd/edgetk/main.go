@@ -4538,10 +4538,12 @@ Subcommands:
 			log.Fatal(err)
 		}
 		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
+		expectedHash, err := hex.DecodeString(hashedPasswordString)
+		if err != nil {
+			log.Fatalf("Erro ao decodificar hash hexadecimal: %v", err)
+		}
 		computedHash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
-		computedHashString := hex.EncodeToString(computedHash)
-
-		if computedHashString == hashedPasswordString {
+		if subtle.ConstantTimeCompare(expectedHash, computedHash) == 1 {
 			fmt.Println("Verify: true")
 		} else {
 			fmt.Println("Verify: false")
@@ -4566,7 +4568,6 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
-		computedHashString := hex.EncodeToString(hash)
 
 		hashedPassword, err := ioutil.ReadAll(inputfile)
 		if err != nil {
@@ -4574,7 +4575,12 @@ Subcommands:
 		}
 		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
 
-		if computedHashString == hashedPasswordString {
+		expectedHash, err := hex.DecodeString(hashedPasswordString)
+		if err != nil {
+			log.Fatalf("Erro ao decodificar hash hexadecimal: %v", err)
+		}
+
+		if subtle.ConstantTimeCompare(expectedHash, hash) == 1 {
 			fmt.Println("Verify: true")
 		} else {
 			fmt.Println("Verify: false")
@@ -4599,7 +4605,6 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
-		computedHashString := hex.EncodeToString(hash)
 
 		hashedPassword, err := ioutil.ReadAll(inputfile)
 		if err != nil {
@@ -4607,7 +4612,12 @@ Subcommands:
 		}
 		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
 
-		if computedHashString == hashedPasswordString {
+		expectedHash, err := hex.DecodeString(hashedPasswordString)
+		if err != nil {
+			log.Fatalf("Erro ao decodificar hash hexadecimal: %v", err)
+		}
+
+		if subtle.ConstantTimeCompare(expectedHash, hash) == 1 {
 			fmt.Println("Verify: true")
 		} else {
 			fmt.Println("Verify: false")
@@ -5143,21 +5153,13 @@ Subcommands:
 		if _, err = io.Copy(h, inputfile); err != nil {
 			log.Fatal(err)
 		}
-		var verify bool
 		if *sig != "" {
 			macBytes := h.Sum(nil)
-
 			sigBytes, err := hex.DecodeString(*sig)
 			if err != nil {
 				log.Fatal(err)
 			}
-
-			if len(macBytes) != len(sigBytes) {
-				verify = false
-			} else {
-				verify = subtle.ConstantTimeCompare(macBytes, sigBytes) == 1
-			}
-
+			verify := hmac.Equal(macBytes, sigBytes)
 			fmt.Printf("Verified: %t\n", verify)
 			if verify {
 				os.Exit(0)
