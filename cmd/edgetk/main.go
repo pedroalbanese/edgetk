@@ -602,6 +602,35 @@ Subcommands:
 		*pwd = ""
 	}
 
+	if (*pkey == "setup") && *key != "" && strings.ToUpper(*alg) != "ELGAMAL" {
+		file, err := os.Open(*master)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			errors.New("no valid private key found")
+		}
+		if IsEncryptedPEMBlock(block) {
+			print("MasterKey Passphrase: ")
+			pass, _ := gopass.GetPasswd()
+			*pwd = string(pass)
+		}
+	}
+
+	if (*pkey == "setup") && *key != "" && strings.ToUpper(*alg) != "ELGAMAL" {
+		print("New MasterKey Passphrase: ")
+		pass, _ := gopass.GetPasswdMasked()
+		*pwd2 = string(pass)
+	}
+
 	if (*pkey == "setup") && *pwd == "" && strings.ToUpper(*alg) != "ELGAMAL" {
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
@@ -11833,8 +11862,11 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(keyBytes)
 
-			pubKey := new(bls12381.G2)
-			pubKey.ScalarMult(skScalar, bls12381.G2Generator())
+			pubKey1 := new(bls12381.G1)
+			pubKey1.ScalarMult(skScalar, bls12381.G1Generator())
+
+			pubKey2 := new(bls12381.G2)
+			pubKey2.ScalarMult(skScalar, bls12381.G2Generator())
 
 			if blockType == "BLS12381 MASTER KEY" && len(keyBytes) >= 40 {
 				keyPEM := pem.Block{Type: "BLS12381 MASTER KEY", Bytes: keyBytes}
@@ -11930,8 +11962,14 @@ Subcommands:
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("PublicKey:")
-				p = fmt.Sprintf("%x", pubKey.BytesCompressed())
+				fmt.Println("PublicKeyG1:")
+				p = fmt.Sprintf("%x", pubKey1.BytesCompressed())
+				splitz = SplitSubN(p, 2)
+				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				}
+				fmt.Println("PublicKeyG2:")
+				p = fmt.Sprintf("%x", pubKey2.BytesCompressed())
 				splitz = SplitSubN(p, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
@@ -12253,6 +12291,34 @@ Subcommands:
 				s.SetBytes(data[:32])
 
 				fmt.Println("Using provided SK master key.")
+
+				Ppub = new(bls12381.G1)
+				Ppub.ScalarMult(s, bls12381.G1Generator())
+
+				privBlock := &pem.Block{
+					Type:  "BLS12381 MASTER KEY",
+					Bytes: data,
+				}
+
+				if err := savePEMToFile2(*master, privBlock, true); err != nil {
+					fmt.Println("Error saving SK private key PEM:", err)
+					return
+				}
+
+				pubBlock := &pem.Block{
+					Type:  "BLS12381 PUBLIC KEY",
+					Bytes: Ppub.BytesCompressed(),
+				}
+
+				if err := savePEMToFile(*pub, pubBlock, false); err != nil {
+					fmt.Println("Error saving SK public key PEM:", err)
+					return
+				}
+
+				privPath, _ := filepath.Abs(*master)
+				pubPath, _ := filepath.Abs(*pub)
+				fmt.Printf("Master Key saved to: %s\n", privPath)
+				fmt.Printf("Public Key saved to: %s\n", pubPath)
 			} else {
 				s = new(ff.Scalar)
 				s.Random(rand.Reader)
@@ -12333,6 +12399,18 @@ Subcommands:
 					return
 				}
 				fmt.Println("Using provided master key.")
+
+				block := &pem.Block{
+					Type:  "BLS12381 MASTER KEY",
+					Bytes: ikm,
+				}
+				if err := savePEMToFile2(*master, block, true); err != nil {
+					fmt.Println("Error saving master key:", err)
+					return
+				}
+
+				privPath, _ := filepath.Abs(*master)
+				fmt.Printf("Master Key saved to: %s\n", privPath)
 			} else {
 				ikm = make([]byte, 32)
 				_, err = rand.Read(ikm)
@@ -12349,56 +12427,104 @@ Subcommands:
 					return
 				}
 
-				privPath, err := filepath.Abs(*master)
-				if err != nil {
-					fmt.Println("Error getting absolute path for master key:", err)
-					os.Exit(1)
-				}
+				privPath, _ := filepath.Abs(*master)
 				fmt.Printf("Master Key saved to: %s\n", privPath)
 			}
 
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(ikm)
 
-			pk := new(bls12381.G2)
-			pk.ScalarMult(skScalar, bls12381.G2Generator())
+			if *pub2 != "" {
+				pkG1 := new(bls12381.G1)
+				pkG1.ScalarMult(skScalar, bls12381.G1Generator())
 
-			block := &pem.Block{
-				Type:  "BLS12381 PUBLIC KEY",
-				Bytes: pk.BytesCompressed(),
+				pkG2 := new(bls12381.G2)
+				pkG2.ScalarMult(skScalar, bls12381.G2Generator())
+
+				blockG1 := &pem.Block{
+					Type:  "BLS12381 PUBLIC KEY",
+					Bytes: pkG1.BytesCompressed(),
+				}
+				if err := savePEMToFile(*pub, blockG1, false); err != nil {
+					fmt.Println("Error saving G1 public key:", err)
+					return
+				}
+
+				pub1Path, _ := filepath.Abs(*pub)
+				pub2Path, _ := filepath.Abs(*pub2)
+				fmt.Printf("Public Key saved to: %s\n", pub1Path)
+				fmt.Printf("Public Key saved to: %s\n", pub2Path)
+				fmt.Printf("Fingerprint (G1): %s\n", calculateFingerprint(pkG1.BytesCompressed()))
+				fmt.Printf("Fingerprint (G2): %s\n", calculateFingerprint(pkG2.BytesCompressed()))
+
+				fmt.Println("BLS12-381 G1")
+				pubFile, err := os.Open(*pub)
+				if err != nil {
+					fmt.Println("Error opening G1 public key file:", err)
+					os.Exit(1)
+				}
+				defer pubFile.Close()
+
+				pubInfo, _ := pubFile.Stat()
+				pubBuf := make([]byte, pubInfo.Size())
+				pubFile.Read(pubBuf)
+				randomArt := randomart.FromString(string(pubBuf))
+				fmt.Println(randomArt)
+
+				blockG2 := &pem.Block{
+					Type:  "BLS12381 PUBLIC KEY",
+					Bytes: pkG2.BytesCompressed(),
+				}
+				if err := savePEMToFile(*pub2, blockG2, false); err != nil {
+					fmt.Println("Error saving G2 public key:", err)
+					return
+				}
+
+				fmt.Println("BLS12-381 G2")
+				pubFile2, err := os.Open(*pub2)
+				if err != nil {
+					fmt.Println("Error opening G2 public key file:", err)
+					os.Exit(1)
+				}
+				defer pubFile2.Close()
+
+				pubInfo2, _ := pubFile2.Stat()
+				pubBuf2 := make([]byte, pubInfo2.Size())
+				pubFile2.Read(pubBuf2)
+				randomArt2 := randomart.FromString(string(pubBuf2))
+				fmt.Println(randomArt2)
+
+			} else {
+				pk := new(bls12381.G2)
+				pk.ScalarMult(skScalar, bls12381.G2Generator())
+
+				block := &pem.Block{
+					Type:  "BLS12381 PUBLIC KEY",
+					Bytes: pk.BytesCompressed(),
+				}
+				if err := savePEMToFile(*pub, block, false); err != nil {
+					fmt.Println("Error saving public key:", err)
+					return
+				}
+
+				pubPath, _ := filepath.Abs(*pub)
+				fmt.Printf("Public Key saved to: %s\n", pubPath)
+				fmt.Printf("Fingerprint: %s\n", calculateFingerprint(pk.BytesCompressed()))
+
+				fmt.Println("BLS12-381 G2")
+				pubFile, err := os.Open(*pub)
+				if err != nil {
+					fmt.Println("Error opening public key file:", err)
+					os.Exit(1)
+				}
+				defer pubFile.Close()
+
+				pubInfo, _ := pubFile.Stat()
+				pubBuf := make([]byte, pubInfo.Size())
+				pubFile.Read(pubBuf)
+				randomArt := randomart.FromString(string(pubBuf))
+				fmt.Println(randomArt)
 			}
-			if err := savePEMToFile(*pub, block, false); err != nil {
-				fmt.Println("Error saving public key:", err)
-				return
-			}
-
-			pubPath, err := filepath.Abs(*pub)
-			if err != nil {
-				fmt.Println("Error getting absolute path for public key:", err)
-				os.Exit(1)
-			}
-			fmt.Printf("Public Key saved to: %s\n", pubPath)
-
-			fmt.Printf("Fingerprint: %s\n", calculateFingerprint(pk.BytesCompressed()))
-
-			fmt.Println("BLS12-381")
-			pubFile, err := os.Open(*pub)
-			if err != nil {
-				fmt.Println("Error opening public key file:", err)
-				os.Exit(1)
-			}
-			defer pubFile.Close()
-
-			pubInfo, err := pubFile.Stat()
-			if err != nil {
-				fmt.Println("Error getting public key file info:", err)
-				os.Exit(1)
-			}
-
-			pubBuf := make([]byte, pubInfo.Size())
-			pubFile.Read(pubBuf)
-			randomArt := randomart.FromString(string(pubBuf))
-			fmt.Println(randomArt)
 		}
 
 		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*theorem) == "BB" || strings.ToUpper(*theorem) == "BONEH-BOYEN") {
