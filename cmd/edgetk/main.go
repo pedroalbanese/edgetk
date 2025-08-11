@@ -278,7 +278,7 @@ var (
 	responseFlag   = flag.String("response", "", "Response for the proof. (for Zero-Knowledge Proof ZKP)")
 	candidates     = flag.String("candidates", "", "List of candidates, separated by commas.")
 	votesFlag      = flag.String("votes", "", "Comma-separated list of vote counters.")
-	theorem        = flag.String("theorem", "ShangMi", "Theorem. (for Identity-Based Cryptography IBE/IBS)")
+	theorem        = flag.String("theorem", "", "Theorem. (for Identity-Based Cryptography IBE/IBS)")
 	token          = flag.String("token", "", "Token containing an encrypted symmetric key.")
 	xx             = flag.String("xx", "", "Encode binary files with xxencoding and vice-versa. [enc|dec]")
 	uu             = flag.String("uu", "", "Encode binary files with uuencoding and vice-versa. [enc|dec]")
@@ -12614,8 +12614,20 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(sk)
 
-			privateKey := extract(skScalar, []byte(*id))
-			privateKeyBytes := privateKey.BytesCompressed()
+			var privateKeyBytes []byte
+			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" || strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" {
+				privateKey := extract(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else if strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA" {
+				privateKey := extractSK(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
+				privateKey := extractSM(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else {
+				privateKey := extract(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			}
 
 			block := &pem.Block{
 				Type:  "BLS12381 SECRET KEY",
@@ -12643,8 +12655,17 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(sk)
 
-			privateKey := extract(skScalar, []byte(*id))
-			privateKeyBytes := privateKey.BytesCompressed()
+			var privateKeyBytes []byte
+			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" {
+				privateKey := extract(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else if strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA" {
+				privateKey := extractSK(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else {
+				privateKey := extract(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			}
 
 			block := &pem.Block{
 				Type:  "BLS12381ENCRYPT SECRET KEY",
@@ -12672,8 +12693,17 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(sk)
 
-			privateKey := extractSM(skScalar, []byte(*id))
-			privateKeyBytes := privateKey.BytesCompressed()
+			var privateKeyBytes []byte
+			if strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" {
+				privateKey := extract(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
+				privateKey := extractSM(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			} else {
+				privateKey := extractSM(skScalar, []byte(*id))
+				privateKeyBytes = privateKey.BytesCompressed()
+			}
 
 			block := &pem.Block{
 				Type:  "BLS12381SIGN SECRET KEY",
@@ -12806,7 +12836,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "sign" {
+		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -12833,7 +12863,7 @@ Subcommands:
 			}
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
-		} else if *pkey == "verify" {
+		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -12862,6 +12892,73 @@ Subcommands:
 			}
 
 			if verifyCC(&pubKey, []byte(*id), msg, decodedU, decodedV) {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+				os.Exit(1)
+			}
+			os.Exit(0)
+		} else if *pkey == "sign" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+			skG1 := new(bls12381.G1)
+			if err := skG1.SetBytes(sk); err != nil {
+				fmt.Println("Error setting G1 bytes:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error getting input file:", err)
+				os.Exit(1)
+			}
+
+			r := new(ff.Scalar)
+			r.Random(rand.Reader)
+			P1 := new(bls12381.G1)
+			P1.ScalarMult(r, bls12381.G1Generator())
+
+			U, V := signHESS(skG1, P1, msg)
+
+			asn1Data, err := encodeSignatureHESS(U, V)
+			if err != nil {
+				fmt.Println("Error serializing signature:", err)
+				return
+			}
+
+			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
+		} else if *pkey == "verify" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				os.Exit(1)
+			}
+
+			var pubKey bls12381.G2
+			pubKey.SetBytes(pk)
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			decodedU, decodedV, err := decodeSignatureHESS(sigBytes)
+			if err != nil {
+				fmt.Println("Error deserializing signature:", err)
+				return
+			}
+
+			if verifyHESS(decodedU, decodedV, &pubKey, []byte(*id), msg) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -29756,6 +29853,100 @@ func decodeSignatureCC_BN(data []byte) (*bn256i.G1, *bn256i.G1, error) {
 	V := new(bn256i.G1)
 	if _, err := V.Unmarshal(sig.V); err != nil {
 		return nil, nil, fmt.Errorf("invalid G1 point in V: %v", err)
+	}
+
+	return U, V, nil
+}
+
+func h(m []byte, r *bls12381.Gt) *ff.Scalar {
+	hasher := sha256.New()
+	hasher.Write(m)
+	rBytes, _ := r.MarshalBinary()
+	hasher.Write(rBytes)
+	digest := hasher.Sum(nil)
+
+	scalar := new(ff.Scalar)
+	scalar.SetBytes(digest)
+	return scalar
+}
+
+type SignatureHess struct {
+	U []byte `asn1:"tag:0"`
+	V []byte `asn1:"tag:1"`
+}
+
+func signHESS(SID *bls12381.G1, P1 *bls12381.G1, msg []byte) (*bls12381.G1, *ff.Scalar) {
+	k := new(ff.Scalar)
+	k.Random(rand.Reader)
+
+	e := bls12381.Pair(P1, bls12381.G2Generator())
+	r := new(bls12381.Gt)
+	r.Exp(e, k)
+
+	v := h(msg, r)
+
+	vSID := new(bls12381.G1)
+	vSID.ScalarMult(v, SID)
+
+	kP1 := new(bls12381.G1)
+	kP1.ScalarMult(k, P1)
+
+	u := new(bls12381.G1)
+	u.Add(vSID, kP1)
+
+	return u, v
+}
+
+func verifyHESS(u *bls12381.G1, v *ff.Scalar, QTA *bls12381.G2, id, msg []byte) bool {
+	Qid := hashToG1(id)
+
+	e1 := bls12381.Pair(u, bls12381.G2Generator())
+
+	negQTA := new(bls12381.G2)
+	*negQTA = *QTA
+	negQTA.Neg()
+
+	e2 := bls12381.Pair(Qid, negQTA)
+
+	e2v := new(bls12381.Gt)
+	e2v.Exp(e2, v)
+
+	rPrime := new(bls12381.Gt)
+	rPrime.Mul(e1, e2v)
+
+	vPrime := h(msg, rPrime)
+
+	return vPrime.IsEqual(v) == 1
+}
+
+func encodeSignatureHESS(U *bls12381.G1, V *ff.Scalar) ([]byte, error) {
+	vBytes, err := V.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal scalar V: %v", err)
+	}
+
+	sig := SignatureHess{
+		U: U.BytesCompressed(),
+		V: vBytes,
+	}
+	return asn1.Marshal(sig)
+}
+
+func decodeSignatureHESS(data []byte) (*bls12381.G1, *ff.Scalar, error) {
+	var sig SignatureHess
+	_, err := asn1.Unmarshal(data, &sig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to unmarshal signature: %v", err)
+	}
+
+	U := new(bls12381.G1)
+	if err := U.SetBytes(sig.U); err != nil {
+		return nil, nil, fmt.Errorf("invalid G1 point in U: %v", err)
+	}
+
+	V := new(ff.Scalar)
+	if err := V.UnmarshalBinary(sig.V); err != nil {
+		return nil, nil, fmt.Errorf("invalid scalar in V: %v", err)
 	}
 
 	return U, V, nil
