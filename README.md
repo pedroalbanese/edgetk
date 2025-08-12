@@ -336,7 +336,7 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
 
 <details>
   <summary>AEAD OpenSSL-PHP and libsodium compliance</summary>
-  PHP
+  PHP  
   ```php
   <?php
   function encrypt($plaintext, $key, $aad = '') {
@@ -389,7 +389,8 @@ Authenticated encryption (AE) and authenticated encryption with associated data 
   ?>
 
 ```
-Python
+
+Python  
 ```python
 import nacl.bindings
 import binascii
