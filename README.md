@@ -391,7 +391,7 @@ OpenSSL-PHP
 ```
 
 libsodium Python 
-  ```pytohn
+  ```python
   import nacl.bindings
 import binascii
 
