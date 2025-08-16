@@ -58,21 +58,22 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 44. LNCS 1838 - A One Round Protocol for Tripartite Diffie-Hellman
 45. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 46. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-47. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
-48. RFC 1423: Privacy Enhancement for Internet Electronic Mail
-49. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-50. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-51. RFC 2612: The CAST-256 Encryption Algorithm
-52. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-53. RFC 4009: The SEED Encryption Algorithm (KISA)
-54. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-55. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-56. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-57. RFC 4543: Galois Message Authentication Code (GMAC)
-58. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-59. RFC 4648: Base16, Base32, and Base64 Data Encodings
-60. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-61. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+47. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
+48. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
+49. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+50. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+51. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+52. RFC 2612: The CAST-256 Encryption Algorithm
+53. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+54. RFC 4009: The SEED Encryption Algorithm (KISA)
+55. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+56. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+57. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+58. RFC 4543: Galois Message Authentication Code (GMAC)
+59. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+60. RFC 4648: Base16, Base32, and Base64 Data Encodings
+61. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+62. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 50. RFC 5297: Synthetic Initialization Vector (SIV Mode)
 51. RFC 5639: Elliptic Curve Cryptography (ECC) Brainpool Standard Curves
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
