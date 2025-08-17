@@ -79,7 +79,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
 54. RFC 6114: The 128-Bit Blockcipher CLEFIA (Sony)
 55. RFC 7008: KCipher-2 Encryption Algorithm (KDDI R&D Laboratories)
-56. RFC 7253: OCB (and PMAC) Authenticated-Encryption Algorithm
+56. RFC 7253: OCB3 Offset Codebook Authenticated-Encryption Algorithm
 57. RFC 7292: PKCS #12 Personal Information Exchange Syntax v1.1
 58. RFC 7539: ChaCha20-Poly1305 AEAD Stream cipher
 59. RFC 7693: The BLAKE2 Cryptographic Hash and MAC (JP Aumasson)
