@@ -233,7 +233,6 @@ var (
 	b32            = flag.String("base32", "", "Encode binary string to Base32 format and vice-versa. [enc|dec]")
 	zz             = flag.String("zlib", "", "Compress string with zlib algorithm and vice-versa. [enc|dec]")
 	days           = flag.Int("days", 0, "Defines the validity of the certificate from the date of creation.")
-	factorb        = flag.String("blind-factor", "", "Blind Factor in hexadecimal. (for Blind Signatures)")
 	factorPStr     = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr     = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
 	hierarchy      = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for SM9 User Private Key)")
@@ -25973,12 +25972,16 @@ func generateSchnorrParams(pBits int) (*SchnorrParams, error) {
 
 	var inferBits int
 	switch {
-	case pBits >= 4096:
+	case pBits >= 15360:
 		inferBits = 512
-	case pBits >= 3072:
+	case pBits >= 7680:
 		inferBits = 384
-	case pBits >= 2048:
+	case pBits >= 4096:
+		inferBits = 320
+	case pBits >= 3072:
 		inferBits = 256
+	case pBits >= 2048:
+		inferBits = 224
 	default:
 		inferBits = 160
 	}
