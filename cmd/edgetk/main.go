@@ -327,7 +327,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.10-beta  22 Aug 2025")
+		fmt.Println("EDGE Toolkit v1.5.10  24 Aug 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -10790,7 +10790,7 @@ Subcommands:
 		}
 	}
 
-	if ((strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EG") && strings.ToUpper(*alg) != "EC-ELGAMAL" && *params != "") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
+	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EG") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
 		if *pkey == "setup" {
 			setParams, err := generateElGamalParams()
 			if err != nil {
@@ -25669,7 +25669,10 @@ func verify(pub *PublicKey, hash []byte, r, s *big.Int) (bool, error) {
 		pub.P,
 	)
 
-	if ghashm.Cmp(YrRs) == 0 {
+	ghashmBytes := bigIntToFixedBytes(ghashm, pub.P.BitLen())
+	YrRsBytes := bigIntToFixedBytes(YrRs, pub.P.BitLen())
+
+	if subtle.ConstantTimeCompare(ghashmBytes, YrRsBytes) == 1 {
 		return true, nil
 	}
 
@@ -26035,7 +26038,18 @@ func findSchnorrGenerator(p, q *big.Int) (*big.Int, error) {
 	exp := new(big.Int).Sub(p, one)
 	exp.Div(exp, q)
 
-	smallPrimes := []int64{2, 3, 5, 7, 11, 13, 17, 19, 23, 29}
+	smallPrimes := []int64{
+		2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
+		31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
+		73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
+		127, 131, 137, 139, 149, 151, 157, 163, 167, 173,
+		179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
+		233, 239, 241, 251, 257, 263, 269, 271, 277, 281,
+		283, 293, 307, 311, 313, 317, 331, 337, 347, 349,
+		353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
+		419, 421, 431, 433, 439, 443, 449, 457, 461, 463,
+		467, 479, 487, 491, 499, 503, 509, 521, 523, 541,
+	}
 
 	for _, prime := range smallPrimes {
 		h := big.NewInt(prime)
@@ -26087,7 +26101,25 @@ func verifySchnorr(pub *SchnorrPublicKey, message []byte, e, s *big.Int, h hash.
 
 	ePrime := schnorrHash(rPrime, message, pub.Q, h)
 
-	return ePrime.Cmp(e) == 0, nil
+	ePrimeBytes := bigIntToFixedBytes(ePrime, pub.Q.BitLen())
+	eBytes := bigIntToFixedBytes(e, pub.Q.BitLen())
+
+	eq := subtle.ConstantTimeCompare(ePrimeBytes, eBytes) == 1
+
+	return eq, nil
+}
+
+func bigIntToFixedBytes(x *big.Int, bitLen int) []byte {
+	byteLen := (bitLen + 7) / 8
+	b := x.Bytes()
+	if len(b) > byteLen {
+		b = b[len(b)-byteLen:]
+	} else if len(b) < byteLen {
+		padded := make([]byte, byteLen)
+		copy(padded[byteLen-len(b):], b)
+		b = padded
+	}
+	return b
 }
 
 func schnorrHash(r *big.Int, message []byte, q *big.Int, h hash.Hash) *big.Int {
