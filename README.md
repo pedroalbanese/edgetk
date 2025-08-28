@@ -12,69 +12,70 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 <details><summary>Implements</summary>  
     
-1. Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
-2. Asiacrypt 2001: Short Signatures from the Weil Pairing (BLS)
-3. Asi­acrypt 2005: Barreto Identity-Based Signature (IBS)
-4. BSI TR-03111 Elliptic Curve Cryptography (ECC) Technical Guideline
-5. CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
-6. CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
-7. CRYPTO 1999: IND-CCA2 Fujisaki-Okamoto Transformation (IBE)
-8. CRYPTO 2001: Boneh-Franklin Identity-Based Encryption (IBE)
-9. DSTU 7564:2014 A New Standard of Ukraine: The Kupyna Hash Function
-10. DSTU 7624:2014 A Encryption Standard of Ukraine: Kalyna Block Cipher
-11. Eurocrypt 1996: Security Proofs for Signature Schemes (EUF-CMA ElGamal)
-12. Eurocrypt 2003: Hess Efficient Identity Based Signature (IBS)
-13. Eurocrypt 2004: Boneh-Boyen Identity-Based Encryption (IBE)
-14. GB/T 32907-2016 - SM4 128-bit Block Cipher
-15. GB/T 32918.4-2016 SM2 Elliptic Curve Asymmetric Encryption
-16. GB/T 38636-2020 - Transport Layer Cryptography Protocol (TLCP)
-17. GM/T 0001-2012 ZUC Zu Chongzhi Stream cipher 128/256-bit key
-18. GM/T 0002-2012 SM4 Block cipher with 128-bit key
-19. GM/T 0003-2012 SM2 Public key algorithm 256-bit
-20. GM/T 0004-2012 SM3 Message digest algorithm 256-bit hash value
-21. GM/T 0044-2016 SM9 Public key algorithm 256-bit
-22. GM/T 0086-2020 Specification of key management system based on SM9
-23. GOST 28147-89 64-bit block cipher (RFC 5830)
-24. GOST R 34.10-2012 VKO key agreement function (RFC 7836)
-25. GOST R 34.10-2012 public key signature function (RFC 7091)
-26. GOST R 34.11-2012 Streebog hash function (RFC 6986)
-27. GOST R 34.11-94 CryptoPro hash function (RFC 5831)
-28. GOST R 34.12-2015 128-bit block cipher Kuznechik (RFC 7801)
-29. GOST R 34.12-2015 64-bit block cipher Magma (RFC 8891)
-30. GOST R 50.1.114-2016 GOST R 34.10-2012 and GOST R 34.11-2012
-31. HC-128 Stream Cipher simplified version of HC-256 (Wu, ESAT/COSIC)
-32. IGE (Infinite Garble Extension) Mode of Operation for Block ciphers
-33. ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT/COSIC)
-34. ISO/IEC 18033-3:2010 HIGHT, SEED, Camellia and MISTY1 Block ciphers
-35. ISO/IEC 18033-4:2011 KCipher-2 stream cipher (RFC 7008)
-36. ISO/IEC 29192-3:2012 Trivium Stream cipher with 80-bit key
-37. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
-38. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
-39. ISO/IEC 14888-3:2018 EC-SDSA Schnorr-based Signature Scheme
-40. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
-41. ISO/IEC 15946-5:2022 Barreto-Naehrig and Barreto-Lynn-Scott Curves
-42. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
-43. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
-44. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
-45. LNCS 1838 - A One Round Protocol for Tripartite Diffie-Hellman
-46. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
-47. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-48. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
-49. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
-50. RFC 1423: Privacy Enhancement for Internet Electronic Mail
-51. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-52. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-53. RFC 2612: The CAST-256 Encryption Algorithm
-54. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-55. RFC 4009: The SEED Encryption Algorithm (KISA)
-56. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-57. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-58. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-59. RFC 4543: Galois Message Authentication Code (GMAC)
-60. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-61. RFC 4648: Base16, Base32, and Base64 Data Encodings
-62. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-63. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+1. Africacrypt 2009: Galindo-Garcia Identity-Based Signature (IBS)
+2. Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
+3. Asiacrypt 2001: Short Signatures from the Weil Pairing (BLS)
+4. Asi­acrypt 2005: Barreto Identity-Based Signature (IBS)
+5. BSI TR-03111 Elliptic Curve Cryptography (ECC) Technical Guideline
+6. CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
+7. CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
+8. CRYPTO 1999: IND-CCA2 Fujisaki-Okamoto Transformation (IBE)
+9. CRYPTO 2001: Boneh-Franklin Identity-Based Encryption (IBE)
+10. DSTU 7564:2014 A New Standard of Ukraine: The Kupyna Hash Function
+11. DSTU 7624:2014 A Encryption Standard of Ukraine: Kalyna Block Cipher
+12. Eurocrypt 1996: Security Proofs for Signature Schemes (EUF-CMA ElGamal)
+13. Eurocrypt 2003: Hess Efficient Identity Based Signature (IBS)
+14. Eurocrypt 2004: Boneh-Boyen Identity-Based Encryption (IBE)
+15. GB/T 32907-2016 - SM4 128-bit Block Cipher
+16. GB/T 32918.4-2016 SM2 Elliptic Curve Asymmetric Encryption
+17. GB/T 38636-2020 - Transport Layer Cryptography Protocol (TLCP)
+18. GM/T 0001-2012 ZUC Zu Chongzhi Stream cipher 128/256-bit key
+19. GM/T 0002-2012 SM4 Block cipher with 128-bit key
+20. GM/T 0003-2012 SM2 Public key algorithm 256-bit
+21. GM/T 0004-2012 SM3 Message digest algorithm 256-bit hash value
+22. GM/T 0044-2016 SM9 Public key algorithm 256-bit
+23. GM/T 0086-2020 Specification of key management system based on SM9
+24. GOST 28147-89 64-bit block cipher (RFC 5830)
+25. GOST R 34.10-2012 VKO key agreement function (RFC 7836)
+26. GOST R 34.10-2012 public key signature function (RFC 7091)
+27. GOST R 34.11-2012 Streebog hash function (RFC 6986)
+28. GOST R 34.11-94 CryptoPro hash function (RFC 5831)
+29. GOST R 34.12-2015 128-bit block cipher Kuznechik (RFC 7801)
+30. GOST R 34.12-2015 64-bit block cipher Magma (RFC 8891)
+31. GOST R 50.1.114-2016 GOST R 34.10-2012 and GOST R 34.11-2012
+32. HC-128 Stream Cipher simplified version of HC-256 (Wu, ESAT/COSIC)
+33. IGE (Infinite Garble Extension) Mode of Operation for Block ciphers
+34. ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT/COSIC)
+35. ISO/IEC 18033-3:2010 HIGHT, SEED, Camellia and MISTY1 Block ciphers
+36. ISO/IEC 18033-4:2011 KCipher-2 stream cipher (RFC 7008)
+37. ISO/IEC 29192-3:2012 Trivium Stream cipher with 80-bit key
+38. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
+39. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
+40. ISO/IEC 14888-3:2018 EC-SDSA Schnorr-based Signature Scheme
+41. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
+42. ISO/IEC 15946-5:2022 Barreto-Naehrig and Barreto-Lynn-Scott Curves
+43. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
+44. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
+45. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
+46. LNCS 1838 - A One Round Protocol for Tripartite Diffie-Hellman
+47. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
+48. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
+49. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
+50. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
+51. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+52. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+53. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+54. RFC 2612: The CAST-256 Encryption Algorithm
+55. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+56. RFC 4009: The SEED Encryption Algorithm (KISA)
+57. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+58. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+59. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+60. RFC 4543: Galois Message Authentication Code (GMAC)
+61. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+62. RFC 4648: Base16, Base32, and Base64 Data Encodings
+63. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+64. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 50. RFC 5297: Synthetic Initialization Vector (SIV Mode)
 51. RFC 5639: Elliptic Curve Cryptography (ECC) Brainpool Standard Curves
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
