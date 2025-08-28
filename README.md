@@ -171,6 +171,18 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Koblitz (secp256k1)   | O       | O         |            | O         |
     | SM2 (sm2p256v1)       | O       |           |            | O         |
 
+- **Subjacent Identity-Based Theorems:**
+    | Scheme Name     | Type | Private Group | Public Group |
+    |-----------------|------|---------------|--------------|
+    | Boneh-Franklin  | IBE  | G1            | G2           |
+    | Boneh-Boyen     | IBE  | G2            | G1           |
+    | Sakai-Kasahara  | IBE  | G2            | G1           |
+    | Barreto et al.  | IBS  | G1            | G2           |
+    | Cha-Cheon       | IBS  | G1            | G2           |
+    | Galindo-Garcia  | IBS  | G1            | G1           |
+    | Hess            | IBS  | G1            | G2           |
+    | ShangMi         | IBS  | G1            | G2           |
+
 - **Supported ParamSets:**
 
     |  Algorithm          |  A  |  B  |  C  |  D  |
