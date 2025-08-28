@@ -173,7 +173,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 - **Subjacent Identity-Based Theorems:**
     | Scheme Name          | Type | Private Key Group | Public Key Group |
-    |----------------------|------|-------------------|------------------|
+    |:---------------------|:----:|:-----------------:|:----------------:|
     | Boneh-Franklin (BF)  | IBE  | G1                | G2               |
     | Boneh-Boyen (BB)     | IBE  | G2                | G1               |
     | Sakai-Kasahara (SK)  | IBE  | G2                | G1               |
