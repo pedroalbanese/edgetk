@@ -13,18 +13,17 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 <details><summary>Implements</summary>  
     
 1. Africacrypt 2009: Galindo-Garcia Identity-Based Signature (IBS)
-2. Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
-3. Asiacrypt 2001: Short Signatures from the Weil Pairing (BLS)
-4. Asi­acrypt 2005: Barreto Identity-Based Signature (IBS)
-5. BSI TR-03111 Elliptic Curve Cryptography (ECC) Technical Guideline
-6. CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
-7. CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
-8. CRYPTO 1999: IND-CCA2 Fujisaki-Okamoto Transformation (IBE)
-9. CRYPTO 2001: Boneh-Franklin Identity-Based Encryption (IBE)
-10. DSTU 7564:2014 A New Standard of Ukraine: The Kupyna Hash Function
-11. DSTU 7624:2014 A Encryption Standard of Ukraine: Kalyna Block Cipher
-12. Eurocrypt 1996: Security Proofs for Signature Schemes (EUF-CMA ElGamal)
-13. Eurocrypt 2003: Hess Efficient Identity Based Signature (IBS)
+3. Anubis Involutional SPN 128-bit block cipher (Barreto, ESAT/COSIC)
+4. Asiacrypt 2001: Short Signatures from the Weil Pairing (BLS)
+5. Asi­acrypt 2005: Barreto Identity-Based Signature (IBS)
+6. BSI TR-03111 Elliptic Curve Cryptography (ECC) Technical Guideline
+7. CHASKEY Message Authentication Code (Nicky Mouha, ESAT/COSIC)
+8. CubeHash and SipHash64/128 (Daniel J. Bernstein & JP Aumasson)
+9. CRYPTO 1999: IND-CCA2 Fujisaki-Okamoto Transformation (IBE)
+10. CRYPTO 2001: Boneh-Franklin Identity-Based Encryption (IBE)
+11. DSTU 7564:2014 A New Standard of Ukraine: The Kupyna Hash Function
+12. DSTU 7624:2014 A Encryption Standard of Ukraine: Kalyna Block Cipher
+13. Eurocrypt 1996: Security Proofs for Signature Schemes (EUF-CMA ElGamal)
 14. Eurocrypt 2004: Boneh-Boyen Identity-Based Encryption (IBE)
 15. GB/T 32907-2016 - SM4 128-bit Block Cipher
 16. GB/T 32918.4-2016 SM2 Elliptic Curve Asymmetric Encryption
@@ -91,6 +90,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 63. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
 64. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
 65. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+13. SAC 2002: Hess Efficient Identity Based Signature (IBS)
 66. SBRC 2007: Curupira 96-bit block cipher with 96/144/192-bit keys
 67. STB 34.101.31-2011 Belarusian standard (Bel-T) block cipher
 68. STB 34.101.45-2013 Belarusian BignV1 public key algorithhm
