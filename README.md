@@ -1126,9 +1126,9 @@ For non-interactive scripts, you must use the flags -pass, -days and -subj:
 ```
 #### EG Digital signature:
 ```sh
-./edgetk -pkey sign -algorithm elgamal -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
+./edgetk -pkey sign -algorithm elgamal [-theorem dsa] -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
-./edgetk -pkey verify -algorithm elgamal -key Public.pem -signature $sign < file.ext
+./edgetk -pkey verify -algorithm elgamal [-theorem dsa] -key Public.pem -signature $sign < file.ext
 echo $?
 ```
 #### EG Encryption scheme:
@@ -1136,6 +1136,15 @@ echo $?
 ./edgetk -pkey wrapkey -algorithm elgamal -key Public.pem > cipher.txt
 ciphertext=$(cat cipher.txt|grep "Cipher"|awk '{print $2}')
 ./edgetk -pkey unwrapkey -algorithm elgamal -key Private.pem [-pass "passphrase"] -cipher $ciphertext
+```
+#### EG Zero-Knowledge Proof (ZKP):
+```sh
+./edgetk -pkey proof -key Private.pem file.ext > proof.txt
+commit=$(grep "Commitment" proof.txt | awk '{print $2}')
+chall=$(grep "Challenge" proof.txt | awk '{print $2}')
+resp=$(grep "Response" proof.txt | awk '{print $2}')
+./edgetk -pkey verify-proof -key Public.pem -commitment $commit -challenge $chall -response $resp file.ext
+echo $? 
 ```
 #### Asymmetric RSA keypair generation:
 ```sh
@@ -1286,7 +1295,7 @@ echo $?
 
 - Generate a digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
 ```sh
-./edgetk -pkey sign -algorithm bls12381 -key "PrivateSign.pem" FILE > sign.txt
+./edgetk -pkey sign -algorithm bls12381 -key "Private.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
 ./edgetk -pkey verify -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -signature $sign FILE
 echo $?
