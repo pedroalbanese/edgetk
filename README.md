@@ -172,16 +172,16 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | SM2 (sm2p256v1)       | O       |           |            | O         |
 
 - **Subjacent Identity-Based Theorems:**
-    | Scheme Name     | Type | Private Key Group | Public Key Group |
-    |-----------------|------|-------------------|------------------|
-    | Boneh-Franklin  | IBE  | G1                | G2               |
-    | Boneh-Boyen     | IBE  | G2                | G1               |
-    | Sakai-Kasahara  | IBE  | G2                | G1               |
-    | Barreto et al.  | IBS  | G1                | G2               |
-    | Cha-Cheon       | IBS  | G1                | G2               |
-    | Galindo-Garcia  | IBS  | G1                | G1               |
-    | Hess            | IBS  | G1                | G2               |
-    | ShangMi         | IBS  | G1                | G2               |
+    | Scheme Name          | Type | Private Key Group | Public Key Group |
+    |----------------------|------|-------------------|------------------|
+    | Boneh-Franklin (BF)  | IBE  | G1                | G2               |
+    | Boneh-Boyen (BB)     | IBE  | G2                | G1               |
+    | Sakai-Kasahara (SK)  | IBE  | G2                | G1               |
+    | Barreto et al. (BR)  | IBS  | G1                | G2               |
+    | Cha-Cheon (CC)       | IBS  | G1                | G2               |
+    | Galindo-Garcia (GG)  | IBS  | G1                | G1               |
+    | Hess                 | IBS  | G1                | G2               |
+    | ShangMi (SM)         | IBS  | G1                | G2               |
 
 - **Supported ParamSets:**
 
