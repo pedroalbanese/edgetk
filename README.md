@@ -180,7 +180,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
     | Barreto et al. (BR)  | IBS  | G1                | G2               |
     | Cha-Cheon (CC)       | IBS  | G1                | G2               |
     | Galindo-Garcia (GG)  | IBS  | G1                | G1               |
-    | Hess                 | IBS  | G1                | G2               |
+    | Hess (default)       | IBS  | G1                | G2               |
     | ShangMi (SM)         | IBS  | G1                | G2               |
 
 - **Supported ParamSets:**
