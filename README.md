@@ -563,7 +563,7 @@ $e(sk * H(M), G2) = e(H(M), sk * G2)$, or equivalently, $e(H(M), pk) = e(H(M), p
 Curupira is a 96-bit block cipher, with keys of 96, 144 or 192 bits, and variable number of rounds, an algorithm described at [SBRC 2007](https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=2cff321bfa378138088bd82d6f9d80ac1b762327) by Paulo S. L. M. Barreto and Marcos A. Simplício Jr., from Escola Politécnica da Universidade de São Paulo (USP), São Paulo, Brazil.
 
 $$
-\text{Curupira}[K] \equiv \sigma[\kappa(R)] \circ \pi \circ \gamma \circ \left( \prod_{r=1}^{R-1} \sigma[\kappa(r)] \circ \theta \circ \pi \circ \gamma \right) \circ \sigma[\kappa(0)]
+\text{Curupira}[K] \equiv \sigma[\kappa^{(R)}] \circ \pi \circ \gamma \circ \left( \prod_{r=1}^{R-1} \sigma[\kappa^{(r)}] \circ \theta \circ \pi \circ \gamma \right) \circ \sigma[\kappa^{(0)}]
 $$
 
 ### Digital Signature Algorithms
