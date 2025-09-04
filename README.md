@@ -1262,9 +1262,9 @@ echo $?
 
 ##### User's Private Key Generation:
 
-- Generate a private key for a user, associated with their UID.
+- Generate a private key for a user, associated with their UID and HID.
 ```sh
-./edgetk -pkey keygen -algorithm bls12381 -master "Master.pem" [-pass "pass"] -prv "Private.pem" [-passout "pass"] -id "UID"
+./edgetk -pkey keygen -algorithm bls12381 -master "Master.pem" [-pass "pass"] -prv "Private.pem" [-passout "pass"] -id "UID" -hid 3
 ```
 
 ##### Key Parsing:
@@ -1280,7 +1280,7 @@ echo $?
 
 - Encrypt a message using the master public key and the user’s UID.
 ```sh
-./edgetk -pkey encrypt -algorithm bls12381 -key "MasterPublic.pem" -id "UID" "plaintext.ext" > "ciphertext.enc"
+./edgetk -pkey encrypt -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -hid 3 "plaintext.ext" > "ciphertext.enc"
 ```
 
 ##### Message Decryption with User Private Key:
@@ -1297,7 +1297,7 @@ echo $?
 ```sh
 ./edgetk -pkey sign -algorithm bls12381 -key "Private.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
-./edgetk -pkey verify -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -signature $sign FILE
+./edgetk -pkey verify -algorithm bls12381 -key "MasterPublic.pem" -id "UID" -hid 3 -signature $sign FILE
 echo $?
 ```
 
@@ -1305,7 +1305,7 @@ echo $?
 
 - Generate a private key for a user, associated with their UID.
 ```sh
-./edgetk -pkey keygen -algorithm bls12381sign -theorem [shangmi|barreto] -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID"
+./edgetk -pkey keygen -algorithm bls12381sign -theorem [shangmi|barreto] -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID" -hid 1
 ```
 
 ##### Digital Signature Generation:
@@ -1314,7 +1314,7 @@ echo $?
 ```sh
 ./edgetk -pkey sign -algorithm bls12381 -theorem [shangmi|barreto] -key "PrivateSign.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
-./edgetk -pkey verify -algorithm bls12381 -theorem [shangmi|barreto] -key "MasterPublic.pem" -id "UID" -signature $sign FILE
+./edgetk -pkey verify -algorithm bls12381 -theorem [shangmi|barreto] -key "MasterPublic.pem" -id "UID" -hid 1 -signature $sign FILE
 echo $?
 ```
 
