@@ -110,6 +110,35 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 </details>
 
+
+<details><summary>National Cryptographic Standards</summary>
+ 
+### 🌐 National Cryptographic Standards
+ 
+#### 🇨🇳 SM2, SM3, SM4, SM9 — Chinese national cryptographic standards  
+Defined by the **State Cryptography Administration (SCA)** and standardized under **GB/T** and **GM/T** series. Widely used in Chinese government, banking, and telecom infrastructure.
+
+---
+
+#### 🇷🇺 GOST R 34.10, Kuznechik, Streebog — Russian Federation cryptographic standards  
+Approved by **FSTEC** and **Federal Security Service (FSB)**, standardized under **GOST R** series. Used across official and military systems in Russia.
+
+---
+
+#### 🇺🇦 Kalyna, Kupyna — Ukrainian national cryptographic standards  
+Standardized as **DSTU 7624:2014** (Kalyna block cipher) and **DSTU 7564:2014** (Kupyna hash function) by the **Ukrainian State Service for Special Communications and Information Protection**.
+
+---
+
+#### 🇰🇷 SEED, LEA, LSH, KCDSA — Korean national cryptographic algorithms  
+Developed under **TTAS.KO** and **KS X** standards. Used in public sector systems and Korean financial institutions. Published by **KISA** and **TTA**.
+
+---
+
+#### 🇧🇾 BignV1, Bel-T, BASH — Belarusian cryptographic standards  
+Standardized by the **STB 34.101** series. Designed for public key encryption (**BignV1**), block cipher encryption (**Bel-T**), and hashing (**BASH**), primarily for use within Belarusian national security frameworks.
+</details>
+
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
