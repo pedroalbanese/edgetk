@@ -135,6 +135,31 @@ Developed under **TTAS.KO** and **KS X** standards. Used in public sector system
 
 #### 🇧🇾 BignV1, Bel-T, BASH — Belarusian cryptographic standards  
 Standardized by the **STB 34.101** series. Designed for public key encryption (**BignV1**), block cipher encryption (**Bel-T**), and hashing (**BASH**), primarily for use within Belarusian national security frameworks.
+
+---
+
+#### 🇫🇷 ANSSI FRP256v1 — French national elliptic curve for digital signatures  
+Developed by the **ANSSI** (Agence nationale de la sécurité des systèmes d'information). Used for secure digital signature implementations within French governmental and critical infrastructure systems.
+
+---
+
+#### 🇯🇵 KCIPHER-2, Camellia — Japanese national cryptographic algorithms  
+**KCIPHER-2** is a lightweight stream cipher standardized under **ISO/IEC 18033-4:2011**.  
+**Camellia** is a block cipher developed by Mitsubishi and NTT, internationally adopted and widely used in Japan for various secure communications.
+
+---
+
+#### 🇧🇷 SENAI NBR ISO/IEC 18033-2 — Brazilian local standards for symmetric ciphers  
+Adoption of international standards for block ciphers as specified by **ISO/IEC 18033-2**, guiding the use of algorithms such as AES, Blowfish, and others in Brazilian cryptographic applications.
+
+---
+
+#### 🇺🇸 AES, SHA-1, SHA-2, SHA-3, X25519, Ed25519, Ascon, Scrypt, GCM, CCM, OCB, PKCS, HMAC — United States federal cryptographic standards  
+Includes **AES (FIPS 197)** for symmetric encryption, **SHA-1 and SHA-2 (FIPS 180-2)** and **SHA-3 (FIPS 202)** for hashing, and elliptic curve algorithms like **X25519** and **Ed25519** (NIST SP800-186, RFC 8032) for key exchange and digital signatures.  
+Lightweight authenticated encryption (**Ascon**, NIST SP800-232) and password-based key derivation (**Scrypt**, RFC 7914) are also standardized.  
+Authenticated encryption modes such as **GCM (RFC 5288)**, **CCM (RFC 3610)**, and **OCB3 (RFC 7253)** are widely used.  
+Includes message authentication codes like **HMAC (RFC 2104)** and personal information exchange standards (**PKCS #12**, RFC 7292).  
+All maintained and published primarily by **NIST** for U.S. government and private sector adoption.
 </details>
 
 ## Command-line Integrated Security Suite
