@@ -159,17 +159,18 @@ Adoption of international standards for block ciphers as specified by **ISO/IEC 
 - **SHA-1** and **SHA-2** (Secure Hash Standard, **FIPS 180-2**);  
 - **SHA-3** (based on Keccak, **FIPS 202**) for hashing;  
 - Elliptic curve algorithms **X25519** and **Ed25519** standardized in **NIST SP800-186**;  
-- Lightweight authenticated encryption algorithm **Ascon** standardized under **NIST SP800-232**.    
+- Lightweight authenticated encryption algorithm **Ascon** standardized under **NIST SP800-232**.
+
 All maintained and published by the **National Institute of Standards and Technology (NIST)** for U.S. federal government use and adoption.
 
 ---
 
 #### 🇪🇺 Anubis, Whirlpool, RIPEMD, PRESENT — European cryptographic algorithms standardized in ISO/IEC  
-Developed by researchers from **Belgium**, **Germany**, and **Austria**, these algorithms have been standardized by **ISO/IEC** for international use.  
-- **Anubis**: A block cipher designed at **KU Leuven (Belgium)**, submitted to the AES competition and later referenced in ISO contexts.  
+Developed by researchers from **Belgium**, **Germany**, and **Austria**, these algorithms have been standardized by **ISO/IEC** for international use.    
 - **Whirlpool**: A hash function designed by **Vincent Rijmen (Belgium)** and **Paulo Barreto**, standardized in **ISO/IEC 10118-3:2003**.  
 - **RIPEMD**: Developed under the **EU-funded RIPE project**, standardized in the same ISO/IEC 10118-3 family (RIPEMD-128/160/256).  
-- **PRESENT**: A lightweight block cipher co-developed by **TU Graz (Austria)** and **Ruhr-University Bochum (Germany)**, standardized in **ISO/IEC 29192-2:2019** for constrained devices.  
+- **PRESENT**: A lightweight block cipher co-developed by **TU Graz (Austria)** and **Ruhr-University Bochum (Germany)**, standardized in **ISO/IEC 29192-2:2019** for constrained devices.
+
 These algorithms reflect Europe's strong academic and institutional contributions to international cryptographic standards.
 
 </details>
