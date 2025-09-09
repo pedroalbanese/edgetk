@@ -154,12 +154,14 @@ Adoption of international standards for block ciphers as specified by **ISO/IEC 
 
 ---
 
-#### 🇺🇸 AES, SHA-1, SHA-2, SHA-3, X25519, Ed25519, Ascon, Scrypt, GCM, CCM, OCB, PKCS, HMAC — United States federal cryptographic standards  
-Includes **AES (FIPS 197)** for symmetric encryption, **SHA-1 and SHA-2 (FIPS 180-2)** and **SHA-3 (FIPS 202)** for hashing, and elliptic curve algorithms like **X25519** and **Ed25519** (NIST SP800-186, RFC 8032) for key exchange and digital signatures.  
-Lightweight authenticated encryption (**Ascon**, NIST SP800-232) and password-based key derivation (**Scrypt**, RFC 7914) are also standardized.  
-Authenticated encryption modes such as **GCM (RFC 5288)**, **CCM (RFC 3610)**, and **OCB3 (RFC 7253)** are widely used.  
-Includes message authentication codes like **HMAC (RFC 2104)** and personal information exchange standards (**PKCS #12**, RFC 7292).  
-All maintained and published primarily by **NIST** for U.S. government and private sector adoption.
+#### 🇺🇸 AES, SHA-1, SHA-2, SHA-3, X25519, Ed25519, Ascon — United States NIST cryptographic standards  
+Includes **AES** (Advanced Encryption Standard, **FIPS 197**) for symmetric encryption;  
+**SHA-1** and **SHA-2** (Secure Hash Standard, **FIPS 180-2**);  
+**SHA-3** (based on Keccak, **FIPS 202**) for hashing;  
+Elliptic curve algorithms **X25519** and **Ed25519** standardized in **NIST SP800-186** for key exchange and digital signatures;  
+Lightweight authenticated encryption algorithm **Ascon** standardized under **NIST SP800-232**.  
+All maintained and published by the **National Institute of Standards and Technology (NIST)** for U.S. federal government use and adoption.
+
 </details>
 
 ## Command-line Integrated Security Suite
