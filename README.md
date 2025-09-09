@@ -158,7 +158,7 @@ Adoption of international standards for block ciphers as specified by **ISO/IEC 
 Includes **AES** (Advanced Encryption Standard, **FIPS 197**) for symmetric encryption;  
 **SHA-1** and **SHA-2** (Secure Hash Standard, **FIPS 180-2**);  
 **SHA-3** (based on Keccak, **FIPS 202**) for hashing;  
-Elliptic curve algorithms **X25519** and **Ed25519** standardized in **NIST SP800-186** for key exchange and digital signatures;  
+Elliptic curve algorithms **X25519** and **Ed25519** standardized in **NIST SP800-186**;  
 Lightweight authenticated encryption algorithm **Ascon** standardized under **NIST SP800-232**.  
 All maintained and published by the **National Institute of Standards and Technology (NIST)** for U.S. federal government use and adoption.
 
