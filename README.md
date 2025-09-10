@@ -177,7 +177,7 @@ All maintained and published by the **National Institute of Standards and Techno
 
 ---
 
-#### 🇪🇺 Whirlpool, RIPEMD, PRESENT, BLS/BN curves — European cryptographic algorithms standardized in ISO/IEC  
+#### 🇪🇺 Whirlpool, RIPEMD, PRESENT, BLS/BN curves — European cryptographic standards (ISO/IEC)  
 Developed by researchers from **Belgium**, **Germany**, and **Austria**, these algorithms have been standardized by **ISO/IEC** for international use.    
 - **Whirlpool**: A hash function designed by **Vincent Rijmen (Belgium)** and **Paulo Barreto**, standardized in **ISO/IEC 10118-3:2003**.  
 - **RIPEMD**: Developed under the **EU-funded RIPE project**, standardized in the same ISO/IEC 10118-3 family (RIPEMD-128/160/256).  
