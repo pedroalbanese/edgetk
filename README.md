@@ -113,7 +113,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 
 <details><summary>National Cryptographic Standards</summary>
  
-#### 🇨🇳 SM2, SM3, SM4, SM9 — Chinese national cryptographic standards  
+#### 🇨🇳 SM2, SM3, SM4, SM9, ZUC — Chinese national cryptographic standards  
 Defined by the **State Cryptography Administration (SCA)** and standardized under **GB/T** and **GM/T** series. Widely used in Chinese government, banking, and telecom infrastructure.
 
 ---
@@ -128,7 +128,7 @@ Standardized as **DSTU 7624:2014** (Kalyna block cipher) and **DSTU 7564:2014** 
 
 ---
 
-#### 🇰🇷 SEED, LEA, LSH, KCDSA — Korean national cryptographic algorithms  
+#### 🇰🇷 ARIA, SEED, LEA, LSH, KCDSA — Korean national cryptographic algorithms  
 Developed under **TTAS.KO** and **KS X** standards. Used in public sector systems and Korean financial institutions. Published by **KISA** and **TTA**.
 
 ---
@@ -143,8 +143,8 @@ Developed by the **ANSSI** (Agence nationale de la sécurité des systèmes d'in
 
 ---
 
-#### 🇯🇵 KCIPHER-2, Camellia — Japanese national cryptographic algorithms  
-**KCIPHER-2** is a lightweight stream cipher standardized under **ISO/IEC 18033-4:2011**.  
+#### 🇯🇵 KCipher-2, Camellia — Japanese national cryptographic algorithms  
+**KCipher-2** is a lightweight stream cipher standardized under **ISO/IEC 18033-4:2011**.  
 **Camellia** is a block cipher developed by Mitsubishi and NTT, internationally adopted and widely used in Japan for various secure communications.
 
 ---
