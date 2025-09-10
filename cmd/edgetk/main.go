@@ -275,7 +275,7 @@ var (
 	commitmentFlag = flag.String("commitment", "", "Commitment for the proof. (for Zero-Knowledge Proof ZKP)")
 	challengeFlag  = flag.String("challenge", "", "Challenge for the proof. (for Zero-Knowledge Proof ZKP)")
 	responseFlag   = flag.String("response", "", "Response for the proof. (for Zero-Knowledge Proof ZKP)")
-	theorem        = flag.String("theorem", "", "Theorem. (for Identity-Based Cryptography IBE/IBS)")
+	scheme         = flag.String("scheme", "", "Subjacent Scheme. (for Identity-Based Cryptography IBE/IBS)")
 	token          = flag.String("token", "", "Token containing an encrypted symmetric key.")
 	xx             = flag.String("xx", "", "Encode binary files with xxencoding and vice-versa. [enc|dec]")
 	uu             = flag.String("uu", "", "Encode binary files with uuencoding and vice-versa. [enc|dec]")
@@ -11402,7 +11402,7 @@ Subcommands:
 			return
 		}
 
-		if *pkey == "sign" && strings.ToUpper(*theorem) == "DSA" {
+		if *pkey == "sign" && strings.ToUpper(*scheme) == "DSA" {
 			priv, err := readPrivateKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading private key:", err)
@@ -11428,7 +11428,7 @@ Subcommands:
 			fmt.Printf("EG-DSA-%s(%s)= %x\n", strings.ToUpper(*md), inputdesc, sign)
 			os.Exit(0)
 		}
-		if *pkey == "verify" && strings.ToUpper(*theorem) == "DSA" {
+		if *pkey == "verify" && strings.ToUpper(*scheme) == "DSA" {
 			if *key == "" {
 				fmt.Println("Error: Public key file not provided for verification.")
 				os.Exit(3)
@@ -12897,7 +12897,7 @@ Subcommands:
 			fmt.Println(randomArt)
 			os.Exit(0)
 		}
-		if *pkey == "setup" && (strings.ToUpper(*theorem) == "BB" || strings.ToUpper(*theorem) == "BONEH-BOYEN") {
+		if *pkey == "setup" && (strings.ToUpper(*scheme) == "BB" || strings.ToUpper(*scheme) == "BONEH-BOYEN") {
 			var s, x *ff.Scalar
 			var Ppubs *bls12381.G2
 			var v *bls12381.Gt
@@ -13014,7 +13014,7 @@ Subcommands:
 			os.Exit(0)
 		}
 
-		if *pkey == "setup" && (strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA") {
+		if *pkey == "setup" && (strings.ToUpper(*scheme) == "SK" || strings.ToUpper(*scheme) == "SAKAI-KASAHARA") {
 			var s *ff.Scalar
 			var Ppub *bls12381.G1
 
@@ -13131,7 +13131,7 @@ Subcommands:
 			os.Exit(0)
 		}
 
-		if *pkey == "setup" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+		if *pkey == "setup" && (strings.ToUpper(*scheme) == "GG" || strings.ToUpper(*scheme) == "GALINDO-GARCIA") {
 			var z *ff.Scalar
 			var mpk *bls12381.G1
 
@@ -13520,7 +13520,7 @@ Subcommands:
 			os.Exit(0)
 		}
 
-		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*theorem) == "BB" || strings.ToUpper(*theorem) == "BONEH-BOYEN") {
+		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*scheme) == "BB" || strings.ToUpper(*scheme) == "BONEH-BOYEN") {
 			masterPrivData, err := readKeyFromPEM(*master, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13565,7 +13565,7 @@ Subcommands:
 			os.Exit(0)
 		}
 
-		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA") {
+		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*scheme) == "SK" || strings.ToUpper(*scheme) == "SAKAI-KASAHARA") {
 			sk, err := readKeyFromPEM(*master, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13597,7 +13597,7 @@ Subcommands:
 			os.Exit(0)
 		}
 
-		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*scheme) == "GG" || strings.ToUpper(*scheme) == "GALINDO-GARCIA") {
 			sk, err := readKeyFromPEM(*master, true)
 			if err != nil {
 				fmt.Println("Error loading GG master key:", err)
@@ -13645,16 +13645,16 @@ Subcommands:
 			skScalar.SetBytes(sk)
 
 			var privateKeyBytes []byte
-			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" || strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
+			if strings.ToUpper(*scheme) == "BF" || strings.ToUpper(*scheme) == "BONEH-FRANKLIN" || strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON" || strings.ToUpper(*scheme) == "HESS" {
 				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA" {
+			} else if strings.ToUpper(*scheme) == "SK" || strings.ToUpper(*scheme) == "SAKAI-KASAHARA" {
 				privateKey := extractSK(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
+			} else if strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO" {
 				privateKey := extractBARRETO(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
+			} else if strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" {
 				privateKey := extractSM(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else {
@@ -13689,10 +13689,10 @@ Subcommands:
 			skScalar.SetBytes(sk)
 
 			var privateKeyBytes []byte
-			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" {
+			if strings.ToUpper(*scheme) == "BF" || strings.ToUpper(*scheme) == "BONEH-FRANKLIN" {
 				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA" {
+			} else if strings.ToUpper(*scheme) == "SK" || strings.ToUpper(*scheme) == "SAKAI-KASAHARA" {
 				privateKey := extractSK(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else {
@@ -13727,16 +13727,16 @@ Subcommands:
 			skScalar.SetBytes(sk)
 
 			var privateKeyBytes []byte
-			if strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
+			if strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON" || strings.ToUpper(*scheme) == "HESS" {
 				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
+			} else if strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" {
 				privateKey := extractSM(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
+			} else if strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO" {
 				privateKey := extractBARRETO(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
-			} else if strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA" {
+			} else if strings.ToUpper(*scheme) == "GG" || strings.ToUpper(*scheme) == "GALINDO-GARCIA" {
 				y, gr := extractGG(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes, err = encodePrivateKeyGG(y, gr)
 				if err != nil {
@@ -13764,7 +13764,7 @@ Subcommands:
 				return
 			}
 			fmt.Printf("Private Key saved to: %s\n", privPath)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13791,7 +13791,7 @@ Subcommands:
 			}
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13826,7 +13826,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13853,7 +13853,7 @@ Subcommands:
 			}
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13888,7 +13888,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "GG" || strings.ToUpper(*scheme) == "GALINDO-GARCIA") {
 			skData, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading GG private key:", err)
@@ -13916,7 +13916,7 @@ Subcommands:
 			}
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "GG" || strings.ToUpper(*scheme) == "GALINDO-GARCIA") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading GG public key:", err)
@@ -13954,7 +13954,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -13981,7 +13981,7 @@ Subcommands:
 			}
 
 			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -14083,7 +14083,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "encrypt" && (strings.ToUpper(*theorem) == "BB" || strings.ToUpper(*theorem) == "BONEH-BOYEN") {
+		} else if *pkey == "encrypt" && (strings.ToUpper(*scheme) == "BB" || strings.ToUpper(*scheme) == "BONEH-BOYEN") {
 			pemData, err := os.ReadFile(*key)
 			if err != nil {
 				fmt.Println("Error loading public key file:", err)
@@ -14120,7 +14120,7 @@ Subcommands:
 			}
 
 			fmt.Printf("%s", ciphertext)
-		} else if *pkey == "decrypt" && (strings.ToUpper(*theorem) == "BB" || strings.ToUpper(*theorem) == "BONEH-BOYEN") {
+		} else if *pkey == "decrypt" && (strings.ToUpper(*scheme) == "BB" || strings.ToUpper(*scheme) == "BONEH-BOYEN") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -14164,7 +14164,7 @@ Subcommands:
 			}
 
 			fmt.Printf("%s", plaintext)
-		} else if *pkey == "encrypt" && (strings.ToUpper(*theorem) == "FO" || strings.ToUpper(*theorem) == "FUJISAKI-OKAMOTO") {
+		} else if *pkey == "encrypt" && (strings.ToUpper(*scheme) == "FO" || strings.ToUpper(*scheme) == "FUJISAKI-OKAMOTO") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading public key:", err)
@@ -14190,7 +14190,7 @@ Subcommands:
 			}
 
 			fmt.Printf("%s", serialized)
-		} else if *pkey == "decrypt" && (strings.ToUpper(*theorem) == "FO" || strings.ToUpper(*theorem) == "FUJISAKI-OKAMOTO") {
+		} else if *pkey == "decrypt" && (strings.ToUpper(*scheme) == "FO" || strings.ToUpper(*scheme) == "FUJISAKI-OKAMOTO") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -14218,7 +14218,7 @@ Subcommands:
 				log.Fatal("Authentication failed! Message integrity compromised.")
 			}
 			fmt.Printf("%s", decryptedMessage)
-		} else if *pkey == "encrypt" && (strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA") {
+		} else if *pkey == "encrypt" && (strings.ToUpper(*scheme) == "SK" || strings.ToUpper(*scheme) == "SAKAI-KASAHARA") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading public key:", err)
@@ -14244,7 +14244,7 @@ Subcommands:
 			}
 
 			fmt.Printf("%s", serialized)
-		} else if *pkey == "decrypt" && (strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA") {
+		} else if *pkey == "decrypt" && (strings.ToUpper(*scheme) == "SK" || strings.ToUpper(*scheme) == "SAKAI-KASAHARA") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -14338,7 +14338,7 @@ Subcommands:
 				log.Fatal("Authentication failed! Message integrity compromised.")
 			}
 			fmt.Printf("%s", decryptedMessage)
-		} else if *pkey == "proof" && (strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" || strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO") {
+		} else if *pkey == "proof" && (strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" || strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO") {
 			skb, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading secret key:", err)
@@ -14364,7 +14364,7 @@ Subcommands:
 			fmt.Printf("Challenge= %x\n", chiB)
 			fmt.Printf("Response= %x\n", SB)
 
-		} else if *pkey == "verify-proof" && (strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" || strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO") {
+		} else if *pkey == "verify-proof" && (strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" || strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO") {
 			pkb, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading public key:", err)
@@ -16808,11 +16808,11 @@ Subcommands:
 			skBigInt := new(big.Int).SetBytes(sk)
 
 			var privateKey *bn256i.G1
-			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" || strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
+			if strings.ToUpper(*scheme) == "BF" || strings.ToUpper(*scheme) == "BONEH-FRANKLIN" || strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON" || strings.ToUpper(*scheme) == "HESS" {
 				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
-			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
+			} else if strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" {
 				privateKey = extractSM_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
-			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
+			} else if strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO" {
 				privateKey = extractBARRETO_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else {
 				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
@@ -16843,11 +16843,11 @@ Subcommands:
 			skBigInt := new(big.Int).SetBytes(sk)
 
 			var privateKey *bn256i.G1
-			if strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
+			if strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON" || strings.ToUpper(*scheme) == "HESS" {
 				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
-			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
+			} else if strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" {
 				privateKey = extractSM_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
-			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
+			} else if strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO" {
 				privateKey = extractBARRETO_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else {
 				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
@@ -16895,7 +16895,7 @@ Subcommands:
 				return
 			}
 			fmt.Printf("Private Key saved to: %s\n", privPath)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -16923,7 +16923,7 @@ Subcommands:
 			}
 
 			fmt.Println("BN256("+inputdesc+")=", hex.EncodeToString(signatureBytes))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -16961,7 +16961,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -16989,7 +16989,7 @@ Subcommands:
 			}
 
 			fmt.Println("BN256("+inputdesc+")=", hex.EncodeToString(signatureBytes))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "BR" || strings.ToUpper(*scheme) == "BARRETO") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -17027,7 +17027,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON") {
+		} else if *pkey == "sign" && (strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -17055,7 +17055,7 @@ Subcommands:
 			}
 
 			fmt.Println("BN256("+inputdesc+")=", hex.EncodeToString(signatureBytes))
-		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON") {
+		} else if *pkey == "verify" && (strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
@@ -17162,7 +17162,7 @@ Subcommands:
 				os.Exit(1)
 			}
 			os.Exit(0)
-		} else if *pkey == "encrypt" && (strings.ToUpper(*theorem) == "FO" || strings.ToUpper(*theorem) == "FUJISAKI-OKAMOTO") {
+		} else if *pkey == "encrypt" && (strings.ToUpper(*scheme) == "FO" || strings.ToUpper(*scheme) == "FUJISAKI-OKAMOTO") {
 			pk, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error loading public key:", err)
@@ -17188,7 +17188,7 @@ Subcommands:
 			}
 
 			fmt.Printf("%s", serialized)
-		} else if *pkey == "decrypt" && (strings.ToUpper(*theorem) == "FO" || strings.ToUpper(*theorem) == "FUJISAKI-OKAMOTO") {
+		} else if *pkey == "decrypt" && (strings.ToUpper(*scheme) == "FO" || strings.ToUpper(*scheme) == "FUJISAKI-OKAMOTO") {
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
