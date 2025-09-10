@@ -250,7 +250,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
     | Koblitz (secp256k1)   | O       | O         |            | O         |
     | SM2 (sm2p256v1)       | O       |           |            | O         |
 
-- **Subjacent Identity-Based Theorems:**
+- **Subjacent Identity-Based Schemes:**
     | Scheme Name          | Type | Private Key Group | Public Key Group |
     |:---------------------|:----:|:-----------------:|:----------------:|
     | Boneh-Franklin (BF)  | IBE  | G1                | G2               |
