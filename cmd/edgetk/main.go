@@ -330,7 +330,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.11  06 Sep 2025")
+		fmt.Println("EDGE Toolkit v1.5.11  10 Sep 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -10963,53 +10963,52 @@ Subcommands:
 				return
 			}
 
-			var privASN1 PrivateKeyASN1
-			if _, err := asn1.Unmarshal(block.Bytes, &privASN1); err == nil {
-				priv := &PrivateKey{
-					PublicKey: PublicKey{
-						P: privASN1.P,
-						G: privASN1.G,
-						Y: new(big.Int).Exp(privASN1.G, privASN1.X, privASN1.P),
-					},
-					X: privASN1.X,
-				}
+			var rawComponents []asn1.RawValue
+			if _, err := asn1.Unmarshal(block.Bytes, &rawComponents); err == nil {
+				if len(rawComponents) == 3 {
+					var privASN1 PrivateKeyASN1
+					if _, err := asn1.Unmarshal(block.Bytes, &privASN1); err == nil {
+						priv := &PrivateKey{
+							PublicKey: PublicKey{
+								P: privASN1.P,
+								G: privASN1.G,
+								Y: new(big.Int).Exp(privASN1.G, privASN1.X, privASN1.P),
+							},
+							X: privASN1.X,
+						}
 
-				publicKey := new(big.Int).Exp(privASN1.G, privASN1.X, privASN1.P)
+						publicKey := priv.PublicKey.Y
 
-				fmt.Print(string(data))
+						fmt.Print(string(data))
 
-				xval := new(big.Int).Set(priv.X)
-				fmt.Println("Private Key (x):")
-				x := fmt.Sprintf("%x", xval)
-				splitz := SplitSubN(x, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						xval := new(big.Int).Set(priv.X)
+						fmt.Println("Private Key (x):")
+						x := fmt.Sprintf("%x", xval)
+						splitz := SplitSubN(x, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						fmt.Println("Prime (p):")
+						p := fmt.Sprintf("%x", priv.P)
+						splitz = SplitSubN(p, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						fmt.Println("Generator (g in the range [2, p-2]):")
+						g := fmt.Sprintf("%x", priv.G)
+						splitz = SplitSubN(g, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						fmt.Println("Public Key (Y = g^x mod p):")
+						pub := fmt.Sprintf("%x", publicKey)
+						splitz = SplitSubN(pub, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						os.Exit(0)
+					}
 				}
-				fmt.Println("Prime (p):")
-				p := fmt.Sprintf("%x", priv.P)
-				splitz = SplitSubN(p, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				fmt.Println("Subgroup Order (q):")
-				q := fmt.Sprintf("%x", priv.Q)
-				splitz = SplitSubN(q, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				fmt.Println("Generator (g in the range [2, p-2]):")
-				g := fmt.Sprintf("%x", priv.G)
-				splitz = SplitSubN(g, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				fmt.Println("Public Key (Y = g^x mod p):")
-				pub := fmt.Sprintf("%x", publicKey)
-				splitz = SplitSubN(pub, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				os.Exit(0)
 			}
 
 			priv, err := readPrivateKeyFromPEM(*key)
@@ -11073,6 +11072,7 @@ Subcommands:
 			}
 			os.Exit(0)
 		}
+
 		if *pkey == "text" && *key != "" && blockType == "ELGAMAL PUBLIC KEY" {
 			pemData, err := os.ReadFile(*key)
 			if err != nil {
@@ -11086,42 +11086,41 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubASN1 PublicKeyASN1
-			if _, err := asn1.Unmarshal(block.Bytes, &pubASN1); err == nil {
-				publicKeyVal := &PublicKey{
-					P: pubASN1.P,
-					G: pubASN1.G,
-					Y: pubASN1.Y,
-				}
+			var rawComponents []asn1.RawValue
+			if _, err := asn1.Unmarshal(block.Bytes, &rawComponents); err == nil {
+				if len(rawComponents) == 3 {
+					var pubASN1 PublicKeyASN1
+					if _, err := asn1.Unmarshal(block.Bytes, &pubASN1); err == nil {
+						publicKeyVal := &PublicKey{
+							P: pubASN1.P,
+							G: pubASN1.G,
+							Y: pubASN1.Y,
+						}
 
-				fmt.Print(string(pemData))
+						fmt.Print(string(pemData))
 
-				fmt.Println("Public Key Parameters:")
-				fmt.Println("Prime (p):")
-				p := fmt.Sprintf("%x", publicKeyVal.P)
-				splitz := SplitSubN(p, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						fmt.Println("Public Key Parameters:")
+						fmt.Println("Prime (p):")
+						p := fmt.Sprintf("%x", publicKeyVal.P)
+						splitz := SplitSubN(p, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						fmt.Println("Generator (g):")
+						g := fmt.Sprintf("%x", publicKeyVal.G)
+						splitz = SplitSubN(g, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						fmt.Println("Public Key (Y):")
+						y := fmt.Sprintf("%x", publicKeyVal.Y)
+						splitz = SplitSubN(y, 2)
+						for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+							fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+						}
+						return
+					}
 				}
-				fmt.Println("Subgroup Order (q):")
-				q := fmt.Sprintf("%x", publicKeyVal.Q)
-				splitz = SplitSubN(q, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				fmt.Println("Generator (g):")
-				g := fmt.Sprintf("%x", publicKeyVal.G)
-				splitz = SplitSubN(g, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				fmt.Println("Public Key (Y):")
-				y := fmt.Sprintf("%x", publicKeyVal.Y)
-				splitz = SplitSubN(y, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
-				}
-				return
 			}
 
 			publicKeyVal, err := readPublicKeyFromPEM(*key)
@@ -27895,24 +27894,18 @@ func NewPKCS8Key() PKCS8Key {
 }
 
 func (this PKCS8Key) MarshalPublicKey(key *PublicKey) ([]byte, error) {
-	var publicKeyBytes []byte
-	var err error
-
-	paramBytes, err := asn1.Marshal(ElGamalParams{
-		G: key.G,
-		Q: key.Q,
+	pubASN1 := struct {
+		P *big.Int
+		Q *big.Int
+		G *big.Int
+		Y *big.Int
+	}{
 		P: key.P,
-	})
-	if err != nil {
-		return nil, errors.New("elgamal: failed to marshal algo param: " + err.Error())
+		Q: key.Q,
+		G: key.G,
+		Y: key.Y,
 	}
-
-	publicKeyBytes = append(publicKeyBytes, paramBytes...)
-
-	yBytes := key.Y.Bytes()
-	publicKeyBytes = append(publicKeyBytes, yBytes...)
-
-	return publicKeyBytes, nil
+	return asn1.Marshal(pubASN1)
 }
 
 func MarshalPKCS8PublicKey(pub *PublicKey) ([]byte, error) {
@@ -27920,21 +27913,24 @@ func MarshalPKCS8PublicKey(pub *PublicKey) ([]byte, error) {
 }
 
 func (this PKCS8Key) ParsePublicKey(der []byte) (*PublicKey, error) {
-	var pubKey PublicKey
-	var algoParams ElGamalParams
+	var pubASN1 struct {
+		P *big.Int
+		Q *big.Int
+		G *big.Int
+		Y *big.Int
+	}
 
-	rest, err := asn1.Unmarshal(der, &algoParams)
+	_, err := asn1.Unmarshal(der, &pubASN1)
 	if err != nil {
 		return nil, err
 	}
 
-	pubKey.G = algoParams.G
-	pubKey.Q = algoParams.Q
-	pubKey.P = algoParams.P
-
-	pubKey.Y = new(big.Int).SetBytes(rest)
-
-	return &pubKey, nil
+	return &PublicKey{
+		P: pubASN1.P,
+		Q: pubASN1.Q,
+		G: pubASN1.G,
+		Y: pubASN1.Y,
+	}, nil
 }
 
 func ParsePKCS8PublicKey(derBytes []byte) (*PublicKey, error) {
@@ -27942,24 +27938,22 @@ func ParsePKCS8PublicKey(derBytes []byte) (*PublicKey, error) {
 }
 
 func (this PKCS8Key) MarshalPrivateKey(key *PrivateKey) ([]byte, error) {
-	var privateKeyBytes []byte
-	var err error
-
-	paramBytes, err := asn1.Marshal(ElGamalParams{
-		G: key.G,
-		Q: key.Q,
-		P: key.P,
-	})
-	if err != nil {
-		return nil, errors.New("elgamal: failed to marshal algo param: " + err.Error())
+	privASN1 := struct {
+		Version int
+		P       *big.Int
+		Q       *big.Int
+		G       *big.Int
+		Y       *big.Int
+		X       *big.Int
+	}{
+		Version: 0,
+		P:       key.P,
+		Q:       key.Q,
+		G:       key.G,
+		Y:       key.Y,
+		X:       key.X,
 	}
-
-	privateKeyBytes = append(privateKeyBytes, paramBytes...)
-
-	xBytes := key.X.Bytes()
-	privateKeyBytes = append(privateKeyBytes, xBytes...)
-
-	return privateKeyBytes, nil
+	return asn1.Marshal(privASN1)
 }
 
 func MarshalPKCS8PrivateKey(key *PrivateKey) ([]byte, error) {
@@ -27967,21 +27961,29 @@ func MarshalPKCS8PrivateKey(key *PrivateKey) ([]byte, error) {
 }
 
 func (this PKCS8Key) ParsePrivateKey(der []byte) (key *PrivateKey, err error) {
-	var privKey PrivateKey
-	var algoParams ElGamalParams
+	var privASN1 struct {
+		Version int
+		P       *big.Int
+		Q       *big.Int
+		G       *big.Int
+		Y       *big.Int
+		X       *big.Int
+	}
 
-	rest, err := asn1.Unmarshal(der, &algoParams)
+	_, err = asn1.Unmarshal(der, &privASN1)
 	if err != nil {
 		return nil, err
 	}
 
-	privKey.G = algoParams.G
-	privKey.Q = algoParams.Q
-	privKey.P = algoParams.P
-
-	privKey.X = new(big.Int).SetBytes(rest)
-
-	return &privKey, nil
+	return &PrivateKey{
+		PublicKey: PublicKey{
+			P: privASN1.P,
+			Q: privASN1.Q,
+			G: privASN1.G,
+			Y: privASN1.Y,
+		},
+		X: privASN1.X,
+	}, nil
 }
 
 func ParsePKCS8PrivateKey(derBytes []byte) (key *PrivateKey, err error) {
