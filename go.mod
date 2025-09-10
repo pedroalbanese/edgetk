@@ -8,7 +8,6 @@ require (
 	gitee.com/Trisia/gotlcp v1.3.17
 	github.com/RyuaNerin/elliptic2 v1.0.0
 	github.com/RyuaNerin/go-krypto v1.3.0
-	github.com/cloudflare/circl v1.5.0
 	github.com/deatil/go-cryptobin v1.0.4018
 	github.com/emmansun/certinfo v0.1.0
 	github.com/emmansun/gmsm v0.24.2
@@ -20,6 +19,7 @@ require (
 	github.com/pedroalbanese/belt v0.0.0-20240917222837-2f97e6235d6c
 	github.com/pedroalbanese/bign v0.0.0-20240918155826-90ccb6b122b9
 	github.com/pedroalbanese/bip0340 v0.0.0-20250309175356-f4246d336869
+	github.com/pedroalbanese/bls12381 v0.0.8
 	github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774
 	github.com/pedroalbanese/bn256 v0.0.0-20241211180157-f48a503b4cc5
 	github.com/pedroalbanese/brainpool v0.0.0-20220826183126-be5c94625a31
@@ -80,7 +80,7 @@ require (
 	github.com/pedroalbanese/md6 v0.0.0-20240815222317-052c055905a4
 	github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f
 	github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75
-	github.com/pedroalbanese/ocb3 v0.0.0-20230127113333-c403200ee5a8
+	github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2
 	github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b
 	github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5
 	github.com/pedroalbanese/present v0.0.0-20240325185615-de3b5340e616
@@ -102,11 +102,13 @@ require (
 	github.com/pedroalbanese/tom v0.0.0-20250228211028-987ea6c1589b
 	github.com/pedroalbanese/trivium v0.0.0-20170225064545-3bc0ea456f63
 	github.com/pedroalbanese/twine v0.0.0-20240325185833-a027b56be619
+	github.com/pedroalbanese/uuencode v1.0.4
 	github.com/pedroalbanese/vmac v0.0.0-20231111194716-1a03aacdcb4c
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
+	github.com/pedroalbanese/xxencode v0.0.15
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.39.0
 	golang.org/x/term v0.32.0
 )
 

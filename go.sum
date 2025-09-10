@@ -6,8 +6,6 @@ github.com/RyuaNerin/go-krypto v1.3.0 h1:smavTzSMAx8iuVlGb4pEwl9MD2qicqMzuXR2QWp
 github.com/RyuaNerin/go-krypto v1.3.0/go.mod h1:9R9TU936laAIqAmjcHo/LsaXYOZlymudOAxjaBf62UM=
 github.com/RyuaNerin/testingutil v0.1.0 h1:IYT6JL57RV3U2ml3dLHZsVtPOP6yNK7WUVdzzlpNrss=
 github.com/RyuaNerin/testingutil v0.1.0/go.mod h1:yTqj6Ta/ycHMPJHRyO12Mz3VrvTloWOsy23WOZH19AA=
-github.com/cloudflare/circl v1.5.0 h1:hxIWksrX6XN5a1L2TI/h53AGPhNHoUBo+TD1ms9+pys=
-github.com/cloudflare/circl v1.5.0/go.mod h1:uddAzsPgqdMAYatqJ0lsjX1oECcQLIlRpzZh3pJrofs=
 github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb h1:8p7p0keqd2EGoESuU78k+Cxm4X/3awlzMl7nsPoDvnw=
 github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb/go.mod h1:4B/sRpOorAPzUAhh6hjHBmsImbVGoM6+GnZDs1qmZ3k=
 github.com/deatil/go-cryptobin v1.0.4018 h1:nEnp6OctddN68zbWmq6faJ082JDzxwfemxzrffGEegY=
@@ -37,6 +35,8 @@ github.com/pedroalbanese/bip0340 v0.0.0-20250309175356-f4246d336869 h1:s8etgogfh
 github.com/pedroalbanese/bip0340 v0.0.0-20250309175356-f4246d336869/go.mod h1:E96V3xC9SIYZtG5bBe26XNrD/Qr0ltit22OQt4qCfis=
 github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e h1:fQBIZ8P27Y4TAXoY3Y/+TDZhGJLDoRTyh1ctP/XgHZI=
 github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e/go.mod h1:5gQQeeXADClOkGWSusDk866hYd5wRPDwhMTFnD/dzG4=
+github.com/pedroalbanese/bls12381 v0.0.8 h1:zosxFxpH4EGlcq92ZlZ0MfHpBcPorb7l+87CyHpbic4=
+github.com/pedroalbanese/bls12381 v0.0.8/go.mod h1:el224rja+5DSTUGRp/u8dMT5S+JDPbvFVjPEi5QONTQ=
 github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774 h1:vULfXcjdqnehx2oeCXv26rKhUWhGwiBCNzYhYt0J9W0=
 github.com/pedroalbanese/bmw v0.0.0-20240608175405-99257887a774/go.mod h1:Rw6vKDOkrW6pl9uoO8ggkouF5UyP5DEBZrq+ee6L0V8=
 github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f h1:YZBM8ykr/8ZfXTwjs9HoUwvLBuraOQWnCjtzKRnHpkE=
@@ -161,8 +161,8 @@ github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f h1:caqvKxlrA
 github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f/go.mod h1:EU9JfJfUL1/CHNbBTZQ53twTUaXVhYivkJKQNmZ4NI4=
 github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75 h1:HebmTqQwgn/gCSlkx/knOOm9hdChtzGVA5aBykymRjU=
 github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75/go.mod h1:dlllB0nX79F4Pfwaf5HOgrZ97nQE6ISo4lK2DHPZOlw=
-github.com/pedroalbanese/ocb3 v0.0.0-20230127113333-c403200ee5a8 h1:dfg/L4zQg5g0sYyR5SnXdqwDIfQUa2Gt0X4pA0tRAm8=
-github.com/pedroalbanese/ocb3 v0.0.0-20230127113333-c403200ee5a8/go.mod h1:IWXK6lfpkAL1e5YtIku4d+6cZNlxu7+NpABckKwaVC0=
+github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2 h1:7a6Pd91lxufXKJioCLW2tr9ZQqppKbVE0gXBYipUqw8=
+github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2/go.mod h1:IWXK6lfpkAL1e5YtIku4d+6cZNlxu7+NpABckKwaVC0=
 github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b h1:vYTR/DxOdzoaaT0SLkgAl8W07caWIauTY7DboGn036A=
 github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b/go.mod h1:yBu1efo/Rh/R8T/BEouh3QtLqXXioeI5MT8UZTUY5Uo=
 github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5 h1:aAP1McSRlLhwZLw/fq8yVlXQdYJFTD+ZYZa5x1Ef2cE=
@@ -205,12 +205,16 @@ github.com/pedroalbanese/trivium v0.0.0-20170225064545-3bc0ea456f63 h1:yCEZ0ctjj
 github.com/pedroalbanese/trivium v0.0.0-20170225064545-3bc0ea456f63/go.mod h1:vwudD8Hl3PTug52vZyuCk56sZkJho/UOPrZ0mNLAliw=
 github.com/pedroalbanese/twine v0.0.0-20240325185833-a027b56be619 h1:4ivVe/VS0Ww4hf5q7EvG/Xdqw2z4+NIa31AYp6bSQPo=
 github.com/pedroalbanese/twine v0.0.0-20240325185833-a027b56be619/go.mod h1:uFICSVTc3c9NHS6CRBLDxHEtuRn6bPisfYAHVyQfDy8=
+github.com/pedroalbanese/uuencode v1.0.4 h1:ypejSaQxg/rf4pEDoOzZvBW/CFuP/UtRhcCNMRUCVS4=
+github.com/pedroalbanese/uuencode v1.0.4/go.mod h1:jzNnKcFiqbjRxgyZwmWW7CNGCS9w7t/+gDAT9IXZJdI=
 github.com/pedroalbanese/vmac v0.0.0-20231111194716-1a03aacdcb4c h1:69jHAdR8JFnFbgEXZn54qfwvlA8LQl1QUcZXYe2gJPk=
 github.com/pedroalbanese/vmac v0.0.0-20231111194716-1a03aacdcb4c/go.mod h1:ecUHK2kTeoKq+YJuQAZHV9WiZcpC5P8VXMBduJaMLmw=
 github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447 h1:ouut+zeswugb4asBoOejuy+hFWvXXnVPFnKJmDFtoko=
 github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447/go.mod h1:hmEg12nLjNeVJaroqA6z3wubkSxGRVohaAD4cNuysRg=
 github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6 h1:DCyHQIq9uE4RrPSobh7WCybTxSdXlNF/AwmKRkDE/AQ=
 github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6/go.mod h1:ziHgtQ/DwLq+fL0BC55to81BEzKBeVjyOeDIU8pOB8k=
+github.com/pedroalbanese/xxencode v0.0.15 h1:2FKeq1qcwA6kx5mV6jACksHtJcccTy8Z54CdTiza9Po=
+github.com/pedroalbanese/xxencode v0.0.15/go.mod h1:2XWJgW0YNQOTdqSBBQFX1DN8OqLXRvAj/FtzkfIhpVA=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
