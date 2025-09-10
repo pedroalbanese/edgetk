@@ -91,10 +91,6 @@ import (
 	"github.com/RyuaNerin/go-krypto/lea"
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
-	bn256i "github.com/cloudflare/bn256"
-	"github.com/cloudflare/circl/ecc/bls12381"
-	"github.com/cloudflare/circl/ecc/bls12381/ff"
-	"github.com/cloudflare/circl/sign/bls"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
 	"github.com/deatil/go-cryptobin/cipher/saferplus"
 	"github.com/emmansun/certinfo"
@@ -116,7 +112,11 @@ import (
 	"github.com/pedroalbanese/bign"
 	bigncurves "github.com/pedroalbanese/bign/curves"
 	"github.com/pedroalbanese/bip0340"
+	"github.com/pedroalbanese/bls12381"
+	"github.com/pedroalbanese/bls12381/ff"
+	"github.com/pedroalbanese/bls12381/sign/bls"
 	"github.com/pedroalbanese/bmw"
+	bn256i "github.com/pedroalbanese/bn256"
 	"github.com/pedroalbanese/brainpool"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast256"
@@ -235,8 +235,8 @@ var (
 	days           = flag.Int("days", 0, "Defines the validity of the certificate from the date of creation.")
 	factorPStr     = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr     = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
-	hierarchy      = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for SM9 User Private Key)")
-	id             = flag.String("id", "", "User Identifier. (for SM9 User Private Key operations)")
+	hierarchy      = flag.Uint("hid", 0x01, "Hierarchy Identifier. (for IBE/IBS User Private Key)")
+	id             = flag.String("id", "", "User Identifier. (for IBE/IBS User Private Key operations)")
 	id2            = flag.String("peerid", "", "Remote's side User Identifier. (for SM9 Key Exchange)")
 	info           = flag.String("info", "", "Additional info. (for HKDF command and AEAD bulk encryption)")
 	iport          = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
@@ -263,6 +263,7 @@ var (
 	recursive      = flag.Bool("recursive", false, "Process directories recursively. (for DIGEST command only)")
 	root           = flag.String("root", "", "Root CA Certificate path.")
 	salt           = flag.String("salt", "", "Salt. (for HKDF and PBKDF2 commands)")
+	seedStr        = flag.String("seed", "", "Seed. (for ML-KEM and ML-DSA key generation)")
 	sig            = flag.String("signature", "", "Input signature. (for VERIFY command and MAC verification)")
 	subj           = flag.String("subj", "", "Subject: Identity. (Example: \"/CN=/OU=/O=/ST=/L=/C=/emailAddress=\")")
 	tcpip          = flag.String("tcp", "", "Encrypted TCP/IP Transfer Protocol. [server|ip|client]")
@@ -321,13 +322,15 @@ func handleConnectionTLCP(c net.Conn) {
 func main() {
 	var pubs PubPaths
 	var msgs MsgsPaths
+	var keys KeysPaths
 	flag.Var(&pubs, "pubs", "Paths to the public keys. (can be passed multiple times)")
 	flag.Var(&msgs, "msgs", "Messages to be verified. (can be passed multiple times)")
+	flag.Var(&keys, "keys", "Key to be combined. (can be passed multiple times)")
 
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.10  24 Aug 2025")
+		fmt.Println("EDGE Toolkit v1.5.11  06 Sep 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -598,7 +601,7 @@ Subcommands:
 		*pwd = ""
 	}
 
-	if (*pkey == "setup") && *key != "" && (strings.ToUpper(*alg) != "ELGAMAL" && strings.ToUpper(*alg) != "SCHNORR") {
+	if (*pkey == "setup" || *pkey == "setup-threshold") && *key != "" && (strings.ToUpper(*alg) != "ELGAMAL" && strings.ToUpper(*alg) != "SCHNORR") {
 		file, err := os.Open(*master)
 		if err != nil {
 			log.Fatal(err)
@@ -698,7 +701,30 @@ Subcommands:
 		}
 	}
 
-	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bn256encrypt" || *alg == "bn256sign" || *alg == "bls12381" || *alg == "bls12381sign" || *alg == "bls12381encrypt") && *pwd == "" {
+	if (*pkey == "keygen-threshold") && *pwd == "" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		var block *pem.Block
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			errors.New("no valid private key found")
+		}
+		if IsEncryptedPEMBlock(block) {
+			print("ShareKey Passphrase: ")
+			pass, _ := gopass.GetPasswd()
+			*pwd = string(pass)
+		}
+	}
+
+	if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bn256encrypt" || *alg == "bn256sign" || *alg == "bls12381" || *alg == "bls12381sign" || *alg == "bls12381encrypt") && *pwd == "" {
 		file, err := os.Open(*master)
 		if err != nil {
 			log.Fatal(err)
@@ -729,12 +755,30 @@ Subcommands:
 		*pwd2 = ""
 	}
 
-	if (*pkey == "keygen" || *pkey == "keygen-blinded") && (*alg == "bn256" || *alg == "bn256encrypt" || *alg == "bn256sign" || *alg == "bls12381" || *alg == "bls12381sign" || *alg == "bls12381encrypt") && *pwd2 == "" {
+	if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bn256encrypt" || *alg == "bn256sign" || *alg == "bls12381" || *alg == "bls12381sign" || *alg == "bls12381encrypt") && *pwd2 == "" {
 		print("UserKey Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd2 = string(pass)
 	} else if (*pkey == "keygen") && (*alg == "bn256" || *alg == "bls12381") && *pwd2 == "nil" {
 		*pwd2 = ""
+	}
+
+	if (*pkey == "combine-threshold") && *pwd == "" {
+		print("Passphrase: ")
+		pass, _ := gopass.GetPasswdMasked()
+		*pwd = string(pass)
+	}
+
+	if *pkey == "keygen" {
+		if data, err := ioutil.ReadFile(*params); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "SCHNORR") {
+					*alg = "SCHNORR"
+				} else if strings.Contains(block.Type, "ELGAMAL") {
+					*alg = "ELGAMAL"
+				}
+			}
+		}
 	}
 
 	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
@@ -9289,7 +9333,11 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" {
+	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" || *pkey == "combine-threshold" || *pkey == "keygen-threshold" || *pkey == "setup-threshold" {
+
+		if *pkey == "combine-threshold" || *pkey == "keygen-threshold" || *pkey == "setup-threshold" {
+			*alg = "BLS12381"
+		}
 
 		if data, err := ioutil.ReadFile(*key); err == nil {
 			if block, _ := pem.Decode(data); block != nil {
@@ -9315,6 +9363,10 @@ Subcommands:
 					*alg = "BLS12381ENCRYPT"
 				} else if strings.Contains(block.Type, "BLS12381") {
 					*alg = "BLS12381"
+				} else if strings.Contains(block.Type, "SCHNORR") {
+					*alg = "SCHNORR"
+				} else if strings.Contains(block.Type, "ELGAMAL") {
+					*alg = "ELGAMAL"
 				}
 			}
 		}
@@ -9751,6 +9803,8 @@ Subcommands:
 			*alg = "BLS12381SIGN"
 		} else if strings.Contains(s, "BLS12381ENCRYPT") {
 			*alg = "BLS12381ENCRYPT"
+		} else if strings.Contains(s, "THRESHOLD IBE SHARE") {
+			*alg = "BLS12381"
 		} else if strings.Contains(s, "BLS12381") {
 			*alg = "BLS12381"
 		} else if strings.Contains(s, "EC-ELGAMAL") {
@@ -10442,7 +10496,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "SCHNORR") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
+	if (strings.ToUpper(*alg) == "SCHNORR") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify" || *pkey == "proof" || *pkey == "verify-proof") {
 		if *pkey == "setup" {
 			setParams, err := generateSchnorrParams(*length)
 			if err != nil {
@@ -10478,7 +10532,15 @@ Subcommands:
 				return
 			}
 
-			pemData, _ := ioutil.ReadFile(*key)
+			privBytes, err := encodeSchnorrPrivateKeyPEM(priv)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pemBlock := &pem.Block{
+				Type:  "SCHNORR PRIVATE KEY",
+				Bytes: privBytes,
+			}
+			pemData := pem.EncodeToMemory(pemBlock)
 			fmt.Print(string(pemData))
 
 			fmt.Println("Private Key (x):")
@@ -10788,11 +10850,82 @@ Subcommands:
 				os.Exit(1)
 			}
 		}
+
+		if *pkey == "proof" {
+			priv, err := readSchnorrPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				os.Exit(1)
+			}
+
+			message, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal("Error reading message:", err)
+			}
+
+			t, e, s, err := ProveKnowledge(priv, message, myHash())
+			if err != nil {
+				fmt.Println("Error generating ZKP:", err)
+				return
+			}
+
+			fmt.Printf("Commitment= %x\n", t)
+			fmt.Printf("Challenge= %x\n", e)
+			fmt.Printf("Response= %x\n", s)
+		}
+
+		if *pkey == "verify-proof" {
+			if *key == "" {
+				fmt.Println("Error: Public key file not provided for verification.")
+				os.Exit(3)
+			}
+
+			pub, err := readSchnorrPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error: Invalid public key value")
+				os.Exit(1)
+			}
+
+			message, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal("Error reading message:", err)
+			}
+
+			if *commitmentFlag == "" || *challengeFlag == "" || *responseFlag == "" {
+				log.Fatal("All of --commitment, --challenge, and --response must be provided")
+			}
+
+			t := new(big.Int)
+			e := new(big.Int)
+			s := new(big.Int)
+
+			_, ok := t.SetString(*commitmentFlag, 16)
+			if !ok {
+				log.Fatalf("Invalid commitment: %s", *commitmentFlag)
+			}
+
+			_, ok = e.SetString(*challengeFlag, 16)
+			if !ok {
+				log.Fatalf("Invalid challenge: %s", *challengeFlag)
+			}
+
+			_, ok = s.SetString(*responseFlag, 16)
+			if !ok {
+				log.Fatalf("Invalid response: %s", *responseFlag)
+			}
+
+			if VerifyKnowledge(pub, t, e, s, message, myHash()) {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+				os.Exit(1)
+			}
+		}
 	}
 
-	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EG") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify") {
+	if (strings.ToUpper(*alg) == "ELGAMAL" || strings.ToUpper(*alg) == "EG") && (*pkey == "keygen" || *pkey == "setup" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *pkey == "text" || *pkey == "modulus" || *pkey == "sign" || *pkey == "verify" || *pkey == "proof" || *pkey == "verify-proof") {
 		if *pkey == "setup" {
-			setParams, err := generateElGamalParams()
+			setParams, err := generateElGamalParams(*length)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -10846,25 +10979,31 @@ Subcommands:
 				fmt.Print(string(data))
 
 				xval := new(big.Int).Set(priv.X)
-				fmt.Println("PrivateKey(x):")
+				fmt.Println("Private Key (x):")
 				x := fmt.Sprintf("%x", xval)
 				splitz := SplitSubN(x, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("Prime(p):")
+				fmt.Println("Prime (p):")
 				p := fmt.Sprintf("%x", priv.P)
 				splitz = SplitSubN(p, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("Generator(g in the range [2, p-2]):")
+				fmt.Println("Subgroup Order (q):")
+				q := fmt.Sprintf("%x", priv.Q)
+				splitz = SplitSubN(q, 2)
+				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				}
+				fmt.Println("Generator (g in the range [2, p-2]):")
 				g := fmt.Sprintf("%x", priv.G)
 				splitz = SplitSubN(g, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("PublicKey(Y = g^x mod p):")
+				fmt.Println("Public Key (Y = g^x mod p):")
 				pub := fmt.Sprintf("%x", publicKey)
 				splitz = SplitSubN(pub, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -10882,6 +11021,7 @@ Subcommands:
 			privPEM := &PrivateKey{
 				PublicKey: PublicKey{
 					G: priv.G,
+					Q: priv.Q,
 					P: priv.P,
 					Y: priv.Y,
 				},
@@ -10901,25 +11041,31 @@ Subcommands:
 			pemData := pem.EncodeToMemory(pemBlock)
 			fmt.Print(string(pemData))
 			xval := new(big.Int).Set(priv.X)
-			fmt.Println("PrivateKey(x):")
+			fmt.Println("Private Key (x):")
 			x := fmt.Sprintf("%x", xval)
 			splitz := SplitSubN(x, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("Prime(p):")
+			fmt.Println("Prime Modulus (p):")
 			p := fmt.Sprintf("%x", priv.P)
 			splitz = SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("Generator(g in the range [2, p-2]):")
+			fmt.Println("Subgroup Order (q):")
+			q := fmt.Sprintf("%x", priv.Q)
+			splitz = SplitSubN(q, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Generator (g in the range [2, p-2]):")
 			g := fmt.Sprintf("%x", priv.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("PublicKey(Y = g^x mod p):")
+			fmt.Println("Public Key (Y = g^x mod p):")
 			pub := fmt.Sprintf("%x", publicKey)
 			splitz = SplitSubN(pub, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -10951,19 +11097,25 @@ Subcommands:
 				fmt.Print(string(pemData))
 
 				fmt.Println("Public Key Parameters:")
-				fmt.Println("Prime(p):")
+				fmt.Println("Prime (p):")
 				p := fmt.Sprintf("%x", publicKeyVal.P)
 				splitz := SplitSubN(p, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("Generator(g):")
+				fmt.Println("Subgroup Order (q):")
+				q := fmt.Sprintf("%x", publicKeyVal.Q)
+				splitz = SplitSubN(q, 2)
+				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				}
+				fmt.Println("Generator (g):")
 				g := fmt.Sprintf("%x", publicKeyVal.G)
 				splitz = SplitSubN(g, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
-				fmt.Println("PublicKey(Y):")
+				fmt.Println("Public Key (Y):")
 				y := fmt.Sprintf("%x", publicKeyVal.Y)
 				splitz = SplitSubN(y, 2)
 				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -10980,19 +11132,25 @@ Subcommands:
 
 			fmt.Print(string(pemData))
 			fmt.Println("Public Key Parameters:")
-			fmt.Println("Prime(p):")
+			fmt.Println("Prime Modulus (p):")
 			p := fmt.Sprintf("%x", publicKeyVal.P)
 			splitz := SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("Generator(g):")
+			fmt.Println("Subgroup Order (q):")
+			q := fmt.Sprintf("%x", publicKeyVal.Q)
+			splitz = SplitSubN(q, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Generator (g):")
 			g := fmt.Sprintf("%x", publicKeyVal.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("PublicKey(Y):")
+			fmt.Println("Public Key (Y):")
 			y := fmt.Sprintf("%x", publicKeyVal.Y)
 			splitz = SplitSubN(y, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -11065,6 +11223,7 @@ Subcommands:
 
 			pub := &PublicKey{
 				G: publicKeyVal.G,
+				Q: publicKeyVal.Q,
 				P: publicKeyVal.P,
 				Y: publicKeyVal.Y,
 			}
@@ -11123,13 +11282,19 @@ Subcommands:
 			}
 			fmt.Print(string(pemData))
 			fmt.Println("ElGamal Parameters:")
-			fmt.Println("Prime(p):")
+			fmt.Println("Prime Modulus (p):")
 			p := fmt.Sprintf("%x", readParams.P)
 			splitz := SplitSubN(p, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
-			fmt.Println("Generator(g):")
+			fmt.Println("Subgroup Order (q):")
+			q := fmt.Sprintf("%x", readParams.Q)
+			splitz = SplitSubN(q, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Println("Generator (g):")
 			g := fmt.Sprintf("%x", readParams.G)
 			splitz = SplitSubN(g, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
@@ -11148,7 +11313,7 @@ Subcommands:
 			}
 
 			if *key == "" {
-				xval, err = generateRandomX(readParams.P)
+				xval, err = generateRandomX(readParams.Q)
 				if err != nil {
 					log.Fatal("Error generating x:", err)
 					os.Exit(1)
@@ -11161,6 +11326,7 @@ Subcommands:
 				privateKey := &PrivateKey{
 					PublicKey: PublicKey{
 						G: readParams.G,
+						Q: readParams.Q,
 						P: readParams.P,
 						Y: y,
 					},
@@ -11186,6 +11352,7 @@ Subcommands:
 				privateKey := &PrivateKey{
 					PublicKey: PublicKey{
 						G: readParams.G,
+						Q: readParams.Q,
 						P: readParams.P,
 						Y: y,
 					},
@@ -11206,7 +11373,7 @@ Subcommands:
 			}
 
 			fmt.Fprintf(os.Stderr, "Public Key saved to: %s\n", path)
-			if err := savePublicKeyToPEM(*pub, &PublicKey{Y: publicKey, G: readParams.G, P: readParams.P}); err != nil {
+			if err := savePublicKeyToPEM(*pub, &PublicKey{Y: publicKey, G: readParams.G, Q: readParams.Q, P: readParams.P}); err != nil {
 				log.Fatal("Error saving public key:", err)
 				os.Exit(1)
 			}
@@ -11234,7 +11401,8 @@ Subcommands:
 
 			return
 		}
-		if *pkey == "sign" {
+
+		if *pkey == "sign" && strings.ToUpper(*theorem) == "DSA" {
 			priv, err := readPrivateKeyFromPEM(*key)
 			if err != nil {
 				fmt.Println("Error reading private key:", err)
@@ -11251,15 +11419,16 @@ Subcommands:
 			}
 			hashBytes := hash.Sum(nil)
 
-			sign, err := SignASN1(rand.Reader, priv, hashBytes)
+			sign, err := SignASN1DSA(rand.Reader, priv, hashBytes)
 			if err != nil {
 				log.Fatal("Error signing message:", err)
 				os.Exit(1)
 			}
 
-			fmt.Printf("EG-%s(%s)= %x\n", strings.ToUpper(*md), inputdesc, sign)
+			fmt.Printf("EG-DSA-%s(%s)= %x\n", strings.ToUpper(*md), inputdesc, sign)
+			os.Exit(0)
 		}
-		if *pkey == "verify" {
+		if *pkey == "verify" && strings.ToUpper(*theorem) == "DSA" {
 			if *key == "" {
 				fmt.Println("Error: Public key file not provided for verification.")
 				os.Exit(3)
@@ -11273,6 +11442,7 @@ Subcommands:
 
 			pub := &PublicKey{
 				G: publicKeyVal.G,
+				Q: publicKeyVal.Q,
 				P: publicKeyVal.P,
 				Y: publicKeyVal.Y,
 			}
@@ -11293,11 +11463,137 @@ Subcommands:
 			}
 			hashBytes := hash.Sum(nil)
 
-			isValid, _ := VerifyASN1(pub, hashBytes, signatureBytes)
+			isValid, _ := VerifyASN1DSA(pub, hashBytes, signatureBytes)
 			fmt.Println("Verified:", isValid)
 			if isValid {
 				os.Exit(0)
 			} else {
+				os.Exit(1)
+			}
+		}
+
+		if *pkey == "sign" {
+			priv, err := readPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				os.Exit(1)
+			}
+
+			data, err := io.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			sign, err := SignASN1(rand.Reader, priv, data, myHash())
+			if err != nil {
+				log.Fatal("Error signing message:", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("EG-%s(%s)= %x\n", strings.ToUpper(*md), inputdesc, sign)
+			os.Exit(0)
+		}
+		if *pkey == "verify" {
+			if *key == "" {
+				fmt.Println("Error: Public key file not provided for verification.")
+				os.Exit(3)
+			}
+
+			publicKeyVal, err := readPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error: Invalid public key value")
+				os.Exit(1)
+			}
+
+			pub := &PublicKey{
+				G: publicKeyVal.G,
+				Q: publicKeyVal.Q,
+				P: publicKeyVal.P,
+				Y: publicKeyVal.Y,
+			}
+
+			signatureBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding hexadecimal signature:", err)
+				return
+			}
+
+			data, err := io.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			isValid, _ := VerifyASN1(pub, data, signatureBytes, myHash())
+			fmt.Println("Verified:", isValid)
+			if isValid {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
+		}
+
+		if *pkey == "proof" {
+			priv, err := readPrivateKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error reading private key:", err)
+				os.Exit(1)
+			}
+
+			message, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal("Error reading message:", err)
+			}
+
+			t, c, s, err := ProveKnowledgeElGamal(priv, message, myHash())
+			if err != nil {
+				fmt.Println("Error generating ZKP:", err)
+				return
+			}
+
+			fmt.Printf("Commitment= %x\n", t)
+			fmt.Printf("Challenge= %x\n", c)
+			fmt.Printf("Response= %x\n", s)
+		}
+
+		if *pkey == "verify-proof" {
+			if *key == "" {
+				fmt.Println("Error: Public key file not provided for verification.")
+				os.Exit(3)
+			}
+
+			pub, err := readPublicKeyFromPEM(*key)
+			if err != nil {
+				fmt.Println("Error: Invalid public key value")
+				os.Exit(1)
+			}
+
+			message, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				log.Fatal("Error reading message:", err)
+			}
+
+			if *commitmentFlag == "" || *challengeFlag == "" || *responseFlag == "" {
+				log.Fatal("All of --commitment, --challenge, and --response must be provided")
+			}
+
+			t := new(big.Int)
+			c := new(big.Int)
+			s := new(big.Int)
+
+			if _, ok := t.SetString(*commitmentFlag, 16); !ok {
+				log.Fatalf("Invalid commitment: %s", *commitmentFlag)
+			}
+			if _, ok := c.SetString(*challengeFlag, 16); !ok {
+				log.Fatalf("Invalid challenge: %s", *challengeFlag)
+			}
+			if _, ok := s.SetString(*responseFlag, 16); !ok {
+				log.Fatalf("Invalid response: %s", *responseFlag)
+			}
+
+			if VerifyKnowledgeElGamal(pub, t, c, s, message, myHash()) {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
 				os.Exit(1)
 			}
 		}
@@ -12190,7 +12486,7 @@ Subcommands:
 		}
 	}
 
-	if (strings.ToUpper(*alg) == "BLS12381" || strings.ToUpper(*alg) == "BLS12381SIGN" || strings.ToUpper(*alg) == "BLS12381ENCRYPT") && (*pkey == "setup" || *pkey == "keygen" || *pkey == "sign" || *pkey == "verify" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
+	if (strings.ToUpper(*alg) == "BLS12381" || strings.ToUpper(*alg) == "BLS12381SIGN" || strings.ToUpper(*alg) == "BLS12381ENCRYPT") && (*pkey == "setup" || *pkey == "setup-threshold" || *pkey == "keygen-threshold" || *pkey == "combine-threshold" || *pkey == "keygen" || *pkey == "sign" || *pkey == "verify" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "randomart") {
 		var blockType string
 		if *key != "" {
 			pemData, err := ioutil.ReadFile(*key)
@@ -12205,6 +12501,39 @@ Subcommands:
 			}
 			blockType = block.Type
 		}
+
+		if *pkey == "text" && *key != "" && (blockType == "BLS12381 PARTIAL SECRET KEY" || blockType == "THRESHOLD IBE SHARE") {
+			keyBytes, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading key:", err)
+				os.Exit(1)
+			}
+
+			keyPEM := pem.Block{Type: blockType, Bytes: keyBytes}
+			fmt.Print(string(pem.EncodeToMemory(&keyPEM)))
+
+			index := int(keyBytes[0])
+			valueBytes := keyBytes[1:]
+
+			fmt.Printf("Index: %d\n", index)
+
+			switch blockType {
+			case "THRESHOLD IBE SHARE":
+				fmt.Println("ShareKey:")
+			case "BLS12381 PARTIAL SECRET KEY":
+				fmt.Println("Partial SecretKey:")
+			}
+
+			hexValue := fmt.Sprintf("%x", valueBytes)
+			splitz := SplitSubN(hexValue, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			fmt.Printf("Curve: %s\n", "BLS12381")
+			os.Exit(0)
+		}
+
 		if *pkey == "text" && *key != "" && (blockType == "BLS12381 SECRET KEY" || blockType == "BLS12381SIGN SECRET KEY" || blockType == "BLS12381ENCRYPT SECRET KEY" || blockType == "BLS12381 MASTER KEY") {
 			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
@@ -12328,17 +12657,13 @@ Subcommands:
 					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 				}
 			} else if blockType == "BLS12381 SECRET KEY" {
-				if len(keyBytes) > 96 {
+				var privASN UserPrivateKeyASN
+				var privGG PrivateKeyGG
+				if _, err := asn1.Unmarshal(keyBytes, &privASN); err == nil {
 					keyPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: keyBytes}
 					keyPEMText := string(pem.EncodeToMemory(&keyPEM))
 					fmt.Print(keyPEMText)
 					fmt.Println("SecretKey:")
-
-					var privASN UserPrivateKeyASN
-					if _, err := asn1.Unmarshal(keyBytes, &privASN); err != nil {
-						fmt.Println("Error decoding private key:", err)
-						os.Exit(1)
-					}
 
 					r := new(ff.Scalar)
 					if err := r.UnmarshalBinary(privASN.R); err != nil {
@@ -12358,7 +12683,7 @@ Subcommands:
 						os.Exit(1)
 					}
 
-					didBytes := Did.Bytes()
+					didBytes := Did.BytesCompressed()
 
 					fmt.Println("Component r:")
 					rHex := fmt.Sprintf("%x", rBytes)
@@ -12380,6 +12705,37 @@ Subcommands:
 					for _, chunk := range split(strings.Trim(fmt.Sprint(vSplit), "[]"), 45) {
 						fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 					}
+				} else if _, err := asn1.Unmarshal(keyBytes, &privGG); err == nil {
+					keyPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: keyBytes}
+					keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+					fmt.Print(keyPEMText)
+					fmt.Println("SecretKey:")
+
+					y := new(ff.Scalar)
+					if err := y.UnmarshalBinary(privGG.Y); err != nil {
+						fmt.Println("Error decoding y:", err)
+						os.Exit(1)
+					}
+
+					gr := new(bls12381.G1)
+					if err := gr.SetBytes(privGG.Gr); err != nil {
+						fmt.Println("Error decoding gr:", err)
+						os.Exit(1)
+					}
+
+					fmt.Println("Component y:")
+					yHex := fmt.Sprintf("%x", privGG.Y)
+					ySplit := SplitSubN(yHex, 2)
+					for _, chunk := range split(strings.Trim(fmt.Sprint(ySplit), "[]"), 45) {
+						fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+					}
+
+					fmt.Println("Component gr:")
+					grHex := fmt.Sprintf("%x", privGG.Gr)
+					grSplit := SplitSubN(grHex, 2)
+					for _, chunk := range split(strings.Trim(fmt.Sprint(grSplit), "[]"), 45) {
+						fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+					}
 				} else {
 					keyPEM := pem.Block{Type: "BLS12381 SECRET KEY", Bytes: keyBytes}
 					keyPEMText := string(pem.EncodeToMemory(&keyPEM))
@@ -12392,14 +12748,48 @@ Subcommands:
 					}
 				}
 			} else if blockType == "BLS12381SIGN SECRET KEY" {
-				keyPEM := pem.Block{Type: "BLS12381SIGN SECRET KEY", Bytes: keyBytes}
-				keyPEMText := string(pem.EncodeToMemory(&keyPEM))
-				fmt.Print(keyPEMText)
-				fmt.Println("SecretKey:")
-				p := fmt.Sprintf("%x", keyBytes)
-				splitz := SplitSubN(p, 2)
-				for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
-					fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+				var privGG PrivateKeyGG
+				if _, err := asn1.Unmarshal(keyBytes, &privGG); err == nil {
+					keyPEM := pem.Block{Type: "BLS12381SIGN SECRET KEY", Bytes: keyBytes}
+					keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+					fmt.Print(keyPEMText)
+					fmt.Println("SecretKey:")
+
+					y := new(ff.Scalar)
+					if err := y.UnmarshalBinary(privGG.Y); err != nil {
+						fmt.Println("Error decoding y:", err)
+						os.Exit(1)
+					}
+
+					gr := new(bls12381.G1)
+					if err := gr.SetBytes(privGG.Gr); err != nil {
+						fmt.Println("Error decoding gr:", err)
+						os.Exit(1)
+					}
+
+					fmt.Println("Component y:")
+					yHex := fmt.Sprintf("%x", privGG.Y)
+					ySplit := SplitSubN(yHex, 2)
+					for _, chunk := range split(strings.Trim(fmt.Sprint(ySplit), "[]"), 45) {
+						fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+					}
+
+					fmt.Println("Component gr:")
+					grHex := fmt.Sprintf("%x", privGG.Gr)
+					grSplit := SplitSubN(grHex, 2)
+					for _, chunk := range split(strings.Trim(fmt.Sprint(grSplit), "[]"), 45) {
+						fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+					}
+				} else {
+					keyPEM := pem.Block{Type: "BLS12381SIGN SECRET KEY", Bytes: keyBytes}
+					keyPEMText := string(pem.EncodeToMemory(&keyPEM))
+					fmt.Print(keyPEMText)
+					fmt.Println("SecretKey:")
+					p := fmt.Sprintf("%x", keyBytes)
+					splitz := SplitSubN(p, 2)
+					for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+						fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+					}
 				}
 			} else if blockType == "BLS12381ENCRYPT SECRET KEY" {
 				keyPEM := pem.Block{Type: "BLS12381ENCRYPT SECRET KEY", Bytes: keyBytes}
@@ -12475,7 +12865,7 @@ Subcommands:
 				os.Exit(0)
 			}
 		} else if *pkey == "fingerprint" && *key != "" {
-			keyBytes, err := readKeyFromPEM(*key, false)
+			keyBytes, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
 				os.Exit(1)
@@ -12741,6 +13131,101 @@ Subcommands:
 			os.Exit(0)
 		}
 
+		if *pkey == "setup" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+			var z *ff.Scalar
+			var mpk *bls12381.G1
+
+			if *key != "" {
+				data, err := readKeyFromPEM(*key, true)
+				if err != nil {
+					fmt.Println("Error reading GG master key file:", err)
+					return
+				}
+
+				if len(data) < 32 {
+					fmt.Println("Invalid GG master key length")
+					return
+				}
+
+				z = new(ff.Scalar)
+				z.SetBytes(data[:32])
+
+				mpk = new(bls12381.G1)
+				if err := mpk.SetBytes(data[32:]); err != nil {
+					fmt.Println("Error decoding GG public key:", err)
+					return
+				}
+
+				fmt.Println("Using provided GG master key.")
+			} else {
+				z = new(ff.Scalar)
+				z.Random(rand.Reader)
+
+				mpk = new(bls12381.G1)
+				mpk.ScalarMult(z, bls12381.G1Generator())
+			}
+
+			zBytes, _ := z.MarshalBinary()
+
+			privBlock := &pem.Block{
+				Type:  "BLS12381 MASTER KEY",
+				Bytes: zBytes,
+			}
+
+			if err := savePEMToFile(*master, privBlock, true); err != nil {
+				fmt.Println("Error saving GG private key PEM:", err)
+				return
+			}
+
+			pubBlock := &pem.Block{
+				Type:  "BLS12381 PUBLIC KEY",
+				Bytes: mpk.BytesCompressed(),
+			}
+
+			if err := savePEMToFile(*pub, pubBlock, false); err != nil {
+				fmt.Println("Error saving GG public key PEM:", err)
+				return
+			}
+
+			privPath, _ := filepath.Abs(*master)
+			pubPath, _ := filepath.Abs(*pub)
+			fmt.Printf("Master Key saved to: %s\n", privPath)
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+
+			keyBytes, err := readKeyFromPEM(*pub, false)
+			if err != nil {
+				fmt.Println("Error reading GG public key from PEM:", err)
+				os.Exit(1)
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint: %s\n", fingerprint)
+
+			fmt.Println("BLS12-381 GG")
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening GG public key PEM file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting GG public key file info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			if _, err := pubFile.Read(pubBuf); err != nil {
+				fmt.Println("Error reading GG public key PEM file:", err)
+				os.Exit(1)
+			}
+
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+
+			os.Exit(0)
+		}
+
 		if *pkey == "setup" {
 			var ikm []byte
 			var err error
@@ -12880,6 +13365,161 @@ Subcommands:
 			}
 		}
 
+		if *pkey == "setup-threshold" {
+			var ikm []byte
+			var err error
+
+			if *key != "" {
+				ikm, err = readKeyFromPEM(*key, true)
+				if err != nil {
+					fmt.Println("Error reading the master key:", err)
+					return
+				}
+				fmt.Println("Using provided master key.")
+			} else {
+				ikm = make([]byte, 32)
+				_, err = rand.Read(ikm)
+				if err != nil {
+					log.Fatal("Error generating master key:", err)
+				}
+			}
+
+			msk := new(ff.Scalar)
+			msk.SetBytes(ikm)
+
+			t, n := 2, 5
+			shares, err := GenerateShares(msk, t, n)
+			if err != nil {
+				fmt.Println("Error generating shares:", err)
+				return
+			}
+
+			basePath := strings.TrimSuffix(*master, filepath.Ext(*master))
+			for i, share := range shares {
+				filename := fmt.Sprintf("%s_%02d.pem", basePath, i+1)
+
+				absPath, err := filepath.Abs(filename)
+				if err != nil {
+					fmt.Printf("Error getting the absolute path of %s: %v\n", filename, err)
+				}
+
+				err = SaveShareToPEM(filename, share)
+				if err != nil {
+					fmt.Printf("Error saving share %d: %v\n", i+1, err)
+					continue
+				}
+
+				fmt.Printf("Share %d saved to: %s\n", i+1, absPath)
+			}
+
+			P_pub := new(bls12381.G2)
+			P_pub.ScalarMult(msk, bls12381.G2Generator())
+
+			block := &pem.Block{
+				Type:  "BLS12381 PUBLIC KEY",
+				Bytes: P_pub.BytesCompressed(),
+			}
+
+			if err := savePEMToFile(*pub, block, false); err != nil {
+				fmt.Println("Error saving public key:", err)
+				return
+			}
+
+			pubPath, _ := filepath.Abs(*pub)
+			fmt.Printf("Public Key saved to: %s\n", pubPath)
+			fmt.Printf("Fingerprint: %s\n", calculateFingerprint(P_pub.BytesCompressed()))
+
+			fmt.Println("BLS12-381 G2")
+			pubFile, err := os.Open(*pub)
+			if err != nil {
+				fmt.Println("Error opening public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			pubInfo, _ := pubFile.Stat()
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+		}
+
+		if *pkey == "keygen-threshold" {
+			fmt.Printf("Extracting partial key for identity: %s\n", *id)
+			fmt.Printf("Using share: %s\n", *key)
+
+			partialKey, err := partialExtractFromShare(*key, append([]byte(*id), byte(*hierarchy)))
+			if err != nil {
+				fmt.Printf("Error extracting partial key: %v\n", err)
+				os.Exit(1)
+			}
+
+			share, err := LoadShareFromPEM(*key)
+			if err != nil {
+				fmt.Printf("Error getting share index: %v\n", err)
+				os.Exit(1)
+			}
+
+			baseName := strings.TrimSuffix(filepath.Base(*priv), ".pem")
+			partialKeyFile := fmt.Sprintf("partial_key_%s_%02d.pem", baseName, share.Index)
+
+			keyData := append([]byte{byte(share.Index)}, partialKey.BytesCompressed()...)
+
+			block := &pem.Block{
+				Type:  "BLS12381 PARTIAL SECRET KEY",
+				Bytes: keyData,
+			}
+
+			if err := savePEMToFile(partialKeyFile, block, false); err != nil {
+				fmt.Printf("Error saving partial key: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Partial key successfully extracted and saved to: %s\n", partialKeyFile)
+			fmt.Printf("Share index: %d\n", share.Index)
+			os.Exit(0)
+		}
+
+		if *pkey == "combine-threshold" {
+			partialKeys := make([]PartialKey, len(keys))
+			for i, filename := range keys {
+				partialKey, index, err := loadPartialKeyFromPEM(filename)
+				if err != nil {
+					fmt.Printf("Error loading partial key %s: %v\n", filename, err)
+					os.Exit(1)
+				}
+				partialKeys[i] = PartialKey{Index: index, Key: partialKey}
+				fmt.Printf("Loaded partial key from %s (index: %d)\n", filename, index)
+			}
+
+			if len(partialKeys) < 2 {
+				fmt.Printf("Error: Need at least 2 partial keys, got %d\n", len(partialKeys))
+				os.Exit(1)
+			}
+
+			fmt.Printf("Combining %d partial keys...\n", len(partialKeys))
+
+			fullKey, err := combinePartialKeys(partialKeys)
+			if err != nil {
+				fmt.Printf("Error combining keys: %v\n", err)
+				os.Exit(1)
+			}
+
+			block := &pem.Block{
+				Type:  "BLS12381 SECRET KEY",
+				Bytes: fullKey.BytesCompressed(),
+			}
+
+			if err := savePEMToFile(*priv, block, true); err != nil {
+				fmt.Printf("Error saving private key: %v\n", err)
+				os.Exit(1)
+			}
+
+			fmt.Printf("Full private key successfully combined and saved to: %s\n", *priv)
+			fmt.Printf("Key fingerprint: %s\n", calculateFingerprint(fullKey.BytesCompressed()))
+			os.Exit(0)
+		}
+
 		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*theorem) == "BB" || strings.ToUpper(*theorem) == "BONEH-BOYEN") {
 			masterPrivData, err := readKeyFromPEM(*master, true)
 			if err != nil {
@@ -12898,7 +13538,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			r, Did := Extract(*id, s, x, Ppubs)
+			r, Did := Extract(string(append([]byte(*id), byte(*hierarchy))), s, x, Ppubs)
 
 			userPrivData, err := SerializeUserPrivateKey(r, Did, v)
 			if err != nil {
@@ -12935,7 +13575,7 @@ Subcommands:
 			skScalar := new(ff.Scalar)
 			skScalar.SetBytes(sk)
 
-			privateKey := extractSK(skScalar, []byte(*id))
+			privateKey := extractSK(skScalar, append([]byte(*id), byte(*hierarchy)))
 			privateKeyBytes := privateKey.BytesCompressed()
 
 			block := &pem.Block{
@@ -12957,6 +13597,43 @@ Subcommands:
 			os.Exit(0)
 		}
 
+		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+			sk, err := readKeyFromPEM(*master, true)
+			if err != nil {
+				fmt.Println("Error loading GG master key:", err)
+				os.Exit(1)
+			}
+
+			skScalar := new(ff.Scalar)
+			skScalar.SetBytes(sk)
+
+			y, gr := extractGG(skScalar, append([]byte(*id), byte(*hierarchy)))
+
+			privBytes, err := encodePrivateKeyGG(y, gr)
+			if err != nil {
+				fmt.Println("Error encoding GG private key:", err)
+				os.Exit(1)
+			}
+
+			block := &pem.Block{
+				Type:  "BLS12381 SECRET KEY",
+				Bytes: privBytes,
+			}
+
+			if err := savePEMToFile2(*priv, block, true); err != nil {
+				fmt.Println("Error saving GG user secret key:", err)
+				return
+			}
+
+			privPath, err := filepath.Abs(*priv)
+			if err != nil {
+				fmt.Println("Error getting path for GG private key:", err)
+				return
+			}
+			fmt.Printf("Private Key saved to: %s\n", privPath)
+			os.Exit(0)
+		}
+
 		if *pkey == "keygen" && strings.ToUpper(*alg) == "BLS12381" {
 			sk, err := readKeyFromPEM(*master, true)
 			if err != nil {
@@ -12969,19 +13646,19 @@ Subcommands:
 
 			var privateKeyBytes []byte
 			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" || strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
-				privateKey := extract(skScalar, []byte(*id))
+				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else if strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA" {
-				privateKey := extractSK(skScalar, []byte(*id))
+				privateKey := extractSK(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
-				privateKey := extractBARRETO(skScalar, []byte(*id))
+				privateKey := extractBARRETO(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
-				privateKey := extractSM(skScalar, []byte(*id))
+				privateKey := extractSM(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else {
-				privateKey := extract(skScalar, []byte(*id))
+				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			}
 
@@ -13013,13 +13690,13 @@ Subcommands:
 
 			var privateKeyBytes []byte
 			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" {
-				privateKey := extract(skScalar, []byte(*id))
+				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else if strings.ToUpper(*theorem) == "SK" || strings.ToUpper(*theorem) == "SAKAI-KASAHARA" {
-				privateKey := extractSK(skScalar, []byte(*id))
+				privateKey := extractSK(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else {
-				privateKey := extract(skScalar, []byte(*id))
+				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			}
 
@@ -13051,16 +13728,23 @@ Subcommands:
 
 			var privateKeyBytes []byte
 			if strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
-				privateKey := extract(skScalar, []byte(*id))
+				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
-				privateKey := extractSM(skScalar, []byte(*id))
+				privateKey := extractSM(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
-				privateKey := extractBARRETO(skScalar, []byte(*id))
+				privateKey := extractBARRETO(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
+			} else if strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA" {
+				y, gr := extractGG(skScalar, append([]byte(*id), byte(*hierarchy)))
+				privateKeyBytes, err = encodePrivateKeyGG(y, gr)
+				if err != nil {
+					fmt.Println("Error generating key:", err)
+					os.Exit(1)
+				}
 			} else {
-				privateKey := extract(skScalar, []byte(*id))
+				privateKey := extract(skScalar, append([]byte(*id), byte(*hierarchy)))
 				privateKeyBytes = privateKey.BytesCompressed()
 			}
 
@@ -13135,7 +13819,7 @@ Subcommands:
 				return
 			}
 
-			if verifySM(&pubKey, []byte(*id), msg, decodedH, decodedSig) {
+			if verifySM(&pubKey, append([]byte(*id), byte(*hierarchy)), msg, decodedH, decodedSig) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -13197,7 +13881,73 @@ Subcommands:
 				return
 			}
 
-			if verifyBARRETO(decodedH, decodedSig, []byte(*id), msg, &pubKey) {
+			if verifyBARRETO(decodedH, decodedSig, append([]byte(*id), byte(*hierarchy)), msg, &pubKey) {
+				fmt.Println("Verified: true")
+			} else {
+				fmt.Println("Verified: false")
+				os.Exit(1)
+			}
+			os.Exit(0)
+		} else if *pkey == "sign" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+			skData, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading GG private key:", err)
+				os.Exit(1)
+			}
+
+			y, gr, err := decodePrivateKeyGG(skData)
+			if err != nil {
+				fmt.Println("Error decoding GG private key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				os.Exit(1)
+			}
+
+			ga, b, grOut := signGG(y, gr, append([]byte(*id), byte(*hierarchy)), msg)
+
+			asn1Data, err := encodeSignatureGG(ga, b, grOut)
+			if err != nil {
+				fmt.Println("Error serializing GG signature:", err)
+				return
+			}
+
+			fmt.Println("BLS12381("+inputdesc+")=", hex.EncodeToString(asn1Data))
+		} else if *pkey == "verify" && (strings.ToUpper(*theorem) == "GG" || strings.ToUpper(*theorem) == "GALINDO-GARCIA") {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading GG public key:", err)
+				os.Exit(1)
+			}
+
+			mpk := new(bls12381.G1)
+			if err := mpk.SetBytes(pk); err != nil {
+				fmt.Println("Error decoding GG public key:", err)
+				os.Exit(1)
+			}
+
+			msg, err := ioutil.ReadAll(inputfile)
+			if err != nil {
+				fmt.Println("Error reading message:", err)
+				os.Exit(1)
+			}
+
+			sigBytes, err := hex.DecodeString(*sig)
+			if err != nil {
+				fmt.Println("Error decoding signature:", err)
+				os.Exit(1)
+			}
+
+			ga, b, grOut, err := decodeSignatureGG(sigBytes)
+			if err != nil {
+				fmt.Println("Error deserializing GG signature:", err)
+				os.Exit(1)
+			}
+
+			if verifyGG(ga, b, grOut, mpk, append([]byte(*id), byte(*hierarchy)), msg) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -13222,7 +13972,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V := signCC(skG1, []byte(*id), msg)
+			U, V := signCC(skG1, append([]byte(*id), byte(*hierarchy)), msg)
 
 			asn1Data, err := encodeSignatureCC(U, V)
 			if err != nil {
@@ -13259,7 +14009,7 @@ Subcommands:
 				return
 			}
 
-			if verifyCC(&pubKey, []byte(*id), msg, decodedU, decodedV) {
+			if verifyCC(&pubKey, append([]byte(*id), byte(*hierarchy)), msg, decodedU, decodedV) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -13326,7 +14076,7 @@ Subcommands:
 				return
 			}
 
-			if verifyHESS(decodedU, decodedV, &pubKey, []byte(*id), msg) {
+			if verifyHESS(decodedU, decodedV, &pubKey, append([]byte(*id), byte(*hierarchy)), msg) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -13363,7 +14113,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			ciphertext, err := EncryptBB(*id, msg, Ppub, Q, v)
+			ciphertext, err := EncryptBB(string(append([]byte(*id), byte(*hierarchy))), msg, Ppub, Q, v)
 			if err != nil {
 				fmt.Println("Encryption failed:", err)
 				os.Exit(1)
@@ -13433,7 +14183,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V, W := encryptFO(&pubKey, []byte(*id), []byte(msg), myHash)
+			U, V, W := encryptFO(&pubKey, append([]byte(*id), byte(*hierarchy)), []byte(msg), myHash)
 			serialized, err := serializeToASN1BF_FO(U, V, W)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -13487,7 +14237,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V, W := encryptSK([]byte(*id), []byte(msg), &pubKey, myHash)
+			U, V, W := encryptSK(append([]byte(*id), byte(*hierarchy)), []byte(msg), &pubKey, myHash)
 			serialized, err := serializeToASN1SK_FO(U, V, W)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -13529,7 +14279,7 @@ Subcommands:
 				log.Fatal("Failed to deserialize ciphertext: " + err.Error())
 			}
 
-			decryptedMessage, valid := decryptSK([]byte(*id), deserializedU, deserializedV, deserializedW, skG2, &pubKey, myHash)
+			decryptedMessage, valid := decryptSK(append([]byte(*id), byte(*hierarchy)), deserializedU, deserializedV, deserializedW, skG2, &pubKey, myHash)
 			if !valid {
 				log.Fatal("Authentication failed! Message integrity compromised.")
 			}
@@ -13553,7 +14303,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V, T := encryptBF(&pubKey, []byte(*id), []byte(msg), myHash)
+			U, V, T := encryptBF(&pubKey, append([]byte(*id), byte(*hierarchy)), []byte(msg), myHash)
 			serialized, err := serializeToASN1BF(U, V, T)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -13651,7 +14401,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			if verifyProofShangMi(mpk, []byte(*id), msg, chi, S) {
+			if verifyProofShangMi(mpk, append([]byte(*id), byte(*hierarchy)), msg, chi, S) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -13676,7 +14426,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			QID := hashToG1([]byte(*id))
+			QID := hashToG1(append([]byte(*id), byte(*hierarchy)))
 
 			C, s := createProofIBE(skG1, QID, msg)
 
@@ -13735,7 +14485,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			QID := hashToG1([]byte(*id))
+			QID := hashToG1(append([]byte(*id), byte(*hierarchy)))
 
 			if verifyProofIBE(C, response, QID, pubKey, msg) {
 				fmt.Println("Verified: true")
@@ -13796,7 +14546,7 @@ Subcommands:
 			fmt.Printf("Curve: %s\n", "BLS12381")
 
 			os.Exit(0)
-		} else if *pkey == "text" && *key != "" && (blockType == "BLS12381I PUBLIC KEY" || blockType == "BLS12381I AGGREGATED PUBLIC KEY") {
+		} else if *pkey == "text" && *key != "" && (blockType == "BLS12381I PUBLIC KEY") {
 			keyBytes, err := readKeyFromPEM(*key, false)
 			if err != nil {
 				fmt.Println("Error reading key from PEM:", err)
@@ -16059,13 +16809,13 @@ Subcommands:
 
 			var privateKey *bn256i.G1
 			if strings.ToUpper(*theorem) == "BF" || strings.ToUpper(*theorem) == "BONEH-FRANKLIN" || strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
-				privateKey = extractBN(skBigInt, []byte(*id))
+				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
-				privateKey = extractSM_BN(skBigInt, []byte(*id))
+				privateKey = extractSM_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
-				privateKey = extractBARRETO_BN(skBigInt, []byte(*id))
+				privateKey = extractBARRETO_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else {
-				privateKey = extractBN(skBigInt, []byte(*id))
+				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			}
 
 			block := &pem.Block{
@@ -16094,13 +16844,13 @@ Subcommands:
 
 			var privateKey *bn256i.G1
 			if strings.ToUpper(*theorem) == "CC" || strings.ToUpper(*theorem) == "CHA-CHEON" || strings.ToUpper(*theorem) == "HESS" {
-				privateKey = extractBN(skBigInt, []byte(*id))
+				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else if strings.ToUpper(*theorem) == "SM" || strings.ToUpper(*theorem) == "SHANGMI" {
-				privateKey = extractSM_BN(skBigInt, []byte(*id))
+				privateKey = extractSM_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else if strings.ToUpper(*theorem) == "BR" || strings.ToUpper(*theorem) == "BARRETO" {
-				privateKey = extractBARRETO_BN(skBigInt, []byte(*id))
+				privateKey = extractBARRETO_BN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else {
-				privateKey = extractBN(skBigInt, []byte(*id))
+				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			}
 
 			block := &pem.Block{
@@ -16127,7 +16877,7 @@ Subcommands:
 			}
 			skBigInt := new(big.Int).SetBytes(sk)
 
-			privateKey := extractBN(skBigInt, []byte(*id))
+			privateKey := extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 
 			block := &pem.Block{
 				Type:  "BN256ENCRYPT SECRET KEY",
@@ -16204,7 +16954,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			if verifySM_BN(&pubKey, []byte(*id), msg, h, signature) {
+			if verifySM_BN(&pubKey, append([]byte(*id), byte(*hierarchy)), msg, h, signature) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -16270,7 +17020,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			if verifyBARRETO_BN(h, signature, []byte(*id), msg, &pubKey) {
+			if verifyBARRETO_BN(h, signature, append([]byte(*id), byte(*hierarchy)), msg, &pubKey) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -16296,7 +17046,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			h, signature := signCC_BN(skG1, []byte(*id), msg)
+			h, signature := signCC_BN(skG1, append([]byte(*id), byte(*hierarchy)), msg)
 
 			signatureBytes, err := encodeSignatureCC_BN(h, signature)
 			if err != nil {
@@ -16336,7 +17086,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			if verifyCC_BN(&pubKey, []byte(*id), msg, h, signature) {
+			if verifyCC_BN(&pubKey, append([]byte(*id), byte(*hierarchy)), msg, h, signature) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -16405,7 +17155,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			if verifyHESS_BN(decodedU, decodedV, &pubKey, []byte(*id), msg) {
+			if verifyHESS_BN(decodedU, decodedV, &pubKey, append([]byte(*id), byte(*hierarchy)), msg) {
 				fmt.Println("Verified: true")
 			} else {
 				fmt.Println("Verified: false")
@@ -16431,7 +17181,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V, W := encryptFO_BN(&pubKey, []byte(*id), msg, myHash)
+			U, V, W := encryptFO_BN(&pubKey, append([]byte(*id), byte(*hierarchy)), msg, myHash)
 			serialized, err := serializeToASN1BF_FO_BN(U, V, W)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -16486,7 +17236,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			U, V, T := encryptBF_BN(&pubKey, []byte(*id), msg, myHash)
+			U, V, T := encryptBF_BN(&pubKey, append([]byte(*id), byte(*hierarchy)), msg, myHash)
 			serialized, err := serializeToASN1BF_BN(U, V, T)
 			if err != nil {
 				log.Fatal("Failed to serialize ciphertext: " + err.Error())
@@ -25534,7 +26284,7 @@ func setup(privateKey *big.Int, g, p *big.Int) *big.Int {
 }
 
 type PublicKey struct {
-	P, G, Y *big.Int
+	P, Q, G, Y *big.Int
 }
 
 type PrivateKey struct {
@@ -25570,15 +26320,21 @@ func DecryptASN1(priv *PrivateKey, cipherData []byte) ([]byte, error) {
 
 func EncryptLegacy(random io.Reader, pub *PublicKey, msg []byte) (c1, c2 *big.Int, err error) {
 	m := new(big.Int).SetBytes(msg)
-
-	k, err := rand.Int(random, pub.P)
-	if err != nil {
-		return
+	if m.Cmp(pub.P) >= 0 {
+		return nil, nil, errors.New("plaintext too large for modulus")
 	}
 
+	k, err := rand.Int(random, new(big.Int).Sub(pub.Q, big.NewInt(1)))
+	if err != nil {
+		return nil, nil, err
+	}
+	k.Add(k, big.NewInt(1))
+
 	c1 = new(big.Int).Exp(pub.G, k, pub.P)
+
 	s := new(big.Int).Exp(pub.Y, k, pub.P)
-	c2 = s.Mul(s, m)
+
+	c2 = new(big.Int).Mul(m, s)
 	c2.Mod(c2, pub.P)
 
 	return
@@ -25586,15 +26342,15 @@ func EncryptLegacy(random io.Reader, pub *PublicKey, msg []byte) (c1, c2 *big.In
 
 func DecryptLegacy(priv *PrivateKey, c1, c2 *big.Int) (msg []byte, err error) {
 	s := new(big.Int).Exp(c1, priv.X, priv.P)
+
 	if s.ModInverse(s, priv.P) == nil {
 		return nil, errors.New("elgamal: invalid private key")
 	}
 
-	s.Mul(s, c2)
-	s.Mod(s, priv.P)
-	em := s.Bytes()
+	m := new(big.Int).Mul(c2, s)
+	m.Mod(m, priv.P)
 
-	return em, nil
+	return m.Bytes(), nil
 }
 
 var (
@@ -25603,46 +26359,43 @@ var (
 	two  = big.NewInt(2)
 )
 
-func sign(random io.Reader, priv *PrivateKey, hash []byte) (*big.Int, *big.Int, error) {
+func sign(random io.Reader, priv *PrivateKey, message []byte, h hash.Hash) (*big.Int, *big.Int, error) {
 	k := new(big.Int)
-	gcd := new(big.Int)
-
 	var err error
 
-	for {
-		k, err = rand.Int(random, new(big.Int).Sub(priv.P, two))
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if k.Cmp(one) == 0 {
-			continue
-		}
-
-		gcd = gcd.GCD(nil, nil, k, new(big.Int).Sub(priv.P, one))
-		if gcd.Cmp(one) == 0 {
-			break
-		}
+	k, err = rand.Int(random, priv.Q)
+	if err != nil {
+		return nil, nil, err
+	}
+	if k.Sign() == 0 {
+		k = new(big.Int).Set(one)
 	}
 
-	m := new(big.Int).SetBytes(hash)
-
 	r := new(big.Int).Exp(priv.G, k, priv.P)
+
+	h.Reset()
+	h.Write(r.Bytes())
+	h.Write(message)
+	hashBytes := h.Sum(nil)
+	m := new(big.Int).SetBytes(hashBytes)
+	m.Mod(m, priv.Q)
+
 	xr := new(big.Int).Mod(
 		new(big.Int).Mul(r, priv.X),
-		new(big.Int).Sub(priv.P, one),
+		priv.Q,
 	)
 
 	hmxr := new(big.Int).Sub(m, xr)
-	kInv := k.ModInverse(k, new(big.Int).Sub(priv.P, one))
+
+	kInv := k.ModInverse(k, priv.Q)
 
 	s := new(big.Int).Mul(hmxr, kInv)
-	s.Mod(s, new(big.Int).Sub(priv.P, one))
+	s.Mod(s, priv.Q)
 
 	return r, s, nil
 }
 
-func verify(pub *PublicKey, hash []byte, r, s *big.Int) (bool, error) {
+func verify(pub *PublicKey, message []byte, r, s *big.Int, h hash.Hash) (bool, error) {
 	signr := new(big.Int).Set(r)
 	if signr.Cmp(zero) == -1 {
 		return false, errors.New("elgamal: r is smaller than zero")
@@ -25651,13 +26404,23 @@ func verify(pub *PublicKey, hash []byte, r, s *big.Int) (bool, error) {
 	}
 
 	signs := new(big.Int).Set(s)
-	if signs.Cmp(zero) == -1 {
-		return false, errors.New("elgamal: s is smaller than zero")
-	} else if signs.Cmp(new(big.Int).Sub(pub.P, one)) == +1 {
-		return false, errors.New("elgamal: s is larger than public key p")
+	if signs.Cmp(zero) != 1 || signs.Cmp(pub.Q) != -1 {
+		return false, errors.New("elgamal: s is out of bounds (not in 1..q-1)")
 	}
 
-	m := new(big.Int).SetBytes(hash)
+	if r == nil || r.Sign() <= 0 {
+		return false, errors.New("elgamal: r is zero or negative")
+	}
+	if s == nil || s.Sign() <= 0 {
+		return false, errors.New("elgamal: s is zero or negative")
+	}
+
+	h.Reset()
+	h.Write(r.Bytes())
+	h.Write(message)
+	hashBytes := h.Sum(nil)
+	m := new(big.Int).SetBytes(hashBytes)
+	m.Mod(m, pub.Q)
 
 	ghashm := new(big.Int).Exp(pub.G, m, pub.P)
 
@@ -25679,12 +26442,83 @@ func verify(pub *PublicKey, hash []byte, r, s *big.Int) (bool, error) {
 	return false, errors.New("elgamal: signature is not verified")
 }
 
+func signDSA(random io.Reader, priv *PrivateKey, hash []byte) (*big.Int, *big.Int, error) {
+	k := new(big.Int)
+	var err error
+
+	k, err = rand.Int(random, priv.Q)
+	if err != nil {
+		return nil, nil, err
+	}
+	if k.Sign() == 0 {
+		k = new(big.Int).Set(one)
+	}
+
+	m := new(big.Int).SetBytes(hash)
+	m.Mod(m, priv.Q)
+
+	rTemp := new(big.Int).Exp(priv.G, k, priv.P)
+	r := new(big.Int).Mod(rTemp, priv.Q)
+	if r.Sign() == 0 {
+		return signDSA(random, priv, hash)
+	}
+
+	xr := new(big.Int).Mul(priv.X, r)
+	xr.Mod(xr, priv.Q)
+
+	mPlusXr := new(big.Int).Add(m, xr)
+	mPlusXr.Mod(mPlusXr, priv.Q)
+
+	kInv := new(big.Int).ModInverse(k, priv.Q)
+	s := new(big.Int).Mul(mPlusXr, kInv)
+	s.Mod(s, priv.Q)
+
+	return r, s, nil
+}
+
+func verifyDSA(pub *PublicKey, hash []byte, r, s *big.Int) (bool, error) {
+	if r.Cmp(one) < 0 || r.Cmp(pub.Q) >= 0 {
+		return false, errors.New("elgamal: r out of bounds")
+	}
+	if s.Cmp(one) < 0 || s.Cmp(pub.Q) >= 0 {
+		return false, errors.New("elgamal: s out of bounds")
+	}
+
+	m := new(big.Int).SetBytes(hash)
+	m.Mod(m, pub.Q)
+
+	w := new(big.Int).ModInverse(s, pub.Q)
+	if w == nil {
+		return false, errors.New("elgamal: invalid s")
+	}
+
+	u1 := new(big.Int).Mul(m, w)
+	u1.Mod(u1, pub.Q)
+
+	u2 := new(big.Int).Mul(r, w)
+	u2.Mod(u2, pub.Q)
+
+	gu1 := new(big.Int).Exp(pub.G, u1, pub.P)
+	yu2 := new(big.Int).Exp(pub.Y, u2, pub.P)
+	v := new(big.Int).Mul(gu1, yu2)
+	v.Mod(v, pub.P)
+	v.Mod(v, pub.Q)
+
+	vBytes := bigIntToFixedBytes(v, pub.Q.BitLen())
+	rBytes := bigIntToFixedBytes(r, pub.Q.BitLen())
+
+	if subtle.ConstantTimeCompare(vBytes, rBytes) == 1 {
+		return true, nil
+	}
+	return false, errors.New("elgamal: signature verification failed")
+}
+
 type elgamalSignature struct {
 	R, S *big.Int
 }
 
-func SignASN1(rand io.Reader, priv *PrivateKey, hash []byte) ([]byte, error) {
-	r, s, err := sign(rand, priv, hash)
+func SignASN1(random io.Reader, priv *PrivateKey, message []byte, h hash.Hash) ([]byte, error) {
+	r, s, err := sign(random, priv, message, h)
 	if err != nil {
 		return nil, err
 	}
@@ -25695,14 +26529,276 @@ func SignASN1(rand io.Reader, priv *PrivateKey, hash []byte) ([]byte, error) {
 	})
 }
 
-func VerifyASN1(pub *PublicKey, hash, sig []byte) (bool, error) {
+func VerifyASN1(pub *PublicKey, message, sig []byte, h hash.Hash) (bool, error) {
 	var sign elgamalSignature
 	_, err := asn1.Unmarshal(sig, &sign)
 	if err != nil {
 		return false, err
 	}
 
-	return verify(pub, hash, sign.R, sign.S)
+	return verify(pub, message, sign.R, sign.S, h)
+}
+
+func SignASN1DSA(rand io.Reader, priv *PrivateKey, hash []byte) ([]byte, error) {
+	r, s, err := signDSA(rand, priv, hash)
+	if err != nil {
+		return nil, err
+	}
+
+	return asn1.Marshal(elgamalSignature{
+		R: r,
+		S: s,
+	})
+}
+
+func VerifyASN1DSA(pub *PublicKey, hash, sig []byte) (bool, error) {
+	var sign elgamalSignature
+	_, err := asn1.Unmarshal(sig, &sign)
+	if err != nil {
+		return false, err
+	}
+
+	return verifyDSA(pub, hash, sign.R, sign.S)
+}
+
+func ProveKnowledgeElGamal(priv *PrivateKey, message []byte, h hash.Hash) (t, c, s *big.Int, err error) {
+	if priv == nil || priv.P == nil || priv.G == nil || priv.X == nil || priv.Q == nil {
+		return nil, nil, nil, fmt.Errorf("elgamal: incomplete private key")
+	}
+
+	r, err := rand.Int(rand.Reader, priv.Q)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	if r.Sign() == 0 {
+		r = new(big.Int).Set(one)
+	}
+
+	Y := new(big.Int).Exp(priv.G, priv.X, priv.P)
+
+	t = new(big.Int).Exp(priv.G, r, priv.P)
+
+	h.Reset()
+	h.Write(priv.G.Bytes())
+	h.Write(Y.Bytes())
+	h.Write(priv.Q.Bytes())
+	h.Write(t.Bytes())
+	h.Write(message)
+	challenge := h.Sum(nil)
+
+	c = new(big.Int).SetBytes(challenge)
+	c.Mod(c, priv.Q)
+
+	cx := new(big.Int).Mul(c, priv.X)
+	s = new(big.Int).Add(r, cx)
+	s.Mod(s, priv.Q)
+
+	return t, c, s, nil
+}
+
+func VerifyKnowledgeElGamal(pub *PublicKey, t, c, s *big.Int, message []byte, h hash.Hash) bool {
+	if pub == nil || pub.G == nil || pub.P == nil || pub.Y == nil || pub.Q == nil {
+		return false
+	}
+
+	if c.Cmp(zero) < 0 || c.Cmp(pub.Q) >= 0 {
+		return false
+	}
+	if s.Cmp(zero) < 0 || s.Cmp(pub.Q) >= 0 {
+		return false
+	}
+
+	h.Reset()
+	h.Write(pub.G.Bytes())
+	h.Write(pub.Y.Bytes())
+	h.Write(pub.Q.Bytes())
+	h.Write(t.Bytes())
+	h.Write(message)
+	expectedHash := h.Sum(nil)
+
+	expectedC := new(big.Int).SetBytes(expectedHash)
+	expectedC.Mod(expectedC, pub.Q)
+
+	if expectedC.Cmp(c) != 0 {
+		return false
+	}
+
+	gs := new(big.Int).Exp(pub.G, s, pub.P)
+	yc := new(big.Int).Exp(pub.Y, c, pub.P)
+	right := new(big.Int).Mul(t, yc)
+	right.Mod(right, pub.P)
+
+	return gs.Cmp(right) == 0
+}
+
+type Share struct {
+	Index int
+	Value *ff.Scalar
+}
+
+type PartialKey struct {
+	Index int
+	Key   *bls12381.G1
+}
+
+func evaluatePolynomial(coeffs []*ff.Scalar, x *ff.Scalar) *ff.Scalar {
+	result := new(ff.Scalar)
+	result.Set(coeffs[0])
+
+	power := new(ff.Scalar)
+	power.Set(x)
+
+	for i := 1; i < len(coeffs); i++ {
+		tmp := new(ff.Scalar)
+		tmp.Mul(coeffs[i], power)
+		result.Add(result, tmp)
+		power.Mul(power, x)
+	}
+	return result
+}
+
+func GenerateShares(secret *ff.Scalar, t, n int) ([]Share, error) {
+	if t >= n {
+		return nil, fmt.Errorf("threshold t deve ser menor que n")
+	}
+	coeffs := make([]*ff.Scalar, t+1)
+	coeffs[0] = new(ff.Scalar)
+	coeffs[0].Set(secret)
+	for i := 1; i <= t; i++ {
+		coeff := new(ff.Scalar)
+		coeff.Random(rand.Reader)
+		coeffs[i] = coeff
+	}
+	shares := make([]Share, n)
+	for i := 1; i <= n; i++ {
+		xScalar := new(ff.Scalar)
+		xScalar.SetUint64(uint64(i))
+		y := evaluatePolynomial(coeffs, xScalar)
+		shares[i-1] = Share{Index: i, Value: y}
+	}
+	return shares, nil
+}
+
+func lagrangeCoefficient(shares []Share, i int) *ff.Scalar {
+	numerator := new(ff.Scalar)
+	numerator.SetUint64(1)
+	denominator := new(ff.Scalar)
+	denominator.SetUint64(1)
+
+	xi := new(ff.Scalar)
+	xi.SetUint64(uint64(shares[i].Index))
+
+	for j := range shares {
+		if i == j {
+			continue
+		}
+
+		xj := new(ff.Scalar)
+		xj.SetUint64(uint64(shares[j].Index))
+
+		numerator.Mul(numerator, xj)
+
+		diff := new(ff.Scalar)
+		diff.Sub(xi, xj)
+		denominator.Mul(denominator, diff)
+	}
+
+	denInv := new(ff.Scalar)
+	denInv.Inv(denominator)
+
+	result := new(ff.Scalar)
+	result.Mul(numerator, denInv)
+
+	return result
+}
+
+func lagrangeCoefficientForIndices(indices []int, i int) *ff.Scalar {
+	numerator := new(ff.Scalar)
+	numerator.SetUint64(1)
+	denominator := new(ff.Scalar)
+	denominator.SetUint64(1)
+
+	xi := new(ff.Scalar)
+	xi.SetUint64(uint64(indices[i]))
+
+	for j := range indices {
+		if i == j {
+			continue
+		}
+
+		xj := new(ff.Scalar)
+		xj.SetUint64(uint64(indices[j]))
+
+		negXj := new(ff.Scalar)
+		numerator.Mul(numerator, negXj)
+
+		diff := new(ff.Scalar)
+		diff.Sub(xi, xj)
+		denominator.Mul(denominator, diff)
+	}
+
+	denInv := new(ff.Scalar)
+	denInv.Inv(denominator)
+
+	result := new(ff.Scalar)
+	result.Mul(numerator, denInv)
+
+	return result
+}
+
+func SaveShareToPEM(filename string, share Share) error {
+	valueBytes, err := share.Value.MarshalBinary()
+	if err != nil {
+		return err
+	}
+
+	data := append([]byte{byte(share.Index)}, valueBytes...)
+
+	block := &pem.Block{
+		Type:  "THRESHOLD IBE SHARE",
+		Bytes: data,
+	}
+
+	return savePEMToFile(filename, block, true)
+}
+
+func LoadShareFromPEM(filename string) (Share, error) {
+	fileData, err := os.ReadFile(filename)
+	if err != nil {
+		return Share{}, err
+	}
+
+	block, _ := pem.Decode(fileData)
+	if block == nil {
+		return Share{}, fmt.Errorf("failed to decode PEM block")
+	}
+
+	var shareBytes []byte
+	if x509.IsEncryptedPEMBlock(block) {
+		if pwd == nil || *pwd == "" {
+			return Share{}, fmt.Errorf("PEM file is encrypted, but no password was provided")
+		}
+		shareBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+		if err != nil {
+			return Share{}, fmt.Errorf("error decrypting PEM block: %v", err)
+		}
+	} else {
+		shareBytes = block.Bytes
+	}
+
+	if len(shareBytes) < 1 {
+		return Share{}, fmt.Errorf("invalid share data")
+	}
+
+	index := int(shareBytes[0])
+	valueBytes := shareBytes[1:]
+
+	value := new(ff.Scalar)
+	if err := value.UnmarshalBinary(valueBytes); err != nil {
+		return Share{}, fmt.Errorf("failed to unmarshal share value: %v", err)
+	}
+
+	return Share{Index: index, Value: value}, nil
 }
 
 func encodePrivateKeyPEM(privPEM *PrivateKey) ([]byte, error) {
@@ -25795,80 +26891,85 @@ func readPublicKeyFromPEM(fileName string) (*PublicKey, error) {
 	return pubKey, nil
 }
 
-func generateRandomX(p *big.Int) (*big.Int, error) {
-	x, err := rand.Int(rand.Reader, new(big.Int).Sub(p, big.NewInt(2)))
+func generateRandomX(q *big.Int) (*big.Int, error) {
+	max := new(big.Int).Sub(q, big.NewInt(1))
+	x, err := rand.Int(rand.Reader, max)
 	if err != nil {
 		return nil, err
 	}
-	return x, nil
-}
-
-func isPrime(n *big.Int) bool {
-	return n.ProbablyPrime(20)
-}
-
-func generatePrime(length int) (*big.Int, error) {
-	for {
-		randomBits := make([]byte, length/8)
-		_, err := rand.Read(randomBits)
-		if err != nil {
-			return nil, err
-		}
-
-		randomBits[0] |= 1
-		randomBits[len(randomBits)-1] |= 1
-
-		prime := new(big.Int).SetBytes(randomBits)
-
-		prime.SetBit(prime, length-1, 1)
-
-		if isPrime(prime) {
-			return prime, nil
-		}
-
-		print(".")
-	}
-}
-
-func generateGenerator(p *big.Int) (*big.Int, error) {
-	q := new(big.Int).Rsh(p, 1)
-
-	max := new(big.Int).Sub(p, two)
-
-	for {
-		g, err := rand.Int(rand.Reader, max)
-		if err != nil {
-			return nil, fmt.Errorf("error generating G: %v", err)
-		}
-
-		if g.Cmp(two) == 1 && new(big.Int).Exp(g, two, p).Cmp(one) != 0 && new(big.Int).Exp(g, q, p).Cmp(one) != 0 {
-			return g, nil
-		}
-	}
+	return x.Add(x, big.NewInt(1)), nil
 }
 
 type ElGamalParams struct {
 	P *big.Int
+	Q *big.Int
 	G *big.Int
 }
 
-func generateElGamalParams() (*ElGamalParams, error) {
-	pSize := *length
-
-	p, err := generatePrime(pSize)
-	if err != nil {
-		return nil, fmt.Errorf("error generating P: %v", err)
+func generateElGamalParams(pBits int) (*ElGamalParams, error) {
+	if pBits < 1024 {
+		return nil, errors.New("P must be at least 1024 bits for security")
 	}
 
-	g, err := generateGenerator(p)
-	if err != nil {
-		return nil, fmt.Errorf("error generating G: %v", err)
+	var qBits int
+	switch {
+	case pBits >= 15360:
+		qBits = 512
+	case pBits >= 7680:
+		qBits = 384
+	case pBits >= 4096:
+		qBits = 320
+	case pBits >= 3072:
+		qBits = 256
+	case pBits >= 2048:
+		qBits = 224
+	default:
+		qBits = 160
 	}
 
-	return &ElGamalParams{
-		P: p,
-		G: g,
-	}, nil
+	fmt.Fprintf(os.Stderr, "Generating ElGamal params (P: %d bits, Q: %d bits)...", pBits, qBits)
+
+	q, err := rand.Prime(rand.Reader, qBits)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate Q: %v", err)
+	}
+	fmt.Fprint(os.Stderr, " Q found!")
+
+	for attempt := 0; attempt < 20000; attempt++ {
+		rBits := pBits - qBits
+		r, err := rand.Int(rand.Reader, new(big.Int).Lsh(one, uint(rBits)))
+		if err != nil {
+			return nil, err
+		}
+
+		p := new(big.Int).Mul(r, q)
+		p.Add(p, one)
+
+		if p.BitLen() < pBits {
+			p.SetBit(p, pBits-1, 1)
+		}
+
+		if p.ProbablyPrime(5) {
+			fmt.Fprint(os.Stderr, " P found!")
+
+			g, err := findGenerator(p, q)
+			if err != nil {
+			}
+			fmt.Fprint(os.Stderr, " G found!")
+
+			return &ElGamalParams{
+				P: p,
+				Q: q,
+				G: g,
+			}, nil
+		}
+
+		if attempt%100 == 0 {
+			print(".")
+		}
+	}
+
+	return nil, fmt.Errorf("failed to generate safe prime P after 20000 attempts")
 }
 
 func init() {
@@ -25989,15 +27090,15 @@ func generateSchnorrParams(pBits int) (*SchnorrParams, error) {
 		inferBits = 160
 	}
 
-	fmt.Printf("Generating Schnorr params (P: %d bits, Q: %d bits)...", pBits, inferBits)
+	fmt.Fprintf(os.Stderr, "Generating Schnorr params (P: %d bits, Q: %d bits)...", pBits, inferBits)
 
 	q, err := rand.Prime(rand.Reader, inferBits)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf(" Q found!")
+	fmt.Fprint(os.Stderr, " Q found!")
 
-	for attempt := 0; attempt < 10000; attempt++ {
+	for attempt := 0; attempt < 20000; attempt++ {
 		rBits := pBits - inferBits
 		r, err := rand.Int(rand.Reader, new(big.Int).Lsh(one, uint(rBits)))
 		if err != nil {
@@ -26012,12 +27113,12 @@ func generateSchnorrParams(pBits int) (*SchnorrParams, error) {
 		}
 
 		if p.ProbablyPrime(5) {
-			fmt.Printf(" P found!")
+			fmt.Fprint(os.Stderr, " P found!")
 
-			g, err := findSchnorrGenerator(p, q)
+			g, err := findGenerator(p, q)
 			if err != nil {
 			}
-			fmt.Printf(" G found!\n")
+			fmt.Fprint(os.Stderr, " G found!")
 
 			return &SchnorrParams{
 				P: p,
@@ -26031,10 +27132,10 @@ func generateSchnorrParams(pBits int) (*SchnorrParams, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("failed to find suitable P after 10000 attempts")
+	return nil, fmt.Errorf("failed to find suitable P after 20000 attempts")
 }
 
-func findSchnorrGenerator(p, q *big.Int) (*big.Int, error) {
+func findGenerator(p, q *big.Int) (*big.Int, error) {
 	exp := new(big.Int).Sub(p, one)
 	exp.Div(exp, q)
 
@@ -26042,13 +27143,6 @@ func findSchnorrGenerator(p, q *big.Int) (*big.Int, error) {
 		2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
 		31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
 		73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
-		127, 131, 137, 139, 149, 151, 157, 163, 167, 173,
-		179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
-		233, 239, 241, 251, 257, 263, 269, 271, 277, 281,
-		283, 293, 307, 311, 313, 317, 331, 337, 347, 349,
-		353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
-		419, 421, 431, 433, 439, 443, 449, 457, 461, 463,
-		467, 479, 487, 491, 499, 503, 509, 521, 523, 541,
 	}
 
 	for _, prime := range smallPrimes {
@@ -26077,7 +27171,7 @@ func signSchnorr(random io.Reader, priv *SchnorrPrivateKey, message []byte, h ha
 
 	r := new(big.Int).Exp(priv.G, k, priv.P)
 
-	e := schnorrHash(r, message, priv.Q, h)
+	e := schnorrHash(&priv.SchnorrPublicKey, r, message, priv.Q, h)
 
 	xE := new(big.Int).Mul(priv.X, e)
 	s := new(big.Int).Sub(k, xE)
@@ -26099,7 +27193,7 @@ func verifySchnorr(pub *SchnorrPublicKey, message []byte, e, s *big.Int, h hash.
 	rPrime := new(big.Int).Mul(gS, yE)
 	rPrime.Mod(rPrime, pub.P)
 
-	ePrime := schnorrHash(rPrime, message, pub.Q, h)
+	ePrime := schnorrHash(pub, rPrime, message, pub.Q, h)
 
 	ePrimeBytes := bigIntToFixedBytes(ePrime, pub.Q.BitLen())
 	eBytes := bigIntToFixedBytes(e, pub.Q.BitLen())
@@ -26122,10 +27216,11 @@ func bigIntToFixedBytes(x *big.Int, bitLen int) []byte {
 	return b
 }
 
-func schnorrHash(r *big.Int, message []byte, q *big.Int, h hash.Hash) *big.Int {
+func schnorrHash(pub *SchnorrPublicKey, r *big.Int, message []byte, q *big.Int, h hash.Hash) *big.Int {
 	h.Reset()
 
 	h.Write(r.Bytes())
+	h.Write(pub.Y.Bytes())
 	h.Write(message)
 
 	hash := h.Sum(nil)
@@ -26154,6 +27249,50 @@ func SchnorrVerifyASN1(pub *SchnorrPublicKey, message, sig []byte, h hash.Hash) 
 	}
 
 	return verifySchnorr(pub, message, sign.E, sign.S, h)
+}
+
+func ProveKnowledge(priv *SchnorrPrivateKey, message []byte, h hash.Hash) (*big.Int, *big.Int, *big.Int, error) {
+	r, err := rand.Int(rand.Reader, new(big.Int).Sub(priv.Q, one))
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	r.Add(r, one)
+
+	t := new(big.Int).Exp(priv.G, r, priv.P)
+
+	h.Reset()
+	h.Write(t.Bytes())
+	h.Write(message)
+	digest := h.Sum(nil)
+
+	e := new(big.Int).SetBytes(digest)
+	e.Mod(e, priv.Q)
+
+	xE := new(big.Int).Mul(priv.X, e)
+	s := new(big.Int).Add(r, xE)
+	s.Mod(s, priv.Q)
+
+	return t, e, s, nil
+}
+
+func VerifyKnowledge(pub *SchnorrPublicKey, t, e, s *big.Int, message []byte, h hash.Hash) bool {
+	gS := new(big.Int).Exp(pub.G, s, pub.P)
+
+	yE := new(big.Int).Exp(pub.Y, e, pub.P)
+	yEInv := new(big.Int).ModInverse(yE, pub.P)
+
+	tPrime := new(big.Int).Mul(gS, yEInv)
+	tPrime.Mod(tPrime, pub.P)
+
+	h.Reset()
+	h.Write(tPrime.Bytes())
+	h.Write(message)
+	digest := h.Sum(nil)
+
+	ePrime := new(big.Int).SetBytes(digest)
+	ePrime.Mod(ePrime, pub.Q)
+
+	return e.Cmp(ePrime) == 0
 }
 
 func generatePrivateKey(q *big.Int) (*big.Int, error) {
@@ -26496,9 +27635,22 @@ func readKeyFromPEM(fileName string, isPrivateKey bool) ([]byte, error) {
 }
 
 func GenerateKyber(size int) ([]byte, []byte, error) {
-	seed := make([]byte, 32)
-	if _, err := rand.Read(seed); err != nil {
-		return nil, nil, err
+	var seed []byte
+
+	if *seedStr != "" {
+		var err error
+		seed, err = hex.DecodeString(*seedStr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid seed format (expected hex): %v", err)
+		}
+		if len(seed) != 64 {
+			return nil, nil, fmt.Errorf("seed must be exactly 64 bytes (128 hex characters)")
+		}
+	} else {
+		seed = make([]byte, 64)
+		if _, err := rand.Read(seed); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	var d *kyber.Kyber
@@ -26611,9 +27763,22 @@ func GetDilithium(size int) *dilithium.Dilithium {
 }
 
 func GenerateDilithium(length int) ([]byte, []byte, error) {
-	seed := make([]byte, 32)
-	if _, err := rand.Read(seed); err != nil {
-		return nil, nil, err
+	var seed []byte
+
+	if *seedStr != "" {
+		var err error
+		seed, err = hex.DecodeString(*seedStr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid seed format (expected hex): %v", err)
+		}
+		if len(seed) != 32 {
+			return nil, nil, fmt.Errorf("seed must be exactly 32 bytes (64 hex characters)")
+		}
+	} else {
+		seed = make([]byte, 32)
+		if _, err := rand.Read(seed); err != nil {
+			return nil, nil, err
+		}
 	}
 
 	d := GetDilithium(length)
@@ -26735,6 +27900,7 @@ func (this PKCS8Key) MarshalPublicKey(key *PublicKey) ([]byte, error) {
 
 	paramBytes, err := asn1.Marshal(ElGamalParams{
 		G: key.G,
+		Q: key.Q,
 		P: key.P,
 	})
 	if err != nil {
@@ -26763,6 +27929,7 @@ func (this PKCS8Key) ParsePublicKey(der []byte) (*PublicKey, error) {
 	}
 
 	pubKey.G = algoParams.G
+	pubKey.Q = algoParams.Q
 	pubKey.P = algoParams.P
 
 	pubKey.Y = new(big.Int).SetBytes(rest)
@@ -26780,6 +27947,7 @@ func (this PKCS8Key) MarshalPrivateKey(key *PrivateKey) ([]byte, error) {
 
 	paramBytes, err := asn1.Marshal(ElGamalParams{
 		G: key.G,
+		Q: key.Q,
 		P: key.P,
 	})
 	if err != nil {
@@ -26808,6 +27976,7 @@ func (this PKCS8Key) ParsePrivateKey(der []byte) (key *PrivateKey, err error) {
 	}
 
 	privKey.G = algoParams.G
+	privKey.Q = algoParams.Q
 	privKey.P = algoParams.P
 
 	privKey.X = new(big.Int).SetBytes(rest)
@@ -26834,9 +28003,10 @@ func encryptBN(message string, publicKey *bn256i.G2, hashFunc func() hash.Hash) 
 
 	S1, S2 := deriveKeys(pairingBytes, hashFunc)
 
+	mask := expandKey(S1, len(messageBytes), hashFunc)
 	encrypted := make([]byte, len(messageBytes))
 	for i := range messageBytes {
-		encrypted[i] = messageBytes[i] ^ S1[i%len(S1)]
+		encrypted[i] = messageBytes[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hashFunc, S2)
@@ -26856,9 +28026,10 @@ func decryptBN(C1 *bn256i.G1, authTag, encrypted []byte, privateKey *big.Int, ha
 
 	S1, S2 := deriveKeys(pairingBytes, hashFunc)
 
+	mask := expandKey(S1, len(encrypted), hashFunc)
 	message := make([]byte, len(encrypted))
 	for i := range encrypted {
-		message[i] = encrypted[i] ^ S1[i%len(S1)]
+		message[i] = encrypted[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hashFunc, S2)
@@ -26933,9 +28104,10 @@ func encryptBLS(message string, publicKey *bls12381.G2, hashFunc func() hash.Has
 
 	S1, S2 := deriveKeys(pairingBytes, hashFunc)
 
+	mask := expandKey(S1, len(messageBytes), hashFunc)
 	encrypted := make([]byte, len(messageBytes))
 	for i := range messageBytes {
-		encrypted[i] = messageBytes[i] ^ S1[i%len(S1)]
+		encrypted[i] = messageBytes[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hashFunc, S2)
@@ -26962,9 +28134,10 @@ func decryptBLS(C1 *bls12381.G1, authTag []byte, encrypted []byte, privateKey *b
 
 	S1, S2 := deriveKeys(pairingBytes, hashFunc)
 
+	mask := expandKey(S1, len(encrypted), hashFunc)
 	message := make([]byte, len(encrypted))
 	for i := range encrypted {
-		message[i] = encrypted[i] ^ S1[i%len(S1)]
+		message[i] = encrypted[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hashFunc, S2)
@@ -28119,6 +29292,84 @@ func deriveKeys(pairRaw []byte, hFunc func() hash.Hash) ([]byte, []byte) {
 	return S1, S2
 }
 
+func expandKey(S1 []byte, length int, hFunc func() hash.Hash) []byte {
+	hkdfStream := hkdf.New(hFunc, S1, nil, []byte("IBE:Stream-XOR-Mask"))
+	mask := make([]byte, length)
+	io.ReadFull(hkdfStream, mask)
+	return mask
+}
+
+func combinePartialKeys(partialKeys []PartialKey) (*bls12381.G1, error) {
+	if len(partialKeys) < 3 {
+		return nil, fmt.Errorf("at least 3 partial keys required for combination")
+	}
+
+	indices := make([]int, len(partialKeys))
+	for i, pk := range partialKeys {
+		indices[i] = pk.Index
+	}
+
+	result := new(bls12381.G1)
+	result.SetIdentity()
+
+	for i := range partialKeys {
+		lambda := lagrangeCoefficientForIndices(indices, i)
+
+		tmp := new(bls12381.G1)
+		tmp.ScalarMult(lambda, partialKeys[i].Key)
+
+		result.Add(result, tmp)
+	}
+	return result, nil
+}
+
+func loadPartialKeyFromPEM(filename string) (*bls12381.G1, int, error) {
+	file, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	block, _ := pem.Decode(file)
+	if block == nil {
+		return nil, 0, fmt.Errorf("failed to parse PEM block")
+	}
+
+	if block.Type != "BLS12381 PARTIAL SECRET KEY" {
+		return nil, 0, fmt.Errorf("invalid PEM block type: %s", block.Type)
+	}
+
+	if len(block.Bytes) < 1 {
+		return nil, 0, fmt.Errorf("invalid partial key data")
+	}
+
+	index := int(block.Bytes[0])
+	keyData := block.Bytes[1:]
+
+	partialKey := new(bls12381.G1)
+	if err := partialKey.SetBytes(keyData); err != nil {
+		return nil, 0, fmt.Errorf("invalid partial key data: %v", err)
+	}
+
+	return partialKey, index, nil
+}
+
+func partialExtractFromShare(shareFile string, id []byte) (*bls12381.G1, error) {
+	share, err := LoadShareFromPEM(shareFile)
+	if err != nil {
+		return nil, fmt.Errorf("error loading share %s: %v", shareFile, err)
+	}
+
+	partialKey := partialExtract(share, id)
+	return partialKey, nil
+}
+
+func partialExtract(share Share, id []byte) *bls12381.G1 {
+	Q := hashToG1(id)
+	d := new(bls12381.G1)
+	d.ScalarMult(share.Value, Q)
+	return d
+}
+
 func encryptBF(P_pub *bls12381.G2, id []byte, M []byte, hFunc func() hash.Hash) (*bls12381.G2, []byte, []byte) {
 	r := new(ff.Scalar)
 	r.Random(rand.Reader)
@@ -28135,9 +29386,10 @@ func encryptBF(P_pub *bls12381.G2, id []byte, M []byte, hFunc func() hash.Hash) 
 
 	S1, S2 := deriveKeys(k, hFunc)
 
+	mask := expandKey(S1, len(M), hFunc)
 	V := make([]byte, len(M))
 	for i := range M {
-		V[i] = M[i] ^ S1[i%len(S1)]
+		V[i] = M[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hFunc, S2)
@@ -28154,9 +29406,10 @@ func decryptBF(U *bls12381.G2, d_ID *bls12381.G1, V, T []byte, hFunc func() hash
 
 	S1, S2 := deriveKeys(k, hFunc)
 
+	mask := expandKey(S1, len(V), hFunc)
 	M := make([]byte, len(V))
 	for i := range V {
-		M[i] = V[i] ^ S1[i%len(S1)]
+		M[i] = V[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hFunc, S2)
@@ -28178,9 +29431,11 @@ func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte, hFunc func() hash.Hash
 	k := pair.Marshal()
 	S1, S2 := deriveKeys(k, hFunc)
 
+	mask := expandKey(S1, len(msg), hFunc)
+
 	V := make([]byte, len(msg))
 	for i := range msg {
-		V[i] = msg[i] ^ S1[i%len(S1)]
+		V[i] = msg[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hFunc, S2)
@@ -28196,9 +29451,11 @@ func decryptBF_BN(U *bn256i.G2, sk *bn256i.G1, V, T []byte, hFunc func() hash.Ha
 	k := pair.Marshal()
 	S1, S2 := deriveKeys(k, hFunc)
 
+	mask := expandKey(S1, len(V), hFunc)
+
 	M := make([]byte, len(V))
 	for i := range V {
-		M[i] = V[i] ^ S1[i%len(S1)]
+		M[i] = V[i] ^ mask[i]
 	}
 
 	mac := hmac.New(hFunc, S2)
@@ -28232,11 +29489,22 @@ func H3(sigma, M []byte, hashFunc func() hash.Hash) *ff.Scalar {
 	return r
 }
 
-func H4(sigma []byte, hashFunc func() hash.Hash) []byte {
-	h := hashFunc()
-	h.Write([]byte("H4|"))
-	h.Write(sigma)
-	return h.Sum(nil)
+func H4(sigma []byte, hashFunc func() hash.Hash, msgLen int) []byte {
+	var result []byte
+	counter := 0
+	for len(result) < msgLen {
+		h := hashFunc()
+		h.Write([]byte("H4|"))
+		h.Write(sigma)
+
+		counterBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(counterBytes, uint32(counter))
+		h.Write(counterBytes)
+
+		result = append(result, h.Sum(nil)...)
+		counter++
+	}
+	return result[:msgLen]
 }
 
 func encryptFO(Ppub *bls12381.G2, id, M []byte, hashFunc func() hash.Hash) (*bls12381.G2, []byte, []byte) {
@@ -28262,10 +29530,10 @@ func encryptFO(Ppub *bls12381.G2, id, M []byte, hashFunc func() hash.Hash) (*bls
 		V[i] = sigma[i] ^ h2g[i%len(h2g)]
 	}
 
-	h4sigma := H4(sigma, hashFunc)
+	h4sigma := H4(sigma, hashFunc, len(M))
 	W := make([]byte, len(M))
 	for i := 0; i < len(M); i++ {
-		W[i] = M[i] ^ h4sigma[i%len(h4sigma)]
+		W[i] = M[i] ^ h4sigma[i]
 	}
 
 	return U, V, W
@@ -28282,10 +29550,10 @@ func decryptFO(U *bls12381.G2, dID *bls12381.G1, V, W []byte, hashFunc func() ha
 		sigma[i] = V[i] ^ h2g[i%len(h2g)]
 	}
 
-	h4sigma := H4(sigma, hashFunc)
+	h4sigma := H4(sigma, hashFunc, len(W))
 	M := make([]byte, len(W))
 	for i := 0; i < len(W); i++ {
-		M[i] = W[i] ^ h4sigma[i%len(h4sigma)]
+		M[i] = W[i] ^ h4sigma[i]
 	}
 
 	rPrime := H3(sigma, M, hashFunc)
@@ -28305,15 +29573,20 @@ func hashH2(gt *bls12381.Gt, length int, hashFunc func() hash.Hash) []byte {
 		log.Fatal(err)
 	}
 
-	h := hashFunc()
-	h.Write(raw)
-	digest := h.Sum(nil)
+	var result []byte
+	counter := 0
+	for len(result) < length {
+		h := hashFunc()
+		h.Write(raw)
 
-	mask := make([]byte, length)
-	for i := 0; i < length; i++ {
-		mask[i] = digest[i%len(digest)]
+		counterBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(counterBytes, uint32(counter))
+		h.Write(counterBytes)
+
+		result = append(result, h.Sum(nil)...)
+		counter++
 	}
-	return mask
+	return result[:length]
 }
 
 func hashH3(sigma, m []byte, hashFunc func() hash.Hash) *ff.Scalar {
@@ -28328,15 +29601,20 @@ func hashH3(sigma, m []byte, hashFunc func() hash.Hash) *ff.Scalar {
 }
 
 func hashH4(sigma []byte, length int, hashFunc func() hash.Hash) []byte {
-	h := hashFunc()
-	h.Write(sigma)
-	digest := h.Sum(nil)
+	var result []byte
+	counter := 0
+	for len(result) < length {
+		h := hashFunc()
+		h.Write(sigma)
 
-	mask := make([]byte, length)
-	for i := range mask {
-		mask[i] = digest[i%len(digest)]
+		counterBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(counterBytes, uint32(counter))
+		h.Write(counterBytes)
+
+		result = append(result, h.Sum(nil)...)
+		counter++
 	}
-	return mask
+	return result[:length]
 }
 
 func setupSK() (*ff.Scalar, *bls12381.G1) {
@@ -28453,11 +29731,22 @@ func H3_BN(sigma, M []byte, hashFunc func() hash.Hash) *big.Int {
 	return r.Mod(r, bn256i.Order)
 }
 
-func H4_BN(sigma []byte, hashFunc func() hash.Hash) []byte {
-	h := hashFunc()
-	h.Write([]byte("H4|"))
-	h.Write(sigma)
-	return h.Sum(nil)
+func H4_BN(sigma []byte, hashFunc func() hash.Hash, msgLen int) []byte {
+	var result []byte
+	counter := 0
+	for len(result) < msgLen {
+		h := hashFunc()
+		h.Write([]byte("H4|"))
+		h.Write(sigma)
+
+		counterBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(counterBytes, uint32(counter))
+		h.Write(counterBytes)
+
+		result = append(result, h.Sum(nil)...)
+		counter++
+	}
+	return result[:msgLen]
 }
 
 func encryptFO_BN(Ppub *bn256i.G2, id, M []byte, hashFunc func() hash.Hash) (*bn256i.G2, []byte, []byte) {
@@ -28482,10 +29771,10 @@ func encryptFO_BN(Ppub *bn256i.G2, id, M []byte, hashFunc func() hash.Hash) (*bn
 		V[i] = sigma[i] ^ h2g[i%len(h2g)]
 	}
 
-	h4sigma := H4_BN(sigma, hashFunc)
+	h4sigma := H4_BN(sigma, hashFunc, len(M))
 	W := make([]byte, len(M))
 	for i := 0; i < len(M); i++ {
-		W[i] = M[i] ^ h4sigma[i%len(h4sigma)]
+		W[i] = M[i] ^ h4sigma[i]
 	}
 
 	return U, V, W
@@ -28502,10 +29791,10 @@ func decryptFO_BN(U *bn256i.G2, dID *bn256i.G1, V, W []byte, hashFunc func() has
 		sigma[i] = V[i] ^ h2g[i%len(h2g)]
 	}
 
-	h4sigma := H4_BN(sigma, hashFunc)
+	h4sigma := H4_BN(sigma, hashFunc, len(W))
 	M := make([]byte, len(W))
 	for i := 0; i < len(W); i++ {
-		M[i] = W[i] ^ h4sigma[i%len(h4sigma)]
+		M[i] = W[i] ^ h4sigma[i]
 	}
 
 	rPrime := H3_BN(sigma, M, hashFunc)
@@ -28873,6 +30162,175 @@ func decodeSignatureBARRETO_BN(data []byte) (*big.Int, *bn256i.G1, error) {
 	}
 
 	return h, S, nil
+}
+
+func GHash(id, gaBytes, msg []byte) *ff.Scalar {
+	h := bmw.New256()
+	h.Write(id)
+	h.Write(gaBytes)
+	h.Write(msg)
+	sum := h.Sum(nil)
+
+	d := new(ff.Scalar)
+	d.SetBytes(sum)
+	return d
+}
+
+func HHash(grBytes []byte, id []byte) *ff.Scalar {
+	h := bmw.New256()
+	h.Write(grBytes)
+	h.Write(id)
+	sum := h.Sum(nil)
+
+	c := new(ff.Scalar)
+	c.SetBytes(sum)
+	return c
+}
+
+type SignatureGG struct {
+	Ga []byte `asn1:"tag:0"`
+	B  []byte `asn1:"tag:1"`
+	Gr []byte `asn1:"tag:2"`
+}
+
+type PrivateKeyGG struct {
+	Y  []byte `asn1:"tag:0"`
+	Gr []byte `asn1:"tag:1"`
+}
+
+func extractGG(z *ff.Scalar, id []byte) (*ff.Scalar, *bls12381.G1) {
+	r := new(ff.Scalar)
+	r.Random(rand.Reader)
+
+	gr := new(bls12381.G1)
+	gr.ScalarMult(r, bls12381.G1Generator())
+
+	grBytes := gr.BytesCompressed()
+	c := HHash(grBytes, id)
+
+	zc := new(ff.Scalar)
+	zc.Mul(z, c)
+
+	y := new(ff.Scalar)
+	y.Add(r, zc)
+
+	return y, gr
+}
+
+func signGG(y *ff.Scalar, gr *bls12381.G1, id, msg []byte) (*bls12381.G1, *ff.Scalar, *bls12381.G1) {
+	a := new(ff.Scalar)
+	a.Random(rand.Reader)
+
+	ga := new(bls12381.G1)
+	ga.ScalarMult(a, bls12381.G1Generator())
+
+	gaBytes := ga.BytesCompressed()
+	d := GHash(id, gaBytes, msg)
+
+	yd := new(ff.Scalar)
+	yd.Mul(y, d)
+
+	b := new(ff.Scalar)
+	b.Add(a, yd)
+
+	return ga, b, gr
+}
+
+func verifyGG(ga *bls12381.G1, b *ff.Scalar, gr *bls12381.G1, mpk *bls12381.G1, id, msg []byte) bool {
+	grBytes := gr.BytesCompressed()
+	c := HHash(grBytes, id)
+
+	gzc := new(bls12381.G1)
+	gzc.ScalarMult(c, mpk)
+
+	grp := new(bls12381.G1)
+	grp.Add(gr, gzc)
+
+	gaBytes := ga.BytesCompressed()
+	d := GHash(id, gaBytes, msg)
+
+	grpToD := new(bls12381.G1)
+	grpToD.ScalarMult(d, grp)
+
+	right := new(bls12381.G1)
+	right.Add(ga, grpToD)
+
+	gb := new(bls12381.G1)
+	gb.ScalarMult(b, bls12381.G1Generator())
+
+	return gb.IsEqual(right)
+}
+
+func encodeSignatureGG(ga *bls12381.G1, b *ff.Scalar, gr *bls12381.G1) ([]byte, error) {
+	bBytes, err := b.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	sig := SignatureGG{
+		Ga: ga.BytesCompressed(),
+		B:  bBytes,
+		Gr: gr.BytesCompressed(),
+	}
+	return asn1.Marshal(sig)
+}
+
+func decodeSignatureGG(data []byte) (*bls12381.G1, *ff.Scalar, *bls12381.G1, error) {
+	var sig SignatureGG
+	_, err := asn1.Unmarshal(data, &sig)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	ga := new(bls12381.G1)
+	if err := ga.SetBytes(sig.Ga); err != nil {
+		return nil, nil, nil, fmt.Errorf("invalid ga point: %w", err)
+	}
+
+	b := new(ff.Scalar)
+	if err := b.UnmarshalBinary(sig.B); err != nil {
+		return nil, nil, nil, fmt.Errorf("invalid scalar b: %w", err)
+	}
+
+	gr := new(bls12381.G1)
+	if err := gr.SetBytes(sig.Gr); err != nil {
+		return nil, nil, nil, fmt.Errorf("invalid gr point: %w", err)
+	}
+
+	return ga, b, gr, nil
+}
+
+func encodePrivateKeyGG(y *ff.Scalar, gr *bls12381.G1) ([]byte, error) {
+	yBytes, err := y.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	sk := PrivateKeyGG{
+		Y:  yBytes,
+		Gr: gr.BytesCompressed(),
+	}
+
+	return asn1.Marshal(sk)
+}
+
+func decodePrivateKeyGG(data []byte) (*ff.Scalar, *bls12381.G1, error) {
+	var sk PrivateKeyGG
+	_, err := asn1.Unmarshal(data, &sk)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	y := new(ff.Scalar)
+	if err := y.UnmarshalBinary(sk.Y); err != nil {
+		return nil, nil, fmt.Errorf("falha ao desserializar y: %w", err)
+	}
+
+	gr := new(bls12381.G1)
+	if err := gr.SetBytes(sk.Gr); err != nil {
+		return nil, nil, fmt.Errorf("falha ao desserializar gr: %w", err)
+	}
+
+	return y, gr, nil
 }
 
 type SignatureCC struct {
@@ -29373,25 +30831,39 @@ func Extract(id string, s, x *ff.Scalar, Ppubs *bls12381.G2) (*ff.Scalar, *bls12
 	return r, Did
 }
 
+func deriveKeyFromSigma(sigma []byte, length int, hashFunc func() hash.Hash) []byte {
+	var result []byte
+	counter := 0
+	for len(result) < length {
+		h := hashFunc()
+		h.Write([]byte("K|"))
+		h.Write(sigma)
+		h.Write([]byte{byte(counter)})
+		result = append(result, h.Sum(nil)...)
+		counter++
+	}
+	return result[:length]
+}
+
 func EncryptBB(id string, msg []byte, Ppub, Q *bls12381.G1, v *bls12381.Gt) ([]byte, error) {
 	sigma := make([]byte, 32)
 	if _, err := rand.Read(sigma); err != nil {
-		return nil, fmt.Errorf("falha ao gerar sigma: %v", err)
+		return nil, fmt.Errorf("failed to generate sigma: %v", err)
 	}
 
-	h := sha256.New()
+	h := bmw.New256()
 	h.Write(sigma)
 	h.Write(msg)
 	s := new(ff.Scalar)
 	s.SetBytes(h.Sum(nil))
 
-	symKey := sha256.Sum256(sigma)
+	symKey := deriveKeyFromSigma(sigma, len(msg), bmw.New256)
 
 	vs := new(bls12381.Gt)
 	vs.Exp(v, s)
 
 	vsBytes, _ := vs.MarshalBinary()
-	pad := sha256.Sum256(vsBytes)
+	pad := bmw.Sum256(vsBytes)
 
 	A := make([]byte, 32)
 	for i := range sigma {
@@ -29428,7 +30900,7 @@ func EncryptBB(id string, msg []byte, Ppub, Q *bls12381.G1, v *bls12381.Gt) ([]b
 
 	ciphertext, err := asn1.Marshal(ctASN)
 	if err != nil {
-		return nil, fmt.Errorf("falha ao codificar ASN.1: %v", err)
+		return nil, fmt.Errorf("failed to encode ASN.1: %v", err)
 	}
 
 	return ciphertext, nil
@@ -29438,7 +30910,7 @@ func DecryptBB(ct []byte, r *ff.Scalar, Did *bls12381.G2, v *bls12381.Gt) ([]byt
 	var ctASN CiphertextASN
 	_, err := asn1.Unmarshal(ct, &ctASN)
 	if err != nil {
-		return nil, fmt.Errorf("falha ao decodificar ASN.1 do ciphertext: %v", err)
+		return nil, fmt.Errorf("failed to decode ASN.1 from ciphertext: %v", err)
 	}
 
 	A := ctASN.A
@@ -29447,7 +30919,7 @@ func DecryptBB(ct []byte, r *ff.Scalar, Did *bls12381.G2, v *bls12381.Gt) ([]byt
 	dem := ctASN.DEM
 
 	if len(A) != 32 || len(Bbytes) != 96 || len(C1bytes) != 96 {
-		return nil, fmt.Errorf("componentes do ciphertext inválidos")
+		return nil, fmt.Errorf("invalid ciphertext components")
 	}
 
 	B := new(bls12381.G1)
@@ -29469,21 +30941,21 @@ func DecryptBB(ct []byte, r *ff.Scalar, Did *bls12381.G2, v *bls12381.Gt) ([]byt
 	pair := bls12381.Pair(tmp, Did)
 
 	pairBytes, _ := pair.MarshalBinary()
-	pad := sha256.Sum256(pairBytes)
+	pad := bmw.Sum256(pairBytes)
 
 	sigma := make([]byte, 32)
 	for i := range A {
 		sigma[i] = A[i] ^ pad[i]
 	}
 
-	symKey := sha256.Sum256(sigma)
+	symKey := deriveKeyFromSigma(sigma, len(dem), bmw.New256)
 
 	msg := make([]byte, len(dem))
 	for i := range dem {
 		msg[i] = dem[i] ^ symKey[i%len(symKey)]
 	}
 
-	h := sha256.New()
+	h := bmw.New256()
 	h.Write(sigma)
 	h.Write(msg)
 	s := new(ff.Scalar)
@@ -29492,7 +30964,7 @@ func DecryptBB(ct []byte, r *ff.Scalar, Did *bls12381.G2, v *bls12381.Gt) ([]byt
 	vs := new(bls12381.Gt)
 	vs.Exp(v, s)
 	vsBytes, _ := vs.MarshalBinary()
-	checkPad := sha256.Sum256(vsBytes)
+	checkPad := bmw.Sum256(vsBytes)
 
 	kemCheck := make([]byte, 32)
 	for i := 0; i < 32; i++ {
@@ -29732,7 +31204,7 @@ type CiphertextEC struct {
 
 func deriveKey(password string, salt []byte) ([]byte, error) {
 	data := append([]byte(password), salt...)
-	for i := 0; i < 65536; i++ {
+	for i := 0; i < 32768; i++ {
 		hash, err := lyra2re2.Sum(data)
 		if err != nil {
 			return nil, err
@@ -29843,6 +31315,17 @@ func (m *MsgsPaths) String() string {
 }
 
 func (m *MsgsPaths) Set(value string) error {
+	*m = append(*m, value)
+	return nil
+}
+
+type KeysPaths []string
+
+func (m *KeysPaths) String() string {
+	return fmt.Sprintf("%v", *m)
+}
+
+func (m *KeysPaths) Set(value string) error {
 	*m = append(*m, value)
 	return nil
 }
