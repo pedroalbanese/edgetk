@@ -1002,14 +1002,10 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
         Encode binary string to Base85 format and vice-versa. [enc|dec]
   -bits int
         Key length. (for keypair generation and symmetric encryption)
-  -blind-factor string
-        Blind Factor in hexadecimal. (for Blind Signatures)
   -cacert string
         CA Certificate path. (for TLCP Protocol)
   -cakey string
         CA Private key. (for TLCP Protocol)
-  -candidates string
-        List of candidates, separated by commas.
   -cert string
         Certificate path.
   -challenge string
@@ -1027,7 +1023,7 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
   -crypt string
         Bulk Encryption with Stream and Block ciphers. [enc|dec|help]
   -curve string
-        Subjacent curve (secp256r1, secp256k1, bls12381g1/g2.)
+        Subjacent curve. (secp256r1, secp256k1, numsp256t1)
   -days int
         Defines the validity of the certificate from the date of creation.
   -digest
@@ -1039,9 +1035,9 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
   -hex string
         Encode binary string to hex format and vice-versa. [enc|dump|dec]
   -hid uint
-        Hierarchy Identifier. (for SM9 User Private Key) (default 1)
+        Hierarchy Identifier. (for IBE/IBS User Private Key) (default 1)
   -id string
-        User Identifier. (for SM9 User Private Key operations)
+        User Identifier. (for IBE/IBS User Private Key operations)
   -info string
         Additional info. (for HKDF command and AEAD bulk encryption)
   -ipport string
@@ -1056,6 +1052,8 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
         Key derivation function. [pbkdf2|hkdf|scrypt|argon2|lyra2re2]
   -key string
         Asymmetric key, symmetric key or HMAC key, depending on operation.
+  -keys value
+        Key to be combined. (can be passed multiple times)
   -mac string
         Compute Hash/Cipher-based message authentication code.
   -master string
@@ -1102,6 +1100,10 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
         Root CA Certificate path.
   -salt string
         Salt. (for HKDF and PBKDF2 commands)
+  -scheme string
+        Subjacent Scheme. (for Identity-Based Cryptography IBE/IBS)
+  -seed string
+        Seed. (for ML-KEM and ML-DSA key generation)
   -signature string
         Input signature. (for VERIFY command and MAC verification)
   -subj string
@@ -1112,12 +1114,16 @@ The ZKP for bilinear curves (like BLS12-381) is a non-interactive protocol (NIZK
         Token containing an encrypted symmetric key.
   -tweak string
         Additional 128-bit parameter input. (for THREEFISH encryption)
+  -uu string
+        Encode binary files with uuencoding and vice-versa. [enc|dec]
   -version
         Print version info.
-  -votes string
-        Comma-separated list of vote counters.
   -wrap int
-        Wrap lines after N columns. (for Base64/32 encoding) (default 64)</pre>
+        Wrap lines after N columns. (for Base64/32 encoding) (default 64)
+  -xx string
+        Encode binary files with xxencoding and vice-versa. [enc|dec]
+  -zlib string
+        Compress string with zlib algorithm and vice-versa. [enc|dec]</pre>
 
 ## Examples
 
@@ -1380,20 +1386,20 @@ sign=$(cat sign.txt | awk '{print $2}')
 echo $?
 ```
 
-##### User's Private Key Generation for Digital Signature Theorems:
+##### User's Private Key Generation for Digital Signature Schems:
 
 - Generate a private key for a user, associated with their UID.
 ```sh
-./edgetk -pkey keygen -algorithm bls12381sign -theorem [shangmi|barreto] -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID" -hid 1
+./edgetk -pkey keygen -algorithm bls12381sign -scheme [shangmi|barreto] -master "Master.pem" [-pass "pass"] -prv "PrivateSign.pem" [-passout "pass"] -id "UID" -hid 1
 ```
 
 ##### Digital Signature Generation:
 
 - Generate a digital signature for a file using the user's private key, and verify the signature using the master public key and the UID of the signer.
 ```sh
-./edgetk -pkey sign -algorithm bls12381 -theorem [shangmi|barreto] -key "PrivateSign.pem" FILE > sign.txt
+./edgetk -pkey sign -algorithm bls12381 -scheme [shangmi|barreto] -key "PrivateSign.pem" FILE > sign.txt
 sign=$(cat sign.txt | awk '{print $2}')
-./edgetk -pkey verify -algorithm bls12381 -theorem [shangmi|barreto] -key "MasterPublic.pem" -id "UID" -hid 1 -signature $sign FILE
+./edgetk -pkey verify -algorithm bls12381 -scheme [shangmi|barreto] -key "MasterPublic.pem" -id "UID" -hid 1 -signature $sign FILE
 echo $?
 ```
 
