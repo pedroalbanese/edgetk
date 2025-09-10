@@ -158,7 +158,7 @@ Adoption of international standards for block ciphers as specified by **ISO/IEC 
 Standardized by the **BSI (Federal Office for Information Security)** in the technical guideline **BSI TR-03111**, these cryptographic algorithms and curve parameters are used for secure digital signatures, key exchange, and public key infrastructures in German governmental and high-security environments.
 
 - **EC-GDSA** (German Digital Signature Algorithm): A flexible variant of ECDSA with enhanced domain separation and customization capabilities, adapted for German security requirements.
-- **EC-SDSA** (Schnorr Digital Signature Algorithm): A curve-based implementation of the Schnorr signature scheme, offering provable security and better efficiency than ECDSA.
+- **EC-SDSA** (Schnorr Digital Signature Algorithm): A curve-based implementation of the Schnorr signature scheme, offering provable security and better efficiency than ECDSA, defined in **ISO/IEC 14888-3:2018**.
 - **ECKA-EG** (Elliptic Curve Key Agreement – ElGamal): A key agreement scheme based on EC-ElGamal, enabling secure exchange of symmetric keys.
 - **Brainpool curves**: A family of elliptic curves (e.g., brainpoolP256r1, brainpoolP384r1, brainpoolP512r1) defined in **RFC 5639**, recommended by the BSI for use with the above algorithms. Designed to offer high security without potential concerns associated with some NIST curves.
 
