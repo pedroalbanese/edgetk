@@ -177,12 +177,12 @@ All maintained and published by the **National Institute of Standards and Techno
 
 ---
 
-#### 🇪🇺 Anubis, Whirlpool, RIPEMD, PRESENT — European cryptographic algorithms standardized in ISO/IEC  
+#### 🇪🇺 Whirlpool, RIPEMD, PRESENT, BLS/BN curves — European cryptographic algorithms standardized in ISO/IEC  
 Developed by researchers from **Belgium**, **Germany**, and **Austria**, these algorithms have been standardized by **ISO/IEC** for international use.    
 - **Whirlpool**: A hash function designed by **Vincent Rijmen (Belgium)** and **Paulo Barreto**, standardized in **ISO/IEC 10118-3:2003**.  
 - **RIPEMD**: Developed under the **EU-funded RIPE project**, standardized in the same ISO/IEC 10118-3 family (RIPEMD-128/160/256).  
 - **PRESENT**: A lightweight block cipher co-developed by **TU Graz (Austria)** and **Ruhr-University Bochum (Germany)**, standardized in **ISO/IEC 29192-2:2019** for constrained devices.
-- **BLS (Barreto-Lynn-Scott)** and **BN (Barreto-Naehrig) curves**: Pairing-friendly elliptic curves designed by **EU-based cryptographers**, standardized in **ISO/IEC 15946-5:2022**, widely used in identity-based and pairing-based cryptography.  
+- **BLS (Barreto-Lynn-Scott)** and **BN (Barreto-Naehrig) curves**: Pairing-friendly elliptic curves standardized in **ISO/IEC 15946-5:2022**, widely used in identity-based and pairing-based cryptography.  
 - **Identity-Based Encryption (IBE)**: General IBE mechanisms standardized in **ISO/IEC 18033-5:2015**, including several schemes developed and formalized by researchers at **EU institutions**.
 
 These algorithms reflect Europe's strong academic and institutional contributions to international cryptographic standards.
