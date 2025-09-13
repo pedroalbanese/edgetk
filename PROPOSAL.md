@@ -259,3 +259,32 @@ EDGETk stands out as a powerful and flexible toolkit for developers, researchers
    - US FIPS 203 Module-Lattice-Based Key-Encapsulation Mechanism (ML-KEM)
    - US FIPS 204 Module-Lattice-Based Digital Signature Standard (ML-DSA)
    - US FIPS 205 Stateless Hash-Based Digital Signature Standard (SLH-DSA)
+
+<h2>Security Assurance</h2>
+
+<p>
+  The EDGETk toolkit was developed by a professional cryptographer and incorporates over 150 well-established cryptographic algorithms. Despite not having undergone a formal third-party audit yet, its correctness and security posture can be reasonably assured based on several strong indicators:
+</p>
+
+<ul>
+  <li>
+    <strong>Interoperability with Standard Tools:</strong>
+    EDGETk is fully compatible with widely used cryptographic toolkits such as OpenSSL, LibreSSL, and GmSSL. This ensures that its key formats, ciphertexts, hashes, and digital signatures can be validated against independent implementations.
+  </li>
+  <li>
+    <strong>Initialization Vector and Parameter Compatibility:</strong>
+    All implemented algorithms conform to the expected behavior defined in standard documentation. EDGETk consistently produces correct outputs when tested against standardized test vectors (e.g., NIST, ISO, GOST, SM series), demonstrating adherence to cryptographic specifications.
+  </li>
+  <li>
+    <strong>Cross-Platform Determinism:</strong>
+    The toolkit has been tested on multiple architectures (x86, ARM) and operating systems (Linux, Windows, FreeBSD), consistently yielding identical outputs for the same inputs, which strongly supports implementation correctness.
+  </li>
+  <li>
+    <strong>Protocol-Level Validation:</strong>
+    The TLS 1.3 and TLCP implementations have been tested in real-world scenarios and communicate successfully with compliant clients and servers, further reinforcing protocol-level correctness.
+  </li>
+</ul>
+
+<p>
+  While independent auditing remains an important future milestone, the high degree of compatibility, adherence to international standards, and deterministic behavior across platforms provide strong practical evidence of correctness and reliability in EDGETk's cryptographic implementations.
+</p>
