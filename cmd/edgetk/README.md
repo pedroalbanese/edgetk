@@ -60,7 +60,8 @@ EDGETk is structured as a single command-line executable with minimal external d
 - **Classic:** Salsa20, HC-128/256, RC4, Rabbit, Spritz, Trivium.
 
 #### Block Ciphers
-- **128-bit:** AES, Camellia, ARIA, Twofish, Serpent, SM4.
+- **64-bit:** Blowfish, CAST5, Misty1, HIGHT, PRESENT, etc.
+- **128-bit:** AES, Camellia, ARIA, LEA, Twofish, Serpent, SM4, etc.
 - **256-bit and above:** Kalyna256/512, SHACAL-2, Threefish (256, 512, 1024).
 - **Modes:** GCM, OCB, CCM, MGM, EAX, CBC, CFB, CTR, IGE, SIV.
 
@@ -68,17 +69,17 @@ EDGETk is structured as a single command-line executable with minimal external d
 
 ### 4.2 Asymmetric Cryptography
 
-- **Digital Signatures:** ECDSA, EdDSA, BIP0340, GOST R 34.10, SM2, RSA, SLH-DSA.
-- **Key Exchange:** X25519, Curve448, ECDH, SM2, NUMS, BLS12-381.
-- **Public-key Encryption:** RSA, SM2, ElGamal, EC-ElGamal.
+- **Digital Signatures:** ECDSA, EdDSA, BIP0340, GOST R 34.10, SM2, RSA, SLH-DSA, etc.
+- **Key Exchange:** X25519, Curve448, ECDH, SM2, NUMS, BLS12-381, ML-KEM.
+- **Public-key Encryption:** RSA, SM2, ElGamal, EC-ElGamal, IBE schemes.
 
 ---
 
 ### 4.3 Elliptic Curves
 
-- **Weierstrass:** secp256r1, secp384r1, brainpool, SM2, GOST.
-- **Twisted Edwards:** Ed25519, GOST-A.
-- **Montgomery:** Curve25519/X25519.
+- **Weierstrass:** secp256r1, secp384r1, brainpool, SM2, GOST, etc.
+- **Twisted Edwards:** Ed25519, GOST-A, NUMS-TE.
+- **Montgomery:** Curve25519/X25519, Curve448.
 - **Pairing-Friendly:** BLS12-381, BN256.
 - **Others:** NUMS, Tom256/384, Koblitz (secp256k1), ANSSI.
 
@@ -87,15 +88,15 @@ EDGETk is structured as a single command-line executable with minimal external d
 ### 4.4 Hash Functions
 
 - **SHA Family:** SHA-1, SHA-2, SHA-3, SHAKE.
-- **Modern Hashes:** BLAKE2b/s, BLAKE3, Streebog, Skein, Kupyna, Whirlpool, MD6.
+- **Modern Hashes:** BLAKE2b/s, BLAKE3, Streebog, Skein, Kupyna, Whirlpool, BMW, MD6, etc.
 - **Legacy (compatibility only):** MD5, RIPEMD, GOST94, HAS-160.
 
 ---
 
 ### 4.5 Key Derivation and Storage
 
-- **Key Derivation:** PBKDF2, HKDF, Argon2, scrypt, Lyra2.
-- **MACs and Authenticated Hashes:** HMAC, Poly1305, SipHash, Xoodyak.
+- **Key Derivation:** PBKDF2, HKDF, Argon2, scrypt, Lyra2, GOST, BLAKE3.
+- **MACs and Authenticated Hashes:** CMAC, VMAC, PMAC, HMAC, Poly1305, SipHash, Xoodyak, etc.
 
 ---
 
