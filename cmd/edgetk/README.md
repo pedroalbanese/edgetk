@@ -263,7 +263,7 @@ EDGETk stands out as a powerful and flexible toolkit for developers, researchers
 <h2>Security Assurance</h2>
 
 <p>
-  The EDGETk toolkit was developed by a professional cryptographer and incorporates over 150 well-established cryptographic algorithms. Despite not having undergone a formal third-party audit yet, its correctness and security posture can be reasonably assured based on several strong indicators:
+  The EDGETk toolkit was developed by a cryptography practitioner and includes over 150 widely recognized cryptographic algorithms. Although it has not yet undergone a formal third-party audit, there are several indicators suggesting that its implementation is sound and its security posture is solid.
 </p>
 
 <ul>
