@@ -3,7 +3,7 @@
 ### Proposed Title:
 *EDGETk: A Comprehensive Toolkit for Cryptographic Primitives and Protocols*
 
-This paper introduces the EDGE Toolkit (EDGETk), a hybrid, cross-platform environment for symmetric and asymmetric cryptography and related protocols, designed for secure use in small-scale or embedded systems. EDGETk implements over 150 cryptographic algorithms, including symmetric ciphers, message authentication, password-based key derivation, recursive hashing, digital signatures, X.509 certificate chains, and secure communication layers (TLS 1.3, TLCP). It also supports elliptic curves in Weierstrass, Twisted Edwards, and Montgomery forms, along with both classical and modern cryptographic schemes (RSA, ECDSA, EdDSA, GOST, BLS12‑381 curves, etc.).
+This paper introduces the EDGE Toolkit (EDGETk), a hybrid, cross-platform environment for symmetric and asymmetric cryptography and related protocols, designed for secure use in small-scale or embedded systems. EDGETk implements over 140 cryptographic algorithms, including symmetric ciphers, message authentication, password-based key derivation, recursive hashing, digital signatures, X.509 certificate chains, and secure communication layers (TLS 1.3, TLCP). It also supports elliptic curves in Weierstrass, Twisted Edwards, and Montgomery forms, along with both classical and modern cryptographic schemes (RSA, ECDSA, EdDSA, GOST, BLS12‑381 curves, etc.).
 
 The toolkit has been evaluated across various platforms (Windows, Linux, FreeBSD, ARM, x86), with a focus on performance requirements, formal security (e.g., zero-knowledge proofs, verified cryptographic relations), and compliance with international standards.
 
@@ -11,7 +11,7 @@ The toolkit has been evaluated across various platforms (Windows, Linux, FreeBSD
 
 - Development of a non-interactive Schnorr-like zero-knowledge proof of private key knowledge, integrated into the toolkit and usable with bilinear pairings as a building block for IBE/IBS schemes and authentication mechanisms.
 
-- Full implementation of over 150 cryptographic primitives—ranging from basic to advanced—including symmetric and asymmetric encryption, hashing, authentication, key derivation, and digital signatures, providing flexibility for a wide range of security scenarios.
+- Full implementation of over 140 cryptographic primitives—ranging from basic to advanced—including symmetric and asymmetric encryption, hashing, authentication, key derivation, and digital signatures, providing flexibility for a wide range of security scenarios.
 
 - Support for multiple families of elliptic curves (Weierstrass, Twisted Edwards, Montgomery), including parameter sets aligned with international standards (BLS12‑381, GOST R 34.10, SM2), enabling global adoption and interoperability.
 
@@ -80,7 +80,7 @@ EDGETk is structured as a single command-line executable with minimal external d
 - **Twisted Edwards:** Ed25519, GOST-A.
 - **Montgomery:** Curve25519/X25519.
 - **Pairing-Friendly:** BLS12-381, BN256.
-- **Others:** NUMS, Tom256/384, Koblitz (secp256k1), ANSSI, BP.
+- **Others:** NUMS, Tom256/384, Koblitz (secp256k1), ANSSI.
 
 ---
 
@@ -263,7 +263,7 @@ EDGETk stands out as a powerful and flexible toolkit for developers, researchers
 <h2>Security Assurance</h2>
 
 <p>
-  The EDGETk toolkit was developed by a cryptography practitioner and includes over 150 widely recognized cryptographic algorithms. Despite not having undergone a formal third-party audit yet, its correctness and security posture can be reasonably assured based on several strong indicators:
+  The EDGETk toolkit was developed by a cryptography practitioner and includes over 140 widely recognized cryptographic algorithms. Despite not having undergone a formal third-party audit yet, its correctness and security posture can be reasonably assured based on several strong indicators:
 </p>
 
 <ul>
