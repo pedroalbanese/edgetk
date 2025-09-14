@@ -69,7 +69,7 @@ EDGETk is structured as a single command-line executable with minimal external d
 
 ### 4.2 Asymmetric Cryptography
 
-- **Digital Signatures:** ECDSA, EdDSA, BIP0340, GOST R 34.10, SM2, RSA, SLH-DSA, etc.
+- **Digital Signatures:** ECDSA, EdDSA, BIP0340, GOST R 34.10, SM2, RSA, SLH-DSA, ML-DSA, etc.
 - **Key Exchange:** X25519, Curve448, ECDH, SM2, NUMS, BLS12-381, ML-KEM.
 - **Public-key Encryption:** RSA, SM2, ElGamal, EC-ElGamal, IBE schemes.
 
@@ -129,7 +129,6 @@ EDGETk implements several IBE/IBS schemes:
 | Cha-Cheon          | IBS  | G1            | G2           |
 | Galindo-Garcia     | IBS  | G1            | G1           |
 | Hess (default)     | IBS  | G1            | G2           |
-| ShangMi            | IBS  | G1            | G2           |
 
 Additionally, EDGETk features:
 
@@ -144,7 +143,7 @@ EDGETk’s performance was benchmarked across:
 
 - **Platforms:** Windows, Linux, FreeBSD, ARMv7, ARM Cortex-M, x86_64;
 - **Metrics:** execution time, memory usage, cryptographic throughput;
-- **Results:** excellent performance on embedded devices (e.g., Raspberry Pi Zero), with a binary footprint under 1.5MB on ARM systems.
+- **Results:** excellent performance on embedded devices (e.g., Raspberry Pi Zero), with a binary footprint under 1MB on ARM systems.
 
 ---
 
@@ -264,7 +263,7 @@ EDGETk stands out as a powerful and flexible toolkit for developers, researchers
 <h2>Security Assurance</h2>
 
 <p>
-  The EDGETk toolkit was developed by a cryptography practitioner and includes over 140 widely recognized cryptographic algorithms. Despite not having undergone a formal third-party audit yet, its correctness and security posture can be reasonably assured based on several strong indicators:
+  The EDGETk toolkit was developed by a security engineer and includes over 140 widely recognized cryptographic algorithms. Despite not having undergone a formal third-party audit yet, its correctness and security posture can be reasonably assured based on several strong indicators:
 </p>
 
 <ul>
