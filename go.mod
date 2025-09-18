@@ -10,7 +10,7 @@ require (
 	github.com/RyuaNerin/go-krypto v1.3.0
 	github.com/deatil/go-cryptobin v1.0.4018
 	github.com/emmansun/certinfo v0.1.0
-	github.com/emmansun/gmsm v0.24.2
+	github.com/emmansun/gmsm v0.32.0
 	github.com/emmansun/go-pkcs12 v0.3.0
 	github.com/kasperdi/SPHINCSPLUS-golang v0.0.0-20231223193046-84468b93f7e9
 	github.com/pedroalbanese/IGE-go v0.0.0-20140730194654-752bc7fd80fb
@@ -108,7 +108,7 @@ require (
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/pedroalbanese/xxencode v0.0.15
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.39.0
+	golang.org/x/crypto v0.41.0
 	golang.org/x/term v0.32.0
 )
 
@@ -118,8 +118,9 @@ require (
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
+	github.com/pedroalbanese/simpleini v0.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
 )
 
 replace golang.org/x/crypto => golang.org/x/crypto v0.38.0
