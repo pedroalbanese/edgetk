@@ -208,7 +208,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
-    | RSA [Deprecated]    |     |     |     | O       | O        | O   |
+    | RSA [dep.]          |     |     |     | O       | O        | O   |
     | SM2                 | O   |     | O   | O       | O        | O   |
     | SM9                 | O   |     | O   | O       | O        |     |
     | NUMS                | O   | O   | O   | O       | O        |     |
