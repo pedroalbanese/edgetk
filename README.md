@@ -208,7 +208,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
-    | RSA                 |     |     |     | O       | O        | O   |
+    | RSA [Deprecated]    |     |     |     | O       | O        | O   |
     | SM2                 | O   |     | O   | O       | O        | O   |
     | SM9                 | O   |     | O   | O       | O        |     |
     | NUMS                | O   | O   | O   | O       | O        |     |
@@ -1233,7 +1233,7 @@ echo $?
 ```
 #### Asymmetric RSA keypair generation:
 ```sh
-./edgetk -pkey keygen -bits 4096 [-pass "passphrase"] [-prv Private.pem] [-pub Public.pem]
+./edgetk -pkey keygen -algorithm rsa -bits 4096 [-pass "passphrase"] [-prv Private.pem] [-pub Public.pem]
 ```
 #### Parse keys info:
 ```sh
@@ -1242,9 +1242,9 @@ echo $?
 ```
 #### Digital signature:
 ```sh
-./edgetk -pkey sign -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
+./edgetk -pkey sign -algorithm rsa -md sha256 -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
-./edgetk -pkey verify -key Public.pem -signature $sign < file.ext
+./edgetk -pkey verify -algorithm rsa -md sha256 -key Public.pem -signature $sign < file.ext
 echo $?
 ```
 #### Encryption/decryption with RSA algorithm:
