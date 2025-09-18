@@ -98,7 +98,6 @@ import (
 	"github.com/emmansun/gmsm/sm3"
 	"github.com/emmansun/gmsm/sm4"
 	"github.com/emmansun/gmsm/sm9"
-	"github.com/emmansun/gmsm/sm9/bn256"
 	"github.com/emmansun/gmsm/smx509"
 	"github.com/emmansun/gmsm/zuc"
 	"github.com/emmansun/go-pkcs12"
@@ -116,7 +115,7 @@ import (
 	"github.com/pedroalbanese/bls12381/ff"
 	"github.com/pedroalbanese/bls12381/sign/bls"
 	"github.com/pedroalbanese/bmw"
-	bn256i "github.com/pedroalbanese/bn256"
+	"github.com/pedroalbanese/bn256"
 	"github.com/pedroalbanese/brainpool"
 	"github.com/pedroalbanese/camellia"
 	"github.com/pedroalbanese/cast256"
@@ -197,6 +196,7 @@ import (
 	"github.com/pedroalbanese/shacal2"
 	"github.com/pedroalbanese/shavite"
 	"github.com/pedroalbanese/simd"
+	"github.com/pedroalbanese/simpleini"
 	"github.com/pedroalbanese/siphash"
 	"github.com/pedroalbanese/siv"
 	"github.com/pedroalbanese/skein"
@@ -281,6 +281,43 @@ var (
 	uu             = flag.String("uu", "", "Encode binary files with uuencoding and vice-versa. [enc|dec]")
 )
 
+func loadDefaultsFromINI(path string) {
+	file, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	ini, err := simpleini.Parse(file)
+	if err != nil {
+		log.Fatalf("Failed to parse INI file: %v", err)
+	}
+
+	section := "Defaults"
+
+	setStringFlag := func(flagVar *string, key string) {
+		val, err := ini.GetString(section, key)
+		if err == nil && val != "" {
+			*flagVar = val
+		}
+	}
+
+	setIntFlag := func(flagVar *int, key string) {
+		val, err := ini.GetString(section, key)
+		if err == nil && val != "" {
+			if n, err := strconv.Atoi(val); err == nil {
+				*flagVar = n
+			}
+		}
+	}
+
+	setStringFlag(alg, "algorithm")
+	setStringFlag(cph, "cipher")
+	setStringFlag(mode, "mode")
+	setStringFlag(md, "md")
+	setIntFlag(days, "days")
+}
+
 func publicKey(priv interface{}) interface{} {
 	switch k := priv.(type) {
 	case *sm2.PrivateKey:
@@ -327,10 +364,13 @@ func main() {
 	flag.Var(&msgs, "msgs", "Messages to be verified. (can be passed multiple times)")
 	flag.Var(&keys, "keys", "Key to be combined. (can be passed multiple times)")
 
+	const iniFile = "edgetk.ini"
+	loadDefaultsFromINI(iniFile)
+
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.11  10 Sep 2025")
+		fmt.Println("EDGE Toolkit v1.5.12  18 Sep 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -7724,7 +7764,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 		}
-		pubKey, err := masterKey.Public().MarshalASN1()
+		pubKey, err := masterKey.Public().(*sm9.SignMasterPublicKey).MarshalASN1()
 		if err != nil {
 			fmt.Println("Error marshaling master key:", err)
 			return
@@ -7804,7 +7844,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 		}
-		pubKey, err := masterKey.Public().MarshalASN1()
+		pubKey, err := masterKey.Public().(*sm9.EncryptMasterPublicKey).MarshalASN1()
 		if err != nil {
 			fmt.Println("Error marshaling master key:", err)
 			return
@@ -7940,8 +7980,7 @@ Subcommands:
 			return
 		}
 
-		pubKey := new(sm9.EncryptMasterPublicKey)
-		err = pubKey.UnmarshalASN1(block.Bytes)
+		pubKey, err := sm9.UnmarshalEncryptMasterPublicKeyASN1(block.Bytes)
 		if err != nil {
 			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
 			return
@@ -8029,8 +8068,7 @@ Subcommands:
 			return
 		}
 
-		pubKey := new(sm9.EncryptMasterPublicKey)
-		err = pubKey.UnmarshalASN1(block.Bytes)
+		pubKey, err := sm9.UnmarshalEncryptMasterPublicKeyASN1(block.Bytes)
 		if err != nil {
 			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
 			return
@@ -8044,9 +8082,7 @@ Subcommands:
 			log.Fatal(err)
 		}
 
-		cipherMarshaled := cipher.Marshal()
-
-		fmt.Printf("Cipher= %x\n", cipherMarshaled)
+		fmt.Printf("Cipher= %x\n", cipher)
 		fmt.Printf("Shared= %x\n", key)
 	}
 
@@ -8095,18 +8131,12 @@ Subcommands:
 		cipherHexString = strings.Replace(string(cipherHexString), "\n", "", -1)
 		cipherHexString = strings.Replace(string(cipherHexString), " ", "", -1)
 
-		cipherMarshaled, err := hex.DecodeString(cipherHexString)
+		cipher, err := hex.DecodeString(cipherHexString)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		var cipher bn256.G1
-		_, err = cipher.Unmarshal(cipherMarshaled)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		key, err := sm9.UnwrapKey(encryptPrivateKey, []byte(*id), &cipher, *length/8)
+		key, err := sm9.UnwrapKey(encryptPrivateKey, []byte(*id), cipher, *length/8)
 		if err != nil {
 			os.Exit(1)
 		}
@@ -8155,16 +8185,15 @@ Subcommands:
 		}
 
 		if *pkey == "derivea" {
-			aExchange := sm9.NewKeyExchange(encryptPrivateKey, []byte(*id), []byte(*id2), *length/8, true)
-			defer func() {
-				aExchange.Destroy()
-			}()
+			aExchange := encryptPrivateKey.NewKeyExchange([]byte(*id), []byte(*id2), *length/8, true)
+			defer aExchange.Destroy()
+
 			rA, err := aExchange.InitKeyExchange(rand.Reader, byte(*hierarchy))
 			if err != nil {
 				log.Fatal("Error during key exchange A: ", err)
 			}
 
-			fmt.Println("rA=", hex.EncodeToString(rA.Marshal()))
+			fmt.Println("rA=", hex.EncodeToString(rA))
 
 			var rB, signB string
 			fmt.Print("Enter rB: ")
@@ -8182,18 +8211,13 @@ Subcommands:
 				log.Fatal("Error decoding signB: ", err)
 			}
 
-			var g1RB bn256.G1
-			_, err = g1RB.Unmarshal(rBBytes)
-			if err != nil {
-				log.Fatal("Error unmarshalling rB:", err)
-			}
-
-			key1, _, err := aExchange.ConfirmResponder(&g1RB, signBBytes)
+			sharedKey, _, err := aExchange.ConfirmResponder(rBBytes, signBBytes)
 			if err != nil {
 				log.Fatal("Error during confirmation A: ", err)
 			}
 
-			fmt.Println("Shared=", hex.EncodeToString(key1))
+			fmt.Println("Shared=", hex.EncodeToString(sharedKey))
+
 		} else if *pkey == "deriveb" {
 			var rA string
 			fmt.Print("Enter rA: ")
@@ -8204,29 +8228,22 @@ Subcommands:
 				log.Fatal("Error decoding rA:", err)
 			}
 
-			bExchange := sm9.NewKeyExchange(encryptPrivateKey, []byte(*id), []byte(*id2), *length/8, true)
-			defer func() {
-				bExchange.Destroy()
-			}()
-			var g1RA bn256.G1
-			_, err = g1RA.Unmarshal(rABytes)
-			if err != nil {
-				log.Fatal("Error unmarshalling rA: ", err)
-			}
+			bExchange := encryptPrivateKey.NewKeyExchange([]byte(*id), []byte(*id2), *length/8, true)
+			defer bExchange.Destroy()
 
-			rB, sigB, err := bExchange.RepondKeyExchange(rand.Reader, byte(*hierarchy), &g1RA)
+			rB, sigB, err := bExchange.RespondKeyExchange(rand.Reader, byte(*hierarchy), rABytes)
 			if err != nil {
 				log.Fatal("Error during key exchange B: ", err)
 			}
 
-			key2, err := bExchange.ConfirmInitiator(nil)
+			sharedKey, err := bExchange.ConfirmInitiator(nil)
 			if err != nil {
 				log.Fatal("Error during confirmation B: ", err)
 			}
 
-			fmt.Println("rB=", hex.EncodeToString(rB.Marshal()))
+			fmt.Println("rB=", hex.EncodeToString(rB))
 			fmt.Println("signB=", hex.EncodeToString(sigB))
-			fmt.Println("Shared=", hex.EncodeToString(key2))
+			fmt.Println("Shared=", hex.EncodeToString(sharedKey))
 		}
 	}
 
@@ -8373,10 +8390,9 @@ Subcommands:
 			return
 		}
 
-		pubKey := new(sm9.SignMasterPublicKey)
-		err = pubKey.UnmarshalASN1(block.Bytes)
+		pubKey, err := sm9.UnmarshalSignMasterPublicKeyASN1(block.Bytes)
 		if err != nil {
-			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
+			fmt.Println("Error parsing public key:", err)
 			return
 		}
 
@@ -14734,7 +14750,7 @@ Subcommands:
 			fingerprint = calculateFingerprint(pkG2Bytes)
 			fmt.Printf("Fingerprint G2: %s\n", fingerprint)
 
-			fmt.Println("BLS12-381 Scalar-based Keygen (CIRCL)")
+			fmt.Println("BLS12-381 G2")
 
 			pubFile, err := os.Open(*pub2)
 			if err != nil {
@@ -15842,7 +15858,7 @@ Subcommands:
 			var privKey big.Int
 			privKey.SetBytes(keyBytes)
 
-			pubKey := new(bn256i.G2).ScalarBaseMult(&privKey)
+			pubKey := new(bn256.G2).ScalarBaseMult(&privKey)
 
 			keyPEM := pem.Block{Type: "BN256I SECRET KEY", Bytes: keyBytes}
 			keyPEMText := string(pem.EncodeToMemory(&keyPEM))
@@ -15926,16 +15942,16 @@ Subcommands:
 			os.Exit(0)
 		}
 		if *pkey == "keygen" {
-			sk, _, err := bn256i.RandomG2(rand.Reader)
+			sk, _, err := bn256.RandomG2(rand.Reader)
 			if err != nil {
 				fmt.Println("Error generating secret key:", err)
 				return
 			}
 
-			pkG2 := new(bn256i.G2).ScalarBaseMult(sk)
+			pkG2 := new(bn256.G2).ScalarBaseMult(sk)
 
 			if *pub2 != "" {
-				pkG1 := new(bn256i.G1).ScalarBaseMult(sk)
+				pkG1 := new(bn256.G1).ScalarBaseMult(sk)
 
 				block := &pem.Block{
 					Type:  "BN256I SECRET KEY",
@@ -16108,7 +16124,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			hash := bn256i.HashG1(msg, []byte(*salt))
+			hash := bn256.HashG1(msg, []byte(*salt))
 			signature := hash.ScalarMult(hash, skBigInt)
 			if err != nil {
 				fmt.Println("Error signing message:", err)
@@ -16124,7 +16140,7 @@ Subcommands:
 				if err != nil {
 					log.Fatalf("Error decoding aggregated signature from hex: %v", err)
 				}
-				existingAggregatedSig := new(bn256i.G1)
+				existingAggregatedSig := new(bn256.G1)
 				_, err = existingAggregatedSig.Unmarshal(aggregatedSigData)
 				if err != nil {
 					log.Fatalf("Error unmarshalling aggregated signature: %v", err)
@@ -16132,7 +16148,7 @@ Subcommands:
 				aggregatedSignature.Add(aggregatedSignature, existingAggregatedSig)
 			}
 
-			pubKey := new(bn256i.G2).ScalarBaseMult(skBigInt)
+			pubKey := new(bn256.G2).ScalarBaseMult(skBigInt)
 
 			aggregatedPubKey := pubKey
 			if *pub != "" {
@@ -16140,7 +16156,7 @@ Subcommands:
 				if err != nil {
 					log.Fatalf("Error loading aggregated public key: %v", err)
 				}
-				existingAggregatedPubKey := new(bn256i.G2)
+				existingAggregatedPubKey := new(bn256.G2)
 				_, err = existingAggregatedPubKey.Unmarshal(aggregatedPubKeyData)
 				if err != nil {
 					log.Fatalf("Error unmarshalling aggregated public key: %v", err)
@@ -16173,7 +16189,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			hash := bn256i.HashG1(msg, []byte(*salt))
+			hash := bn256.HashG1(msg, []byte(*salt))
 			signature := hash.ScalarMult(hash, skBigInt)
 			if err != nil {
 				fmt.Println("Error signing message:", err)
@@ -16194,7 +16210,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -16206,12 +16222,12 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var signature bn256i.G1
+			var signature bn256.G1
 			signature.Unmarshal(sigBytes)
 
-			h := bn256i.HashG1(msg, []byte(*salt))
-			rhs := bn256i.Pair(h, &pubKey)
-			lhs := bn256i.Pair(&signature, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+			h := bn256.HashG1(msg, []byte(*salt))
+			rhs := bn256.Pair(h, &pubKey)
+			lhs := bn256.Pair(&signature, new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 
 			rhsBytes := rhs.Marshal()
 			lhsBytes := lhs.Marshal()
@@ -16235,13 +16251,13 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
 			}
 
-			sharedKey := new(bn256i.G2).ScalarMult(&pubKey, skBigInt)
+			sharedKey := new(bn256.G2).ScalarMult(&pubKey, skBigInt)
 			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedKey.Marshal()))
 		} else if *pkey == "derive" && *pub2 == "" {
 			sk, err := readKeyFromPEM(*key, true)
@@ -16257,17 +16273,17 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
 			}
 
-			baseG1 := new(bn256i.G1).ScalarBaseMult(big.NewInt(1048576))
+			baseG1 := new(bn256.G1).ScalarBaseMult(big.NewInt(1048576))
 
-			pairing := bn256i.Pair(baseG1, &pubKey)
+			pairing := bn256.Pair(baseG1, &pubKey)
 
-			sharedKey := new(bn256i.GT)
+			sharedKey := new(bn256.GT)
 			sharedKey.ScalarMult(pairing, skBigInt)
 
 			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedKey.Marshal()))
@@ -16284,7 +16300,7 @@ Subcommands:
 				fmt.Println("Error loading public G1 key:", err)
 				os.Exit(1)
 			}
-			var pubG1 bn256i.G1
+			var pubG1 bn256.G1
 			_, err = pubG1.Unmarshal(pkG1Bytes)
 			if err != nil {
 				log.Fatalf("Error deserializing G1 public key: %v", err)
@@ -16295,15 +16311,15 @@ Subcommands:
 				fmt.Println("Error loading public G2 key:", err)
 				os.Exit(1)
 			}
-			var pubG2 bn256i.G2
+			var pubG2 bn256.G2
 			_, err = pubG2.Unmarshal(pkG2Bytes)
 			if err != nil {
 				log.Fatalf("Error deserializing G2 public key: %v", err)
 			}
 
-			shared := bn256i.Pair(&pubG1, &pubG2)
+			shared := bn256.Pair(&pubG1, &pubG2)
 
-			sharedKey := new(bn256i.GT).ScalarMult(shared, skBigInt)
+			sharedKey := new(bn256.GT).ScalarMult(shared, skBigInt)
 
 			fmt.Printf("Shared= %x\n", bmw.Sum256(sharedKey.Marshal()))
 		} else if *pkey == "encrypt" {
@@ -16313,7 +16329,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -16362,7 +16378,7 @@ Subcommands:
 
 			var privKey big.Int
 			privKey.SetBytes(sk)
-			pk := new(bn256i.G2).ScalarBaseMult(&privKey)
+			pk := new(bn256.G2).ScalarBaseMult(&privKey)
 
 			ca := NewCA(sk, pk.Marshal(), validity)
 
@@ -16446,7 +16462,7 @@ Subcommands:
 
 			var privKey big.Int
 			privKey.SetBytes(sk)
-			pk := new(bn256i.G2).ScalarBaseMult(&privKey)
+			pk := new(bn256.G2).ScalarBaseMult(&privKey)
 
 			csr, err := CreateCSR(subject, email, pk.Marshal(), sk)
 			if err != nil {
@@ -16510,7 +16526,7 @@ Subcommands:
 
 			var privKey big.Int
 			privKey.SetBytes(sk)
-			pk := new(bn256i.G2).ScalarBaseMult(&privKey)
+			pk := new(bn256.G2).ScalarBaseMult(&privKey)
 
 			cert, err := ReadCertificateFromPEM(*cert)
 			if err != nil {
@@ -16620,7 +16636,7 @@ Subcommands:
 			var privKey big.Int
 			privKey.SetBytes(keyBytes)
 
-			pubKey := new(bn256i.G2).ScalarBaseMult(&privKey)
+			pubKey := new(bn256.G2).ScalarBaseMult(&privKey)
 
 			if blockType == "BN256 MASTER KEY" {
 				keyPEM := pem.Block{Type: "BN256 MASTER KEY", Bytes: keyBytes}
@@ -16736,7 +16752,7 @@ Subcommands:
 			os.Exit(0)
 		}
 		if *pkey == "setup" {
-			sk, _, _ := bn256i.RandomG2(rand.Reader)
+			sk, _, _ := bn256.RandomG2(rand.Reader)
 			pk := generateMasterPublicKey(sk)
 			if err != nil {
 				fmt.Println("Error:", err)
@@ -16806,7 +16822,7 @@ Subcommands:
 			}
 			skBigInt := new(big.Int).SetBytes(sk)
 
-			var privateKey *bn256i.G1
+			var privateKey *bn256.G1
 			if strings.ToUpper(*scheme) == "BF" || strings.ToUpper(*scheme) == "BONEH-FRANKLIN" || strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON" || strings.ToUpper(*scheme) == "HESS" {
 				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else if strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" {
@@ -16841,7 +16857,7 @@ Subcommands:
 			}
 			skBigInt := new(big.Int).SetBytes(sk)
 
-			var privateKey *bn256i.G1
+			var privateKey *bn256.G1
 			if strings.ToUpper(*scheme) == "CC" || strings.ToUpper(*scheme) == "CHA-CHEON" || strings.ToUpper(*scheme) == "HESS" {
 				privateKey = extractBN(skBigInt, append([]byte(*id), byte(*hierarchy)))
 			} else if strings.ToUpper(*scheme) == "SM" || strings.ToUpper(*scheme) == "SHANGMI" {
@@ -16900,7 +16916,7 @@ Subcommands:
 				fmt.Println("Error loading key:", err)
 				os.Exit(1)
 			}
-			skG1 := new(bn256i.G1)
+			skG1 := new(bn256.G1)
 			_, err = skG1.Unmarshal(sk)
 			if err != nil {
 				fmt.Println("Error unmarshaling G1 key:", err)
@@ -16935,7 +16951,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -16966,7 +16982,7 @@ Subcommands:
 				fmt.Println("Error loading key:", err)
 				os.Exit(1)
 			}
-			skG1 := new(bn256i.G1)
+			skG1 := new(bn256.G1)
 			_, err = skG1.Unmarshal(sk)
 			if err != nil {
 				fmt.Println("Error unmarshaling G1 key:", err)
@@ -17001,7 +17017,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -17032,7 +17048,7 @@ Subcommands:
 				fmt.Println("Error loading key:", err)
 				os.Exit(1)
 			}
-			skG1 := new(bn256i.G1)
+			skG1 := new(bn256.G1)
 			_, err = skG1.Unmarshal(sk)
 			if err != nil {
 				fmt.Println("Error unmarshaling G1 key:", err)
@@ -17067,7 +17083,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -17098,7 +17114,7 @@ Subcommands:
 				fmt.Println("Error loading key:", err)
 				os.Exit(1)
 			}
-			skG1 := new(bn256i.G1)
+			skG1 := new(bn256.G1)
 			_, err = skG1.Unmarshal(sk)
 			if err != nil {
 				fmt.Println("Error unmarshaling G1 key:", err)
@@ -17111,8 +17127,8 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			r, _ := rand.Int(rand.Reader, bn256i.Order)
-			P1 := new(bn256i.G1).ScalarBaseMult(r)
+			r, _ := rand.Int(rand.Reader, bn256.Order)
+			P1 := new(bn256.G1).ScalarBaseMult(r)
 
 			u, v := signHESS_BN(skG1, P1, msg)
 
@@ -17136,7 +17152,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -17168,7 +17184,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -17193,7 +17209,7 @@ Subcommands:
 				fmt.Println("Error loading key:", err)
 				os.Exit(1)
 			}
-			skG1 := new(bn256i.G1)
+			skG1 := new(bn256.G1)
 			_, err = skG1.Unmarshal(sk)
 			if err != nil {
 				fmt.Println("Error unmarshaling G1 key:", err)
@@ -17223,7 +17239,7 @@ Subcommands:
 				os.Exit(1)
 			}
 
-			var pubKey bn256i.G2
+			var pubKey bn256.G2
 			_, err = pubKey.Unmarshal(pk)
 			if err != nil {
 				log.Fatalf("Error deserializing public key: %v", err)
@@ -17248,7 +17264,7 @@ Subcommands:
 				fmt.Println("Error loading key:", err)
 				os.Exit(1)
 			}
-			skG1 := new(bn256i.G1)
+			skG1 := new(bn256.G1)
 			_, err = skG1.Unmarshal(sk)
 			if err != nil {
 				fmt.Println("Error unmarshaling G1 key:", err)
@@ -17307,13 +17323,33 @@ Subcommands:
 
 		switch keyType := privateKey.(type) {
 		case *sm9.EncryptPrivateKey:
-			fmt.Printf("Public=%X\n", keyType.MasterPublicKey.Marshal())
+			publicBytes, err := keyType.MasterPublic().MarshalASN1()
+			if err != nil {
+				log.Fatal("Error marshaling public key:", err)
+			}
+			fmt.Printf("Public=%X\n", publicBytes)
+
 		case *sm9.SignPrivateKey:
-			fmt.Printf("Public=%X\n", keyType.MasterPublicKey.Marshal())
+			publicBytes, err := keyType.MasterPublic().MarshalASN1()
+			if err != nil {
+				log.Fatal("Error marshaling public key:", err)
+			}
+			fmt.Printf("Public=%X\n", publicBytes)
+
 		case *sm9.EncryptMasterPrivateKey:
-			fmt.Printf("Public=%X\n", keyType.MasterPublicKey.Marshal())
+			publicBytes, err := keyType.PublicKey().MarshalASN1()
+			if err != nil {
+				log.Fatal("Error marshaling public key:", err)
+			}
+			fmt.Printf("Public=%X\n", publicBytes)
+
 		case *sm9.SignMasterPrivateKey:
-			fmt.Printf("Public=%X\n", keyType.MasterPublicKey.Marshal())
+			publicBytes, err := keyType.PublicKey().MarshalASN1()
+			if err != nil {
+				log.Fatal("Error marshaling public key:", err)
+			}
+			fmt.Printf("Public=%X\n", publicBytes)
+
 		default:
 			log.Fatal("Invalid private key type. Expected sm9.EncryptPrivateKey, or sm9.SignPrivateKey.")
 		}
@@ -17330,14 +17366,13 @@ Subcommands:
 			log.Fatal("Failed to decode PEM block containing the public key.")
 		}
 
-		pubKey := new(sm9.SignMasterPublicKey)
-		err = pubKey.UnmarshalASN1(keyBlock.Bytes)
+		pubKey, err := sm9.UnmarshalSignMasterPublicKeyASN1(keyBlock.Bytes)
 		if err != nil {
-			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
+			fmt.Println("Error parsing public key:", err)
 			return
 		}
 
-		fmt.Printf("Public=%X\n", pubKey.MasterPublicKey.Marshal())
+		fmt.Printf("Public=%X\n", pubKey.Bytes())
 		os.Exit(0)
 	}
 
@@ -17352,14 +17387,13 @@ Subcommands:
 			log.Fatal("Failed to decode PEM block containing the public key.")
 		}
 
-		pubKey := new(sm9.EncryptMasterPublicKey)
-		err = pubKey.UnmarshalASN1(keyBlock.Bytes)
+		pubKey, err := sm9.UnmarshalEncryptMasterPublicKeyASN1(keyBlock.Bytes)
 		if err != nil {
-			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
+			fmt.Println("Error parsing public key:", err)
 			return
 		}
 
-		fmt.Printf("Public=%X\n", pubKey.MasterPublicKey.Marshal())
+		fmt.Printf("Public=%X\n", pubKey.Bytes())
 		os.Exit(0)
 	}
 
@@ -17407,69 +17441,83 @@ Subcommands:
 		case *sm9.EncryptPrivateKey:
 			fmt.Println("Encrypt Private-Key: (256-bit)")
 			fmt.Println("priv:")
-			privKeyHex := fmt.Sprintf("%x", keyType.PrivateKey.Marshal())
+			privKeyBytes, err := keyType.MarshalASN1()
+			if err != nil {
+				log.Fatal(err)
+			}
+			privKeyHex := hex.EncodeToString(privKeyBytes)
 			splitz := SplitSubN(privKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("pub:")
-			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
+			pubKeyHex := hex.EncodeToString(keyType.MasterPublic().Bytes())
 			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
+
 		case *sm9.SignPrivateKey:
 			fmt.Println("Sign Private-Key: (256-bit)")
 			fmt.Println("priv:")
-			privKeyHex := fmt.Sprintf("%x", keyType.PrivateKey.Marshal())
+			privKeyBytes, err := keyType.MarshalASN1()
+			if err != nil {
+				log.Fatal(err)
+			}
+			privKeyHex := hex.EncodeToString(privKeyBytes)
 			splitz := SplitSubN(privKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("pub:")
-			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
+			pubKeyHex := hex.EncodeToString(keyType.MasterPublic().Bytes())
 			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
+
 		case *sm9.EncryptMasterPrivateKey:
 			fmt.Println("Encrypt Master-Key: (256-bit)")
 			fmt.Println("master:")
-			privKeyHex, err := keyType.MarshalASN1()
+			privKeyBytes, err := keyType.MarshalASN1()
 			if err != nil {
 				log.Fatal(err)
 			}
-			splitz := SplitSubN(hex.EncodeToString(privKeyHex), 2)
+			privKeyHex := hex.EncodeToString(privKeyBytes)
+			splitz := SplitSubN(privKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("pub:")
-			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
+			pubKeyHex := hex.EncodeToString(keyType.PublicKey().Bytes())
 			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
+
 		case *sm9.SignMasterPrivateKey:
 			fmt.Println("Sign Master-Key: (256-bit)")
 			fmt.Println("master:")
-			privKeyHex, err := keyType.MarshalASN1()
+			privKeyBytes, err := keyType.MarshalASN1()
 			if err != nil {
 				log.Fatal(err)
 			}
-			splitz := SplitSubN(hex.EncodeToString(privKeyHex), 2)
+			privKeyHex := hex.EncodeToString(privKeyBytes)
+			splitz := SplitSubN(privKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("pub:")
-			pubKeyHex := fmt.Sprintf("%x", keyType.MasterPublicKey.Marshal())
+			pubKeyHex := hex.EncodeToString(keyType.PublicKey().Bytes())
 			splitz = SplitSubN(pubKeyHex, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
 			fmt.Println("Curve: sm9p256v1")
+
 		default:
 			log.Fatal("Invalid private key type. Expected sm9.EncryptPrivateKey, or sm9.SignPrivateKey.")
 		}
@@ -17486,8 +17534,7 @@ Subcommands:
 			log.Fatal("Failed to decode PEM block containing the public key.")
 		}
 
-		pubKey := new(sm9.SignMasterPublicKey)
-		err = pubKey.UnmarshalASN1(keyBlock.Bytes)
+		pubKey, err := sm9.UnmarshalSignMasterPublicKeyASN1(keyBlock.Bytes)
 		if err != nil {
 			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
 			return
@@ -17496,7 +17543,7 @@ Subcommands:
 		fmt.Print(string(keyFileContent))
 		fmt.Println("Sign Public-Key: (256-bit)")
 		fmt.Println("pub:")
-		pubKeyHex := fmt.Sprintf("%x", pubKey.MasterPublicKey.Marshal())
+		pubKeyHex := fmt.Sprintf("%x", pubKey.Bytes())
 		splitz := SplitSubN(pubKeyHex, 2)
 		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
@@ -17516,8 +17563,7 @@ Subcommands:
 			log.Fatal("Failed to decode PEM block containing the public key.")
 		}
 
-		pubKey := new(sm9.EncryptMasterPublicKey)
-		err = pubKey.UnmarshalASN1(keyBlock.Bytes)
+		pubKey, err := sm9.UnmarshalEncryptMasterPublicKeyASN1(keyBlock.Bytes)
 		if err != nil {
 			fmt.Println("Error parsing public key with UnmarshalASN1:", err)
 			return
@@ -17526,7 +17572,7 @@ Subcommands:
 		fmt.Print(string(keyFileContent))
 		fmt.Println("Encrypt Public-Key: (256-bit)")
 		fmt.Println("pub:")
-		pubKeyHex := fmt.Sprintf("%x", pubKey.MasterPublicKey.Marshal())
+		pubKeyHex := fmt.Sprintf("%x", pubKey.Bytes())
 		splitz := SplitSubN(pubKeyHex, 2)
 		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
@@ -22473,20 +22519,23 @@ func SignatureRSA(sourceData []byte) ([]byte, error) {
 	}
 
 	var myHash hash.Hash
-	if *md == "md5" {
+	switch *md {
+	case "md5":
 		myHash = md5.New()
-	} else if *md == "sha224" {
+	case "sha224":
 		myHash = sha256.New224()
-	} else if *md == "sha256" {
+	case "sha256":
 		myHash = sha256.New()
-	} else if *md == "sha384" {
+	case "sha384":
 		myHash = sha512.New384()
-	} else if *md == "sha512" {
+	case "sha512":
 		myHash = sha512.New()
-	} else if *md == "sha1" {
+	case "sha1":
 		myHash = sha1.New()
-	} else if *md == "rmd160" || *md == "ripemd160" {
+	case "rmd160", "ripemd160":
 		myHash = ripemd160.New()
+	default:
+		return nil, fmt.Errorf("unsupported hash algorithm: '%s'. Supported algorithms are: md5, sha1, sha224, sha256, sha384, sha512, ripemd160", *md)
 	}
 
 	myHash.Write(sourceData)
@@ -22550,20 +22599,23 @@ func VerifyRSA(sourceData, signedData []byte) error {
 	}
 	publicKey := publicInterface.(*rsa.PublicKey)
 	var mySha hash.Hash
-	if *md == "md5" {
+	switch *md {
+	case "md5":
 		mySha = md5.New()
-	} else if *md == "sha224" {
+	case "sha224":
 		mySha = sha256.New224()
-	} else if *md == "sha256" {
+	case "sha256":
 		mySha = sha256.New()
-	} else if *md == "sha384" {
+	case "sha384":
 		mySha = sha512.New384()
-	} else if *md == "sha512" {
+	case "sha512":
 		mySha = sha512.New()
-	} else if *md == "sha1" {
+	case "sha1":
 		mySha = sha1.New()
-	} else if *md == "rmd160" || *md == "ripemd160" {
+	case "rmd160", "ripemd160":
 		mySha = ripemd160.New()
+	default:
+		return fmt.Errorf("unsupported hash algorithm: '%s'. Supported algorithms are: md5, sha1, sha224, sha256, sha384, sha512, ripemd160", *md)
 	}
 	mySha.Write(sourceData)
 	res := mySha.Sum(nil)
@@ -26362,12 +26414,17 @@ func sign(random io.Reader, priv *PrivateKey, message []byte, h hash.Hash) (*big
 	k := new(big.Int)
 	var err error
 
-	k, err = rand.Int(random, priv.Q)
-	if err != nil {
-		return nil, nil, err
-	}
-	if k.Sign() == 0 {
-		k = new(big.Int).Set(one)
+	for {
+		k, err = rand.Int(random, priv.Q)
+		if err != nil {
+			return nil, nil, err
+		}
+		if k.Sign() == 0 {
+			k = new(big.Int).Set(one)
+		}
+		if new(big.Int).GCD(nil, nil, k, priv.Q).Cmp(one) == 0 {
+			break
+		}
 	}
 
 	r := new(big.Int).Exp(priv.G, k, priv.P)
@@ -26376,69 +26433,48 @@ func sign(random io.Reader, priv *PrivateKey, message []byte, h hash.Hash) (*big
 	h.Write(r.Bytes())
 	h.Write(message)
 	hashBytes := h.Sum(nil)
-	m := new(big.Int).SetBytes(hashBytes)
-	m.Mod(m, priv.Q)
+	χ := new(big.Int).SetBytes(hashBytes)
+	χ.Mod(χ, priv.Q)
 
-	xr := new(big.Int).Mod(
-		new(big.Int).Mul(r, priv.X),
-		priv.Q,
-	)
+	xr := new(big.Int).Mul(priv.X, r)
+	xr.Mod(xr, priv.Q)
 
-	hmxr := new(big.Int).Sub(m, xr)
+	χMinusXr := new(big.Int).Sub(χ, xr)
+	χMinusXr.Mod(χMinusXr, priv.Q)
 
 	kInv := k.ModInverse(k, priv.Q)
-
-	s := new(big.Int).Mul(hmxr, kInv)
+	s := new(big.Int).Mul(χMinusXr, kInv)
 	s.Mod(s, priv.Q)
 
 	return r, s, nil
 }
 
 func verify(pub *PublicKey, message []byte, r, s *big.Int, h hash.Hash) (bool, error) {
-	signr := new(big.Int).Set(r)
-	if signr.Cmp(zero) == -1 {
-		return false, errors.New("elgamal: r is smaller than zero")
-	} else if signr.Cmp(pub.P) == +1 {
-		return false, errors.New("elgamal: r is larger than public key p")
+	if r.Cmp(zero) <= 0 || r.Cmp(pub.P) >= 0 {
+		return false, errors.New("r out of bounds")
 	}
-
-	signs := new(big.Int).Set(s)
-	if signs.Cmp(zero) != 1 || signs.Cmp(pub.Q) != -1 {
-		return false, errors.New("elgamal: s is out of bounds (not in 1..q-1)")
-	}
-
-	if r == nil || r.Sign() <= 0 {
-		return false, errors.New("elgamal: r is zero or negative")
-	}
-	if s == nil || s.Sign() <= 0 {
-		return false, errors.New("elgamal: s is zero or negative")
+	if s.Cmp(zero) <= 0 || s.Cmp(pub.Q) >= 0 {
+		return false, errors.New("s out of bounds")
 	}
 
 	h.Reset()
 	h.Write(r.Bytes())
 	h.Write(message)
 	hashBytes := h.Sum(nil)
-	m := new(big.Int).SetBytes(hashBytes)
-	m.Mod(m, pub.Q)
+	χ := new(big.Int).SetBytes(hashBytes)
+	χ.Mod(χ, pub.Q)
 
-	ghashm := new(big.Int).Exp(pub.G, m, pub.P)
+	gχ := new(big.Int).Exp(pub.G, χ, pub.P)
 
-	YrRs := new(big.Int).Mod(
-		new(big.Int).Mul(
-			new(big.Int).Exp(pub.Y, signr, pub.P),
-			new(big.Int).Exp(signr, signs, pub.P),
-		),
-		pub.P,
-	)
+	yr := new(big.Int).Exp(pub.Y, r, pub.P)
+	rs := new(big.Int).Exp(r, s, pub.P)
+	yrRs := new(big.Int).Mul(yr, rs)
+	yrRs.Mod(yrRs, pub.P)
 
-	ghashmBytes := bigIntToFixedBytes(ghashm, pub.P.BitLen())
-	YrRsBytes := bigIntToFixedBytes(YrRs, pub.P.BitLen())
+	gχBytes := bigIntToFixedBytes(gχ, pub.P.BitLen())
+	yrRsBytes := bigIntToFixedBytes(yrRs, pub.P.BitLen())
 
-	if subtle.ConstantTimeCompare(ghashmBytes, YrRsBytes) == 1 {
-		return true, nil
-	}
-
-	return false, errors.New("elgamal: signature is not verified")
+	return subtle.ConstantTimeCompare(gχBytes, yrRsBytes) == 1, nil
 }
 
 func signDSA(random io.Reader, priv *PrivateKey, hash []byte) (*big.Int, *big.Int, error) {
@@ -27990,17 +28026,17 @@ func ParsePKCS8PrivateKey(derBytes []byte) (key *PrivateKey, err error) {
 	return NewPKCS8Key().ParsePrivateKey(derBytes)
 }
 
-func encryptBN(message string, publicKey *bn256i.G2, hashFunc func() hash.Hash) (*bn256i.G1, []byte, []byte) {
+func encryptBN(message string, publicKey *bn256.G2, hashFunc func() hash.Hash) (*bn256.G1, []byte, []byte) {
 	messageBytes := []byte(message)
 
-	k, err := rand.Int(rand.Reader, bn256i.Order)
+	k, err := rand.Int(rand.Reader, bn256.Order)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	C1 := new(bn256i.G1).ScalarBaseMult(k)
+	C1 := new(bn256.G1).ScalarBaseMult(k)
 
-	pairingResult := bn256i.Pair(C1, publicKey)
+	pairingResult := bn256.Pair(C1, publicKey)
 	pairingBytes := pairingResult.Marshal()
 
 	S1, S2 := deriveKeys(pairingBytes, hashFunc)
@@ -28020,10 +28056,10 @@ func encryptBN(message string, publicKey *bn256i.G2, hashFunc func() hash.Hash) 
 	return C1, authTag, encrypted
 }
 
-func decryptBN(C1 *bn256i.G1, authTag, encrypted []byte, privateKey *big.Int, hashFunc func() hash.Hash) string {
-	C1MulPrivate := new(bn256i.G1).ScalarMult(C1, privateKey)
+func decryptBN(C1 *bn256.G1, authTag, encrypted []byte, privateKey *big.Int, hashFunc func() hash.Hash) string {
+	C1MulPrivate := new(bn256.G1).ScalarMult(C1, privateKey)
 
-	pairingResult := bn256i.Pair(C1MulPrivate, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+	pairingResult := bn256.Pair(C1MulPrivate, new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 	pairingBytes := pairingResult.Marshal()
 
 	S1, S2 := deriveKeys(pairingBytes, hashFunc)
@@ -28053,7 +28089,7 @@ type CiphertextBN struct {
 	C3 []byte
 }
 
-func serializeToASN1(C1 *bn256i.G1, C2 []byte, encryptedMessage []byte) ([]byte, error) {
+func serializeToASN1(C1 *bn256.G1, C2 []byte, encryptedMessage []byte) ([]byte, error) {
 	C1Bytes := C1.Marshal()
 
 	cipher := CiphertextBN{
@@ -28065,7 +28101,7 @@ func serializeToASN1(C1 *bn256i.G1, C2 []byte, encryptedMessage []byte) ([]byte,
 	return asn1.Marshal(cipher)
 }
 
-func deserializeFromASN1(serialized []byte) (*bn256i.G1, []byte, []byte, error) {
+func deserializeFromASN1(serialized []byte) (*bn256.G1, []byte, []byte, error) {
 	var cipher CiphertextBN
 
 	_, err := asn1.Unmarshal(serialized, &cipher)
@@ -28073,7 +28109,7 @@ func deserializeFromASN1(serialized []byte) (*bn256i.G1, []byte, []byte, error) 
 		return nil, nil, nil, err
 	}
 
-	C1 := new(bn256i.G1)
+	C1 := new(bn256.G1)
 	_, err = C1.Unmarshal(cipher.C1)
 	if err != nil {
 		return nil, nil, nil, err
@@ -28201,7 +28237,7 @@ type CiphertextBF struct {
 	H []byte
 }
 
-func serializeToASN1BF_BN(U *bn256i.G2, V, H []byte) ([]byte, error) {
+func serializeToASN1BF_BN(U *bn256.G2, V, H []byte) ([]byte, error) {
 	cipher := CiphertextBF{
 		U: U.Marshal(),
 		V: V,
@@ -28216,7 +28252,7 @@ func serializeToASN1BF_BN(U *bn256i.G2, V, H []byte) ([]byte, error) {
 	return serialized, nil
 }
 
-func deserializeFromASN1BF_BN(serialized []byte) (*bn256i.G2, []byte, []byte, error) {
+func deserializeFromASN1BF_BN(serialized []byte) (*bn256.G2, []byte, []byte, error) {
 	var cipher CiphertextBF
 
 	_, err := asn1.Unmarshal(serialized, &cipher)
@@ -28224,7 +28260,7 @@ func deserializeFromASN1BF_BN(serialized []byte) (*bn256i.G2, []byte, []byte, er
 		return nil, nil, nil, err
 	}
 
-	U := new(bn256i.G2)
+	U := new(bn256.G2)
 	_, err = U.Unmarshal(cipher.U)
 	if err != nil {
 		return nil, nil, nil, err
@@ -28303,7 +28339,7 @@ func deserializeFromASN1BF_FO(serialized []byte) (*bls12381.G2, []byte, []byte, 
 	return U, cipher.V, cipher.W, nil
 }
 
-func serializeToASN1BF_FO_BN(U *bn256i.G2, V, W []byte) ([]byte, error) {
+func serializeToASN1BF_FO_BN(U *bn256.G2, V, W []byte) ([]byte, error) {
 	cipher := CiphertextFO{
 		U: U.Marshal(),
 		V: V,
@@ -28318,7 +28354,7 @@ func serializeToASN1BF_FO_BN(U *bn256i.G2, V, W []byte) ([]byte, error) {
 	return serialized, nil
 }
 
-func deserializeFromASN1BF_FO_BN(serialized []byte) (*bn256i.G2, []byte, []byte, error) {
+func deserializeFromASN1BF_FO_BN(serialized []byte) (*bn256.G2, []byte, []byte, error) {
 	var cipher CiphertextFO
 
 	_, err := asn1.Unmarshal(serialized, &cipher)
@@ -28326,7 +28362,7 @@ func deserializeFromASN1BF_FO_BN(serialized []byte) (*bn256i.G2, []byte, []byte,
 		return nil, nil, nil, err
 	}
 
-	U := new(bn256i.G2)
+	U := new(bn256.G2)
 	_, err = U.Unmarshal(cipher.U)
 	if err != nil {
 		return nil, nil, nil, err
@@ -28476,7 +28512,7 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 		}
 	case "BN256I":
 		skBigInt := new(big.Int).SetBytes(privateKey)
-		hash := bn256i.HashG1(certData, []byte(*salt))
+		hash := bn256.HashG1(certData, []byte(*salt))
 		signatureBN := hash.ScalarMult(hash, skBigInt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign with BN256: %v", err)
@@ -28767,7 +28803,7 @@ func CreateCSR(subject pkix.Name, email string, publicKey, privateKey []byte) (*
 		}
 	case "BN256I":
 		skBigInt := new(big.Int).SetBytes(privateKey)
-		hash := bn256i.HashG1(certData, []byte(*salt))
+		hash := bn256.HashG1(certData, []byte(*salt))
 		signatureBN := hash.ScalarMult(hash, skBigInt)
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign with BN256: %v", err)
@@ -28836,18 +28872,18 @@ func VerifyCSR(csr *CSR) error {
 }
 
 func VerifyBN(publicKey []byte, signature []byte, certData []byte, salt []byte) error {
-	var pubKey bn256i.G2
+	var pubKey bn256.G2
 	_, err := pubKey.Unmarshal(publicKey)
 	if err != nil {
 		return fmt.Errorf("error deserializing public key: %v", err)
 	}
 
-	var sig bn256i.G1
+	var sig bn256.G1
 	sig.Unmarshal(signature)
 
-	h := bn256i.HashG1(certData, salt)
-	rhs := bn256i.Pair(h, &pubKey)
-	lhs := bn256i.Pair(&sig, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+	h := bn256.HashG1(certData, salt)
+	rhs := bn256.Pair(h, &pubKey)
+	lhs := bn256.Pair(&sig, new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 
 	rhsBytes := rhs.Marshal()
 	lhsBytes := lhs.Marshal()
@@ -29021,7 +29057,7 @@ func (crl *CRL) Sign(ca *CA, cert *Certificate) error {
 		}
 	case "BN256I":
 		skBigInt := new(big.Int).SetBytes(ca.PrivateKey)
-		hash := bn256i.HashG1(crlData, []byte(*salt))
+		hash := bn256.HashG1(crlData, []byte(*salt))
 		signatureBN := hash.ScalarMult(hash, skBigInt)
 		if err != nil {
 			return fmt.Errorf("failed to sign with BN256: %v", err)
@@ -29233,8 +29269,8 @@ func hashToPoint(data []byte) *big.Int {
 	return hashInt
 }
 
-func generateMasterPublicKey(masterKey *big.Int) *bn256i.G2 {
-	publicKey := new(bn256i.G2)
+func generateMasterPublicKey(masterKey *big.Int) *bn256.G2 {
+	publicKey := new(bn256.G2)
 	publicKey.ScalarBaseMult(masterKey)
 
 	return publicKey
@@ -29277,9 +29313,9 @@ func extract(msk *ff.Scalar, id []byte) *bls12381.G1 {
 	return d
 }
 
-func extractBN(msk *big.Int, id []byte) *bn256i.G1 {
-	Qid := bn256i.HashG1(id, nil)
-	return new(bn256i.G1).ScalarMult(Qid, msk)
+func extractBN(msk *big.Int, id []byte) *bn256.G1 {
+	Qid := bn256.HashG1(id, nil)
+	return new(bn256.G1).ScalarMult(Qid, msk)
 }
 
 func deriveKeys(pairRaw []byte, hFunc func() hash.Hash) ([]byte, []byte) {
@@ -29422,12 +29458,12 @@ func decryptBF(U *bls12381.G2, d_ID *bls12381.G1, V, T []byte, hFunc func() hash
 	return M, hmac.Equal(T, Tcheck)
 }
 
-func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte, hFunc func() hash.Hash) (*bn256i.G2, []byte, []byte) {
-	r, _ := rand.Int(rand.Reader, bn256i.Order)
-	U := new(bn256i.G2).ScalarBaseMult(r)
+func encryptBF_BN(Ppub *bn256.G2, id []byte, msg []byte, hFunc func() hash.Hash) (*bn256.G2, []byte, []byte) {
+	r, _ := rand.Int(rand.Reader, bn256.Order)
+	U := new(bn256.G2).ScalarBaseMult(r)
 
-	Qid := bn256i.HashG1(id, nil)
-	pair := bn256i.Pair(Qid, Ppub)
+	Qid := bn256.HashG1(id, nil)
+	pair := bn256.Pair(Qid, Ppub)
 	pair.ScalarMult(pair, r)
 
 	k := pair.Marshal()
@@ -29448,8 +29484,8 @@ func encryptBF_BN(Ppub *bn256i.G2, id []byte, msg []byte, hFunc func() hash.Hash
 	return U, V, T
 }
 
-func decryptBF_BN(U *bn256i.G2, sk *bn256i.G1, V, T []byte, hFunc func() hash.Hash) ([]byte, bool) {
-	pair := bn256i.Pair(sk, U)
+func decryptBF_BN(U *bn256.G2, sk *bn256.G1, V, T []byte, hFunc func() hash.Hash) ([]byte, bool) {
+	pair := bn256.Pair(sk, U)
 	k := pair.Marshal()
 	S1, S2 := deriveKeys(k, hFunc)
 
@@ -29714,7 +29750,7 @@ func decryptSK(id []byte, U *bls12381.G1, V, W []byte, dA *bls12381.G2, Ppub *bl
 	return m, true
 }
 
-func H2_BN(gt *bn256i.GT, hashFunc func() hash.Hash) []byte {
+func H2_BN(gt *bn256.GT, hashFunc func() hash.Hash) []byte {
 	data := gt.Marshal()
 	h := hashFunc()
 	h.Write([]byte("H2|"))
@@ -29730,7 +29766,7 @@ func H3_BN(sigma, M []byte, hashFunc func() hash.Hash) *big.Int {
 	digest := h.Sum(nil)
 
 	r := new(big.Int).SetBytes(digest)
-	return r.Mod(r, bn256i.Order)
+	return r.Mod(r, bn256.Order)
 }
 
 func H4_BN(sigma []byte, hashFunc func() hash.Hash, msgLen int) []byte {
@@ -29751,7 +29787,7 @@ func H4_BN(sigma []byte, hashFunc func() hash.Hash, msgLen int) []byte {
 	return result[:msgLen]
 }
 
-func encryptFO_BN(Ppub *bn256i.G2, id, M []byte, hashFunc func() hash.Hash) (*bn256i.G2, []byte, []byte) {
+func encryptFO_BN(Ppub *bn256.G2, id, M []byte, hashFunc func() hash.Hash) (*bn256.G2, []byte, []byte) {
 	n := 32
 
 	sigma := make([]byte, n)
@@ -29761,10 +29797,10 @@ func encryptFO_BN(Ppub *bn256i.G2, id, M []byte, hashFunc func() hash.Hash) (*bn
 
 	r := H3_BN(sigma, M, hashFunc)
 
-	U := new(bn256i.G2).ScalarBaseMult(r)
+	U := new(bn256.G2).ScalarBaseMult(r)
 
-	Q := bn256i.HashG1(id, nil)
-	g := bn256i.Pair(Q, Ppub)
+	Q := bn256.HashG1(id, nil)
+	g := bn256.Pair(Q, Ppub)
 	g.ScalarMult(g, r)
 
 	h2g := H2_BN(g, hashFunc)
@@ -29782,10 +29818,10 @@ func encryptFO_BN(Ppub *bn256i.G2, id, M []byte, hashFunc func() hash.Hash) (*bn
 	return U, V, W
 }
 
-func decryptFO_BN(U *bn256i.G2, dID *bn256i.G1, V, W []byte, hashFunc func() hash.Hash) ([]byte, bool) {
+func decryptFO_BN(U *bn256.G2, dID *bn256.G1, V, W []byte, hashFunc func() hash.Hash) ([]byte, bool) {
 	n := len(V)
 
-	g := bn256i.Pair(dID, U)
+	g := bn256.Pair(dID, U)
 
 	h2g := H2_BN(g, hashFunc)
 	sigma := make([]byte, n)
@@ -29800,7 +29836,7 @@ func decryptFO_BN(U *bn256i.G2, dID *bn256i.G1, V, W []byte, hashFunc func() has
 	}
 
 	rPrime := H3_BN(sigma, M, hashFunc)
-	UPrime := new(bn256i.G2).ScalarBaseMult(rPrime)
+	UPrime := new(bn256.G2).ScalarBaseMult(rPrime)
 
 	if subtle.ConstantTimeCompare([]byte(U.String()), []byte(UPrime.String())) != 1 {
 		return nil, false
@@ -29903,47 +29939,47 @@ func decodeSignature(data []byte) (*ff.Scalar, *bls12381.G1, error) {
 	return h, S, nil
 }
 
-func extractSM_BN(msk *big.Int, id []byte) *bn256i.G1 {
+func extractSM_BN(msk *big.Int, id []byte) *bn256.G1 {
 	h := hashToPoint(id)
 	sum := new(big.Int).Add(msk, h)
-	sum.Mod(sum, bn256i.Order)
+	sum.Mod(sum, bn256.Order)
 
-	inv := new(big.Int).ModInverse(sum, bn256i.Order)
-	return new(bn256i.G1).ScalarBaseMult(inv)
+	inv := new(big.Int).ModInverse(sum, bn256.Order)
+	return new(bn256.G1).ScalarBaseMult(inv)
 }
 
-func signSM_BN(skid *bn256i.G1, msg []byte) (*big.Int, *bn256i.G1) {
-	r, err := rand.Int(rand.Reader, bn256i.Order)
+func signSM_BN(skid *bn256.G1, msg []byte) (*big.Int, *bn256.G1) {
+	r, err := rand.Int(rand.Reader, bn256.Order)
 	if err != nil {
 		panic(err)
 	}
 
-	g := bn256i.Pair(new(bn256i.G1).ScalarBaseMult(big.NewInt(1)),
-		new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+	g := bn256.Pair(new(bn256.G1).ScalarBaseMult(big.NewInt(1)),
+		new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 
-	w := new(bn256i.GT).ScalarMult(g, r)
+	w := new(bn256.GT).ScalarMult(g, r)
 
 	wBytes := w.Marshal()
 	h := hashToPoint(append(msg, wBytes...))
 
 	rh := new(big.Int).Sub(r, h)
-	rh.Mod(rh, bn256i.Order)
-	S := new(bn256i.G1).ScalarMult(skid, rh)
+	rh.Mod(rh, bn256.Order)
+	S := new(bn256.G1).ScalarMult(skid, rh)
 	return h, S
 }
 
-func verifySM_BN(mpk *bn256i.G2, id, msg []byte, h *big.Int, S *bn256i.G1) bool {
+func verifySM_BN(mpk *bn256.G2, id, msg []byte, h *big.Int, S *bn256.G1) bool {
 	Qid := hashToPoint(id)
-	QidP2 := new(bn256i.G2).ScalarBaseMult(Qid)
+	QidP2 := new(bn256.G2).ScalarBaseMult(Qid)
 
-	tmp := new(bn256i.G2).Add(mpk, QidP2)
-	left := bn256i.Pair(S, tmp)
+	tmp := new(bn256.G2).Add(mpk, QidP2)
+	left := bn256.Pair(S, tmp)
 
-	g := bn256i.Pair(new(bn256i.G1).ScalarBaseMult(big.NewInt(1)),
-		new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
-	right := new(bn256i.GT).ScalarMult(g, h)
+	g := bn256.Pair(new(bn256.G1).ScalarBaseMult(big.NewInt(1)),
+		new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
+	right := new(bn256.GT).ScalarMult(g, h)
 
-	wPrime := new(bn256i.GT).Add(left, right)
+	wPrime := new(bn256.GT).Add(left, right)
 
 	hPrime := hashToPoint(append(msg, wPrime.Marshal()...))
 
@@ -29957,7 +29993,7 @@ func verifySM_BN(mpk *bn256i.G2, id, msg []byte, h *big.Int, S *bn256i.G1) bool 
 	return subtle.ConstantTimeCompare(hPrimeBytes, hBytes) == 1
 }
 
-func encodeSignatureSM_BN(h *big.Int, S *bn256i.G1) ([]byte, error) {
+func encodeSignatureSM_BN(h *big.Int, S *bn256.G1) ([]byte, error) {
 	hBytes := h.Bytes()
 	SBytes := S.Marshal()
 
@@ -29969,7 +30005,7 @@ func encodeSignatureSM_BN(h *big.Int, S *bn256i.G1) ([]byte, error) {
 	return asn1.Marshal(sig)
 }
 
-func decodeSignatureSM_BN(data []byte) (*big.Int, *bn256i.G1, error) {
+func decodeSignatureSM_BN(data []byte) (*big.Int, *bn256.G1, error) {
 	var sig SignatureSM
 	_, err := asn1.Unmarshal(data, &sig)
 	if err != nil {
@@ -29978,7 +30014,7 @@ func decodeSignatureSM_BN(data []byte) (*big.Int, *bn256i.G1, error) {
 
 	h := new(big.Int).SetBytes(sig.H)
 
-	S := new(bn256i.G1)
+	S := new(bn256.G1)
 	if _, err := S.Unmarshal(sig.S); err != nil {
 		return nil, nil, fmt.Errorf("invalid G1 point in signature: %v", err)
 	}
@@ -30086,57 +30122,57 @@ func decodeSignatureBARRETO(data []byte) (*ff.Scalar, *bls12381.G1, error) {
 	return h, S, nil
 }
 
-func extractBARRETO_BN(s *big.Int, id []byte) *bn256i.G1 {
+func extractBARRETO_BN(s *big.Int, id []byte) *bn256.G1 {
 	h1 := hashToPoint(id)
 
 	sum := new(big.Int).Add(h1, s)
-	sum.Mod(sum, bn256i.Order)
+	sum.Mod(sum, bn256.Order)
 
-	inv := new(big.Int).ModInverse(sum, bn256i.Order)
-	SID := new(bn256i.G1).ScalarBaseMult(inv)
+	inv := new(big.Int).ModInverse(sum, bn256.Order)
+	SID := new(bn256.G1).ScalarBaseMult(inv)
 	return SID
 }
 
-func signBARRETO_BN(SID *bn256i.G1, msg []byte) (*big.Int, *bn256i.G1) {
-	x, _ := rand.Int(rand.Reader, bn256i.Order)
+func signBARRETO_BN(SID *bn256.G1, msg []byte) (*big.Int, *bn256.G1) {
+	x, _ := rand.Int(rand.Reader, bn256.Order)
 
-	g := bn256i.Pair(new(bn256i.G1).ScalarBaseMult(big.NewInt(1)),
-		new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+	g := bn256.Pair(new(bn256.G1).ScalarBaseMult(big.NewInt(1)),
+		new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 
-	r := new(bn256i.GT).ScalarMult(g, x)
+	r := new(bn256.GT).ScalarMult(g, x)
 	h := h_BN(msg, r)
 
 	sum := new(big.Int).Add(x, h)
-	sum.Mod(sum, bn256i.Order)
+	sum.Mod(sum, bn256.Order)
 
-	S := new(bn256i.G1).ScalarMult(SID, sum)
+	S := new(bn256.G1).ScalarMult(SID, sum)
 	return h, S
 }
 
-func verifyBARRETO_BN(h *big.Int, S *bn256i.G1, id, msg []byte, Qpub *bn256i.G2) bool {
+func verifyBARRETO_BN(h *big.Int, S *bn256.G1, id, msg []byte, Qpub *bn256.G2) bool {
 	h1 := hashToPoint(id)
 
-	h1Q := new(bn256i.G2).ScalarBaseMult(h1)
+	h1Q := new(bn256.G2).ScalarBaseMult(h1)
 
-	sum := new(bn256i.G2).Add(h1Q, Qpub)
+	sum := new(bn256.G2).Add(h1Q, Qpub)
 
-	pair := bn256i.Pair(S, sum)
+	pair := bn256.Pair(S, sum)
 
-	g := bn256i.Pair(new(bn256i.G1).ScalarBaseMult(big.NewInt(1)),
-		new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+	g := bn256.Pair(new(bn256.G1).ScalarBaseMult(big.NewInt(1)),
+		new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 
 	hNeg := new(big.Int).Neg(h)
-	hNeg.Mod(hNeg, bn256i.Order)
-	gInv := new(bn256i.GT).ScalarMult(g, hNeg)
+	hNeg.Mod(hNeg, bn256.Order)
+	gInv := new(bn256.GT).ScalarMult(g, hNeg)
 
-	rPrime := new(bn256i.GT).Add(pair, gInv)
+	rPrime := new(bn256.GT).Add(pair, gInv)
 
 	hPrime := h_BN(msg, rPrime)
 
 	return h.Cmp(hPrime) == 0
 }
 
-func encodeSignatureBARRETO_BN(h *big.Int, S *bn256i.G1) ([]byte, error) {
+func encodeSignatureBARRETO_BN(h *big.Int, S *bn256.G1) ([]byte, error) {
 	hBytes := h.Bytes()
 	SBytes := S.Marshal()
 
@@ -30148,7 +30184,7 @@ func encodeSignatureBARRETO_BN(h *big.Int, S *bn256i.G1) ([]byte, error) {
 	return asn1.Marshal(sig)
 }
 
-func decodeSignatureBARRETO_BN(data []byte) (*big.Int, *bn256i.G1, error) {
+func decodeSignatureBARRETO_BN(data []byte) (*big.Int, *bn256.G1, error) {
 	var sig SignatureBARRETO
 	_, err := asn1.Unmarshal(data, &sig)
 	if err != nil {
@@ -30157,7 +30193,7 @@ func decodeSignatureBARRETO_BN(data []byte) (*big.Int, *bn256i.G1, error) {
 
 	h := new(big.Int).SetBytes(sig.H)
 
-	S := new(bn256i.G1)
+	S := new(bn256.G1)
 	_, err = S.Unmarshal(sig.S)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to unmarshal G1 point: %v", err)
@@ -30414,29 +30450,29 @@ func decodeSignatureCC(data []byte) (*bls12381.G1, *bls12381.G1, error) {
 	return U, V, nil
 }
 
-func signCC_BN(skID *bn256i.G1, id, msg []byte) (*bn256i.G1, *bn256i.G1) {
-	Qid := bn256i.HashG1(id, nil)
+func signCC_BN(skID *bn256.G1, id, msg []byte) (*bn256.G1, *bn256.G1) {
+	Qid := bn256.HashG1(id, nil)
 
 	r, _ := rand.Int(rand.Reader, bn256.Order)
-	U := new(bn256i.G1).ScalarMult(Qid, r)
+	U := new(bn256.G1).ScalarMult(Qid, r)
 
 	h := hashToPoint(append(msg, U.Marshal()...))
 	rPlusH := new(big.Int).Add(r, h)
 
-	V := new(bn256i.G1).ScalarMult(skID, rPlusH)
+	V := new(bn256.G1).ScalarMult(skID, rPlusH)
 
 	return U, V
 }
 
-func verifyCC_BN(mpk *bn256i.G2, id, msg []byte, U, V *bn256i.G1) bool {
-	Qid := bn256i.HashG1(id, nil)
+func verifyCC_BN(mpk *bn256.G2, id, msg []byte, U, V *bn256.G1) bool {
+	Qid := bn256.HashG1(id, nil)
 	h := hashToPoint(append(msg, U.Marshal()...))
 
-	hQid := new(bn256i.G1).ScalarMult(Qid, h)
-	UhQid := new(bn256i.G1).Add(U, hQid)
+	hQid := new(bn256.G1).ScalarMult(Qid, h)
+	UhQid := new(bn256.G1).Add(U, hQid)
 
-	left := bn256i.Pair(V, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
-	right := bn256i.Pair(UhQid, mpk)
+	left := bn256.Pair(V, new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
+	right := bn256.Pair(UhQid, mpk)
 
 	leftBytes := left.Marshal()
 	rightBytes := right.Marshal()
@@ -30447,7 +30483,7 @@ func verifyCC_BN(mpk *bn256i.G2, id, msg []byte, U, V *bn256i.G1) bool {
 	return subtle.ConstantTimeCompare(leftBytes, rightBytes) == 1
 }
 
-func encodeSignatureCC_BN(U *bn256i.G1, V *bn256i.G1) ([]byte, error) {
+func encodeSignatureCC_BN(U *bn256.G1, V *bn256.G1) ([]byte, error) {
 	sig := SignatureCC{
 		U: U.Marshal(),
 		V: V.Marshal(),
@@ -30455,19 +30491,19 @@ func encodeSignatureCC_BN(U *bn256i.G1, V *bn256i.G1) ([]byte, error) {
 	return asn1.Marshal(sig)
 }
 
-func decodeSignatureCC_BN(data []byte) (*bn256i.G1, *bn256i.G1, error) {
+func decodeSignatureCC_BN(data []byte) (*bn256.G1, *bn256.G1, error) {
 	var sig SignatureCC
 	_, err := asn1.Unmarshal(data, &sig)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	U := new(bn256i.G1)
+	U := new(bn256.G1)
 	if _, err := U.Unmarshal(sig.U); err != nil {
 		return nil, nil, fmt.Errorf("invalid G1 point in U: %v", err)
 	}
 
-	V := new(bn256i.G1)
+	V := new(bn256.G1)
 	if _, err := V.Unmarshal(sig.V); err != nil {
 		return nil, nil, fmt.Errorf("invalid G1 point in V: %v", err)
 	}
@@ -30569,51 +30605,51 @@ func decodeSignatureHESS(data []byte) (*bls12381.G1, *ff.Scalar, error) {
 	return U, V, nil
 }
 
-func h_BN(m []byte, r *bn256i.GT) *big.Int {
+func h_BN(m []byte, r *bn256.GT) *big.Int {
 	hasher := bmw.New256()
 	hasher.Write(m)
 	hasher.Write(r.Marshal())
 
 	hash := hasher.Sum(nil)
 	v := new(big.Int).SetBytes(hash)
-	return new(big.Int).Mod(v, bn256i.Order)
+	return new(big.Int).Mod(v, bn256.Order)
 }
 
-func signHESS_BN(SID *bn256i.G1, P1 *bn256i.G1, msg []byte) (*bn256i.G1, *big.Int) {
-	k, err := rand.Int(rand.Reader, bn256i.Order)
+func signHESS_BN(SID *bn256.G1, P1 *bn256.G1, msg []byte) (*bn256.G1, *big.Int) {
+	k, err := rand.Int(rand.Reader, bn256.Order)
 	if err != nil {
 		panic(err)
 	}
 
-	e := bn256i.Pair(P1, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
-	r := new(bn256i.GT).ScalarMult(e, k)
+	e := bn256.Pair(P1, new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
+	r := new(bn256.GT).ScalarMult(e, k)
 
 	v := h_BN(msg, r)
 
-	vSID := new(bn256i.G1).ScalarMult(SID, v)
-	kP1 := new(bn256i.G1).ScalarMult(P1, k)
-	u := new(bn256i.G1).Add(vSID, kP1)
+	vSID := new(bn256.G1).ScalarMult(SID, v)
+	kP1 := new(bn256.G1).ScalarMult(P1, k)
+	u := new(bn256.G1).Add(vSID, kP1)
 
 	return u, v
 }
 
-func verifyHESS_BN(u *bn256i.G1, v *big.Int, QTA *bn256i.G2, id, msg []byte) bool {
-	Qid := bn256i.HashG1(id, nil)
+func verifyHESS_BN(u *bn256.G1, v *big.Int, QTA *bn256.G2, id, msg []byte) bool {
+	Qid := bn256.HashG1(id, nil)
 
-	e1 := bn256i.Pair(u, new(bn256i.G2).ScalarBaseMult(big.NewInt(1)))
+	e1 := bn256.Pair(u, new(bn256.G2).ScalarBaseMult(big.NewInt(1)))
 
-	e2 := bn256i.Pair(Qid, QTA)
+	e2 := bn256.Pair(Qid, QTA)
 	e2.Neg(e2)
-	e2v := new(bn256i.GT).ScalarMult(e2, v)
+	e2v := new(bn256.GT).ScalarMult(e2, v)
 
-	rPrime := new(bn256i.GT).Add(e1, e2v)
+	rPrime := new(bn256.GT).Add(e1, e2v)
 
 	vPrime := h_BN(msg, rPrime)
 
 	return v.Cmp(vPrime) == 0
 }
 
-func encodeSignatureHESS_BN(U *bn256i.G1, V *big.Int) ([]byte, error) {
+func encodeSignatureHESS_BN(U *bn256.G1, V *big.Int) ([]byte, error) {
 	sig := SignatureHess{
 		U: U.Marshal(),
 		V: V.Bytes(),
@@ -30621,14 +30657,14 @@ func encodeSignatureHESS_BN(U *bn256i.G1, V *big.Int) ([]byte, error) {
 	return asn1.Marshal(sig)
 }
 
-func decodeSignatureHESS_BN(data []byte) (*bn256i.G1, *big.Int, error) {
+func decodeSignatureHESS_BN(data []byte) (*bn256.G1, *big.Int, error) {
 	var sig SignatureHess
 	_, err := asn1.Unmarshal(data, &sig)
 	if err != nil {
 		return nil, nil, fmt.Errorf("falha ao desserializar assinatura: %v", err)
 	}
 
-	U := new(bn256i.G1)
+	U := new(bn256.G1)
 	if _, err := U.Unmarshal(sig.U); err != nil {
 		return nil, nil, fmt.Errorf("ponto G1 inválido em U: %v", err)
 	}
