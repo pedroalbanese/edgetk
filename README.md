@@ -1477,7 +1477,7 @@ echo $?
 
 Add support for a configuration file to set default algorithms, eliminating the need for the -algorithm, -cipher, and -md flags for customized use.
 
-Config file example (GOST Standards):
+Config file `edgetk.ini` example (GOST Standards):
 ```
 [Defaults]
 algorithm = gost2012
