@@ -1473,6 +1473,31 @@ echo $?
 ./edgetk -version      // Print version info
 ```
 
+#### Config File
+
+Add support for a configuration file to set default algorithms, eliminating the need for the -algorithm, -cipher, and -md flags for customized use.
+
+Config file example (GOST Standards):
+```
+[Defaults]
+algorithm = gost2012
+cipher = kuznechik
+md = streebog256
+mode = mgm
+days = 365
+```
+Or even SM2, SM3, SM4, and GCM for the Chinese Standard.
+
+> **Note:** The `edgetk.ini` file is an **optional configuration** used to define default cryptographic algorithms. Specifically, it can override the defaults for:
+>
+> - **Asymmetric encryption algorithm** (default: `RSA`)
+> - **Hash algorithm** (default: `SHA256`)
+> - **Preferred bulk cipher**
+>
+> Please use this configuration with **caution**. Certain choices may affect the program's behavior. For example, setting the default hash to `SHA3` can interfere with RSA signatures, as RSA requires a SHA2-family hash or `RIPEMD160` to function correctly. In this case, you must pass the correct hash via flag `-md`.
+>
+> If anything changes unexpectedly during execution, or if you're unsure about the configuration, you can safely **delete the `edgetk.ini` file**. The code will fall back to its internal defaults, and the program will remain **intact**.
+
 ## Acknowledgments
 
 - [Sergey Matveev](http://www.cypherpunks.su/) (GoGOST Library Author)
