@@ -1473,7 +1473,7 @@ echo $?
 ./edgetk -version      // Print version info
 ```
 
-#### Config File
+#### Config File:
 
 Add support for a configuration file to set default algorithms, eliminating the need for the -algorithm, -cipher, and -md flags for customized use.
 
