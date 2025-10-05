@@ -866,49 +866,35 @@ graph TD
 - Let $s \in \mathbb{Z}_q$ be the master secret (the PKG’s private key).
 - A random polynomial of degree $t - 1$ is defined as:
 
-$$
-f(x) = s + a_1 x + a_2 x^2 + \dots + a_{t-1} x^{t-1}
-$$
+$$f(x) = s + a_1 x + a_2 x^2 + \dots + a_{t-1} x^{t-1}$$
 
 - Each server $i \in \{1, 2, \dots, n\}$ receives a **partial key** (a point on the polynomial):
 
-$$
-s_i = f(i)
-$$
+$$s_i = f(i)$$
 
 - The public key of the system is:
 
-$$
-P_{\text{pub}} = s \cdot P
-$$
+$$P_{\text{pub}} = s \cdot P$$
 
 ### 2. Partial Key Extraction (by each server)
 
 - The identity is mapped to a point on the elliptic curve group:
 
-$$
-Q_{\text{ID}} = H_1(\text{ID}) \in G_1
-$$
+$$Q_{\text{ID}} = H_1(\text{ID}) \in G_1$$
 
 - Each server computes its partial private key:
 
-$$
-d_i = s_i \cdot Q_{\text{ID}}
-$$
+$$d_i = s_i \cdot Q_{\text{ID}}$$
 
 ### 3. Combining Partial Keys (Lagrange Interpolation)
 
 - Given a subset of $t$ partial keys $d_{i_1}, d_{i_2}, \dots, d_{i_t}$, compute the Lagrange coefficients:
 
-$$
-\lambda_j = \prod_{\substack{1 \leq k \leq t \\ k \ne j}} \frac{x_k}{x_k - x_j}
-$$
+$$\lambda_j = \prod_{\substack{1 \leq k \leq t \\ k \ne j}} \frac{x_k}{x_k - x_j}$$
 
 - The final private key for the identity is reconstructed as:
 
-$$
-d_{\text{ID}} = \sum_{j=1}^{t} \lambda_j \cdot d_{i_j} = s \cdot Q_{\text{ID}}
-$$
+$$d_{\text{ID}} = \sum_{j=1}^{t} \lambda_j \cdot d_{i_j} = s \cdot Q_{\text{ID}}$$
 
 This Threshold IBE/IBS scheme supports the Cha-Cheon, Hess, and Boneh-Franklin constructions, i.e., schemes where the private key lies in $G_1$, the public key lies in $G_2 $, and the private key extraction involves only linear operations (scalar multiplication), without requiring inversion or non-linear computations. This compatibility is crucial for enabling threshold key extraction via Shamir's Secret Sharing, as each server can compute a partial key share in $G_1$, which can then be linearly combined using Lagrange interpolation to reconstruct the full private key $s \cdot Q_{ID}$.
 </details>
