@@ -731,7 +731,7 @@ The ElGamal algorithm is a public-key cryptography system that enables secure co
 The EC-ElGamal algorithm is a cryptographic scheme based on elliptic curves that enables the encryption of messages between two parties using a shared public key.  Is a cryptographic scheme that allows secure message transmission over an insecure channel. The algorithm relies on the mathematical properties of elliptic curves to ensure the confidentiality of messages.
 
 <details>
-  <summary>Pure EC-ElGamal</summary> 
+  <summary>Pure EC-ElGamal</summary><br>
 EC-ElGamal encryption using elliptic curves allows secure message transmission by having Alice generate a private key $y$ and a public key $Y = y \cdot G$, while Bob encrypts a message $M$ with a random value $r$, computing $C_1 = r \cdot G$ and $C_2 = r \cdot Y + M$, and Alice decrypts using $M = C_2 - y \cdot C_1$.
 
 First, Alice generates a private key $y$ and a public key of:  
@@ -773,25 +773,23 @@ Identity-Based Encryption (IBE) is a cryptographic scheme that enables users to 
 <details><summary>IBE Key Management System (KMS)</summary>  
     
 **Figure 1** 
-<pre> +---------------------------------------------------------------+
- |                  IBE Key Management System                    |
- |      +---------------------------+  +-------------------+     |
- |      |  Private Key Generation   |--|                   |     |
- |      |      Center (PKG)         |  |                   |     |
- |      +---------------------------+  |                   |     |
- |                  |  Revoke/Update   |                   |     |
- |                  |                  |                   |     |
- |      +---------------------------+  |      Public       |     |
- |      |       Registration        |  |     Parameter     |     |
- |      |       Service (RA)        |  |      Service      |     |
- |      +---------------------------+  |       (PPS)       |     |
- |                  |  Registration    |                   |     |
- |                  |  Application     |                   |     |
- |      +---------------------------+  |                   |     |
- |      |         Terminal          |  |                   |     |
- |      |    Entity (User/Client)   |--|                   |     |
- |      +---------------------------+  +-------------------+     |
- +---------------------------------------------------------------+</pre>
+```mermaid
+graph TD
+     subgraph IBEKeyManagementSystem["Key Management System"]
+        PKG["Private Key Generator (PKG)"]
+        RA["Registration Authority (RA)"]
+        PPS["Public Parameter Server (PPS)"]
+        User["User/Client"]
+    end
+
+    PKG <-->|Secure Channel| RA
+    PKG --> PPS
+    RA <-->|Secure Channel| User
+    PPS -.->|Public Parameters| User
+    
+    classDef dashed stroke-dasharray: 5 5
+    class IBEKeyManagementSystem dashed
+```
   
 The **IBE's Key Management System (KMS)** consists of the **Private Key Generator (PKG)**, **Registration Agency (RA)**, **Public Parameter Server (PPS)**, and **User Terminal Entity (User/Client)**. The system architecture is illustrated in **Figure 1**. The functions of each entity are described below.
 
@@ -819,30 +817,53 @@ The **IBE's Key Management System (KMS)** consists of the **Private Key Generato
 **Summary:**
 The architecture of the IBE Key Management System ensures secure generation of private keys by PKG, tasks of key registration and application are carried out by RA, public parameters are provided by PPS, and users interact with the system through the User/Client terminal. Secure channels facilitate the transfer and download of keys between these entities, ensuring the overall security of the key management system.</details>
 
+<details>
+  <summary>Threshold IBE</summary>
+
+Threshold IBE enhances the classic Boneh-Franklin scheme by introducing a distributed Private Key Generator (PKG). Instead of a single trusted entity holding the master secret key, the secret is shared across multiple servers using Shamir's Secret Sharing. To extract a private key for a given identity, at least $t$ out of $n$ servers must collaborate. Each server computes a partial key share, which is then combined via Lagrange interpolation to reconstruct the user's full private key. This model mitigates single points of failure and strengthens resilience against key compromise. 
+
+```mermaid
+graph TD
+    TA[Trusted Authority] --> S1[Server 1]
+    TA --> S2[Server 2]
+    TA --> S3[Server 3]
+    TA --> S4[Server 4]
+    TA --> S5[Server 5]
+
+    S1 -.-> User
+    S3 -.-> User
+    S5 -.-> User
+
+    User --> Key[Private Key]
+
+    subgraph Formulas
+        F1["Setup:
+        s ∈ Z_q
+        f(x) = s + a₁x + ... + aₜ₋₁xᵗ⁻¹
+        sᵢ = f(i)"]
+        F2["Partial Key Extraction:
+        Q_ID = H₁(ID)
+        dᵢ = sᵢ · Q_ID"]
+        F3["Key Reconstruction:
+        λⱼ = Π (xₖ/(xₖ - xⱼ))
+        d_ID = Σ λⱼ · dᵢⱼ"]
+    end
+
+    F1 -.-> TA
+    F2 -.-> S5
+    F3 -.-> Key
+
+    %% Threshold indication
+    S1:::threshold
+    S3:::threshold
+    S5:::threshold
+
+    classDef threshold stroke-dasharray: 5 5
+```
+</details>
+
 ### IKM (input key material value)
 Keying material is in general to include things like shared Diffie-Hellman secrets (which are not suitable as symmetric keys), which have more structure than normal keys.
-
-### Lyra2
-Lyra2 is a Password Hashing Scheme (PHS) that can function as a Key Derivation Function (KDF). The Lyra2REv2 chained is an enhanced version of the Lyra2REv2 hash algorithm used in cryptocurrency mining, such as Vertcoin. It involves chaining multiple hash functions in sequential steps, increasing the complexity and security of the mining process. This design makes the algorithm more resistant to ASIC mining, encouraging the use of GPUs and maintaining network decentralization. Additionally, the chaining of functions improves cryptographic security, making it harder to execute attacks like collisions or preimage attacks, ensuring that transaction validation and block creation are more robust and secure. Designed by Marcos A. Simplicio Jr., Leonardo C. Almeida, Ewerton R. Andrade, Paulo C. F. dos Santos e Paulo S. L. M. Barreto from Escola Politécnica da Universidade de São Paulo.
-
-<details><summary>Lyra2REv2 Chained</summary>  
-<pre>-----------  ------------  --------------
-|BLAKE-256|->|Keccak-256|->|CubeHash-256|
------------  ------------  --------------
-                                      \
-                                       v
-                                    -------
-                                    |Lyra2|
-                                    -------
-                                       /
-                                      v
------------  --------------  ------------
-|Skein-256|<-|CubeHash-256|<-|  BMW-256 |
------------  --------------  ------------
-</pre>
-
-Fig. 1. The Lyra2REv2 chained hashing algorithm.
-</details>
 
 ### MAC
 MAC (Message Authentication Code) is a cryptographic function used to ensure the integrity and authenticity of a message. It takes a message and a secret key as inputs and produces a fixed-size authentication tag, which is appended to the message. The receiver can then verify the authenticity of the message by recomputing the MAC using the shared secret key and comparing it to the received tag. If they match, the message is deemed authentic and unaltered.
