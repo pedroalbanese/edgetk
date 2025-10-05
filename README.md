@@ -861,19 +861,19 @@ graph TD
     classDef threshold stroke-dasharray: 5 5
 ```
 
-### 1. Setup (master authority splits the secret)
+#### 1. Setup (master authority splits the secret)
 
 - Let $s \in \mathbb{Z}_q$ be the master secret (the PKG’s private key).
 - A random polynomial of degree $t - 1$ is defined as $f(x) = s + a_1 x + a_2 x^2 + \dots + a_{t-1} x^{t-1}$.
 - Each server $i \in \{1, 2, \dots, n\}$ receives a **partial key** (a point on the polynomial): $s_i = f(i)$.
 - The public key of the system is: $P_{\text{pub}} = s \cdot P$.
 
-### 2. Partial Key Extraction (by each server)
+#### 2. Partial Key Extraction (by each server)
 
 - The identity is mapped to a point on the elliptic curve group: $Q_{\text{ID}} = H_1(\text{ID}) \in G_1$.
 - Each server computes its partial private key: $d_i = s_i \cdot Q_{\text{ID}}$.
 
-### 3. Combining Partial Keys (Lagrange Interpolation)
+#### 3. Combining Partial Keys (Lagrange Interpolation)
 
 - Given a subset of $t$ partial keys $d_{i_1}, d_{i_2}, \dots, d_{i_t}$, compute the Lagrange coefficients:  
   $\lambda_j = \prod_{\substack{1 \leq k \leq t \\ k \ne j}} \frac{x_k}{x_k - x_j}$.
