@@ -150,8 +150,19 @@ Developed by the **ANSSI** (Agence nationale de la sécurité des systèmes d'in
 
 ---
 
-#### 🇧🇷 SENAI NBR ISO/IEC 18033-2 — Brazilian local standards for symmetric ciphers  
-Adoption of international standards for block ciphers as specified by **ISO/IEC 18033-2**, guiding the use of algorithms such as AES, Blowfish, and others in Brazilian cryptographic applications.
+#### 🇧🇷 ITI DOC-ICP-01.01 — Brazilian Cryptographic Standards for Public-Key Algorithms  
+Brazil's national public key cryptographic standards are defined in the **DOC-ICP-01.01**, issued by the **Instituto Nacional de Tecnologia da Informação (ITI)** under the **ICP-Brasil** framework. This standard mandates the use of internationally recognized and security-reviewed asymmetric algorithms, including:
+
+- **RSA** (minimum key size of 2048 bits for end-entities and 4096 bits for CAs),  
+- **Elliptic Curve Cryptography (ECC)** using **brainpool** curves (e.g., *brainpoolP256r1*, *brainpoolP512r1*),  
+- **EdDSA** over **Ed25519** (Curve25519) and **Ed448-Goldilocks** (X448),  
+- **ECDH / ECDHE** for key agreement protocols, including **X25519** and **X448** variants.
+
+These algorithms are officially approved through the **Instrução Normativa ITI nº 22, de 23 de março de 2022**, which consolidates and updates the cryptographic requirements under Brazilian law, ensuring strong digital security for certificates and signatures in national electronic documents and transactions.
+
+**Source:**  
+[ICP-Brasil – DOC-ICP-01.01, v5.0 (2022)](https://repositorio.iti.gov.br/instrucoes-normativas/IN2022_22_DOC-ICP-01.01.htm)  
+Instrução Normativa ITI nº 22/2022 – Instituto Nacional de Tecnologia da Informação
 
 ---
 
