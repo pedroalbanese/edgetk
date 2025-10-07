@@ -235,6 +235,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
     |  Curve                |  ECDSA  | EC-S/GDSA |  EC-KCDSA  |  ECKA-EG  |
     |:----------------------|:-------:|:---------:|:----------:|:---------:|
+    | E-521 (Edwards)       | O       |           |            |           |
     | P-224 (secp224r1)     | O       | O         | O          | O         |
     | P-256 (secp256r1)     | O       | O         | O          | O         |
     | P-384 (secp384r1)     | O       | O         | O          | O         |
