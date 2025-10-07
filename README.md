@@ -157,6 +157,7 @@ Brazil's national public key cryptographic standards are defined in the **DOC-IC
 - **Elliptic Curve Cryptography (ECC)** using **brainpool** curves (e.g., *brainpoolP256r1*, *brainpoolP512r1*),  
 - **EdDSA** over **Ed25519** (Curve25519) and **Ed448-Goldilocks** (X448),  
 - **ECDH / ECDHE** for key agreement protocols, including **X25519** and **X448** variants.
+- **ECC over Curve E-521**, defined as a high-security elliptic curve consistent with 512-bit security strength, considered for future-safe digital signatures and key agreement mechanisms.
 
 These algorithms are officially approved through the **Instrução Normativa ITI nº 22, de 23 de março de 2022**, which consolidates and updates the cryptographic requirements under Brazilian law, ensuring strong digital security for certificates and signatures in national electronic documents and transactions.
 
