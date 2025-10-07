@@ -220,6 +220,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
     | BN256               | O   |     | O   | O       | O        | O   |
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
+    | E-521               |     |     | O   | O       |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
     | RSA [dep.]          |     |     |     | O       | O        | O   |
     | SM2                 | O   |     | O   | O       | O        | O   |
@@ -235,7 +236,6 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
     |  Curve                |  ECDSA  | EC-S/GDSA |  EC-KCDSA  |  ECKA-EG  |
     |:----------------------|:-------:|:---------:|:----------:|:---------:|
-    | E-521 (Edwards)       | O       |           |            |           |
     | P-224 (secp224r1)     | O       | O         | O          | O         |
     | P-256 (secp256r1)     | O       | O         | O          | O         |
     | P-384 (secp384r1)     | O       | O         | O          | O         |
