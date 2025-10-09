@@ -54,28 +54,29 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 40. ISO/IEC 14888-3:2018 EC-SDSA Schnorr-based Signature Scheme
 41. ISO/IEC 29192-2:2019 PRESENT, CLEFIA and LEA block ciphers
 42. ISO/IEC 15946-5:2022 Barreto-Naehrig and Barreto-Lynn-Scott Curves
-43. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
-44. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
-45. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
-46. LNCS 1838 - A One Round Protocol for Tripartite Diffie-Hellman
-47. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
-48. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
-49. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
-50. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
-51. RFC 1423: Privacy Enhancement for Internet Electronic Mail
-52. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-53. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-54. RFC 2612: The CAST-256 Encryption Algorithm
-55. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-56. RFC 4009: The SEED Encryption Algorithm (KISA)
-57. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-58. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-59. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-60. RFC 4543: Galois Message Authentication Code (GMAC)
-61. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-62. RFC 4648: Base16, Base32, and Base64 Data Encodings
-63. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-64. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+43. ITI DOC-ICP-01.01 Curve E-521 Brazilian Digital Signature Standard
+44. KS X 1213-1 ARIA 128-bit block cipher with 128/192/256-bit keys
+45. KS X 3246 LEA - Lightweight Encryption Algorithm (TTAK.KO-12.0223)
+46. KS X 3262 LSH - A New Fast Secure Hash Function Family (in Korean)
+47. LNCS 1838 - A One Round Protocol for Tripartite Diffie-Hellman
+48. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
+49. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
+50. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
+51. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
+52. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+53. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+54. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+55. RFC 2612: The CAST-256 Encryption Algorithm
+56. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+57. RFC 4009: The SEED Encryption Algorithm (KISA)
+58. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+59. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+60. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+61. RFC 4543: Galois Message Authentication Code (GMAC)
+62. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+63. RFC 4648: Base16, Base32, and Base64 Data Encodings
+64. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+65. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 50. RFC 5297: Synthetic Initialization Vector (SIV Mode)
 51. RFC 5639: Elliptic Curve Cryptography (ECC) Brainpool Standard Curves
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
