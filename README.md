@@ -259,6 +259,8 @@ These algorithms reflect Europe's strong academic and institutional contribution
     | NUMS (numsp256t1)     | O       | O         |            | O         |
     | NUMS (numsp384t1)     | O       | O         |            | O         |
     | NUMS (numsp512t1)     | O       | O         |            | O         |
+    | KG (kg256r1)          | O       |           |            |           |
+    | KG (kg256r1)          | O       |           |            |           |
     | Tom-256 (tom256)      | O       | O         |            | O         |
     | Tom-384 (tom384)      | O       | O         |            | O         |
     | ANSSI (frp256v1)      | O       | O         |            | O         |
