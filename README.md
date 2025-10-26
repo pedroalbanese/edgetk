@@ -90,8 +90,9 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 61. RFC 7914: The Scrypt Password-Based Key Derivation Function
 62. RFC 8032: Ed25519 Signature a.k.a. EdDSA (Daniel J. Bernstein)
 63. RFC 8446: Transport Layer Security (TLS) Protocol Version 1.3
-64. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
-65. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
+64. RFC 8554: Post-Quantum Leighton-Micali Hash-Based Signatures
+65. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
+66. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
 13. SAC 2002: Hess Efficient Identity Based Signature (IBS)
 66. SBRC 2007: Curupira 96-bit block cipher with 96/144/192-bit keys
 67. STB 34.101.31-2011 Belarusian standard (Bel-T) block cipher
@@ -232,6 +233,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
     | Schnorr             |     |     |     | O       |          |     |
     | ML-DSA/KEM          |     |     |     | O       | O        | O   |
     | SLH-DSA             | O   |     |     | O       |          | O   |
+    | LMS                 |     |     |     | O       |          | O   |
 
 - **Subjacent Elliptic Curves:**
 
