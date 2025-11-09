@@ -1271,9 +1271,9 @@ For non-interactive scripts, you must use the flags -pass, -days and -subj:
 ```
 #### EG Digital signature:
 ```sh
-./edgetk -pkey sign -algorithm elgamal [-theorem dsa] -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
+./edgetk -pkey sign -algorithm elgamal [-scheme dsa] -key Private.pem [-pass "passphrase"] < file.ext > sign.txt
 sign=$(cat sign.txt|awk '{print $2}')
-./edgetk -pkey verify -algorithm elgamal [-theorem dsa] -key Public.pem -signature $sign < file.ext
+./edgetk -pkey verify -algorithm elgamal [-scheme dsa] -key Public.pem -signature $sign < file.ext
 echo $?
 ```
 #### EG Encryption scheme:
