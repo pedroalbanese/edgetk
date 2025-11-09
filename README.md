@@ -163,7 +163,7 @@ Brazil's national public key cryptographic standards are defined in the **DOC-IC
 These algorithms are officially approved through the **Instrução Normativa ITI nº 22, de 23 de março de 2022**, which consolidates and updates the cryptographic requirements under Brazilian law, ensuring strong digital security for certificates and signatures in national electronic documents and transactions.
 
 **Source:**  
-[ICP-Brasil – DOC-ICP-01.01, v5.0 (2022)](https://repositorio.iti.gov.br/instrucoes-normativas/IN2022_22_DOC-ICP-01.01.htm)  
+[ICP-Brasil – DOC-ICP-01.01, v5.0 (2022)](https://www.gov.br/iti/pt-br/assuntos/legislacao/documentos-principais/IN2022_22_DOC_ICP_01.01_assinado.pdf)  
 Instrução Normativa ITI nº 22/2022 – Instituto Nacional de Tecnologia da Informação
 
 ---
