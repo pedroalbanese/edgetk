@@ -216,6 +216,9 @@ import (
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/pedroalbanese/xxencode"
 	"github.com/zeebo/blake3"
+
+	"github.com/trailofbits/lms-go/lms/common"
+	"github.com/trailofbits/lms-go/lms/lms"
 )
 
 var (
@@ -373,7 +376,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.13  20 Oct 2025")
+		fmt.Println("EDGE Toolkit v1.5.14  26 Nov 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -392,12 +395,12 @@ Public Key Subcommands:
 Public Key Algorithms:
   bign/dbign        eckcdsa           gost2012          sm2[ph]
   bip0340           ecsdsa            ed521[ph]         sm9sign
-  bls12381[i]       ed25519[ph]       ml-dsa            sm9encrypt
-  bn256[i]          ed448[ph]         ml-kem            slh-dsa
+  bls12381[i]       ed25519[ph]       ml-dsa/kem        sm9encrypt
+  bn256[i]          ed448[ph]         lms               slh-dsa
   ecdsa/ecdh        elgamal           rsa (default)     x25519
   ecgdsa            ec-elgamal        schnorr           x448
 
-Subjacent IBE/IBS Schemes:
+Subjacent Identity-Based Schemes:
   boneh-franklin    sakai-kasahara    cha-cheon         hess (default)
   boneh-boyen       barreto           galindo-garcia    shangmi
 
@@ -9723,6 +9726,8 @@ Subcommands:
 			if block, _ := pem.Decode(data); block != nil {
 				if strings.Contains(block.Type, "SLH-DSA") {
 					*alg = "SLH-DSA"
+				} else if strings.Contains(block.Type, "LMS") {
+					*alg = "LMS"
 				} else if strings.Contains(block.Type, "ML-KEM") {
 					*alg = "ML-KEM"
 				} else if strings.Contains(block.Type, "ML-DSA") {
@@ -9757,6 +9762,8 @@ Subcommands:
 			if block, _ := pem.Decode(data); block != nil {
 				if strings.Contains(block.Type, "SLH-DSA") {
 					*alg = "SLH-DSA"
+				} else if strings.Contains(block.Type, "LMS") {
+					*alg = "LMS"
 				} else if strings.Contains(block.Type, "ML-DSA") {
 					*alg = "ML-DSA"
 				} else if strings.Contains(block.Type, "BN256I") {
@@ -9784,6 +9791,8 @@ Subcommands:
 				if block, _ := pem.Decode(data); block != nil {
 					if strings.Contains(block.Type, "SLH-DSA") {
 						*alg = "SLH-DSA"
+					} else if strings.Contains(block.Type, "LMS") {
+						*alg = "LMS"
 					} else if strings.Contains(block.Type, "ML-DSA") {
 						*alg = "ML-DSA"
 					} else if strings.Contains(block.Type, "BN256I") {
@@ -10171,6 +10180,8 @@ Subcommands:
 			*alg = "SM9SIGN"
 		} else if strings.Contains(s, "SLH-DSA") {
 			*alg = "SLH-DSA"
+		} else if strings.Contains(s, "LMS") {
+			*alg = "LMS"
 		} else if strings.Contains(s, "BN256I") {
 			*alg = "BN256I"
 		} else if strings.Contains(s, "BN256") {
@@ -10334,9 +10345,170 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if strings.ToUpper(*alg) == "LMS" && *pkey == "keygen" {
+		generateLMSKeyPair(*priv, *pub)
+	}
+
+	if strings.ToUpper(*alg) == "LMS" && *pkey == "sign" {
+		msgBytes, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		privBytes, err := readKeyFromPEM(*key, true)
+		if err != nil {
+			fmt.Println("Error loading key:", err)
+			return
+		}
+
+		sigPEM, err := signLMS(msgBytes, privBytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if *sig != "" {
+			if err := ioutil.WriteFile(*sig, sigPEM, 0644); err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Signature saved to %s\n", *sig)
+		} else {
+			fmt.Printf("%s", sigPEM)
+		}
+	}
+
+	if strings.ToUpper(*alg) == "LMS" && *pkey == "verify" {
+		sigPEM, err := ioutil.ReadFile(*sig)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		msgBytes, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		pubBytes, err := readKeyFromPEM(*key, false)
+		if err != nil {
+			fmt.Println("Error loading key:", err)
+			return
+		}
+
+		if err := verifyLMS(pubBytes, sigPEM, msgBytes); err != nil {
+			fmt.Println("Verified: false")
+			os.Exit(1)
+		} else {
+			fmt.Println("Verified: true")
+		}
+	}
+
+	if *pkey == "modulus" && strings.ToUpper(*alg) == "LMS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		pemData, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		block, _ := pem.Decode(pemData)
+		if block == nil {
+			log.Fatal("failed to parse PEM block containing the key")
+		}
+
+		isPrivateKey := block.Type == "LMS SECRET KEY"
+
+		loadedKeyBytes, err := readKeyFromPEM(*key, isPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if isPrivateKey {
+			privKey, err := lms.LmsPrivateKeyFromBytes(loadedKeyBytes)
+			if err != nil {
+				log.Fatal("failed to parse LMS private key:", err)
+			}
+			pubKey := privKey.Public()
+			pubBytes := pubKey.ToBytes()
+
+			if err := printLMSKeyParams(pubBytes, false); err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			if err := printLMSKeyParams(loadedKeyBytes, false); err != nil {
+				log.Fatal(err)
+			}
+		}
+	}
+
+	if *pkey == "text" && strings.ToUpper(*alg) == "LMS" && *key != "" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer file.Close()
+
+		pemData, err := ioutil.ReadAll(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		block, _ := pem.Decode(pemData)
+		if block == nil {
+			log.Fatal("failed to parse PEM block containing the key")
+		}
+
+		isPrivateKey := block.Type == "LMS SECRET KEY"
+
+		loadedKeyBytes, err := readKeyFromPEM(*key, isPrivateKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := printLMSKeyParams(loadedKeyBytes, isPrivateKey); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	if *pkey == "randomart" && strings.ToUpper(*alg) == "LMS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		println("LMS (Leighton–Micali Signature)")
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+		os.Exit(0)
+	}
+
+	if *pkey == "fingerprint" && strings.ToUpper(*alg) == "LMS" {
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint= ")
+		println(fingerprint)
+		os.Exit(0)
+	}
+
 	var validity string
 
-	if (strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "BN256I" || strings.ToUpper(*alg) == "BLS12381I") && (*pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl") {
+	if (strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "BN256I" || strings.ToUpper(*alg) == "BLS12381I" || strings.ToUpper(*alg) == "LMS") && (*pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl") {
 		if *pkey == "certgen" || *pkey == "req" {
 			if *subj == "" {
 				println("You are about to be asked to enter information \nthat will be incorporated into your certificate.")
@@ -10402,17 +10574,18 @@ Subcommands:
 
 	if (*pkey == "certgen" || *pkey == "x509" || *pkey == "req" || *pkey == "check" || *pkey == "text" || *pkey == "crl" || *pkey == "validate") && strings.ToUpper(*alg) == "SLH-DSA" {
 		if *pkey == "certgen" {
-			pk, err := readKeyFromPEM(*pub, false)
-			if err != nil {
-				fmt.Println("Error loading key:", err)
-				return
-			}
-
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading key:", err)
 				return
 			}
+
+			params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+			deserializedSK, err := sphincs.DeserializeSK(params, sk)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pk := append(deserializedSK.PKseed, deserializedSK.PKroot...)
 
 			ca := NewCA(sk, pk, validity)
 
@@ -10534,11 +10707,12 @@ Subcommands:
 				PostalCode:         []string{postalcode},
 			}
 
-			publicKey, err := readKeyFromPEM(*pub, false)
+			params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+			deserializedSK, err := sphincs.DeserializeSK(params, caPrivateKey)
 			if err != nil {
-				fmt.Println("Error loading key:", err)
-				return
+				log.Fatal(err)
 			}
+			publicKey := append(deserializedSK.PKseed, deserializedSK.PKroot...)
 
 			csr, err := CreateCSR(subject, email, publicKey, caPrivateKey)
 			if err != nil {
@@ -10594,17 +10768,18 @@ Subcommands:
 			fmt.Fprintf(os.Stderr, "Certificate signed and saved to %s\n", outputFilename)
 			os.Exit(0)
 		} else if *pkey == "crl" {
-			pk, err := readKeyFromPEM(*pub, false)
-			if err != nil {
-				fmt.Println("Error loading public key:", err)
-				return
-			}
-
 			sk, err := readKeyFromPEM(*key, true)
 			if err != nil {
 				fmt.Println("Error loading private key:", err)
 				return
 			}
+
+			params := parameters.MakeSphincsPlusSHAKE256256fRobust(true)
+			deserializedSK, err := sphincs.DeserializeSK(params, sk)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pk := append(deserializedSK.PKseed, deserializedSK.PKroot...)
 
 			cert, err := ReadCertificateFromPEM(*cert)
 			if err != nil {
@@ -10667,6 +10842,316 @@ Subcommands:
 				os.Exit(0)
 			}
 		} else if *pkey == "check" && *crl != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Error reading certificate:", err)
+				return
+			}
+
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading CRL: %v\n", err)
+				os.Exit(1)
+			}
+
+			if err := CheckCRL(crl, certificate.PublicKey); err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(3)
+			}
+
+			fmt.Println("Verified: true")
+			os.Exit(0)
+		}
+	}
+
+	if (*pkey == "certgen" || *pkey == "x509" || *pkey == "req" || *pkey == "check" || *pkey == "text" || *pkey == "crl" || *pkey == "validate") && strings.ToUpper(*alg) == "LMS" {
+		if *pkey == "certgen" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading LMS private key:", err)
+				return
+			}
+
+			privKey, err := lms.LmsPrivateKeyFromBytes(sk)
+			if err != nil {
+				fmt.Println("Error parsing LMS private key:", err)
+				return
+			}
+
+			publicKey := privKey.Public()
+			pk := publicKey.ToBytes()
+
+			ca := NewCA(sk, pk, validity)
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			certificate, err := ca.IssueCertificate(subject, email, pk, sk, true, validity)
+			if err != nil {
+				fmt.Println("Error issuing LMS certificate:", err)
+				return
+			}
+
+			if err := SaveCertificateToPEM(certificate, *cert); err != nil {
+				fmt.Println("Error saving LMS certificate:", err)
+				return
+			}
+
+			fmt.Println("LMS certificate issued and saved successfully.")
+			os.Exit(0)
+		}
+
+		if *pkey == "text" && *key == "" && *crl != "" {
+			crl, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				log.Fatalf("Error reading the LMS CRL: %v", err)
+			}
+			PrintCRLInfo(crl)
+			os.Exit(0)
+		}
+
+		if *pkey == "fingerprint" && *key != "" {
+			keyBytes, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error reading LMS key from PEM:", err)
+				os.Exit(1)
+			}
+			fingerprint := calculateFingerprint(keyBytes)
+			fmt.Printf("Fingerprint (LMS): %s\n", fingerprint)
+			os.Exit(0)
+		}
+
+		if *pkey == "randomart" && *key != "" {
+			pubFile, err := os.Open(*key)
+			if err != nil {
+				fmt.Println("Error opening LMS public key file:", err)
+				os.Exit(1)
+			}
+			defer pubFile.Close()
+
+			fmt.Printf("LMS (Leighton–Micali Signature)\n")
+
+			pubInfo, err := pubFile.Stat()
+			if err != nil {
+				fmt.Println("Error getting LMS public key info:", err)
+				os.Exit(1)
+			}
+
+			pubBuf := make([]byte, pubInfo.Size())
+			pubFile.Read(pubBuf)
+			randomArt := randomart.FromString(string(pubBuf))
+			fmt.Println(randomArt)
+			os.Exit(0)
+		}
+
+		if *pkey == "check" && *crl == "" {
+			pk, err := readKeyFromPEM(*key, false)
+			if err != nil {
+				fmt.Println("Error loading LMS public key:", err)
+				return
+			}
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Println("Error reading the LMS certificate:", err)
+				return
+			}
+
+			err = VerifyCertificate(certificate, pk)
+			if err != nil {
+				fmt.Println("Verified: false", err)
+				os.Exit(1)
+			} else {
+				fmt.Println("Verified: true")
+				os.Exit(0)
+			}
+		}
+
+		if *pkey == "text" && *cert != "" {
+			certificate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				csr, err := ReadCSRFromPEM(*cert)
+				if err != nil {
+					fmt.Println("Error loading LMS certificate or CSR:", err)
+					return
+				}
+				PrintInfo(csr)
+			} else {
+				PrintInfo(certificate)
+			}
+			os.Exit(0)
+		}
+
+		if *pkey == "req" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading LMS private key:", err)
+				return
+			}
+
+			subject := pkix.Name{
+				CommonName:         name,
+				SerialNumber:       number,
+				Country:            []string{country},
+				Province:           []string{province},
+				Locality:           []string{locality},
+				Organization:       []string{organization},
+				OrganizationalUnit: []string{organizationunit},
+				StreetAddress:      []string{street},
+				PostalCode:         []string{postalcode},
+			}
+
+			privKey, err := lms.LmsPrivateKeyFromBytes(sk)
+			if err != nil {
+				fmt.Println("Error parsing LMS private key:", err)
+				return
+			}
+
+			publicKey := privKey.Public()
+			pk := publicKey.ToBytes()
+
+			csr, err := CreateCSR(subject, email, pk, sk)
+			if err != nil {
+				log.Fatalf("Failed to create LMS CSR: %v", err)
+			}
+
+			if err := SaveCSRToPEM(csr, *cert); err != nil {
+				log.Fatalf("Failed to save LMS CSR: %v", err)
+			}
+
+			fmt.Println("LMS CSR created and saved to", *cert)
+			os.Exit(0)
+		}
+
+		if *pkey == "x509" {
+			caPrivateKey, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading LMS CA private key:", err)
+				return
+			}
+
+			caCert, err := ReadCertificateFromPEM(*root)
+			if err != nil {
+				log.Fatalf("Failed to read LMS CA certificate: %v", err)
+			}
+
+			csr, err := ReadCSRFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read LMS CSR: %v", err)
+			}
+
+			ca := &CA{
+				PrivateKey:  caPrivateKey,
+				Certificate: *caCert,
+			}
+
+			signedCert, err := SignCSR(csr, ca, caPrivateKey, validity)
+			if err != nil {
+				log.Fatalf("Failed to sign LMS CSR: %v", err)
+			}
+
+			var outputFilename string
+			if flag.Arg(0) == "" {
+				outputFilename = "stdout"
+			} else {
+				outputFilename = flag.Arg(0)
+			}
+
+			if err := SaveCertificateToPEM(signedCert, outputFilename); err != nil {
+				log.Fatalf("Failed to save LMS certificate: %v", err)
+			}
+
+			fmt.Fprintf(os.Stderr, "LMS certificate signed and saved to %s\n", outputFilename)
+			os.Exit(0)
+		}
+
+		if *pkey == "crl" {
+			sk, err := readKeyFromPEM(*key, true)
+			if err != nil {
+				fmt.Println("Error loading LMS private key:", err)
+				return
+			}
+
+			privKey, err := lms.LmsPrivateKeyFromBytes(sk)
+			if err != nil {
+				fmt.Println("Error parsing LMS private key:", err)
+				return
+			}
+
+			publicKey := privKey.Public()
+			pk := publicKey.ToBytes()
+			cert, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				log.Fatalf("Failed to read LMS CA certificate: %v", err)
+			}
+
+			ca := NewCA(sk, pk, validity)
+			crl, err := NewCRL(ca, *crl, validity)
+			if err != nil {
+				fmt.Println("Error generating LMS CRL:", err)
+				return
+			}
+
+			revokedSerials, err := readRevokedSerials(flag.Arg(0))
+			if err != nil {
+				fmt.Printf("Error reading revoked serials: %v\n", err)
+				return
+			}
+
+			for _, serial := range revokedSerials {
+				crl.RevokeCertificate(serial)
+			}
+
+			if err := crl.Sign(ca, cert); err != nil {
+				fmt.Printf("Error signing LMS CRL: %v\n", err)
+				return
+			}
+
+			var outputFile string
+			if len(flag.Args()) > 0 {
+				outputFile = flag.Arg(1)
+			}
+
+			if err := SaveCRLToPEM(crl, outputFile); err != nil {
+				fmt.Printf("Error saving LMS CRL: %v\n", err)
+				return
+			}
+
+			fmt.Println("LMS CRL generated and saved successfully.")
+			os.Exit(0)
+		}
+
+		if *pkey == "validate" {
+			certToValidate, err := ReadCertificateFromPEM(*cert)
+			if err != nil {
+				fmt.Printf("Error reading LMS certificate: %v\n", err)
+				return
+			}
+
+			readCRL, err := ReadCRLFromPEM(*crl)
+			if err != nil {
+				fmt.Printf("Error reading LMS CRL: %v\n", err)
+				return
+			}
+
+			if readCRL.IsRevoked(certToValidate.SerialNumber) {
+				fmt.Println("The LMS certificate has been revoked")
+				os.Exit(1)
+			} else {
+				fmt.Println("The LMS certificate is not revoked")
+				os.Exit(0)
+			}
+		}
+
+		if *pkey == "check" && *crl != "" {
 			certificate, err := ReadCertificateFromPEM(*cert)
 			if err != nil {
 				fmt.Println("Error reading certificate:", err)
@@ -26499,6 +26984,187 @@ func printKeyParamsFull(keyBytes []byte, isPrivateKey bool) error {
 	return nil
 }
 
+func saveLMSKey(filename string, keyBytes []byte, blockType string) error {
+	block := &pem.Block{
+		Type:  blockType,
+		Bytes: keyBytes,
+	}
+	return savePEMToFile(filename, block, true)
+}
+
+func saveLMSPublicKey(filename string, keyBytes []byte) error {
+	block := &pem.Block{
+		Type:  "LMS PUBLIC KEY",
+		Bytes: keyBytes,
+	}
+	return savePEMToFile(filename, block, false)
+}
+
+func generateLMSKeyPair(privPath, pubPath string) {
+	seckey, err := lms.NewPrivateKey(common.LMS_SHA256_M32_H10, common.LMOTS_SHA256_N32_W4)
+	if err != nil {
+		log.Fatalf("Failed to generate LMS private key: %v", err)
+	}
+
+	pubkey := seckey.Public()
+
+	skBytes := seckey.ToBytes()
+	pkBytes := pubkey.ToBytes()
+
+	if err := saveLMSKey(privPath, skBytes, "LMS SECRET KEY"); err != nil {
+		log.Fatal(err)
+	}
+	if err := saveLMSPublicKey(pubPath, pkBytes); err != nil {
+		log.Fatal(err)
+	}
+
+	absPrivPath, err := filepath.Abs(privPath)
+	if err != nil {
+		log.Fatal("Failed to get absolute path for private key:", err)
+	}
+	absPubPath, err := filepath.Abs(pubPath)
+	if err != nil {
+		log.Fatal("Failed to get absolute path for public key:", err)
+	}
+	println("Private key saved to:", absPrivPath)
+	println("Public key saved to:", absPubPath)
+
+	file, err := os.Open(*pub)
+	if err != nil {
+		log.Fatal(err)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		log.Fatal(err)
+	}
+	buf := make([]byte, info.Size())
+	file.Read(buf)
+	fingerprint := calculateFingerprint(buf)
+	print("Fingerprint: ")
+	println(fingerprint)
+	println("LMS")
+	randomArt := randomart.FromString(string(buf))
+	println(randomArt)
+}
+
+func signLMS(message []byte, privBytes []byte) ([]byte, error) {
+	seckey, err := lms.LmsPrivateKeyFromBytes(privBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to import LMS private key: %v", err)
+	}
+
+	sig, err := seckey.Sign(message, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign message: %v", err)
+	}
+
+	sigBytes, _ := sig.ToBytes()
+	blockSig := &pem.Block{
+		Type:  "LMS SIGNATURE",
+		Bytes: sigBytes,
+	}
+
+	return pem.EncodeToMemory(blockSig), nil
+}
+
+func verifyLMS(pubBytes, sigPEM, msg []byte) error {
+	pub, err := lms.LmsPublicKeyFromBytes(pubBytes)
+	if err != nil {
+		return fmt.Errorf("failed to import LMS public key: %v", err)
+	}
+
+	blockSig, _ := pem.Decode(sigPEM)
+	if blockSig == nil || blockSig.Type != "LMS SIGNATURE" {
+		return fmt.Errorf("invalid LMS signature PEM")
+	}
+
+	signature, err := lms.LmsSignatureFromBytes(blockSig.Bytes)
+	if err != nil {
+		return fmt.Errorf("failed to import LMS signature: %v", err)
+	}
+
+	if !pub.Verify(msg, signature) {
+		return fmt.Errorf("Signature verification failed")
+	}
+	return nil
+}
+
+func printLMSKeyParams(keyBytes []byte, isPrivate bool) error {
+	SplitSubN := func(s string, n int) []string {
+		var parts []string
+		for i := 0; i < len(s); i += n {
+			end := i + n
+			if end > len(s) {
+				end = len(s)
+			}
+			parts = append(parts, s[i:end])
+		}
+		return parts
+	}
+
+	if isPrivate {
+		priv, err := lms.LmsPrivateKeyFromBytes(keyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to read private key: %v", err)
+		}
+		skBytes := priv.ToBytes()
+
+		block := &pem.Block{
+			Type:  "LMS SECRET KEY",
+			Bytes: skBytes,
+		}
+		pem.Encode(os.Stdout, block)
+
+		fmt.Printf("Secret-Key: (%d-bits)\n", len(skBytes)*8)
+
+		fmt.Println("priv:")
+		splitz := SplitSubN(hex.EncodeToString(skBytes), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+
+		pub := priv.Public()
+		pkBytes := pub.ToBytes()
+		fmt.Println("pub:")
+		splitz = SplitSubN(hex.EncodeToString(pkBytes), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+		fmt.Println("ASN.1 OID: LMS")
+
+		skid := sha3.Sum256(pkBytes)
+		fmt.Printf("\nKeyID: %x \n", skid[:20])
+	} else {
+		pub, err := lms.LmsPublicKeyFromBytes(keyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to read public key: %v", err)
+		}
+		pkBytes := pub.ToBytes()
+
+		block := &pem.Block{
+			Type:  "LMS PUBLIC KEY",
+			Bytes: pkBytes,
+		}
+		pem.Encode(os.Stdout, block)
+
+		fmt.Printf("Public-Key: (%d-bits)\n", len(pkBytes)*8)
+
+		fmt.Println("pub:")
+		splitz := SplitSubN(hex.EncodeToString(pkBytes), 2)
+		for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+			fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+		}
+
+		fmt.Println("ASN.1 OID: LMS")
+
+		skid := sha3.Sum256(pkBytes)
+		fmt.Printf("\nKeyID: %x \n", skid[:20])
+		os.Exit(0)
+	}
+
+	return nil
+}
+
 type PEMCipher int
 
 const (
@@ -29491,6 +30157,11 @@ func (ca *CA) IssueCertificate(subject pkix.Name, email string, publicKey, priva
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign with BLS12381: %v", err)
 		}
+	case "LMS":
+		signature, err = signLMS(certData, privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign with LMS: %v", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -29592,6 +30263,12 @@ func VerifyCertificate(cert *Certificate, publicKey []byte) error {
 		return VerifyBN(publicKey, signature, certData, []byte(*salt))
 	case "BLS12381I":
 		return VerifyBLS(publicKey, signature, certData)
+	case "LMS":
+		err := verifyLMS(publicKey, cert.Signature, certData)
+		if err != nil {
+			return fmt.Errorf("LMS verification failed: %v", err)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -29680,7 +30357,7 @@ func PrintCertificateInfo(cert *Certificate) {
 			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 	}
-	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" {
+	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "LMS" {
 		fmt.Println("        [...]")
 	}
 
@@ -29720,7 +30397,7 @@ func PrintCSRInfo(csr *CSR) {
 			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 	}
-	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" {
+	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "LMS" {
 		fmt.Println("        [...]")
 	}
 }
@@ -29782,6 +30459,11 @@ func CreateCSR(subject pkix.Name, email string, publicKey, privateKey []byte) (*
 		if err != nil {
 			return nil, fmt.Errorf("failed to sign with BLS12381: %v", err)
 		}
+	case "LMS":
+		signature, err = signLMS(certData, privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sign CSR with LMS: %v", err)
+		}
 	default:
 		return nil, fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -29832,6 +30514,12 @@ func VerifyCSR(csr *CSR) error {
 		return VerifyBN(csr.PublicKey, csr.Signature, certData, []byte(*salt))
 	case "BLS12381I":
 		return VerifyBLS(csr.PublicKey, csr.Signature, certData)
+	case "LMS":
+		err := verifyLMS(csr.PublicKey, csr.Signature, certData)
+		if err != nil {
+			return fmt.Errorf("CSR LMS verification failed: %v", err)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -30036,6 +30724,11 @@ func (crl *CRL) Sign(ca *CA, cert *Certificate) error {
 		if err != nil {
 			return fmt.Errorf("failed to sign with BLS12381: %v", err)
 		}
+	case "LMS":
+		signature, err = signLMS(crlData, ca.PrivateKey)
+		if err != nil {
+			return fmt.Errorf("failed to sign CSR with LMS: %v", err)
+		}
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -30110,7 +30803,7 @@ func readRevokedSerials(filename string) ([]*big.Int, error) {
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		if line != "" {
-			serial, ok := new(big.Int).SetString(line, 10)
+			serial, ok := new(big.Int).SetString(line, 16)
 			if ok {
 				serials = append(serials, serial)
 			} else {
@@ -30140,6 +30833,12 @@ func CheckCRL(crl *CRL, publicKey []byte) error {
 		if err := VerifyBLS(publicKey, crl.Signature, crl.RawData); err != nil {
 			return fmt.Errorf("CRL signature verification failed using BLS12381: %v", err)
 		}
+	case "LMS":
+		err := verifyLMS(publicKey, crl.Signature, crl.RawData)
+		if err != nil {
+			return fmt.Errorf("LMS verification failed: %v", err)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported algorithm: %s", *alg)
 	}
@@ -30168,13 +30867,13 @@ func PrintCRLInfo(crl *CRL) {
 			fmt.Printf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 		}
 	}
-	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" {
+	if strings.ToUpper(*alg) == "ML-DSA" || strings.ToUpper(*alg) == "SLH-DSA" || strings.ToUpper(*alg) == "LMS" {
 		fmt.Println("        [...]")
 	}
 
 	fmt.Printf("    Revoked Certificates:\n")
 	for _, revoked := range crl.RevokedCertificates {
-		fmt.Printf("    - Serial Number: %s\n", revoked.SerialNumber.String())
+		fmt.Printf("    - Serial Number: %x\n", revoked.SerialNumber)
 		fmt.Printf("      Revocation Time: %s\n", revoked.RevocationTime.Format(time.RFC3339))
 	}
 }
