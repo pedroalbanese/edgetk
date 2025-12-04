@@ -53,7 +53,7 @@ proc openFileDialog {entry_widget} {
 proc showAbout {} {
     toplevel .about_window
     wm title .about_window "About EDGE Crypto Suite"
-    wm geometry .about_window 400x220
+    wm geometry .about_window 400x290
     wm resizable .about_window 0 0
     
     set x [expr {[winfo screenwidth .] / 2 - 200}]
