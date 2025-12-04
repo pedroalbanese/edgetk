@@ -969,23 +969,42 @@ proc deriveECDHKey {} {
 proc executeECDHHKDF {} {
     set salt [.nb.ecdh_tab.main.kdf_frame.content.saltInput get]
     set hashAlgorithm [.nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo get]
-    set inputKey [string trim [.nb.ecdh_tab.main.output_frame.textframe.outputArea get 1.0 end]]
     set outputKeySize [.nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo get]
     set outputSize [expr {$outputKeySize * 8}]
     
-    # Extrair apenas o valor hexadecimal do resultado anterior
-    if {[regexp {([0-9a-fA-F]+)} $inputKey match hexValue]} {
-        set inputKey $hexValue
+    # Pega o texto da área de saída
+    set full_text [string trim [.nb.ecdh_tab.main.output_frame.textframe.outputArea get 1.0 end]]
+    
+    # Extrai o hexadecimal (mesma lógica do botão Copy)
+    set hexValue ""
+    set lines [split $full_text "\n"]
+    
+    # Procura a última linha não vazia
+    set last_line ""
+    foreach line [lreverse $lines] {
+        if {[string trim $line] ne ""} {
+            set last_line [string trim $line]
+            break
+        }
     }
     
-    if {[string length $inputKey] < 1} {
+    # Verifica se é hexadecimal
+    if {[regexp {^[0-9a-fA-F]+$} $last_line]} {
+        set hexValue $last_line
+    } else {
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "ERROR: No valid hexadecimal found in last line.\nPlease derive a shared secret first."
+        return
+    }
+    
+    if {$hexValue eq ""} {
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "ERROR: No input key found. Please derive a shared secret first."
         return
     }
     
     if {[catch {
-        set hkdfResult [exec edgetk -kdf hkdf -salt $salt -md $hashAlgorithm -key $inputKey -bits $outputSize 2>@1]
+        set hkdfResult [exec edgetk -kdf hkdf -salt $salt -md $hashAlgorithm -key $hexValue -bits $outputSize 2>@1]
         
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "HKDF Applied Successfully:\n\n$hkdfResult"
@@ -2026,7 +2045,20 @@ button .nb.ecdh_tab.main.output_frame.buttons.hkdfButton -text "🔐 HKDF" -comm
 pack .nb.ecdh_tab.main.output_frame.buttons.hkdfButton -side left -padx 3
 
 button .nb.ecdh_tab.main.output_frame.buttons.copyButton -text "📋 Copy" -command {
-    copyText [.nb.ecdh_tab.main.output_frame.textframe.outputArea get 1.0 end]
+    set full_text [.nb.ecdh_tab.main.output_frame.textframe.outputArea get 1.0 end]
+    set lines [split [string trim $full_text] "\n"]
+    
+    # Pega a última linha não vazia
+    set last_line ""
+    foreach line [lreverse $lines] {
+        if {[string trim $line] ne ""} {
+            set last_line [string trim $line]
+            break
+        }
+    }
+    
+    clipboard clear
+    clipboard append $last_line
 } -bg "#27ae60" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.copyButton -side left -padx 3
 
@@ -2618,18 +2650,6 @@ grid .nb.signatures_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -st
 grid rowconfigure .nb.signatures_tab.main.output_frame.textframe 0 -weight 1
 grid columnconfigure .nb.signatures_tab.main.output_frame.textframe 0 -weight 1
 
-# Buttons for actions - MAIS COMPACTOS
-frame .nb.signatures_tab.main.output_frame.action_buttons -bg $frame_color
-pack .nb.signatures_tab.main.output_frame.action_buttons -fill x -padx 8 -pady 8
-
-button .nb.signatures_tab.main.output_frame.action_buttons.signButton -text "✍️ Sign" -command createSignature \
-    -bg "#9b59b6" -fg white -font {Arial 10 bold} -padx 15 -pady 4 -width 12
-pack .nb.signatures_tab.main.output_frame.action_buttons.signButton -side left -padx 5 -expand true
-
-button .nb.signatures_tab.main.output_frame.action_buttons.verifyButton -text "✓ Verify" -command verifySignature \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -padx 15 -pady 4 -width 12
-pack .nb.signatures_tab.main.output_frame.action_buttons.verifyButton -side left -padx 5 -expand true
-
 # Utility buttons - MAIS COMPACTOS
 frame .nb.signatures_tab.main.output_frame.utility_buttons -bg $frame_color
 pack .nb.signatures_tab.main.output_frame.utility_buttons -fill x -padx 8 -pady 3
@@ -2650,6 +2670,22 @@ button .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -te
     .nb.signatures_tab.main.input_frame.content.inputFile delete 0 end
 } -bg "#f39c12" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -side left -padx 2
+
+# Botões Sign/Verify (fora da seção SIGNATURE OUTPUT)
+frame .nb.signatures_tab.main.sign_verify_frame -bg $bg_color
+pack .nb.signatures_tab.main.sign_verify_frame -fill x -padx 8 -pady 10
+
+# Empacota primeiro o Verify (mais à direita)
+button .nb.signatures_tab.main.sign_verify_frame.verifyButton -text "✓ Verify" -command verifySignature \
+    -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -padx 20 -pady 3 -relief raised -bd 2
+pack .nb.signatures_tab.main.sign_verify_frame.verifyButton -side right -padx 3
+
+# Depois empacota o Sign (à esquerda do Verify)
+button .nb.signatures_tab.main.sign_verify_frame.signButton -text "✍️ Sign" -command createSignature \
+    -bg "#9b59b6" -fg white -font {Arial 10 bold} \
+    -padx 20 -pady 3 -relief raised -bd 2
+pack .nb.signatures_tab.main.sign_verify_frame.signButton -side right -padx 3
 
 # ========== FIM DA ABA DE ASSINATURAS ==========
 
