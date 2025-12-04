@@ -78,7 +78,7 @@ proc showAbout {} {
         -font {Arial 9} -bg white
     pack .about_window.main.dev -pady 2
     
-    label .about_window.main.features -text "All-in-one cryptographic toolkit" \
+    label .about_window.main.features -text "All-in-one Cryptographic Toolkit" \
         -font {Arial 9} -bg white
     pack .about_window.main.features -pady 2
     
@@ -878,16 +878,21 @@ proc calculateMACFile {} {
 
 # ===== FUNÇÕES ECDH (do segundo código) =====
 
-# Função para abrir o diretório da chave pública
-proc openPublicKey {} {
-    set public_key_path [.nb.ecdh_tab.main.keys_frame.content.publicKeyInput get]
-    if {[file exists $public_key_path]} {
-        set public_key_directory [file dirname $public_key_path]
-        if {[catch {exec cmd /c start "" [file nativename $public_key_directory]} error]} {
-            tk_messageBox -title "Error" -message "Não foi possível abrir o diretório: $error" -icon error
-        }
-    } else {
-        tk_messageBox -title "Error" -message "Arquivo não encontrado: $public_key_path" -icon error
+# Função para abrir diálogo de arquivo para chave privada
+proc openPrivateKeyECDH {} {
+    set file_path [tk_getOpenFile -defaultextension ".pem" -filetypes {{"PEM Files" ".pem"} {"All Files" "*"}}]
+    if {$file_path ne ""} {
+        .nb.ecdh_tab.main.keys_frame.content.privateKeyInput delete 0 end
+        .nb.ecdh_tab.main.keys_frame.content.privateKeyInput insert 0 $file_path
+    }
+}
+
+# Função para abrir diálogo de arquivo para chave pública
+proc openPublicKeyECDH {} {
+    set file_path [tk_getOpenFile -defaultextension ".pem" -filetypes {{"PEM Files" ".pem"} {"All Files" "*"}}]
+    if {$file_path ne ""} {
+        .nb.ecdh_tab.main.keys_frame.content.publicKeyInput delete 0 end
+        .nb.ecdh_tab.main.keys_frame.content.publicKeyInput insert 0 $file_path
     }
 }
 
@@ -1395,7 +1400,7 @@ label .header.title -text "EDGE CRYPTO SUITE v1" \
 pack .header.title -pady 2
 
 # Subtitle
-label .header.subtitle -text "Professional Cryptographic Toolkit - Encryption + ECDH + MAC + Signatures" \
+label .header.subtitle -text "Encrypted Data Gateway Engine - Professional Cryptographic Toolkit" \
     -bg $accent_color -fg "#bdc3c7" -font {Arial 8}
 pack .header.subtitle -pady 0
 
@@ -1887,19 +1892,22 @@ pack .nb.ecdh_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 # Private Key
 label .nb.ecdh_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -width 40 -font {Consolas 9}
-button .nb.ecdh_tab.main.keys_frame.content.generateButton -text "🔑 Generate" -command generateECDHKey \
-    -bg "#27ae60" -fg white -font {Arial 9 bold}
+button .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -text "📂 Open" -command openPrivateKeyECDH \
+    -bg "#3498db" -fg white -font {Arial 9 bold}
 
 grid .nb.ecdh_tab.main.keys_frame.content.privateKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 3
-grid .nb.ecdh_tab.main.keys_frame.content.generateButton -row 0 -column 2 -sticky w -padx 3 -pady 3
+grid .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -row 0 -column 2 -sticky w -padx 3 -pady 3
 
 # Public Key
 label .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 40 -font {Consolas 9}
+button .nb.ecdh_tab.main.keys_frame.content.openPublicButton -text "📂 Open" -command openPublicKeyECDH \
+    -bg "#3498db" -fg white -font {Arial 9 bold}
 
 grid .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -sticky ew -padx 3 -pady 3
+grid .nb.ecdh_tab.main.keys_frame.content.openPublicButton -row 1 -column 2 -sticky w -padx 3 -pady 3
 
 # Peer Key
 label .nb.ecdh_tab.main.keys_frame.content.peerKeyLabel -text "Peer Key:" -font {Arial 9 bold} -bg $frame_color
@@ -1910,6 +1918,11 @@ button .nb.ecdh_tab.main.keys_frame.content.openPeerKeyButton -text "📂 Open" 
 grid .nb.ecdh_tab.main.keys_frame.content.peerKeyLabel -row 2 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.peerKeyInput -row 2 -column 1 -sticky ew -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.openPeerKeyButton -row 2 -column 2 -sticky w -padx 3 -pady 3
+
+# Generate Keys button
+button .nb.ecdh_tab.main.keys_frame.content.generateButton -text "🔑 Generate Keys" -command generateECDHKey \
+    -bg "#27ae60" -fg white -font {Arial 10 bold} -pady 3
+grid .nb.ecdh_tab.main.keys_frame.content.generateButton -row 3 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 8
 
 # Configure column weights
 grid columnconfigure .nb.ecdh_tab.main.keys_frame.content 1 -weight 1
@@ -2468,7 +2481,7 @@ ttk::combobox .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -val
 .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
 
 # Create Curve ComboBox
-set ::curveComboData {"secp256r1" "secp384r1" "secp521r1" "secp256k1" "frp256v1" "kg256r1" "kg384r1" "tom256" "tom384" "brainpoolP256r1" "brainpoolP384r1" "brainpoolP512r1"}
+set ::curveComboData {"secp256r1" "secp384r1" "secp521r1" "secp256k1" "frp256v1" "kg256r1" "kg384r1" "tom256" "tom384" "brainpoolp256r1" "brainpoolp384r1" "brainpoolp512r1"}
 label .nb.signatures_tab.main.algo_frame.content.curveLabel -text "Curve:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.signatures_tab.main.algo_frame.content.curveCombo -values $::curveComboData -state readonly -width 12
 .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
