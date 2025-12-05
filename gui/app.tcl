@@ -78,7 +78,7 @@ proc showAbout {} {
         -font {Arial 9} -bg white
     pack .about_window.main.dev -pady 2
     
-    label .about_window.main.features -text "All-in-one Cryptographic Toolkit" \
+    label .about_window.main.features -text "All-in-One Cryptographic Toolkit" \
         -font {Arial 9} -bg white
     pack .about_window.main.features -pady 2
     
@@ -122,7 +122,7 @@ proc generateKey {} {
     # Execute key generation command with -pass nil
     if {[catch {
         # Usar flag -curve para algoritmos baseados em curvas elípticas
-        exec edgetk -pkey keygen -algorithm $algorithm -bits $bits -paramset $paramset -curve $curve -pass nil -prv $private_key_path -pub $public_key_path 2>@1
+        exec edgetk -pkey keygen -algorithm [string map {"ph" ""} $algorithm] -bits $bits -paramset $paramset -curve $curve -pass nil -prv $private_key_path -pub $public_key_path 2>@1
     } result]} {
         .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✗ Error generating keys:\n$result"
@@ -914,7 +914,7 @@ proc generateECDHKey {} {
     set paramset [.nb.ecdh_tab.main.algo_frame.content.paramsetCombo get]
 
     if {[catch {
-        exec edgetk -pkey keygen -algorithm $algorithm -bits $bits -paramset $paramset -pass - -prv $private_key_path -pub $public_key_path 2>@1
+        exec edgetk -pkey keygen -algorithm $algorithm -bits $bits -paramset $paramset -pass nil -prv $private_key_path -pub $public_key_path 2>@1
     } error]} {
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Error generating keys: $error"
@@ -1179,7 +1179,7 @@ proc calculateIVSize {algorithm mode} {
         "salsa20" - "chacha20" { set ivSize 48 }
     }
     switch $mode {
-        "ecb" - "gcm" - "ocb1" - "ocb3" - "mgm" - "ccm" - "eax" { set ivSize 0 }
+        "ecb" - "gcm" - "ocb1" - "ocb3" - "mgm" - "ccm" - "eax" - "siv" { set ivSize 0 }
     }
     if {$mode == "ige"} { set ivSize [expr {2 * $ivSize}] }
     return $ivSize
@@ -1209,9 +1209,17 @@ proc encrypt {} {
         .nb.text_tab.main.keys_frame.ivBox insert 0 $iv
     }
 
-    set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base64]
+    # Limpar área de saída
     .nb.text_tab.main.cipher_frame.textframe.text delete 1.0 end
-    .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 $encryptedMsg
+    
+    # Usar catch para capturar erros
+    if {[catch {
+        set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base64]
+        .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 $encryptedMsg
+    } errorMsg]} {
+        # Se houver erro, mostrar na área de saída (ciphertext)
+        .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 "✗ Error: $errorMsg"
+    }
 }
 
 proc decrypt {} {
@@ -1237,9 +1245,17 @@ proc decrypt {} {
         .nb.text_tab.main.keys_frame.ivBox insert 0 $iv
     }
 
-    set decryptedMsg [exec base64 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+    # Limpar área de saída
     .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
-    .nb.text_tab.main.plain_frame.textframe.text insert 1.0 $decryptedMsg
+    
+    # Usar catch para capturar erros
+    if {[catch {
+        set decryptedMsg [exec base64 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+        .nb.text_tab.main.plain_frame.textframe.text insert 1.0 $decryptedMsg
+    } errorMsg]} {
+        # Se houver erro, mostrar na área de saída (plaintext)
+        .nb.text_tab.main.plain_frame.textframe.text insert 1.0 "✗ Error: $errorMsg"
+    }
 }
 
 # Functions for file processing
@@ -1467,7 +1483,7 @@ ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
 
 label .nb.text_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
-    -values {"eax" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
+    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
 
@@ -1688,7 +1704,7 @@ ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
 
 label .nb.file_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.modeCombo \
-    -values {"eax" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
+    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
     -width 18 -state readonly
 .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
 
@@ -1865,13 +1881,13 @@ frame .nb.ecdh_tab.main.algo_frame.content -bg $frame_color
 pack .nb.ecdh_tab.main.algo_frame.content -fill x -padx 8 -pady 3
 
 # Create Algorithm ComboBox
-set ::algorithmComboData {"ecdsa" "sm2" "gost2012" "x25519" "x448"}
+set ::algorithmComboData {"ec" "anssi" "koblitz" "nums" "kg" "tom" "sm2" "gost2012" "x25519" "x448"}
 label .nb.ecdh_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.ecdh_tab.main.algo_frame.content.algorithmCombo -values $::algorithmComboData -state readonly -width 12
-.nb.ecdh_tab.main.algo_frame.content.algorithmCombo set "ecdsa"
+.nb.ecdh_tab.main.algo_frame.content.algorithmCombo set "ec"
 
 # Create Bits ComboBox
-set ::bitsComboData {"224" "256" "384" "512" "521"}
+set ::bitsComboData {"256" "384" "512"}
 label .nb.ecdh_tab.main.algo_frame.content.bitsLabel -text "Bits:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.ecdh_tab.main.algo_frame.content.bitsCombo -values $::bitsComboData -state readonly -width 8
 .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
@@ -2452,7 +2468,7 @@ frame .nb.signatures_tab.main.algo_frame.content -bg $frame_color
 pack .nb.signatures_tab.main.algo_frame.content -fill x -padx 8 -pady 3
 
 # Create Algorithm ComboBox
-set ::algorithmComboData {"ecdsa" "ecsdsa" "eckcdsa" "ecgdsa" "sm2" "gost2012" "rsa" "ed25519" "ed448" "ed521" "bign" "bip0340"}
+set ::algorithmComboData {"ecdsa" "ecsdsa" "eckcdsa" "ecgdsa" "sm2" "sm2ph" "gost2012" "rsa" "ed25519" "ed25519ph" "ed448" "ed448ph" "ed521" "ed521ph" "bign" "bip0340"}
 label .nb.signatures_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.signatures_tab.main.algo_frame.content.algorithmCombo -values $::algorithmComboData -state readonly -width 10
 .nb.signatures_tab.main.algo_frame.content.algorithmCombo set "ecdsa"
@@ -2466,7 +2482,7 @@ ttk::combobox .nb.signatures_tab.main.algo_frame.content.bitsCombo -values $::bi
 # Create Paramset ComboBox
 set ::paramsetComboData {"A" "B" "C" "D"}
 label .nb.signatures_tab.main.algo_frame.content.paramsetLabel -text "Paramset:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.paramsetCombo -values $::paramsetComboData -state readonly -width 6
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.paramsetCombo -values $::paramsetComboData -state readonly -width 5
 .nb.signatures_tab.main.algo_frame.content.paramsetCombo set "A"
 
 # Create Hash Algorithm ComboBox
@@ -2508,14 +2524,45 @@ set ::hashAlgorithmComboData {
     whirlpool
     xoodyak
 }
-label .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -text "Hash:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -values $::hashAlgorithmComboData -state readonly -width 10
+label .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -text "Digest:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -values $::hashAlgorithmComboData -state readonly -width 12
 .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
 
 # Create Curve ComboBox
-set ::curveComboData {"secp256r1" "secp384r1" "secp521r1" "secp256k1" "frp256v1" "kg256r1" "kg384r1" "tom256" "tom384" "brainpoolp256r1" "brainpoolp384r1" "brainpoolp512r1"}
+set ::curveComboData {
+    secp224r1
+    secp256r1
+    secp384r1
+    secp521r1
+    sect283r1
+    sect409r1
+    sect571r1
+    sect283k1
+    sect409k1
+    sect571k1
+    brainpoolp256r1
+    brainpoolp384r1
+    brainpoolp512r1
+    brainpoolp256t1
+    brainpoolp384t1
+    brainpoolp512t1
+    numsp256d1
+    numsp384d1
+    numsp512d1
+    numsp256t1
+    numsp384t1
+    numsp512t1
+    tom256
+    tom384
+    bls12381
+    kg256r1
+    kg384r1
+    frp256v1
+    secp256k1
+    sm2p256v1
+}
 label .nb.signatures_tab.main.algo_frame.content.curveLabel -text "Curve:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.curveCombo -values $::curveComboData -state readonly -width 12
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.curveCombo -values $::curveComboData -state readonly -width 14
 .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
 
 # Grid for algorithm settings - TODOS EM UMA LINHA
@@ -2523,12 +2570,12 @@ grid .nb.signatures_tab.main.algo_frame.content.algorithmLabel -row 0 -column 0 
 grid .nb.signatures_tab.main.algo_frame.content.algorithmCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
 grid .nb.signatures_tab.main.algo_frame.content.bitsLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
 grid .nb.signatures_tab.main.algo_frame.content.bitsCombo -row 0 -column 3 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.paramsetLabel -row 0 -column 4 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.paramsetCombo -row 0 -column 5 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -row 0 -column 6 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -row 0 -column 7 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.curveLabel -row 0 -column 8 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.curveCombo -row 0 -column 9 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.curveLabel -row 0 -column 4 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.curveCombo -row 0 -column 5 -sticky we -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.paramsetLabel -row 0 -column 6 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.paramsetCombo -row 0 -column 7 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -row 0 -column 8 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -row 0 -column 9 -sticky we -padx 3 -pady 3
 
 # Key management frame
 frame .nb.signatures_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
@@ -2694,6 +2741,120 @@ menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_h
 . configure -menu .menubar
 
 .menubar add command -label "About" -command showAbout -background $accent_color
+
+# Adicione ao menu
+.menubar add command -label "Debug" -command {
+    toplevel .debug_win
+    wm title .debug_win "Debug Information"
+    wm geometry .debug_win 600x450
+    
+    text .debug_win.text -width 80 -height 25 -wrap word
+    pack .debug_win.text -fill both -expand true -padx 10 -pady 10
+    
+    # Captura toda a saída de debug
+    .debug_win.text insert end "=== DEBUG INFO ===\n\n"
+    .debug_win.text insert end "Platform: $::tcl_platform(platform)\n"
+    .debug_win.text insert end "OS: $::tcl_platform(os)\n"
+    if {[info exists ::tcl_platform(osVersion)]} {
+        .debug_win.text insert end "OS Version: $::tcl_platform(osVersion)\n"
+    }
+    .debug_win.text insert end "Current dir: [pwd]\n"
+    .debug_win.text insert end "Tcl Version: [info patchlevel]\n"
+    
+    # Obter versão do Tk de forma compatível
+    if {[catch {package require Tk} tk_version]} {
+        .debug_win.text insert end "Tk Version: Not available\n"
+    } else {
+        if {[catch {tk version} tk_ver]} {
+            .debug_win.text insert end "Tk Version: $tk_version (loaded)\n"
+        } else {
+            .debug_win.text insert end "Tk Version: $tk_ver\n"
+        }
+    }
+    .debug_win.text insert end "\n"
+    
+    # Testa edgetk
+    .debug_win.text insert end "=== EDGETK INFO ===\n"
+    if {[catch {exec which edgetk} result]} {
+        .debug_win.text insert end "✗ edgetk not found in PATH\n"
+    } else {
+        .debug_win.text insert end "✓ edgetk found at: $result\n\n"
+        
+        # Tenta obter a versão do edgetk
+        .debug_win.text insert end "Trying to get edgetk version...\n"
+        if {[catch {exec edgetk -version} version_result]} {
+            # Se -version falhar, tenta --version ou outras opções
+            .debug_win.text insert end "✗ Error with 'edgetk -version': $version_result\n"
+            
+            # Tenta outras opções comuns de versão
+            set version_found 0
+            foreach version_flag {--version -v -V version} {
+                if {[catch {exec edgetk $version_flag 2>&1} alt_result]} {
+                    continue
+                } else {
+                    .debug_win.text insert end "✓ Version (using '$version_flag'):\n$alt_result\n"
+                    set version_found 1
+                    break
+                }
+            }
+            if {!$version_found} {
+                .debug_win.text insert end "✗ Could not determine edgetk version\n"
+            }
+        } else {
+            .debug_win.text insert end "✓ Version:\n$version_result\n"
+        }
+     }
+    
+    # Informações de sistema
+    .debug_win.text insert end "\n=== SYSTEM INFO ===\n"
+    if {[file exists "/proc/cpuinfo"]} {
+        if {![catch {exec grep -m 1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2} cpu_info]} {
+            .debug_win.text insert end "CPU: [string trim $cpu_info]\n"
+        }
+        if {![catch {exec grep -c ^processor /proc/cpuinfo 2>/dev/null} cpu_cores]} {
+            .debug_win.text insert end "CPU Cores: [string trim $cpu_cores]\n"
+        }
+    } elseif {$::tcl_platform(platform) eq "windows"} {
+        if {![catch {exec wmic cpu get name 2>/dev/null | findstr /v "Name"} cpu_info]} {
+            .debug_win.text insert end "CPU: [string trim $cpu_info]\n"
+        }
+    }
+    
+    if {![catch {exec free -h 2>/dev/null | grep Mem: | awk '{print $2}'} mem_total]} {
+        .debug_win.text insert end "Memory Total: [string trim $mem_total]\n"
+    } elseif {$::tcl_platform(platform) eq "windows"} {
+        if {![catch {exec wmic OS get TotalVisibleMemorySize 2>/dev/null | findstr /v "TotalVisibleMemorySize"} mem_bytes]} {
+            set mem_mb [expr {[string trim $mem_bytes] / 1024.0 / 1024.0}]
+            .debug_win.text insert end "Memory Total: [format "%.1f" $mem_mb] GB\n"
+        }
+    }
+    
+    # Informações de ambiente
+    .debug_win.text insert end "\n=== ENVIRONMENT ===\n"
+    if {[info exists ::env(PATH)]} {
+        .debug_win.text insert end "PATH: $::env(PATH)\n"
+    } else {
+        .debug_win.text insert end "PATH: Not set\n"
+    }
+    
+    # Adiciona botão para copiar debug info
+    frame .debug_win.buttons -bg $bg_color
+    pack .debug_win.buttons -fill x -padx 10 -pady 5
+    
+    button .debug_win.buttons.copy -text "📋 Copy Debug Info" -command {
+        set debug_text [.debug_win.text get 1.0 end]
+        clipboard clear
+        clipboard append $debug_text
+    } -bg "#3498db" -fg white -font {Arial 9 bold}
+    pack .debug_win.buttons.copy -side left -padx 5
+    
+    button .debug_win.buttons.close -text "Close" -command {destroy .debug_win} \
+        -bg "#e74c3c" -fg white -font {Arial 9 bold}
+    pack .debug_win.buttons.close -side right -padx 5
+    
+    # Rola para o topo
+    .debug_win.text see 1.0
+}
 
 # Footer
 frame .footer -bg $accent_color -height 25
