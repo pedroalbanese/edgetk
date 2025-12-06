@@ -116,7 +116,8 @@ proc generateKey {} {
     set current_dir [pwd]
     
     # Gerar nomes de arquivo únicos
-    set algo_upper [string toupper $algorithm]
+    set clean_algo [string map {"ph" ""} $algorithm]
+    set algo_upper [string toupper $clean_algo]
     
     # Encontrar um nome disponível para a chave privada
     set counter 1
