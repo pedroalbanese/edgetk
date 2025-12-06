@@ -935,11 +935,11 @@ proc updateFilesUI {} {
     }
     
     set stream_ciphers {
-        chacha20 hc128 hc256 rc4 salsa20 zuc128 zuc256
+        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 zuc128 zuc256 xoodyak
     }
     
     set aead_ciphers {
-        chacha20poly1305
+        chacha20poly1305 ascon grain xoodyak
     }
     
     # Cifras de 64 bits (tamanho do bloco)
@@ -1708,11 +1708,6 @@ proc deriveECDHKey {} {
     if {[catch {
         set result [exec edgetk -pkey derive -algorithm $algorithm -key $private_key_path -pass $passphrase -pub $peer_key_path 2>@1]
         
-        # Truncar a chave resultante para o tamanho desejado (se necessário)
-        if {$outputKeySize > 0} {
-            set result [string range $result 0 [expr {$outputKeySize * 2 - 1}]]
-        }
-        
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Shared Secret Derived Successfully:\n\n$result"
     } error]} {
@@ -2463,7 +2458,7 @@ selectInputType
 frame .nb.signatures_tab.main.output_frame -bg $frame_color -relief solid -bd 1
 pack .nb.signatures_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
 
-label .nb.signatures_tab.main.output_frame.title -text "SIGNATURE OUTPUT" -font {Arial 10 bold} -bg $frame_color
+label .nb.signatures_tab.main.output_frame.title -text "SIGNATURE" -font {Arial 10 bold} -bg $frame_color
 pack .nb.signatures_tab.main.output_frame.title -anchor w -padx 8 -pady 3
 
 # Create output text area - 2 LINHAS PARA ASSINATURA
@@ -2491,6 +2486,12 @@ button .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -text "�
     copyText [.nb.signatures_tab.main.output_frame.textframe.outputArea get 1.0 end]
 } -bg "#3498db" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
+
+button .nb.signatures_tab.main.output_frame.utility_buttons.pasteButton -text "📥 Paste" -command {
+    .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    .nb.signatures_tab.main.output_frame.textframe.outputArea insert end [clipboard get]
+} -bg "#e67e22" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.signatures_tab.main.output_frame.utility_buttons.pasteButton -side left -padx 2
 
 button .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -text "🗑️ Clear" -command {
     .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
