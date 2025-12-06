@@ -115,14 +115,34 @@ proc generateKey {} {
     # Get current directory
     set current_dir [pwd]
     
-    # Set default file names with full paths
-    set private_key_path [file join $current_dir "Private.pem"]
-    set public_key_path [file join $current_dir "Public.pem"]
+    # Gerar nomes de arquivo únicos
+    set algo_upper [string toupper $algorithm]
+    
+    # Encontrar um nome disponível para a chave privada
+    set counter 1
+    set base_private_name "${algo_upper}_Private"
+    set private_key_path [file join $current_dir "${base_private_name}.pem"]
+    
+    while {[file exists $private_key_path]} {
+        set private_key_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+        incr counter
+    }
+    
+    # Resetar contador para chave pública
+    set counter 1
+    set base_public_name "${algo_upper}_Public"
+    set public_key_path [file join $current_dir "${base_public_name}.pem"]
+    
+    while {[file exists $public_key_path]} {
+        set public_key_path [file join $current_dir "${base_public_name}_${counter}.pem"]
+        incr counter
+    }
     
     # Update entry fields with full paths
     .nb.signatures_tab.main.keys_frame.content.privateKeyInput delete 0 end
     .nb.signatures_tab.main.keys_frame.content.privateKeyInput insert 0 $private_key_path
     
+    .nb.signatures_tab.main.keys_frame.content.publicKeyInput configure -state normal
     .nb.signatures_tab.main.keys_frame.content.publicKeyInput delete 0 end
     .nb.signatures_tab.main.keys_frame.content.publicKeyInput insert 0 $public_key_path
     
@@ -137,8 +157,8 @@ proc generateKey {} {
         # Show result in output area
         .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✓ Key pair generated successfully!\n\n"
-        .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "Private key: $private_key_path\n"
-        .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "Public key: $public_key_path"
+        .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "Private key: [file tail $private_key_path]\n"
+        .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "Public key: [file tail $public_key_path]"
     }
 }
 
@@ -1602,8 +1622,6 @@ proc openPeerKey {} {
 
 # Função para gerar a chave
 proc generateECDHKey {} {
-    set private_key_path [file join [pwd] "Private.pem"]
-    set public_key_path [file join [pwd] "Public.pem"]
     set algorithm [.nb.ecdh_tab.main.algo_frame.content.algorithmCombo get]
     set bits [.nb.ecdh_tab.main.algo_frame.content.bitsCombo get]
     set paramset [.nb.ecdh_tab.main.algo_frame.content.paramsetCombo get]
@@ -1613,6 +1631,32 @@ proc generateECDHKey {} {
     # Se passphrase estiver vazia, usar "nil"
     if {$passphrase eq ""} {
         set passphrase "nil"
+    }
+    
+    # Get current directory
+    set current_dir [pwd]
+    
+    # Gerar nomes de arquivo únicos
+    set algo_upper [string toupper $algorithm]
+    
+    # Encontrar um nome disponível para a chave privada
+    set counter 1
+    set base_private_name "${algo_upper}_Private"
+    set private_key_path [file join $current_dir "${base_private_name}.pem"]
+    
+    while {[file exists $private_key_path]} {
+        set private_key_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+        incr counter
+    }
+    
+    # Resetar contador para chave pública
+    set counter 1
+    set base_public_name "${algo_upper}_Public"
+    set public_key_path [file join $current_dir "${base_public_name}.pem"]
+    
+    while {[file exists $public_key_path]} {
+        set public_key_path [file join $current_dir "${base_public_name}_${counter}.pem"]
+        incr counter
     }
     
     if {[catch {
@@ -1632,7 +1676,7 @@ proc generateECDHKey {} {
     .nb.ecdh_tab.main.keys_frame.content.publicKeyInput configure -state disabled
     
     .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
-    .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Keys generated successfully!\nPrivate key saved as: Private.pem\nPublic key saved as: Public.pem"
+    .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Keys generated successfully!\nPrivate key saved as: [file tail $private_key_path]\nPublic key saved as: [file tail $public_key_path]"
 }
 
 # Função para derivar a chave
