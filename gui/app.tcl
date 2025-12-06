@@ -12,8 +12,8 @@ set text_bg "#ffffff"
 set signature_data ""
 set useKDFAlgorithm 0
 set useKDFAlgorithmFiles 0
-set iterValue 10000
-set iterValueFiles 10000
+set iterValue 24000
+set iterValueFiles 24000
 
 # ===== FUNÇÕES COMPARTILHADAS =====
 
@@ -423,6 +423,557 @@ proc updateAlgorithmUI {} {
     }
 }
 
+# Função para atualizar a UI da aba de assinaturas baseada no algoritmo selecionado
+proc updateSignatureUI {} {
+    set algorithm [.nb.signatures_tab.main.algo_frame.content.algorithmCombo get]
+    
+    # Definir quais algoritmos têm tamanho fixo
+    set fixed_size_algorithms {ed25519 ed25519ph ed448 ed448ph ed521 ed521ph x25519 x448 sm2 sm2ph bip0340}
+    # GOST2012 NÃO está aqui porque ele usa tamanhos
+    
+    # Definir quais algoritmos usam paramset
+    set paramset_algorithms {gost2012}
+    
+    # Definir quais algoritmos não precisam de hash (pré-hash)
+    # SM2 não usa hash externo (usa hash interno fixo)
+    # Versões sem "ph" (pre-hash) também não usam hash externo
+    set no_hash_algorithms {ed25519 ed448 ed521 sm2}
+    
+    # Definir quais algoritmos não usam curva
+    # GOST2012 NÃO usa curva - apenas size e paramset
+    set no_curve_algorithms {ed25519 ed25519ph ed448 ed448ph ed521 ed521ph rsa bign sm2 sm2ph gost2012}
+    
+    # Lista COMPLETA de todos os hashes disponíveis no sistema
+    set all_hash_algorithms {
+        bash224 bash256 bash384 bash512
+        belt
+        blake2b256 blake2b512
+        blake2s128 blake2s256
+        blake3
+        bmw224 bmw256 bmw384 bmw512
+        cubehash256 cubehash512
+        echo224 echo256 echo384 echo512
+        esch256 esch384
+        fugue224 fugue256 fugue384 fugue512
+        fugue512
+        gost94
+        groestl224 groestl256 groestl384 groestl512
+        hamsi224 hamsi256 hamsi384 hamsi512
+        has160
+       jh224 jh256 jh384 jh512
+        keccak256 keccak512
+        kupyna256 kupyna384 kupyna512
+        lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
+        luffa224 luffa256 luffa384 luffa512
+        md4 md5
+        md6-224 md6-256 md6-384 md6-512
+        radiogatun32 radiogatun64
+        ripemd128 ripemd160 ripemd256 ripemd320
+        sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
+        sha512-256
+        shake128 shake256
+        shavite224 shavite256 shavite384 shavite512
+        simd224 simd256 simd384 simd512
+        siphash64 siphash
+        skein256 skein512
+        sm3
+        streebog256 streebog512
+        tiger tiger2
+        whirlpool
+        xoodyak
+    }
+    
+    # Lista de hashes compatíveis apenas com RSA
+    set rsa_hash_algorithms {md5 sha256 sha384 sha512 ripemd160}
+    
+    # 1. Controle do combo box bits (tamanho)
+    if {[lsearch $fixed_size_algorithms $algorithm] >= 0} {
+        # Algoritmo com tamanho fixo - desabilitar bits combo
+        .nb.signatures_tab.main.algo_frame.content.bitsLabel configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -background "#f0f0f0"
+    } else {
+        # Algoritmo com tamanho variável - habilitar bits combo
+        .nb.signatures_tab.main.algo_frame.content.bitsLabel configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -background "white"
+    }
+    
+    # 2. Controle do combo box paramset
+    if {[lsearch $paramset_algorithms $algorithm] >= 0} {
+        # GOST2012 precisa de paramset - habilitar
+        .nb.signatures_tab.main.algo_frame.content.paramsetLabel configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.paramsetCombo configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.paramsetCombo configure -background "white"
+    } else {
+        # Outros algoritmos não usam paramset - desabilitar
+        .nb.signatures_tab.main.algo_frame.content.paramsetLabel configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.paramsetCombo configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.paramsetCombo configure -background "#f0f0f0"
+    }
+    
+    # 3. Controle do combo box hash (digest)
+    if {[lsearch $no_hash_algorithms $algorithm] >= 0} {
+        # Algoritmos que não usam hash externo - desabilitar hash
+        .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -background "#f0f0f0"
+    } else {
+        # Algoritmos que precisam de hash - habilitar hash
+        .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -background "white"
+        
+        # Controlar quais hashes estão disponíveis
+        if {$algorithm eq "rsa"} {
+            # APENAS para RSA: usar lista reduzida de hashes
+            .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -values $rsa_hash_algorithms
+            .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha256"
+        } else {
+            # Para TODOS os outros algoritmos: restaurar lista COMPLETA de hashes
+            .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -values $all_hash_algorithms
+            
+            # Definir hash padrão baseado no algoritmo
+            if {$algorithm eq "sm2ph"} {
+                # SM2ph usa SM3 como hash padrão
+                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sm3"
+            } elseif {$algorithm eq "bign"} {
+                # BIGN: sha256 como padrão
+                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "bash256"
+            } elseif {$algorithm eq "gost2012"} {
+                # BIGN: sha256 como padrão
+                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "streebog256"
+            } else {
+                # Para ECDSA e outros: sha256 como padrão
+                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
+            }
+        }
+    }
+    
+    # 4. Controle do combo box curva
+    if {[lsearch $no_curve_algorithms $algorithm] >= 0} {
+        # Algoritmos que não usam curva - desabilitar curva
+        .nb.signatures_tab.main.algo_frame.content.curveLabel configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.curveCombo configure -state disabled
+        .nb.signatures_tab.main.algo_frame.content.curveCombo configure -background "#f0f0f0"
+    } else {
+        # Algoritmos que usam curva - habilitar curva
+        .nb.signatures_tab.main.algo_frame.content.curveLabel configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.curveCombo configure -state normal
+        .nb.signatures_tab.main.algo_frame.content.curveCombo configure -background "white"
+        
+        # Lista completa de todas as curvas disponíveis (assumindo estas são as disponíveis)
+        set all_curves {
+            secp224r1
+            secp256r1
+            secp384r1
+            secp521r1
+            sect283r1
+            sect409r1
+            sect571r1
+            sect283k1
+            sect409k1
+            sect571k1
+            brainpoolp256r1
+            brainpoolp384r1
+            brainpoolp512r1
+            brainpoolp256t1
+            brainpoolp384t1
+            brainpoolp512t1
+            numsp256d1
+            numsp384d1
+            numsp512d1
+            numsp256t1
+            numsp384t1
+            numsp512t1
+            tom256
+            tom384
+            kg256r1
+            kg384r1
+            frp256v1
+            secp256k1
+            sm2p256v1
+        }
+        
+        # Filtrar curvas baseado no algoritmo
+        if {$algorithm eq "ecdsa"} {
+            # Para ECDSA: remover sect e brainpool
+            set filtered_curves {}
+            foreach curve $all_curves {
+                if {![string match "sect*" $curve] && ![string match "brainpool*" $curve]} {
+                    lappend filtered_curves $curve
+                }
+            }
+            .nb.signatures_tab.main.algo_frame.content.curveCombo configure -values $filtered_curves
+            .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
+            
+        } elseif {$algorithm in {"bip0340" "ecsda" "ecgdsa" "eckcdsa"}} {
+            # Para BIP0340, ECSDA, ECGDS e ECKCDSA: remover kg e sm2
+            set filtered_curves {}
+            foreach curve $all_curves {
+                if {![string match "kg*" $curve] && ![string match "sm2*" $curve]} {
+                    lappend filtered_curves $curve
+                }
+            }
+            .nb.signatures_tab.main.algo_frame.content.curveCombo configure -values $filtered_curves
+            
+            # Definir curva padrão baseada no algoritmo
+            if {$algorithm eq "bip0340"} {
+                .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256k1"
+            } else {
+                .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
+            }
+            
+        } else {
+            # Para outros algoritmos que usam curva: mostrar todas as curvas
+            .nb.signatures_tab.main.algo_frame.content.curveCombo configure -values $all_curves
+            .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
+        }
+    }
+    
+    # 5. Atualizar valores disponíveis no bits combo baseado no algoritmo
+    if {[string match "rsa*" $algorithm] || $algorithm eq "bign"} {
+        # RSA e BIGN usam bits diferentes
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {1024 2048 3072 4096}
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "2048"
+    } elseif {[string match "ed*" $algorithm]} {
+        # EdDSA tem tamanhos fixos baseados no algoritmo
+        if {[string match "*25519*" $algorithm]} {
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        } elseif {[string match "*448*" $algorithm]} {
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "448"
+        } elseif {[string match "*521*" $algorithm]} {
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "521"
+        }
+    } elseif {$algorithm eq "sm2" || $algorithm eq "sm2ph"} {
+        # SM2 tem tamanho fixo 256
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+    } elseif {$algorithm eq "gost2012"} {
+        # GOST tem tamanho fixo 256, mas permite seleção
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {256 512}
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+    } else {
+        # ECDSA e variantes usam estes tamanhos
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {224 256 384 512 521}
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+    }
+    
+    # 6. Atualizar curva padrão baseada no algoritmo
+    if {$algorithm eq "bip0340"} {
+        .nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256k1"
+    }
+}
+
+# Função para atualizar a UI da aba ECDH baseada no algoritmo selecionado
+proc updateECDHUI {} {
+    set algorithm [.nb.ecdh_tab.main.algo_frame.content.algorithmCombo get]
+    
+    # Definir quais algoritmos ECDH têm tamanho fixo
+    set fixed_size_algorithms {x25519 x448 sm2}
+    # x25519 e x448 têm tamanho fixo, SM2 também
+    
+    # Definir quais algoritmos usam paramset (APENAS GOST2012)
+    set paramset_algorithms {gost2012}
+    
+    # 1. Controle do combo box bits (tamanho)
+    if {[lsearch $fixed_size_algorithms $algorithm] >= 0} {
+        # Algoritmo com tamanho fixo - desabilitar bits combo
+        .nb.ecdh_tab.main.algo_frame.content.bitsLabel configure -state disabled
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -state disabled
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -background "#f0f0f0"
+    } elseif {$algorithm in {"anssi" "koblitz"}} {
+        # Para ANSI ou Koblitz, desabilitar completamente (esmaecer size)
+        .nb.ecdh_tab.main.algo_frame.content.bitsLabel configure -state disabled
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -state disabled
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -background "#f0f0f0"
+    } else {
+        # Algoritmo com tamanho variável - habilitar bits combo
+        .nb.ecdh_tab.main.algo_frame.content.bitsLabel configure -state normal
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -state normal
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -background "white"
+    }
+    
+    # 2. Controle do combo box paramset
+    if {[lsearch $paramset_algorithms $algorithm] >= 0} {
+        # APENAS GOST2012 usa paramset - habilitar paramset
+        .nb.ecdh_tab.main.algo_frame.content.paramsetLabel configure -state normal
+        .nb.ecdh_tab.main.algo_frame.content.paramsetCombo configure -state normal
+        .nb.ecdh_tab.main.algo_frame.content.paramsetCombo configure -background "white"
+    } else {
+        # Todos os outros algoritmos NÃO usam paramset - desabilitar paramset
+        .nb.ecdh_tab.main.algo_frame.content.paramsetLabel configure -state disabled
+        .nb.ecdh_tab.main.algo_frame.content.paramsetCombo configure -state disabled
+        .nb.ecdh_tab.main.algo_frame.content.paramsetCombo configure -background "#f0f0f0"
+    }
+    
+    # 3. Atualizar valores disponíveis no bits combo baseado no algoritmo
+    if {$algorithm eq "x25519"} {
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    } elseif {$algorithm eq "x448"} {
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "448"
+    } elseif {$algorithm eq "sm2"} {
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    } elseif {$algorithm eq "gost2012"} {
+        # Para GOST2012, permitir apenas 256 e 512
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -values {256 512}
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    } elseif {$algorithm eq "ec"} {
+        # Para EC, permitir apenas 256 e 384
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -values {256 384}
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    } elseif {$algorithm in {"tom" "kg"}} {
+        # Para TOM e KG, apenas 256 e 384
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -values {256 384}
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    } elseif {$algorithm in {"anssi" "koblitz"}} {
+        # Para ANSI ou Koblitz, definir valores mas desabilitado
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -values {256 384 512}
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    } else {
+        # Para outros algoritmos (nums, etc.)
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo configure -values {256 384 512}
+        .nb.ecdh_tab.main.algo_frame.content.bitsCombo set "256"
+    }
+}
+
+# ===== FUNÇÕES PARA AS DUAS PRIMEIRAS ABAS =====
+
+# Função para atualizar a UI da aba de texto baseada no algoritmo selecionado
+proc updateTextUI {} {
+    set algorithm [.nb.text_tab.main.algo_frame.row1.algorithmCombo get]
+    set mode [.nb.text_tab.main.algo_frame.row1.modeCombo get]
+    set useKDF $::useKDFAlgorithm
+    
+    # Definir quais algoritmos são de bloco, fluxo ou AEAD
+    set block_ciphers {
+        3des aes anubis aria belt blowfish camellia cast5 cast256 clefia
+        crypton curupira e2 gost89 hight idea kalyna128_128 kalyna128_256
+        kalyna256_256 kalyna512_512 khazad kuznechik lea loki97 magma
+        magenta mars misty1 noekeon present rc2 rc5 rc6 safer+ seed
+        serpent shacal2 sm4 threefish threefish512 threefish1024 twine twofish
+    }
+    
+    set stream_ciphers {
+        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 zuc128 zuc256 xoodyak
+    }
+    
+    set aead_ciphers {
+        chacha20poly1305 ascon grain xoodyak
+    }
+    
+    # 1. Controle do combo box Mode
+    if {$algorithm in $stream_ciphers} {
+        # Cifras de fluxo: desabilitar mode
+        .nb.text_tab.main.algo_frame.row1.modeLabel configure -state disabled
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -state disabled
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
+        
+        # Para cifras de fluxo, definir o modo automaticamente
+        if {$algorithm eq "rc4"} {
+            .nb.text_tab.main.algo_frame.row1.modeCombo set "ecb"
+        } else {
+            .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
+        }
+    } elseif {$algorithm eq "xoodyak"} {
+        # Xoodyak (permutação): modo fixo
+        .nb.text_tab.main.algo_frame.row1.modeLabel configure -state disabled
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -state disabled
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
+        .nb.text_tab.main.algo_frame.row1.modeCombo set "siv"
+    } else {
+        # Cifras de bloco: habilitar mode
+        .nb.text_tab.main.algo_frame.row1.modeLabel configure -state normal
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -state normal
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -background "white"
+        
+        # Definir modos disponíveis baseado na cifra
+        if {$algorithm eq "curupira"} {
+            # Para Curupira: apenas lettersoup e eax
+            .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        } else {
+            # Para outras cifras: todos os modos menos lettersoup
+            .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        }
+    }
+    
+    # 2. Controle dos campos KDF
+    if {$useKDF} {
+        # KDF ativo: habilitar campos
+        .nb.text_tab.main.algo_frame.row2.saltLabel configure -state normal
+        .nb.text_tab.main.algo_frame.row2.saltBox configure -state normal
+        .nb.text_tab.main.algo_frame.row2.saltBox configure -background "white"
+        
+        .nb.text_tab.main.algo_frame.row2.iterLabel configure -state normal
+        .nb.text_tab.main.algo_frame.row2.iterBox configure -state normal
+        .nb.text_tab.main.algo_frame.row2.iterBox configure -background "white"
+        
+        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state normal
+        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "white"
+    } else {
+        # KDF inativo: desabilitar campos
+        .nb.text_tab.main.algo_frame.row2.saltLabel configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.saltBox configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.saltBox configure -background "#f0f0f0"
+        
+        .nb.text_tab.main.algo_frame.row2.iterLabel configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.iterBox configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.iterBox configure -background "#f0f0f0"
+        
+        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "#f0f0f0"
+    }
+    
+    # 3. Controle do campo IV
+    # Definir modos AEAD que não usam IV
+    set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
+    
+    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes} {
+        # Cifras AEAD ou modos AEAD: desabilitar IV
+        .nb.text_tab.main.keys_frame.ivLabel configure -state disabled
+        .nb.text_tab.main.keys_frame.ivBox configure -state disabled
+        .nb.text_tab.main.keys_frame.ivBox configure -background "#f0f0f0"
+    } else {
+        # Outros casos: habilitar IV
+        .nb.text_tab.main.keys_frame.ivLabel configure -state normal
+        .nb.text_tab.main.keys_frame.ivBox configure -state normal
+        .nb.text_tab.main.keys_frame.ivBox configure -background "white"
+    }
+}
+
+# Função para atualizar a UI da aba de arquivos baseada no algoritmo selecionado
+proc updateFilesUI {} {
+    set algorithm [.nb.file_tab.main.algo_frame.row1.algorithmCombo get]
+    set mode [.nb.file_tab.main.algo_frame.row1.modeCombo get]
+    set useKDF $::useKDFAlgorithmFiles
+    
+    # Definir quais algoritmos são de bloco, fluxo ou AEAD
+    set block_ciphers {
+        3des aes anubis aria belt blowfish camellia cast5 cast256 clefia
+        crypton curupira e2 gost89 hight idea kalyna128_128 kalyna128_256
+        kalyna256_256 kalyna512_512 khazad kuznechik lea loki97 magma
+        magenta mars misty1 noekeon present rc2 rc5 rc6 safer+ seed
+        serpent shacal2 sm4 threefish threefish512 threefish1024 twine twofish
+    }
+    
+    set stream_ciphers {
+        chacha20 hc128 hc256 rc4 salsa20 zuc128 zuc256
+    }
+    
+    set aead_ciphers {
+        chacha20poly1305
+    }
+    
+    # 1. Controle do combo box Mode
+    if {$algorithm in $stream_ciphers} {
+        # Cifras de fluxo: desabilitar mode
+        .nb.file_tab.main.algo_frame.row1.modeLabel configure -state disabled
+        .nb.file_tab.main.algo_frame.row1.modeCombo configure -state disabled
+        .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
+        
+        # Para cifras de fluxo, definir o modo automaticamente
+        if {$algorithm eq "rc4"} {
+            .nb.file_tab.main.algo_frame.row1.modeCombo set "ecb"
+        } else {
+            .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
+        }
+    } elseif {$algorithm eq "xoodyak"} {
+        # Xoodyak (permutação): modo fixo
+        .nb.file_tab.main.algo_frame.row1.modeLabel configure -state disabled
+        .nb.file_tab.main.algo_frame.row1.modeCombo configure -state disabled
+        .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
+        .nb.file_tab.main.algo_frame.row1.modeCombo set "siv"
+    } else {
+        # Cifras de bloco: habilitar mode
+        .nb.file_tab.main.algo_frame.row1.modeLabel configure -state normal
+        .nb.file_tab.main.algo_frame.row1.modeCombo configure -state normal
+        .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "white"
+        
+        # Definir modos disponíveis baseado na cifra
+        if {$algorithm eq "curupira"} {
+            # Para Curupira: apenas lettersoup e eax
+            .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        } else {
+            # Para outras cifras: todos os modos menos lettersoup
+            .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        }
+    }
+    
+    # 2. Controle dos campos KDF
+    if {$useKDF} {
+        # KDF ativo: habilitar campos
+        .nb.file_tab.main.algo_frame.row2.saltLabel configure -state normal
+        .nb.file_tab.main.algo_frame.row2.saltBox configure -state normal
+        .nb.file_tab.main.algo_frame.row2.saltBox configure -background "white"
+        
+        .nb.file_tab.main.algo_frame.row2.iterLabel configure -state normal
+        .nb.file_tab.main.algo_frame.row2.iterBox configure -state normal
+        .nb.file_tab.main.algo_frame.row2.iterBox configure -background "white"
+        
+        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state normal
+        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "white"
+    } else {
+        # KDF inativo: desabilitar campos
+        .nb.file_tab.main.algo_frame.row2.saltLabel configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.saltBox configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.saltBox configure -background "#f0f0f0"
+        
+        .nb.file_tab.main.algo_frame.row2.iterLabel configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.iterBox configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.iterBox configure -background "white"
+        
+        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "#f0f0f0"
+    }
+    
+    # 3. Controle do campo IV
+    # Definir modos AEAD que não usam IV
+    set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
+    
+    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes} {
+        # Cifras AEAD ou modos AEAD: desabilitar IV
+        .nb.file_tab.main.keys_frame.ivLabel configure -state disabled
+        .nb.file_tab.main.keys_frame.ivBox configure -state disabled
+        .nb.file_tab.main.keys_frame.ivBox configure -background "#f0f0f0"
+    } else {
+        # Outros casos: habilitar IV
+        .nb.file_tab.main.keys_frame.ivLabel configure -state normal
+        .nb.file_tab.main.keys_frame.ivBox configure -state normal
+        .nb.file_tab.main.keys_frame.ivBox configure -background "white"
+    }
+}
+
+# Função para atualizar quando o KDF é alterado (Text)
+proc updateKDFText {} {
+    updateKeyEntryDisplay
+    updateTextUI
+}
+
+# Função para atualizar quando o KDF é alterado (Files)
+proc updateKDFFiles {} {
+    updateKeyEntryDisplayFiles
+    updateFilesUI
+}
+
+# Função para atualizar quando o algoritmo é alterado (Text)
+proc updateAlgorithmText {} {
+    updateTextUI
+}
+
+# Função para atualizar quando o algoritmo é alterado (Files)
+proc updateAlgorithmFiles {} {
+    updateFilesUI
+}
+
+# Função para atualizar quando o modo é alterado (Text)
+proc updateModeText {} {
+    updateTextUI
+}
+
+# Função para atualizar quando o modo é alterado (Files)
+proc updateModeFiles {} {
+    updateFilesUI
+}
+
 # Function to calculate MAC, HMAC, or CMAC for text
 proc calculateMAC {} {
     set algorithm [.nb.mac_tab.main.algo_frame.content.algorithmCombo get]
@@ -450,7 +1001,6 @@ proc calculateMAC {} {
                 "blowfish" -
                 "cast5" -
                 "cast256" -
-                "curupira" -
                 "hight" -
                 "idea" -
                 "misty1" -
@@ -465,6 +1015,9 @@ proc calculateMAC {} {
                 "kalyna128_128" -
                 "twine" {
                     set keySize 16
+                }
+                "curupira" {
+                    set keySize 24
                 }
                 "aes" -
                 "anubis" -
@@ -521,7 +1074,6 @@ proc calculateMAC {} {
                 "blowfish" -
                 "cast5" -
                 "cast256" -
-                "curupira" -
                 "hight" -
                 "idea" -
                 "misty1" -
@@ -536,6 +1088,9 @@ proc calculateMAC {} {
                 "kalyna128_128" -
                 "twine" {
                     set keySize 16
+                }
+                "curupira" {
+                    set keySize 24
                 }
                 "aes" -
                 "anubis" -
@@ -684,7 +1239,6 @@ proc calculateMACFile {} {
                     "blowfish" -
                     "cast5" -
                     "cast256" -
-                    "curupira" -
                     "hight" -
                     "idea" -
                     "misty1" -
@@ -699,6 +1253,9 @@ proc calculateMACFile {} {
                     "kalyna128_128" -
                     "twine" {
                         set keySize 16
+                    }
+                    "curupira" {
+                        set keySize 24
                     }
                     "aes" -
                     "anubis" -
@@ -755,7 +1312,6 @@ proc calculateMACFile {} {
                     "blowfish" -
                     "cast5" -
                     "cast256" -
-                    "curupira" -
                     "hight" -
                     "idea" -
                     "misty1" -
@@ -770,6 +1326,9 @@ proc calculateMACFile {} {
                     "kalyna128_128" -
                     "twine" {
                         set keySize 16
+                    }
+                    "curupira" {
+                        set keySize 24
                     }
                     "aes" -
                     "anubis" -
@@ -1170,7 +1729,8 @@ proc updateKeyEntryDisplayFiles {} {
 proc calculateIVSize {algorithm mode} {
     set ivSize 32
     switch $algorithm {
-        "3des" - "blowfish" - "cast5" - "gost89" - "idea" - "magma" - "misty1" - "rc2" - "rc5" { set ivSize 16 }
+        "3des" - "blowfish" - "cast5" - "gost89" - "idea" - "magma" - "misty1" - "rc2" - "rc5" - "twine" - "present" { set ivSize 16 }
+        "curupira" { set ivSize 24 }
         "aes" - "serpent" - "aria" - "lea" - "anubis" - "twofish" - "sm4" - "camellia" - "kuznechik" - "seed" - "hc128" - "zuc128" { set ivSize 32 }
         "zuc256" { set ivSize 46 }
         "hc256" - "skein512" - "threefish" - "kalyna256_256" - "shacal2" { set ivSize 64 }
@@ -1179,7 +1739,7 @@ proc calculateIVSize {algorithm mode} {
         "salsa20" - "chacha20" { set ivSize 48 }
     }
     switch $mode {
-        "ecb" - "gcm" - "ocb1" - "ocb3" - "mgm" - "ccm" - "eax" - "siv" { set ivSize 0 }
+        "ecb" - "gcm" - "ocb1" - "ocb3" - "mgm" - "ccm" - "eax" - "siv" - "lettersoup" { set ivSize 0 }
     }
     if {$mode == "ige"} { set ivSize [expr {2 * $ivSize}] }
     return $ivSize
@@ -1477,13 +2037,13 @@ pack .nb.text_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.text_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "gost89" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein512" "sm4" "threefish" "threefish512" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein512" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
 label .nb.text_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
-    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
+    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
 
@@ -1503,7 +2063,7 @@ entry .nb.text_tab.main.algo_frame.row2.saltBox -width 12 -font {Arial 9}
 
 label .nb.text_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.text_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValue
-set ::iterValue 10000
+set ::iterValue 24000
 
 set hashAlgorithms {
     bash224 bash256 bash384 bash512
@@ -1698,13 +2258,13 @@ pack .nb.file_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.file_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "gost89" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein512" "sm4" "threefish" "threefish512" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein512" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.file_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
 label .nb.file_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.modeCombo \
-    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
+    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
     -width 18 -state readonly
 .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
 
@@ -1724,7 +2284,7 @@ entry .nb.file_tab.main.algo_frame.row2.saltBox -width 12 -font {Arial 9}
 
 label .nb.file_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.file_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValueFiles
-set ::iterValueFiles 10000
+set ::iterValueFiles 24000
 
 set hashAlgorithms {
     bash224 bash256 bash384 bash512
@@ -2554,7 +3114,6 @@ set ::curveComboData {
     numsp512t1
     tom256
     tom384
-    bls12381
     kg256r1
     kg384r1
     frp256v1
@@ -2873,11 +3432,28 @@ grid columnconfigure .nb.signatures_tab.main.keys_frame.content 1 -weight 1
 # Bind the combobox to update UI when algorithm changes
 bind .nb.mac_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateAlgorithmUI}
 bind .nb.mac_file_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateAlgorithmUI}
+bind .nb.signatures_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateSignatureUI}
+bind .nb.ecdh_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateECDHUI}
+
+# Para Text tab (procure esta linha):
+.nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox configure -command updateKDFText
+
+# Para Files tab (procure esta linha):
+.nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox configure -command updateKDFFiles
+
+bind .nb.text_tab.main.algo_frame.row1.algorithmCombo <<ComboboxSelected>> {updateTextUI}
+bind .nb.text_tab.main.algo_frame.row1.modeCombo <<ComboboxSelected>> {updateTextUI}
+bind .nb.file_tab.main.algo_frame.row1.algorithmCombo <<ComboboxSelected>> {updateFilesUI}
+bind .nb.file_tab.main.algo_frame.row1.modeCombo <<ComboboxSelected>> {updateFilesUI}
 
 # Initialize key displays
 updateKeyEntryDisplay
 updateKeyEntryDisplayFiles
 updateAlgorithmUI
+updateSignatureUI
+updateECDHUI
+updateTextUI
+updateFilesUI
 
 # Start the event loop
 tkwait visibility .
