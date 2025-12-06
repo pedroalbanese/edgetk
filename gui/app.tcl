@@ -1066,11 +1066,15 @@ proc updateModeFiles {} {
 }
 
 # Function to calculate MAC, HMAC, or CMAC for text
+# Function to calculate MAC, HMAC, or CMAC for text
 proc calculateMAC {} {
     set algorithm [.nb.mac_tab.main.algo_frame.content.algorithmCombo get]
     set key [.nb.mac_tab.main.keys_frame.content.keyEntry get]
     set iv [.nb.mac_tab.main.keys_frame.content.ivEntry get]
     set message [.nb.mac_tab.main.input_frame.textframe.messageBox get 1.0 end]
+
+    .nb.mac_tab.main.output_frame.textframe.resultBox configure -state normal
+    .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
 
     if {$algorithm == "hmac"} {
         # Check if the key is empty
@@ -1079,7 +1083,15 @@ proc calculateMAC {} {
             set key ""
         }
         set hash [.nb.mac_tab.main.algo_frame.content.hmacHashCombo get]
-        set result [exec edgetk -mac hmac -md $hash -key $key << $message]
+        
+        # USAR CATCH PARA CAPTURAR ERROS
+        if {[catch {
+            set result [exec edgetk -mac hmac -md $hash -key $key << $message 2>@1]
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
+        }
+        
     } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
         set cipher [.nb.mac_tab.main.algo_frame.content.cmacCipherCombo get]
 
@@ -1151,7 +1163,15 @@ proc calculateMAC {} {
             .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
         }
         # CMAC e PMAC não usam IV
-        set result [exec edgetk -mac $algorithm -cipher $cipher -key $key << $message]
+        
+        # USAR CATCH PARA CAPTURAR ERROS
+        if {[catch {
+            set result [exec edgetk -mac $algorithm -cipher $cipher -key $key << $message 2>@1]
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
+        }
+        
     } elseif {$algorithm == "vmac"} {
         set cipher [.nb.mac_tab.main.algo_frame.content.cmacCipherCombo get]
         set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
@@ -1232,7 +1252,14 @@ proc calculateMAC {} {
             .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
         }
         
-        set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] << $message]
+        # USAR CATCH PARA CAPTURAR ERROS
+        if {[catch {
+            set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] << $message 2>@1]
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
+        }
+        
     } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
         set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
         set keySize 0
@@ -1274,7 +1301,14 @@ proc calculateMAC {} {
             .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
         }
 
-        set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] << $message 2>@1]
+        # USAR CATCH PARA CAPTURAR ERROS
+        if {[catch {
+            set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] << $message 2>@1]
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
+        }
+        
     } else {
         set keySize 0
         switch $algorithm {
@@ -1303,12 +1337,15 @@ proc calculateMAC {} {
             .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
         }
 
-        set result [exec edgetk -mac $algorithm -key $key -iv $iv << $message 2>@1]
+        # USAR CATCH PARA CAPTURAR ERROS
+        if {[catch {
+            set result [exec edgetk -mac $algorithm -key $key -iv $iv << $message 2>@1]
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
+        }
     }
-
-    .nb.mac_tab.main.output_frame.textframe.resultBox configure -state normal
-    .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
-    .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
+    
     .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
 }
 
