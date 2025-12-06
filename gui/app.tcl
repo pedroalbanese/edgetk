@@ -12,8 +12,8 @@ set text_bg "#ffffff"
 set signature_data ""
 set useKDFAlgorithm 0
 set useKDFAlgorithmFiles 0
-set iterValue 24000
-set iterValueFiles 24000
+set iterValue 10000
+set iterValueFiles 10000
 
 # ===== FUNÇÕES COMPARTILHADAS =====
 
@@ -104,6 +104,13 @@ proc generateKey {} {
     set bits [.nb.signatures_tab.main.algo_frame.content.bitsCombo get]
     set paramset [.nb.signatures_tab.main.algo_frame.content.paramsetCombo get]
     set curve [.nb.signatures_tab.main.algo_frame.content.curveCombo get]
+    set passphrase [.nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry get]
+    set cipher [.nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo get]
+    
+    # Se passphrase estiver vazia, usar "nil"
+    if {$passphrase eq ""} {
+        set passphrase "nil"
+    }
     
     # Get current directory
     set current_dir [pwd]
@@ -122,7 +129,7 @@ proc generateKey {} {
     # Execute key generation command with -pass nil
     if {[catch {
         # Usar flag -curve para algoritmos baseados em curvas elípticas
-        exec edgetk -pkey keygen -algorithm [string map {"ph" ""} $algorithm] -bits $bits -paramset $paramset -curve $curve -pass nil -prv $private_key_path -pub $public_key_path 2>@1
+        exec edgetk -pkey keygen -algorithm [string map {"ph" ""} $algorithm] -bits $bits -paramset $paramset -curve $curve -cipher $cipher -pass $passphrase -prv $private_key_path -pub $public_key_path 2>@1
     } result]} {
         .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✗ Error generating keys:\n$result"
@@ -158,6 +165,7 @@ proc createSignature {} {
     set private_key_path [.nb.signatures_tab.main.keys_frame.content.privateKeyInput get]
     set algorithm [.nb.signatures_tab.main.algo_frame.content.algorithmCombo get]
     set hash_algorithm [.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo get]
+    set passphrase [.nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry get]
     
     # Validate private key
     if {$private_key_path eq ""} {
@@ -186,25 +194,15 @@ proc createSignature {} {
             return
         }
         
-        # Create a temporary file for the text
-        set temp_file "temp_text_[clock milliseconds].txt"
-        set fh [open $temp_file w]
-        puts $fh $input_text
-        close $fh
-        
-        # Create signature from text file - SEMPRE com flag -md
+        # Create signature from text
         if {[catch {
-            # SEMPRE usar flag -md com o hash selecionado
-            set result [exec edgetk -pkey sign -algorithm $algorithm -md $hash_algorithm -key $private_key_path < $temp_file 2>@1]
+            # USAR PIPE (<<) ao invés de redirecionamento de arquivo
+            set result [exec edgetk -pkey sign -algorithm $algorithm -md $hash_algorithm -key $private_key_path -pass $passphrase << $input_text 2>@1]
         } result]} {
             .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✗ Error creating signature from text:\n$result"
             set signature_data ""
-            file delete $temp_file
             return
         }
-        
-        # Clean up temp file
-        file delete $temp_file
     } else {
         # Get file input
         set input_file [.nb.signatures_tab.main.input_frame.content.inputFile get]
@@ -217,7 +215,7 @@ proc createSignature {} {
         # Create signature from file - SEMPRE com flag -md
         if {[catch {
             # SEMPRE usar flag -md com o hash selecionado
-            set result [exec edgetk -pkey sign -algorithm $algorithm -md $hash_algorithm -key $private_key_path $input_file 2>@1]
+            set result [exec edgetk -pkey sign -algorithm $algorithm -md $hash_algorithm -key $private_key_path -pass $passphrase $input_file 2>@1]
         } result]} {
             .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✗ Error creating signature from file:\n$result"
             set signature_data ""
@@ -252,6 +250,7 @@ proc verifySignature {} {
     set public_key_path [.nb.signatures_tab.main.keys_frame.content.publicKeyInput get]
     set algorithm [.nb.signatures_tab.main.algo_frame.content.algorithmCombo get]
     set hash_algorithm [.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo get]
+    set passphrase [.nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry get]
     
     # Validate public key
     if {$public_key_path eq ""} {
@@ -298,24 +297,15 @@ proc verifySignature {} {
             return
         }
         
-        # Create a temporary file for the text
-        set temp_file "temp_text_[clock milliseconds].txt"
-        set fh [open $temp_file w]
-        puts $fh $input_text
-        close $fh
-        
-        # Verify signature from text file - SEMPRE com flag -md
+        # Verify signature from text
         if {[catch {
-            # SEMPRE usar flag -md com o hash selecionado
-            set result [exec edgetk -pkey verify -algorithm $algorithm -md $hash_algorithm -key $public_key_path -signature $signature < $temp_file 2>@1]
+            # USAR PIPE (<<) ao invés de redirecionamento de arquivo
+            set result [exec edgetk -pkey verify -algorithm $algorithm -md $hash_algorithm -key $public_key_path -signature $signature << $input_text 2>@1]
         } result]} {
             .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✗ Signature INVALID!\n\n$result"
         } else {
             .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "✓ Signature VALID!\n\n$result"
         }
-        
-        # Clean up temp file
-        file delete $temp_file
     } else {
         # Get file input
         set input_file [.nb.signatures_tab.main.input_frame.content.inputFile get]
@@ -381,6 +371,20 @@ proc updateAlgorithmUI {} {
         .nb.mac_tab.main.algo_frame.content.cmacCipherCombo configure -state normal
         .nb.mac_tab.main.algo_frame.content.outSizeLabel configure -state normal
         .nb.mac_tab.main.algo_frame.content.outSizeCombo configure -state normal
+        # Para outros algoritmos, manter valores padrão do VMAC
+        .nb.mac_tab.main.algo_frame.content.outSizeCombo configure -values {8 16 32}
+        .nb.mac_tab.main.algo_frame.content.outSizeCombo set "8"
+    } elseif {$algorithm == "eia256"} {
+        # Apenas EIA256 tem tamanho de saída configurável
+        .nb.mac_tab.main.algo_frame.content.hashLabel configure -state disabled
+        .nb.mac_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
+        .nb.mac_tab.main.algo_frame.content.cipherLabel configure -state disabled
+        .nb.mac_tab.main.algo_frame.content.cmacCipherCombo configure -state disabled
+        .nb.mac_tab.main.algo_frame.content.outSizeLabel configure -state normal
+        .nb.mac_tab.main.algo_frame.content.outSizeCombo configure -state normal
+        # Configurar valores para EIA256: 4, 8, 16 bits
+        .nb.mac_tab.main.algo_frame.content.outSizeCombo configure -values {4 8 16}
+        .nb.mac_tab.main.algo_frame.content.outSizeCombo set "16"
     } else {
         .nb.mac_tab.main.algo_frame.content.hashLabel configure -state disabled
         .nb.mac_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
@@ -388,6 +392,18 @@ proc updateAlgorithmUI {} {
         .nb.mac_tab.main.algo_frame.content.cmacCipherCombo configure -state disabled
         .nb.mac_tab.main.algo_frame.content.outSizeLabel configure -state disabled
         .nb.mac_tab.main.algo_frame.content.outSizeCombo configure -state disabled
+    }
+    
+    # Controle do campo IV para Text tab
+    # Algoritmos que precisam de IV: vmac, gost, eia128, eia256
+    if {$algorithm in {"vmac" "gost" "eia128" "eia256"}} {
+        .nb.mac_tab.main.keys_frame.content.ivLabel configure -state normal
+        .nb.mac_tab.main.keys_frame.content.ivEntry configure -state normal
+        .nb.mac_tab.main.keys_frame.content.ivEntry configure -background "white"
+    } else {
+        .nb.mac_tab.main.keys_frame.content.ivLabel configure -state disabled
+        .nb.mac_tab.main.keys_frame.content.ivEntry configure -state disabled
+        .nb.mac_tab.main.keys_frame.content.ivEntry configure -background "#f0f0f0"
     }
     
     # Update Files tab
@@ -413,6 +429,20 @@ proc updateAlgorithmUI {} {
         .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state normal
         .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state normal
         .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state normal
+        # Para outros algoritmos, manter valores padrão do VMAC
+        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -values {8 16 32}
+        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo set "8"
+    } elseif {$algorithm == "eia256"} {
+        # Apenas EIA256 tem tamanho de saída configurável
+        .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state disabled
+        .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
+        .nb.mac_file_tab.main.algo_frame.content.cipherLabel configure -state disabled
+        .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state disabled
+        .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state normal
+        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state normal
+        # Configurar valores para EIA256: 4, 8, 16 bits
+        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -values {4 8 16}
+        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo set "16"
     } else {
         .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state disabled
         .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
@@ -421,6 +451,18 @@ proc updateAlgorithmUI {} {
         .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state disabled
         .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state disabled
     }
+    
+    # Controle do campo IV para Files tab
+    # Algoritmos que precisam de IV: vmac, gost, eia128, eia256
+    if {$algorithm in {"vmac" "gost" "eia128" "eia256"}} {
+        .nb.mac_file_tab.main.keys_frame.content.ivLabel configure -state normal
+        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -state normal
+        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -background "white"
+    } else {
+        .nb.mac_file_tab.main.keys_frame.content.ivLabel configure -state disabled
+        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -state disabled
+        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -background "#f0f0f0"
+    }
 }
 
 # Função para atualizar a UI da aba de assinaturas baseada no algoritmo selecionado
@@ -428,7 +470,7 @@ proc updateSignatureUI {} {
     set algorithm [.nb.signatures_tab.main.algo_frame.content.algorithmCombo get]
     
     # Definir quais algoritmos têm tamanho fixo
-    set fixed_size_algorithms {ed25519 ed25519ph ed448 ed448ph ed521 ed521ph x25519 x448 sm2 sm2ph bip0340}
+    set fixed_size_algorithms {ed25519 ed25519ph ed448 ed448ph ed521 ed521ph x25519 x448 sm2 sm2ph}
     # GOST2012 NÃO está aqui porque ele usa tamanhos
     
     # Definir quais algoritmos usam paramset
@@ -460,7 +502,7 @@ proc updateSignatureUI {} {
         groestl224 groestl256 groestl384 groestl512
         hamsi224 hamsi256 hamsi384 hamsi512
         has160
-       jh224 jh256 jh384 jh512
+        jh224 jh256 jh384 jh512
         keccak256 keccak512
         kupyna256 kupyna384 kupyna512
         lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
@@ -632,10 +674,14 @@ proc updateSignatureUI {} {
     }
     
     # 5. Atualizar valores disponíveis no bits combo baseado no algoritmo
-    if {[string match "rsa*" $algorithm] || $algorithm eq "bign"} {
+    if {[string match "rsa*" $algorithm]} {
         # RSA e BIGN usam bits diferentes
         .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {1024 2048 3072 4096}
         .nb.signatures_tab.main.algo_frame.content.bitsCombo set "2048"
+    } elseif {[string match "bign*" $algorithm]} {
+        # RSA e BIGN usam bits diferentes
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {256 384 512}
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
     } elseif {[string match "ed*" $algorithm]} {
         # EdDSA tem tamanhos fixos baseados no algoritmo
         if {[string match "*25519*" $algorithm]} {
@@ -654,7 +700,7 @@ proc updateSignatureUI {} {
         .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
     } else {
         # ECDSA e variantes usam estes tamanhos
-        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {224 256 384 512 521}
+        .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {224 256 384 521}
         .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
     }
     
@@ -761,6 +807,12 @@ proc updateTextUI {} {
         chacha20poly1305 ascon grain xoodyak
     }
     
+    # Cifras de 64 bits (tamanho do bloco)
+    set block64_ciphers {
+        3des blowfish cast5 curupira gost89 hight idea misty1 present rc2 rc5
+        rc6 seed twine kalyna128_128 kalyna128_256
+    }
+    
     # 1. Controle do combo box Mode
     if {$algorithm in $stream_ciphers} {
         # Cifras de fluxo: desabilitar mode
@@ -790,6 +842,12 @@ proc updateTextUI {} {
         if {$algorithm eq "curupira"} {
             # Para Curupira: apenas lettersoup e eax
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        } elseif {$algorithm in $block64_ciphers} {
+            # Para cifras de 64 bits: modos convencionais + eax, mgm, siv
+            .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        } elseif {$algorithm in {"kalyna256_256" "kalyna256_512" "kalyna512_512" "threefish" "threefish512" "shacal2"}} {
+            # Para Kalyna, Threefish e Shacal: apenas modos convencionais + eax e siv
+            .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
         } else {
             # Para outras cifras: todos os modos menos lettersoup
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
@@ -863,6 +921,12 @@ proc updateFilesUI {} {
         chacha20poly1305
     }
     
+    # Cifras de 64 bits (tamanho do bloco)
+    set block64_ciphers {
+        3des blowfish cast5 curupira gost89 hight idea misty1 present rc2 rc5
+        rc6 seed twine kalyna128_128 kalyna128_256
+    }
+    
     # 1. Controle do combo box Mode
     if {$algorithm in $stream_ciphers} {
         # Cifras de fluxo: desabilitar mode
@@ -892,6 +956,12 @@ proc updateFilesUI {} {
         if {$algorithm eq "curupira"} {
             # Para Curupira: apenas lettersoup e eax
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        } elseif {$algorithm in $block64_ciphers} {
+            # Para cifras de 64 bits: modos convencionais + eax, mgm, siv
+            .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+        } elseif {$algorithm in {"kalyna256_256" "kalyna256_512" "kalyna512_512" "threefish" "threefish512" "shacal2"}} {
+            # Para Kalyna, Threefish e Shacal: apenas modos convencionais + eax e siv
+            .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
         } else {
             # Para outras cifras: todos os modos menos lettersoup
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
@@ -1142,26 +1212,59 @@ proc calculateMAC {} {
         }
         
         set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] << $message]
+    } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
+        set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
+        set keySize 0
+        switch $algorithm {
+            "eia128" {
+                set keySize 32
+                # EIA128: 128-bit = 16 bytes = 32 caracteres hex
+                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                    set iv "00000000000000000000000000000000"
+                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                }
+            }
+            "eia256" {
+                set keySize 64
+                # EIA256: 184-bit = 23 bytes = 46 caracteres hex
+                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                    set iv "0000000000000000000000000000000000000000000000"
+                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                }
+            }
+            "gost" {
+                set keySize 32
+                # GOST: 64-bit = 8 bytes = 16 caracteres hex
+                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                    set iv "0000000000000000"
+                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                }
+            }
+        }
+        
+        # Check if the key is empty
+        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+            # Set a null key with the appropriate size
+            set key [string repeat "0" $keySize]
+            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
+        }
+
+        set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] << $message 2>@1]
     } else {
         set keySize 0
         switch $algorithm {
             "chaskey" {
-                set keySize 8
-            }
-            "eia128" {
-                set keySize 32
-            }
-            "eia256" {
-                set keySize 64
+                set keySize 16
             }
             "poly1305" {
                 set keySize 64
             }
             "siphash" {
                 set keySize 16
-            }
-            "gost" {
-                set keySize 32
             }
             "skein" {
                 set keySize 64
@@ -1380,26 +1483,59 @@ proc calculateMACFile {} {
             }
             
             set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] $inputFile]
+        } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
+            set outSize [.nb.mac_file_tab.main.algo_frame.content.outSizeCombo get]
+            set keySize 0
+            switch $algorithm {
+                "eia128" {
+                    set keySize 32
+                    # EIA128: 128-bit = 16 bytes = 32 caracteres hex
+                    if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                        set iv "00000000000000000000000000000000"
+                        .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
+                        .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                    }
+                }
+                "eia256" {
+                    set keySize 64
+                    # EIA256: 184-bit = 23 bytes = 46 caracteres hex
+                    if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                        set iv "0000000000000000000000000000000000000000000000"
+                        .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
+                        .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                    }
+                }
+                "gost" {
+                    set keySize 32
+                    # GOST: 64-bit = 8 bytes = 16 caracteres hex
+                    if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                        set iv "0000000000000000"
+                        .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
+                        .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                    }
+                }
+            }
+            
+            # Check if the key is empty
+            if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+                # Set a null key with the appropriate size
+                set key [string repeat "0" $keySize]
+                .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
+                .nb.mac_file_tab.main.keys_frame.content.keyEntry insert 0 $key
+            }
+
+            set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] $inputFile 2>@1]
         } else {
             set keySize 0
             switch $algorithm {
                 "chaskey" {
-                    set keySize 8
-                }
-                "eia128" {
-                    set keySize 32
-                }
-                "eia256" {
-                    set keySize 64
+                    set keySize 16
                 }
                 "poly1305" {
                     set keySize 64
                 }
                 "siphash" {
                     set keySize 16
-                }
-                "gost" {
-                    set keySize 32
                 }
                 "skein" {
                     set keySize 64
@@ -1471,9 +1607,16 @@ proc generateECDHKey {} {
     set algorithm [.nb.ecdh_tab.main.algo_frame.content.algorithmCombo get]
     set bits [.nb.ecdh_tab.main.algo_frame.content.bitsCombo get]
     set paramset [.nb.ecdh_tab.main.algo_frame.content.paramsetCombo get]
+    set passphrase [.nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry get]
+    set cipher [.nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo get]
 
+    # Se passphrase estiver vazia, usar "nil"
+    if {$passphrase eq ""} {
+        set passphrase "nil"
+    }
+    
     if {[catch {
-        exec edgetk -pkey keygen -algorithm $algorithm -bits $bits -paramset $paramset -pass nil -prv $private_key_path -pub $public_key_path 2>@1
+        exec edgetk -pkey keygen -algorithm $algorithm -bits $bits -paramset $paramset -pass $passphrase -cipher $cipher -prv $private_key_path -pub $public_key_path 2>@1
     } error]} {
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Error generating keys: $error"
@@ -1482,8 +1625,11 @@ proc generateECDHKey {} {
 
     .nb.ecdh_tab.main.keys_frame.content.privateKeyInput delete 0 end
     .nb.ecdh_tab.main.keys_frame.content.privateKeyInput insert 0 $private_key_path
+    
+    .nb.ecdh_tab.main.keys_frame.content.publicKeyInput configure -state normal
     .nb.ecdh_tab.main.keys_frame.content.publicKeyInput delete 0 end
     .nb.ecdh_tab.main.keys_frame.content.publicKeyInput insert 0 $public_key_path
+    .nb.ecdh_tab.main.keys_frame.content.publicKeyInput configure -state disabled
     
     .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
     .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Keys generated successfully!\nPrivate key saved as: Private.pem\nPublic key saved as: Public.pem"
@@ -1495,7 +1641,13 @@ proc deriveECDHKey {} {
     set peer_key_path [.nb.ecdh_tab.main.keys_frame.content.peerKeyInput get]
     set algorithm [.nb.ecdh_tab.main.algo_frame.content.algorithmCombo get]
     set outputKeySize [.nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo get]
+    set passphrase [.nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry get]
 
+    # Se passphrase estiver vazia, usar "nil"
+    if {$passphrase eq ""} {
+        set passphrase "nil"
+    }
+    
     if {![file exists $private_key_path]} {
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "ERROR: Private key file not found. Please generate keys first."
@@ -1509,7 +1661,7 @@ proc deriveECDHKey {} {
     }
 
     if {[catch {
-        set result [exec edgetk -pkey derive -algorithm $algorithm -key $private_key_path -pass - -pub $peer_key_path 2>@1]
+        set result [exec edgetk -pkey derive -algorithm $algorithm -key $private_key_path -pass $passphrase -pub $peer_key_path 2>@1]
         
         # Truncar a chave resultante para o tamanho desejado (se necessário)
         if {$outputKeySize > 0} {
@@ -2010,6 +2162,321 @@ ttk::style map TNotebook.Tab \
     -background [list selected $accent_color !selected $frame_color] \
     -foreground [list selected white !selected $accent_color]
 
+
+
+# ========== SIGNATURES TAB (do primeiro código) ==========
+frame .nb.signatures_tab -bg $bg_color
+.nb add .nb.signatures_tab -text " Signatures "
+
+# Main frame for content (Signatures)
+frame .nb.signatures_tab.main -bg $bg_color
+pack .nb.signatures_tab.main -fill both -expand yes -padx 8 -pady 5
+
+# Algorithm settings frame - UMA ÚNICA LINHA
+frame .nb.signatures_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
+pack .nb.signatures_tab.main.algo_frame -fill x -padx 8 -pady 5
+
+label .nb.signatures_tab.main.algo_frame.title -text "CRYPTOGRAPHIC SETTINGS" -font {Arial 10 bold} -bg $frame_color
+pack .nb.signatures_tab.main.algo_frame.title -anchor w -padx 8 -pady 3
+
+frame .nb.signatures_tab.main.algo_frame.content -bg $frame_color
+pack .nb.signatures_tab.main.algo_frame.content -fill x -padx 8 -pady 3
+
+# Create Algorithm ComboBox
+set ::algorithmComboData {"ecdsa" "ecsdsa" "eckcdsa" "ecgdsa" "sm2" "sm2ph" "gost2012" "rsa" "ed25519" "ed25519ph" "ed448" "ed448ph" "ed521" "ed521ph" "bign" "bip0340"}
+label .nb.signatures_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.algorithmCombo -values $::algorithmComboData -state readonly -width 10
+.nb.signatures_tab.main.algo_frame.content.algorithmCombo set "ecdsa"
+
+# Create Bits ComboBox
+set ::bitsComboData {"224" "256" "384" "512" "521" "1024" "2048" "3072" "4096"}
+label .nb.signatures_tab.main.algo_frame.content.bitsLabel -text "Bits:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.bitsCombo -values $::bitsComboData -state readonly -width 8
+.nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+
+# Create Paramset ComboBox
+set ::paramsetComboData {"A" "B" "C" "D"}
+label .nb.signatures_tab.main.algo_frame.content.paramsetLabel -text "Paramset:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.paramsetCombo -values $::paramsetComboData -state readonly -width 5
+.nb.signatures_tab.main.algo_frame.content.paramsetCombo set "A"
+
+# Create Hash Algorithm ComboBox
+set ::hashAlgorithmComboData {
+    bash224 bash256 bash384 bash512
+    belt
+    blake2b256 blake2b512
+    blake2s128 blake2s256
+    blake3
+    bmw224 bmw256 bmw384 bmw512
+    cubehash256 cubehash512
+    echo224 echo256 echo384 echo512
+    esch256 esch384
+    fugue224 fugue256 fugue384 fugue512
+    fugue512
+    gost94
+    groestl224 groestl256 groestl384 groestl512
+    hamsi224 hamsi256 hamsi384 hamsi512
+    has160
+    jh224 jh256 jh384 jh512
+    keccak256 keccak512
+    kupyna256 kupyna384 kupyna512
+    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
+    luffa224 luffa256 luffa384 luffa512
+    md4 md5
+    md6-224 md6-256 md6-384 md6-512
+    radiogatun32 radiogatun64
+    ripemd128 ripemd160 ripemd256 ripemd320
+    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
+    sha512-256
+    shake128 shake256
+    shavite224 shavite256 shavite384 shavite512
+    simd224 simd256 simd384 simd512
+    siphash64 siphash
+    skein256 skein512
+    sm3
+    streebog256 streebog512
+    tiger tiger2
+    whirlpool
+    xoodyak
+}
+label .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -text "Digest:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -values $::hashAlgorithmComboData -state readonly -width 12
+.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
+
+# Create Curve ComboBox
+set ::curveComboData {
+    secp224r1
+    secp256r1
+    secp384r1
+    secp521r1
+    sect283r1
+    sect409r1
+    sect571r1
+    sect283k1
+    sect409k1
+    sect571k1
+    brainpoolp256r1
+    brainpoolp384r1
+    brainpoolp512r1
+    brainpoolp256t1
+    brainpoolp384t1
+    brainpoolp512t1
+    numsp256d1
+    numsp384d1
+    numsp512d1
+    numsp256t1
+    numsp384t1
+    numsp512t1
+    tom256
+    tom384
+    kg256r1
+    kg384r1
+    frp256v1
+    secp256k1
+    sm2p256v1
+}
+label .nb.signatures_tab.main.algo_frame.content.curveLabel -text "Curve:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.signatures_tab.main.algo_frame.content.curveCombo -values $::curveComboData -state readonly -width 14
+.nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
+
+# Grid for algorithm settings - TODOS EM UMA LINHA
+grid .nb.signatures_tab.main.algo_frame.content.algorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.algorithmCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.bitsLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.bitsCombo -row 0 -column 3 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.curveLabel -row 0 -column 4 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.curveCombo -row 0 -column 5 -sticky we -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.paramsetLabel -row 0 -column 6 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.paramsetCombo -row 0 -column 7 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -row 0 -column 8 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -row 0 -column 9 -sticky we -padx 3 -pady 3
+
+# Key management frame
+frame .nb.signatures_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
+pack .nb.signatures_tab.main.keys_frame -fill x -padx 8 -pady 5
+
+# Título e passphrase na mesma linha
+frame .nb.signatures_tab.main.keys_frame.title_frame -bg $frame_color
+pack .nb.signatures_tab.main.keys_frame.title_frame -fill x -padx 8 -pady 3
+
+# Título alinhado à esquerda
+label .nb.signatures_tab.main.keys_frame.title_frame.title -text "KEY MANAGEMENT" -font {Arial 10 bold} -bg $frame_color -fg $accent_color
+pack .nb.signatures_tab.main.keys_frame.title_frame.title -side left -anchor w
+
+# Frame para passphrase alinhado à direita
+frame .nb.signatures_tab.main.keys_frame.title_frame.pass_frame -bg $frame_color
+pack .nb.signatures_tab.main.keys_frame.title_frame.pass_frame -side right -anchor e -pady 0
+
+# Cifra combobox (depois da caixa de passphrase)
+ttk::combobox .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
+    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
+    -width 8 -state readonly
+.nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
+
+# Passphrase entry (caixa)
+entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {Consolas 9} -show "•"
+
+# Passphrase label
+label .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
+
+# Pack na ordem: combo, entry, label (direita para esquerda)
+pack .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
+     .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry \
+     .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passLabel \
+     -side right -padx 3
+
+frame .nb.signatures_tab.main.keys_frame.content -bg $frame_color
+pack .nb.signatures_tab.main.keys_frame.content -fill x -padx 8 -pady 3
+
+# Private Key
+label .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.signatures_tab.main.keys_frame.content.privateKeyInput -width 50 -font {Consolas 9}
+button .nb.signatures_tab.main.keys_frame.content.openPrivateButton -text "📂 Open" -command {
+    openFileDialog .nb.signatures_tab.main.keys_frame.content.privateKeyInput
+} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.keys_frame.content.privateKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 3
+grid .nb.signatures_tab.main.keys_frame.content.openPrivateButton -row 0 -column 2 -sticky w -padx 3 -pady 3
+
+# Public Key
+label .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.signatures_tab.main.keys_frame.content.publicKeyInput -width 50 -font {Consolas 9}
+button .nb.signatures_tab.main.keys_frame.content.openPublicButton -text "📂 Open" -command {
+    openFileDialog .nb.signatures_tab.main.keys_frame.content.publicKeyInput
+} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -sticky ew -padx 3 -pady 3
+grid .nb.signatures_tab.main.keys_frame.content.openPublicButton -row 1 -column 2 -sticky w -padx 3 -pady 3
+
+# Generate Keys button
+button .nb.signatures_tab.main.keys_frame.content.generateButton -text "🔑 Generate Keys" -command generateKey \
+    -bg "#27ae60" -fg white -font {Arial 10 bold} -pady 3 -width 20
+grid .nb.signatures_tab.main.keys_frame.content.generateButton -row 2 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 8
+
+# Configure column weights
+grid columnconfigure .nb.signatures_tab.main.keys_frame.content 1 -weight 1
+
+# Input data frame - ESTRUTURA IGUAL À DE OUTPUT
+frame .nb.signatures_tab.main.input_frame -bg $frame_color -relief solid -bd 1
+pack .nb.signatures_tab.main.input_frame -fill x -padx 8 -pady 5
+
+label .nb.signatures_tab.main.input_frame.title -text "INPUT DATA" -font {Arial 10 bold} -bg $frame_color
+pack .nb.signatures_tab.main.input_frame.title -anchor w -padx 8 -pady 3
+
+frame .nb.signatures_tab.main.input_frame.content -bg $frame_color
+pack .nb.signatures_tab.main.input_frame.content -fill x -padx 8 -pady 3
+
+# Input type
+label .nb.signatures_tab.main.input_frame.content.inputTypeLabel -text "Input Type:" -font {Arial 9 bold} -bg $frame_color
+set ::inputTypeComboData {"Text" "File"}
+ttk::combobox .nb.signatures_tab.main.input_frame.content.inputTypeCombo -values $::inputTypeComboData -state readonly -width 8
+.nb.signatures_tab.main.input_frame.content.inputTypeCombo set "Text"
+
+# Bind combobox selection
+bind .nb.signatures_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelected>> selectInputType
+
+# File input
+label .nb.signatures_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.signatures_tab.main.input_frame.content.inputFile -width 50 -font {Consolas 9}
+button .nb.signatures_tab.main.input_frame.content.openFileButton -text "📂 Open" -command {
+    openFileDialog .nb.signatures_tab.main.input_frame.content.inputFile
+} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.signatures_tab.main.input_frame.content.inputTypeLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.input_frame.content.inputTypeCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.input_frame.content.fileLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
+grid .nb.signatures_tab.main.input_frame.content.inputFile -row 0 -column 3 -sticky ew -padx 3 -pady 3
+grid .nb.signatures_tab.main.input_frame.content.openFileButton -row 0 -column 4 -sticky w -padx 3 -pady 3
+
+# Frame para área de texto - IGUAL À ESTRUTURA DE OUTPUT
+frame .nb.signatures_tab.main.input_frame.content.textframe -bg $frame_color
+grid .nb.signatures_tab.main.input_frame.content.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 3 -pady 3
+
+# Text area for text input - 4 LINHAS, ESTRUTURA IGUAL À OUTPUT
+text .nb.signatures_tab.main.input_frame.content.textframe.inputText -width 70 -height 2 -wrap word \
+    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+scrollbar .nb.signatures_tab.main.input_frame.content.textframe.yscroll -orient vertical \
+    -command {.nb.signatures_tab.main.input_frame.content.textframe.inputText yview}
+.nb.signatures_tab.main.input_frame.content.textframe.inputText configure \
+    -yscrollcommand {.nb.signatures_tab.main.input_frame.content.textframe.yscroll set}
+
+grid .nb.signatures_tab.main.input_frame.content.textframe.inputText -row 0 -column 0 -sticky "nsew"
+grid .nb.signatures_tab.main.input_frame.content.textframe.yscroll -row 0 -column 1 -sticky "ns"
+
+grid rowconfigure .nb.signatures_tab.main.input_frame.content.textframe 0 -weight 1
+grid columnconfigure .nb.signatures_tab.main.input_frame.content.textframe 0 -weight 1
+
+grid columnconfigure .nb.signatures_tab.main.input_frame.content 3 -weight 1
+grid rowconfigure .nb.signatures_tab.main.input_frame.content 1 -weight 1
+
+# Initially disable file input
+selectInputType
+
+# Output frame
+frame .nb.signatures_tab.main.output_frame -bg $frame_color -relief solid -bd 1
+pack .nb.signatures_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
+
+label .nb.signatures_tab.main.output_frame.title -text "SIGNATURE OUTPUT" -font {Arial 10 bold} -bg $frame_color
+pack .nb.signatures_tab.main.output_frame.title -anchor w -padx 8 -pady 3
+
+# Create output text area - 2 LINHAS PARA ASSINATURA
+frame .nb.signatures_tab.main.output_frame.textframe -bg $frame_color
+pack .nb.signatures_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
+
+text .nb.signatures_tab.main.output_frame.textframe.outputArea -width 70 -height 4 -wrap word \
+    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+scrollbar .nb.signatures_tab.main.output_frame.textframe.yscroll -orient vertical \
+    -command {.nb.signatures_tab.main.output_frame.textframe.outputArea yview}
+.nb.signatures_tab.main.output_frame.textframe.outputArea configure \
+    -yscrollcommand {.nb.signatures_tab.main.output_frame.textframe.yscroll set}
+
+grid .nb.signatures_tab.main.output_frame.textframe.outputArea -row 0 -column 0 -sticky "nsew"
+grid .nb.signatures_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -sticky "ns"
+
+grid rowconfigure .nb.signatures_tab.main.output_frame.textframe 0 -weight 1
+grid columnconfigure .nb.signatures_tab.main.output_frame.textframe 0 -weight 1
+
+# Utility buttons - MAIS COMPACTOS
+frame .nb.signatures_tab.main.output_frame.utility_buttons -bg $frame_color
+pack .nb.signatures_tab.main.output_frame.utility_buttons -fill x -padx 8 -pady 3
+
+button .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -text "📋 Copy" -command {
+    copyText [.nb.signatures_tab.main.output_frame.textframe.outputArea get 1.0 end]
+} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
+
+button .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -text "🗑️ Clear" -command {
+    .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    set ::signature_data ""
+} -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -side left -padx 2
+
+button .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -text "Clear Input" -command {
+    .nb.signatures_tab.main.input_frame.content.textframe.inputText delete 1.0 end
+    .nb.signatures_tab.main.input_frame.content.inputFile delete 0 end
+} -bg "#f39c12" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -side left -padx 2
+
+# Botões Sign/Verify (fora da seção SIGNATURE OUTPUT)
+frame .nb.signatures_tab.main.sign_verify_frame -bg $bg_color
+pack .nb.signatures_tab.main.sign_verify_frame -fill x -padx 8 -pady 10
+
+# Empacota primeiro o Verify (mais à direita)
+button .nb.signatures_tab.main.sign_verify_frame.verifyButton -text "✓ Verify" -command verifySignature \
+    -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -padx 20 -pady 3 -relief raised -bd 2
+pack .nb.signatures_tab.main.sign_verify_frame.verifyButton -side right -padx 3
+
+# Depois empacota o Sign (à esquerda do Verify)
+button .nb.signatures_tab.main.sign_verify_frame.signButton -text "✍️ Sign" -command createSignature \
+    -bg "#9b59b6" -fg white -font {Arial 10 bold} \
+    -padx 20 -pady 3 -relief raised -bd 2
+pack .nb.signatures_tab.main.sign_verify_frame.signButton -side right -padx 3
+
+# ========== FIM DA ABA DE ASSINATURAS ==========
+
 # ========== TEXT TAB (ORIGINAL LAYOUT) ==========
 frame .nb.text_tab -bg $bg_color
 .nb add .nb.text_tab -text " Encrypt Text "
@@ -2063,7 +2530,7 @@ entry .nb.text_tab.main.algo_frame.row2.saltBox -width 12 -font {Arial 9}
 
 label .nb.text_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.text_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValue
-set ::iterValue 24000
+set ::iterValue 10000
 
 set hashAlgorithms {
     bash224 bash256 bash384 bash512
@@ -2284,7 +2751,7 @@ entry .nb.file_tab.main.algo_frame.row2.saltBox -width 12 -font {Arial 9}
 
 label .nb.file_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.file_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValueFiles
-set ::iterValueFiles 24000
+set ::iterValueFiles 10000
 
 set hashAlgorithms {
     bash224 bash256 bash384 bash512
@@ -2478,8 +2945,35 @@ grid .nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo -row 1 -column 3 -s
 frame .nb.ecdh_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
 pack .nb.ecdh_tab.main.keys_frame -fill x -padx 8 -pady 5
 
-label .nb.ecdh_tab.main.keys_frame.title -text "KEY MANAGEMENT" -font {Arial 10 bold} -bg $frame_color
-pack .nb.ecdh_tab.main.keys_frame.title -anchor w -padx 8 -pady 3
+# Título e passphrase na mesma linha
+frame .nb.ecdh_tab.main.keys_frame.title_frame -bg $frame_color
+pack .nb.ecdh_tab.main.keys_frame.title_frame -fill x -padx 8 -pady 3
+
+# Título alinhado à esquerda
+label .nb.ecdh_tab.main.keys_frame.title_frame.title -text "KEY MANAGEMENT" -font {Arial 10 bold} -bg $frame_color -fg $accent_color
+pack .nb.ecdh_tab.main.keys_frame.title_frame.title -side left -anchor w
+
+# Frame para passphrase alinhado à direita
+frame .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame -bg $frame_color
+pack .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame -side right -anchor e -pady 0
+
+# Cifra combobox (depois da caixa de passphrase)
+ttk::combobox .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
+    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
+    -width 8 -state readonly
+.nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
+
+# Passphrase entry (caixa)
+entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {Consolas 9} -show "•"
+
+# Passphrase label
+label .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
+
+# Pack na ordem: combo, entry, label (direita para esquerda)
+pack .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
+     .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry \
+     .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passLabel \
+     -side right -padx 3
 
 frame .nb.ecdh_tab.main.keys_frame.content -bg $frame_color
 pack .nb.ecdh_tab.main.keys_frame.content -fill x -padx 8 -pady 3
@@ -2496,13 +2990,11 @@ grid .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -row 0 -column 2 -st
 
 # Public Key
 label .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 40 -font {Consolas 9}
-button .nb.ecdh_tab.main.keys_frame.content.openPublicButton -text "📂 Open" -command openPublicKeyECDH \
-    -bg "#3498db" -fg white -font {Arial 9 bold}
+entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 50 -font {Consolas 9} \
+    -bg "#f0f0f0" -state readonly -readonlybackground "#f0f0f0"
 
 grid .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -sticky ew -padx 3 -pady 3
-grid .nb.ecdh_tab.main.keys_frame.content.openPublicButton -row 1 -column 2 -sticky w -padx 3 -pady 3
 
 # Peer Key
 label .nb.ecdh_tab.main.keys_frame.content.peerKeyLabel -text "Peer Key:" -font {Arial 9 bold} -bg $frame_color
@@ -3009,292 +3501,6 @@ scrollbar .nb.mac_file_tab.main.status_frame.textframe.scroll -command {.nb.mac_
 pack .nb.mac_file_tab.main.status_frame.textframe.text -side left -fill both -expand true
 pack .nb.mac_file_tab.main.status_frame.textframe.scroll -side right -fill y
 
-# ========== SIGNATURES TAB (do primeiro código) ==========
-frame .nb.signatures_tab -bg $bg_color
-.nb add .nb.signatures_tab -text " Signatures "
-
-# Main frame for content (Signatures)
-frame .nb.signatures_tab.main -bg $bg_color
-pack .nb.signatures_tab.main -fill both -expand yes -padx 8 -pady 5
-
-# Algorithm settings frame - UMA ÚNICA LINHA
-frame .nb.signatures_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
-pack .nb.signatures_tab.main.algo_frame -fill x -padx 8 -pady 5
-
-label .nb.signatures_tab.main.algo_frame.title -text "CRYPTOGRAPHIC SETTINGS" -font {Arial 10 bold} -bg $frame_color
-pack .nb.signatures_tab.main.algo_frame.title -anchor w -padx 8 -pady 3
-
-frame .nb.signatures_tab.main.algo_frame.content -bg $frame_color
-pack .nb.signatures_tab.main.algo_frame.content -fill x -padx 8 -pady 3
-
-# Create Algorithm ComboBox
-set ::algorithmComboData {"ecdsa" "ecsdsa" "eckcdsa" "ecgdsa" "sm2" "sm2ph" "gost2012" "rsa" "ed25519" "ed25519ph" "ed448" "ed448ph" "ed521" "ed521ph" "bign" "bip0340"}
-label .nb.signatures_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.algorithmCombo -values $::algorithmComboData -state readonly -width 10
-.nb.signatures_tab.main.algo_frame.content.algorithmCombo set "ecdsa"
-
-# Create Bits ComboBox
-set ::bitsComboData {"224" "256" "384" "512" "521" "1024" "2048" "3072" "4096"}
-label .nb.signatures_tab.main.algo_frame.content.bitsLabel -text "Bits:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.bitsCombo -values $::bitsComboData -state readonly -width 8
-.nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
-
-# Create Paramset ComboBox
-set ::paramsetComboData {"A" "B" "C" "D"}
-label .nb.signatures_tab.main.algo_frame.content.paramsetLabel -text "Paramset:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.paramsetCombo -values $::paramsetComboData -state readonly -width 5
-.nb.signatures_tab.main.algo_frame.content.paramsetCombo set "A"
-
-# Create Hash Algorithm ComboBox
-set ::hashAlgorithmComboData {
-    bash224 bash256 bash384 bash512
-    belt
-    blake2b256 blake2b512
-    blake2s128 blake2s256
-    blake3
-    bmw224 bmw256 bmw384 bmw512
-    cubehash256 cubehash512
-    echo224 echo256 echo384 echo512
-    esch256 esch384
-    fugue224 fugue256 fugue384 fugue512
-    fugue512
-    gost94
-    groestl224 groestl256 groestl384 groestl512
-    hamsi224 hamsi256 hamsi384 hamsi512
-    has160
-    jh224 jh256 jh384 jh512
-    keccak256 keccak512
-    kupyna256 kupyna384 kupyna512
-    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
-    luffa224 luffa256 luffa384 luffa512
-    md4 md5
-    md6-224 md6-256 md6-384 md6-512
-    radiogatun32 radiogatun64
-    ripemd128 ripemd160 ripemd256 ripemd320
-    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
-    sha512-256
-    shake128 shake256
-    shavite224 shavite256 shavite384 shavite512
-    simd224 simd256 simd384 simd512
-    siphash64 siphash
-    skein256 skein512
-    sm3
-    streebog256 streebog512
-    tiger tiger2
-    whirlpool
-    xoodyak
-}
-label .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -text "Digest:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -values $::hashAlgorithmComboData -state readonly -width 12
-.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
-
-# Create Curve ComboBox
-set ::curveComboData {
-    secp224r1
-    secp256r1
-    secp384r1
-    secp521r1
-    sect283r1
-    sect409r1
-    sect571r1
-    sect283k1
-    sect409k1
-    sect571k1
-    brainpoolp256r1
-    brainpoolp384r1
-    brainpoolp512r1
-    brainpoolp256t1
-    brainpoolp384t1
-    brainpoolp512t1
-    numsp256d1
-    numsp384d1
-    numsp512d1
-    numsp256t1
-    numsp384t1
-    numsp512t1
-    tom256
-    tom384
-    kg256r1
-    kg384r1
-    frp256v1
-    secp256k1
-    sm2p256v1
-}
-label .nb.signatures_tab.main.algo_frame.content.curveLabel -text "Curve:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.signatures_tab.main.algo_frame.content.curveCombo -values $::curveComboData -state readonly -width 14
-.nb.signatures_tab.main.algo_frame.content.curveCombo set "secp256r1"
-
-# Grid for algorithm settings - TODOS EM UMA LINHA
-grid .nb.signatures_tab.main.algo_frame.content.algorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.algorithmCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.bitsLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.bitsCombo -row 0 -column 3 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.curveLabel -row 0 -column 4 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.curveCombo -row 0 -column 5 -sticky we -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.paramsetLabel -row 0 -column 6 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.paramsetCombo -row 0 -column 7 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -row 0 -column 8 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -row 0 -column 9 -sticky we -padx 3 -pady 3
-
-# Key management frame
-frame .nb.signatures_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
-pack .nb.signatures_tab.main.keys_frame -fill x -padx 8 -pady 5
-
-label .nb.signatures_tab.main.keys_frame.title -text "KEY MANAGEMENT" -font {Arial 10 bold} -bg $frame_color
-pack .nb.signatures_tab.main.keys_frame.title -anchor w -padx 8 -pady 3
-
-frame .nb.signatures_tab.main.keys_frame.content -bg $frame_color
-pack .nb.signatures_tab.main.keys_frame.content -fill x -padx 8 -pady 3
-
-# Private Key
-label .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.privateKeyInput -width 50 -font {Consolas 9}
-button .nb.signatures_tab.main.keys_frame.content.openPrivateButton -text "📂 Open" -command {
-    openFileDialog .nb.signatures_tab.main.keys_frame.content.privateKeyInput
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
-
-grid .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.keys_frame.content.privateKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 3
-grid .nb.signatures_tab.main.keys_frame.content.openPrivateButton -row 0 -column 2 -sticky w -padx 3 -pady 3
-
-# Public Key
-label .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.publicKeyInput -width 50 -font {Consolas 9}
-button .nb.signatures_tab.main.keys_frame.content.openPublicButton -text "📂 Open" -command {
-    openFileDialog .nb.signatures_tab.main.keys_frame.content.publicKeyInput
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
-
-grid .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -sticky ew -padx 3 -pady 3
-grid .nb.signatures_tab.main.keys_frame.content.openPublicButton -row 1 -column 2 -sticky w -padx 3 -pady 3
-
-# Generate Keys button
-button .nb.signatures_tab.main.keys_frame.content.generateButton -text "🔑 Generate Keys" -command generateKey \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -pady 3 -width 20
-grid .nb.signatures_tab.main.keys_frame.content.generateButton -row 2 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 8
-
-# Configure column weights
-grid columnconfigure .nb.signatures_tab.main.keys_frame.content 1 -weight 1
-
-# Input data frame - ESTRUTURA IGUAL À DE OUTPUT
-frame .nb.signatures_tab.main.input_frame -bg $frame_color -relief solid -bd 1
-pack .nb.signatures_tab.main.input_frame -fill x -padx 8 -pady 5
-
-label .nb.signatures_tab.main.input_frame.title -text "INPUT DATA" -font {Arial 10 bold} -bg $frame_color
-pack .nb.signatures_tab.main.input_frame.title -anchor w -padx 8 -pady 3
-
-frame .nb.signatures_tab.main.input_frame.content -bg $frame_color
-pack .nb.signatures_tab.main.input_frame.content -fill x -padx 8 -pady 3
-
-# Input type
-label .nb.signatures_tab.main.input_frame.content.inputTypeLabel -text "Input Type:" -font {Arial 9 bold} -bg $frame_color
-set ::inputTypeComboData {"Text" "File"}
-ttk::combobox .nb.signatures_tab.main.input_frame.content.inputTypeCombo -values $::inputTypeComboData -state readonly -width 8
-.nb.signatures_tab.main.input_frame.content.inputTypeCombo set "Text"
-
-# Bind combobox selection
-bind .nb.signatures_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelected>> selectInputType
-
-# File input
-label .nb.signatures_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.input_frame.content.inputFile -width 50 -font {Consolas 9}
-button .nb.signatures_tab.main.input_frame.content.openFileButton -text "📂 Open" -command {
-    openFileDialog .nb.signatures_tab.main.input_frame.content.inputFile
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
-
-grid .nb.signatures_tab.main.input_frame.content.inputTypeLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.input_frame.content.inputTypeCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.input_frame.content.fileLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
-grid .nb.signatures_tab.main.input_frame.content.inputFile -row 0 -column 3 -sticky ew -padx 3 -pady 3
-grid .nb.signatures_tab.main.input_frame.content.openFileButton -row 0 -column 4 -sticky w -padx 3 -pady 3
-
-# Frame para área de texto - IGUAL À ESTRUTURA DE OUTPUT
-frame .nb.signatures_tab.main.input_frame.content.textframe -bg $frame_color
-grid .nb.signatures_tab.main.input_frame.content.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 3 -pady 3
-
-# Text area for text input - 4 LINHAS, ESTRUTURA IGUAL À OUTPUT
-text .nb.signatures_tab.main.input_frame.content.textframe.inputText -width 70 -height 2 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
-scrollbar .nb.signatures_tab.main.input_frame.content.textframe.yscroll -orient vertical \
-    -command {.nb.signatures_tab.main.input_frame.content.textframe.inputText yview}
-.nb.signatures_tab.main.input_frame.content.textframe.inputText configure \
-    -yscrollcommand {.nb.signatures_tab.main.input_frame.content.textframe.yscroll set}
-
-grid .nb.signatures_tab.main.input_frame.content.textframe.inputText -row 0 -column 0 -sticky "nsew"
-grid .nb.signatures_tab.main.input_frame.content.textframe.yscroll -row 0 -column 1 -sticky "ns"
-
-grid rowconfigure .nb.signatures_tab.main.input_frame.content.textframe 0 -weight 1
-grid columnconfigure .nb.signatures_tab.main.input_frame.content.textframe 0 -weight 1
-
-grid columnconfigure .nb.signatures_tab.main.input_frame.content 3 -weight 1
-grid rowconfigure .nb.signatures_tab.main.input_frame.content 1 -weight 1
-
-# Initially disable file input
-selectInputType
-
-# Output frame
-frame .nb.signatures_tab.main.output_frame -bg $frame_color -relief solid -bd 1
-pack .nb.signatures_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
-
-label .nb.signatures_tab.main.output_frame.title -text "SIGNATURE OUTPUT" -font {Arial 10 bold} -bg $frame_color
-pack .nb.signatures_tab.main.output_frame.title -anchor w -padx 8 -pady 3
-
-# Create output text area - 2 LINHAS PARA ASSINATURA
-frame .nb.signatures_tab.main.output_frame.textframe -bg $frame_color
-pack .nb.signatures_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
-
-text .nb.signatures_tab.main.output_frame.textframe.outputArea -width 70 -height 4 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
-scrollbar .nb.signatures_tab.main.output_frame.textframe.yscroll -orient vertical \
-    -command {.nb.signatures_tab.main.output_frame.textframe.outputArea yview}
-.nb.signatures_tab.main.output_frame.textframe.outputArea configure \
-    -yscrollcommand {.nb.signatures_tab.main.output_frame.textframe.yscroll set}
-
-grid .nb.signatures_tab.main.output_frame.textframe.outputArea -row 0 -column 0 -sticky "nsew"
-grid .nb.signatures_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -sticky "ns"
-
-grid rowconfigure .nb.signatures_tab.main.output_frame.textframe 0 -weight 1
-grid columnconfigure .nb.signatures_tab.main.output_frame.textframe 0 -weight 1
-
-# Utility buttons - MAIS COMPACTOS
-frame .nb.signatures_tab.main.output_frame.utility_buttons -bg $frame_color
-pack .nb.signatures_tab.main.output_frame.utility_buttons -fill x -padx 8 -pady 3
-
-button .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -text "📋 Copy" -command {
-    copyText [.nb.signatures_tab.main.output_frame.textframe.outputArea get 1.0 end]
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
-
-button .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -text "🗑️ Clear" -command {
-    .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
-    set ::signature_data ""
-} -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -side left -padx 2
-
-button .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -text "Clear Input" -command {
-    .nb.signatures_tab.main.input_frame.content.textframe.inputText delete 1.0 end
-    .nb.signatures_tab.main.input_frame.content.inputFile delete 0 end
-} -bg "#f39c12" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -side left -padx 2
-
-# Botões Sign/Verify (fora da seção SIGNATURE OUTPUT)
-frame .nb.signatures_tab.main.sign_verify_frame -bg $bg_color
-pack .nb.signatures_tab.main.sign_verify_frame -fill x -padx 8 -pady 10
-
-# Empacota primeiro o Verify (mais à direita)
-button .nb.signatures_tab.main.sign_verify_frame.verifyButton -text "✓ Verify" -command verifySignature \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} \
-    -padx 20 -pady 3 -relief raised -bd 2
-pack .nb.signatures_tab.main.sign_verify_frame.verifyButton -side right -padx 3
-
-# Depois empacota o Sign (à esquerda do Verify)
-button .nb.signatures_tab.main.sign_verify_frame.signButton -text "✍️ Sign" -command createSignature \
-    -bg "#9b59b6" -fg white -font {Arial 10 bold} \
-    -padx 20 -pady 3 -relief raised -bd 2
-pack .nb.signatures_tab.main.sign_verify_frame.signButton -side right -padx 3
-
-# ========== FIM DA ABA DE ASSINATURAS ==========
-
 # Execute Menu
 menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_hover
 . configure -menu .menubar
@@ -3307,43 +3513,63 @@ menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_h
     wm title .debug_win "Debug Information"
     wm geometry .debug_win 600x450
     
-    text .debug_win.text -width 80 -height 25 -wrap word
-    pack .debug_win.text -fill both -expand true -padx 10 -pady 10
+    # Definir background da janela principal
+    .debug_win configure -bg $bg_color
+    
+    # Frame principal com background correto
+    frame .debug_win.main -bg $bg_color
+    pack .debug_win.main -fill both -expand true -padx 10 -pady 10
+    
+    # Frame para a área de texto com scrollbar
+    frame .debug_win.main.textframe -bg $bg_color
+    pack .debug_win.main.textframe -fill both -expand true
+    
+    # Área de texto com background branco para contraste
+    text .debug_win.main.textframe.text -width 80 -height 25 -wrap word \
+        -font {Consolas 9} -bg white -relief solid -bd 1
+    scrollbar .debug_win.main.textframe.scroll -command {.debug_win.main.textframe.text yview}
+    .debug_win.main.textframe.text configure -yscrollcommand {.debug_win.main.textframe.scroll set}
+    
+    # Usar grid para melhor layout
+    grid .debug_win.main.textframe.text -row 0 -column 0 -sticky "nsew"
+    grid .debug_win.main.textframe.scroll -row 0 -column 1 -sticky "ns"
+    grid rowconfigure .debug_win.main.textframe 0 -weight 1
+    grid columnconfigure .debug_win.main.textframe 0 -weight 1
     
     # Captura toda a saída de debug
-    .debug_win.text insert end "=== DEBUG INFO ===\n\n"
-    .debug_win.text insert end "Platform: $::tcl_platform(platform)\n"
-    .debug_win.text insert end "OS: $::tcl_platform(os)\n"
+    .debug_win.main.textframe.text insert end "=== DEBUG INFO ===\n\n"
+    .debug_win.main.textframe.text insert end "Platform: $::tcl_platform(platform)\n"
+    .debug_win.main.textframe.text insert end "OS: $::tcl_platform(os)\n"
     if {[info exists ::tcl_platform(osVersion)]} {
-        .debug_win.text insert end "OS Version: $::tcl_platform(osVersion)\n"
+        .debug_win.main.textframe.text insert end "OS Version: $::tcl_platform(osVersion)\n"
     }
-    .debug_win.text insert end "Current dir: [pwd]\n"
-    .debug_win.text insert end "Tcl Version: [info patchlevel]\n"
+    .debug_win.main.textframe.text insert end "Current dir: [pwd]\n"
+    .debug_win.main.textframe.text insert end "Tcl Version: [info patchlevel]\n"
     
     # Obter versão do Tk de forma compatível
     if {[catch {package require Tk} tk_version]} {
-        .debug_win.text insert end "Tk Version: Not available\n"
+        .debug_win.main.textframe.text insert end "Tk Version: Not available\n"
     } else {
         if {[catch {tk version} tk_ver]} {
-            .debug_win.text insert end "Tk Version: $tk_version (loaded)\n"
+            .debug_win.main.textframe.text insert end "Tk Version: $tk_version (loaded)\n"
         } else {
-            .debug_win.text insert end "Tk Version: $tk_ver\n"
+            .debug_win.main.textframe.text insert end "Tk Version: $tk_ver\n"
         }
     }
-    .debug_win.text insert end "\n"
+    .debug_win.main.textframe.text insert end "\n"
     
     # Testa edgetk
-    .debug_win.text insert end "=== EDGETK INFO ===\n"
+    .debug_win.main.textframe.text insert end "=== EDGETK INFO ===\n"
     if {[catch {exec which edgetk} result]} {
-        .debug_win.text insert end "✗ edgetk not found in PATH\n"
+        .debug_win.main.textframe.text insert end "✗ edgetk not found in PATH\n"
     } else {
-        .debug_win.text insert end "✓ edgetk found at: $result\n\n"
+        .debug_win.main.textframe.text insert end "✓ edgetk found at: $result\n\n"
         
         # Tenta obter a versão do edgetk
-        .debug_win.text insert end "Trying to get edgetk version...\n"
+        .debug_win.main.textframe.text insert end "Trying to get edgetk version...\n"
         if {[catch {exec edgetk -version} version_result]} {
             # Se -version falhar, tenta --version ou outras opções
-            .debug_win.text insert end "✗ Error with 'edgetk -version': $version_result\n"
+            .debug_win.main.textframe.text insert end "✗ Error with 'edgetk -version': $version_result\n"
             
             # Tenta outras opções comuns de versão
             set version_found 0
@@ -3351,68 +3577,71 @@ menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_h
                 if {[catch {exec edgetk $version_flag 2>&1} alt_result]} {
                     continue
                 } else {
-                    .debug_win.text insert end "✓ Version (using '$version_flag'):\n$alt_result\n"
+                    .debug_win.main.textframe.text insert end "✓ Version (using '$version_flag'):\n$alt_result\n"
                     set version_found 1
                     break
                 }
             }
             if {!$version_found} {
-                .debug_win.text insert end "✗ Could not determine edgetk version\n"
+                .debug_win.main.textframe.text insert end "✗ Could not determine edgetk version\n"
             }
         } else {
-            .debug_win.text insert end "✓ Version:\n$version_result\n"
+            .debug_win.main.textframe.text insert end "✓ Version:\n$version_result\n"
         }
      }
     
     # Informações de sistema
-    .debug_win.text insert end "\n=== SYSTEM INFO ===\n"
+    .debug_win.main.textframe.text insert end "\n=== SYSTEM INFO ===\n"
     if {[file exists "/proc/cpuinfo"]} {
         if {![catch {exec grep -m 1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2} cpu_info]} {
-            .debug_win.text insert end "CPU: [string trim $cpu_info]\n"
+            .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
         }
         if {![catch {exec grep -c ^processor /proc/cpuinfo 2>/dev/null} cpu_cores]} {
-            .debug_win.text insert end "CPU Cores: [string trim $cpu_cores]\n"
+            .debug_win.main.textframe.text insert end "CPU Cores: [string trim $cpu_cores]\n"
         }
     } elseif {$::tcl_platform(platform) eq "windows"} {
         if {![catch {exec wmic cpu get name 2>/dev/null | findstr /v "Name"} cpu_info]} {
-            .debug_win.text insert end "CPU: [string trim $cpu_info]\n"
+            .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
         }
     }
     
     if {![catch {exec free -h 2>/dev/null | grep Mem: | awk '{print $2}'} mem_total]} {
-        .debug_win.text insert end "Memory Total: [string trim $mem_total]\n"
+        .debug_win.main.textframe.text insert end "Memory Total: [string trim $mem_total]\n"
     } elseif {$::tcl_platform(platform) eq "windows"} {
         if {![catch {exec wmic OS get TotalVisibleMemorySize 2>/dev/null | findstr /v "TotalVisibleMemorySize"} mem_bytes]} {
             set mem_mb [expr {[string trim $mem_bytes] / 1024.0 / 1024.0}]
-            .debug_win.text insert end "Memory Total: [format "%.1f" $mem_mb] GB\n"
+            .debug_win.main.textframe.text insert end "Memory Total: [format "%.1f" $mem_mb] GB\n"
         }
     }
     
     # Informações de ambiente
-    .debug_win.text insert end "\n=== ENVIRONMENT ===\n"
+    .debug_win.main.textframe.text insert end "\n=== ENVIRONMENT ===\n"
     if {[info exists ::env(PATH)]} {
-        .debug_win.text insert end "PATH: $::env(PATH)\n"
+        .debug_win.main.textframe.text insert end "PATH: $::env(PATH)\n"
     } else {
-        .debug_win.text insert end "PATH: Not set\n"
+        .debug_win.main.textframe.text insert end "PATH: Not set\n"
     }
     
-    # Adiciona botão para copiar debug info
-    frame .debug_win.buttons -bg $bg_color
-    pack .debug_win.buttons -fill x -padx 10 -pady 5
+    # Frame para botões com background correto
+    frame .debug_win.main.buttons -bg $bg_color
+    pack .debug_win.main.buttons -fill x -pady 10
     
-    button .debug_win.buttons.copy -text "📋 Copy Debug Info" -command {
-        set debug_text [.debug_win.text get 1.0 end]
+    button .debug_win.main.buttons.copy -text "📋 Copy Debug Info" -command {
+        set debug_text [.debug_win.main.textframe.text get 1.0 end]
         clipboard clear
         clipboard append $debug_text
-    } -bg "#3498db" -fg white -font {Arial 9 bold}
-    pack .debug_win.buttons.copy -side left -padx 5
+    } -bg "#3498db" -fg white -font {Arial 9 bold} -padx 15 -pady 5
+    pack .debug_win.main.buttons.copy -side left -padx 5
     
-    button .debug_win.buttons.close -text "Close" -command {destroy .debug_win} \
-        -bg "#e74c3c" -fg white -font {Arial 9 bold}
-    pack .debug_win.buttons.close -side right -padx 5
+    button .debug_win.main.buttons.close -text "Close" -command {destroy .debug_win} \
+        -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 15 -pady 5
+    pack .debug_win.main.buttons.close -side right -padx 5
     
     # Rola para o topo
-    .debug_win.text see 1.0
+    .debug_win.main.textframe.text see 1.0
+    
+    # Tornar a área de texto somente leitura após inserir conteúdo
+    .debug_win.main.textframe.text configure -state disabled
 }
 
 # Footer
