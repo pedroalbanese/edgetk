@@ -1557,6 +1557,68 @@ Or even SM2, SM3, SM4, and GCM for the Chinese Standard.
 >
 > If anything changes unexpectedly during execution, or if you're unsure about the configuration, you can safely **delete the `edgetk.ini` file**. The code will fall back to its internal defaults, and the program will remain **intact**.
 
+### How To Use (Graphical User Interface)
+```
+=============================================
+EDGE Crypto Suite - Tcl/Tk Usage Instructions
+=============================================
+
+OPTION 1: Graphical Interface
+-----------------------------
+1. Ensure Tcl/Tk is installed:
+   - Linux: sudo apt install tcl tk
+   - macOS: brew install tcl-tk
+   - Windows: Download freeWrap from https://sourceforge.net/projects/freewrap/
+   - BSD: pkg install tcl tk
+
+2. Run the graphical interface:
+   freewrap app.tcl
+   OR
+   wish app.tcl
+
+   NOTE:
+   freeWrap supports Windows 32-bit and 64-bit, as well as Linux, and is capable
+   of packaging/compiling Tcl/Tk scripts into a single static standalone binary.
+
+OPTION 2: Command Line
+----------------------
+Use the edgetk binary directly:
+   ./edgetk [options] FILE
+
+OPTION 3: Integration
+---------------------
+The graphical interface (app.tcl) calls the edgetk binary internally.
+Both must be located in the same directory.
+
+OPTION 4: System-wide Installation
+----------------------------------
+1. Copy the binary to a system path:
+   sudo cp edgetk /usr/local/bin/
+   
+2. Make the Tcl/Tk script executable:
+   chmod +x app.tcl
+   
+3. Run from anywhere:
+   ./app.tcl
+   OR make a desktop shortcut
+
+   DEBUG:
+   While running the script, click the "Debug" button. This will display
+   the folder(s) where the edgetk binary must be located for the script
+   to recognize it correctly.
+   
+Supported Platforms:
+- Windows 10/11 (32/64-bit)
+- macOS 10.14+ (Intel & Apple Silicon)
+- Linux (x86, x86_64, ARM, ARM64)
+- BSD (FreeBSD, OpenBSD, NetBSD)
+- Android (via Termux)
+- RaspberryPi (ARMv6/v7/ARM64)
+
+Minimum Tcl/Tk version required: 8.5 or higher
+==============================================
+```
+
 ## Acknowledgments
 
 - [Sergey Matveev](http://www.cypherpunks.su/) (GoGOST Library Author)
