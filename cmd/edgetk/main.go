@@ -376,7 +376,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.14  26 Nov 2025")
+		fmt.Println("EDGE Toolkit v1.5.15  06 Dec 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -1820,7 +1820,7 @@ Subcommands:
 		*length = 192
 	}
 
-	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "kcipher2" || *cph == "rabbit" || *cph == "kalyna128_128") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
+	if (*cph == "blowfish" || *cph == "cast5" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "rc4" || *cph == "sm4" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "noekeon" || *cph == "xoodyak" || *cph == "hc128" || *cph == "eea128" || *cph == "zuc128" || *cph == "ascon" || *cph == "grain128a" || *cph == "grain128aead" || *cph == "grain" || *cph == "kcipher2" || *cph == "rabbit" || *cph == "kalyna128_128") && *pkey != "keygen" && (*length != 128) && *crypt != "" {
 		*length = 128
 	}
 
@@ -6772,6 +6772,52 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *pkey == "proof" && strings.ToUpper(*alg) == "ED521" {
+		keyBytes, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal("Error reading private key:", err)
+		}
+
+		privatekey, err := DecodeE521PrivateKey(keyBytes)
+		if err != nil {
+			log.Fatal("Error decoding private key:", err)
+		}
+
+		proof, err := privatekey.ProveKnowledge()
+		if err != nil {
+			log.Fatal("Error generating ZKP:", err)
+		}
+
+		fmt.Printf("Response= %s\n", hex.EncodeToString(proof))
+		os.Exit(0)
+	}
+
+	if *pkey == "verify-proof" && strings.ToUpper(*alg) == "ED521" {
+		keyBytes, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal("Error reading public key:", err)
+		}
+
+		publicKey, err := DecodeE521PublicKey(keyBytes)
+		if err != nil {
+			log.Fatal("Error decoding public key:", err)
+		}
+
+		proofBytes, err := hex.DecodeString(*responseFlag)
+		if err != nil {
+			log.Fatal("Error decoding ZKP proof:", err)
+		}
+
+		verified := publicKey.VerifyKnowledge(proofBytes)
+
+		fmt.Printf("Verified: %v\n", verified)
+		if verified {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
+		}
+	}
+
 	if *pkey == "keygen" && strings.ToUpper(*alg) == "KG" || (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") && (*curveFlag == "kg256r1" || *curveFlag == "kg384r1") {
 		var curve *kg.KGCurve
 		if *length == 256 || *curveFlag == "kg256r1" {
@@ -7780,6 +7826,57 @@ Subcommands:
 			log.Fatal("Error computing shared key:", err)
 		}
 		fmt.Printf("%x\n", sharedKey)
+		os.Exit(0)
+	}
+
+	if *pkey == "derive" && strings.ToUpper(*alg) == "SM2" {
+		var privatekey *sm2.PrivateKey
+
+		file, err := ioutil.ReadFile(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		public, err := DecodePublicKey(file)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if public.X == nil || public.Y == nil {
+			log.Fatal("invalid public key: coordinates are nil")
+		}
+		if public.X.Sign() == 0 && public.Y.Sign() == 0 {
+			log.Fatal("invalid public key: point at infinity")
+		}
+		if !public.Curve.IsOnCurve(public.X, public.Y) {
+			log.Fatal("invalid public key: point not on curve")
+		}
+
+		file2, err := ioutil.ReadFile(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		privatekey, err = DecodeSM2PrivateKey(file2)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if privatekey.D.Cmp(public.Curve.Params().N) >= 0 || privatekey.D.Sign() <= 0 {
+			log.Fatal("invalid private key: scalar out of range")
+		}
+
+		bX, bY := public.Curve.ScalarMult(public.X, public.Y, privatekey.D.Bytes())
+
+		if bX == nil || bY == nil {
+			log.Fatal("invalid shared secret: null point")
+		}
+		if bX.Sign() == 0 && bY.Sign() == 0 {
+			log.Fatal("invalid shared secret: point at infinity")
+		}
+		if !public.Curve.IsOnCurve(bX, bY) {
+			log.Fatal("invalid shared secret: point not on curve")
+		}
+
+		fmt.Printf("%x\n", bX.Bytes())
 		os.Exit(0)
 	}
 
