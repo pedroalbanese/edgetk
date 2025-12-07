@@ -38,6 +38,7 @@ require (
 	github.com/pedroalbanese/curupira1 v0.0.0-gama
 	github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
+	github.com/pedroalbanese/e521 v0.0.30
 	github.com/pedroalbanese/eac v0.0.0-20250428171516-10a5a5e733cd
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
@@ -67,6 +68,7 @@ require (
 	github.com/pedroalbanese/haraka v0.0.0-20180824194238-3cf1081eecd7
 	github.com/pedroalbanese/jh v0.0.0-20240624180005-e6705e517191
 	github.com/pedroalbanese/kalyna v0.0.0-20240325185136-5fa784896340
+	github.com/pedroalbanese/kg v0.0.5
 	github.com/pedroalbanese/khazad v0.0.0-20240325185634-12dbcf5e3eaa
 	github.com/pedroalbanese/kupyna v0.0.0-20240326161126-ebb2f9665eeb
 	github.com/pedroalbanese/kuznechik v0.0.0
@@ -77,6 +79,7 @@ require (
 	github.com/pedroalbanese/magenta v0.0.0-20241208214047-a79e5e9ef277
 	github.com/pedroalbanese/makwa-go v0.0.0-20240816162209-f803984910a2
 	github.com/pedroalbanese/mars v0.0.0-20240325185557-fe8b863ed824
+	github.com/pedroalbanese/matrixgl v0.0.9
 	github.com/pedroalbanese/md6 v0.0.0-20240815222317-052c055905a4
 	github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f
 	github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75
@@ -92,6 +95,7 @@ require (
 	github.com/pedroalbanese/shacal2 v0.0.0-20240911175924-cbeaa118c471
 	github.com/pedroalbanese/shavite v0.0.0-20240518173728-5c0c7c528bc7
 	github.com/pedroalbanese/simd v0.0.0-20240518173711-b73ebc90aae8
+	github.com/pedroalbanese/simpleini v0.0.0
 	github.com/pedroalbanese/siphash v1.0.1
 	github.com/pedroalbanese/siv v0.0.2
 	github.com/pedroalbanese/skein v0.0.0-20230124182825-ffe5e4ff3827
@@ -107,8 +111,9 @@ require (
 	github.com/pedroalbanese/whirlpool v0.0.0-20220911221330-8ad94dd14447
 	github.com/pedroalbanese/xoodoo v0.0.0-20230124190939-64aa038b97c6
 	github.com/pedroalbanese/xxencode v0.0.15
+	github.com/trailofbits/lms-go v0.0.0-20250218220503-d2f2806cebf9
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.41.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/term v0.32.0
 )
 
@@ -118,9 +123,10 @@ require (
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
-	github.com/pedroalbanese/simpleini v0.0.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 )
 
 replace golang.org/x/crypto => golang.org/x/crypto v0.38.0
+
+replace golang.org/x/sys => golang.org/x/sys v0.25.0
