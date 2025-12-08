@@ -584,7 +584,7 @@ proc updateSignatureUI {} {
         bash224 bash256 bash384 bash512
         belt
         blake2b256 blake2b512
-        blake2s128 blake2s256
+        blake2s256
         blake3
         bmw224 bmw256 bmw384 bmw512
         cubehash256 cubehash512
@@ -902,7 +902,7 @@ proc updateTextUI {} {
     
     # Cifras de 64 bits (tamanho do bloco)
     set block64_ciphers {
-        3des blowfish cast5 curupira gost89 hight idea misty1 present rc2 rc5
+        3des blowfish cast5 gost89 hight idea misty1 present rc2 rc5
         rc6 seed twine kalyna128_128 kalyna128_256
     }
     
@@ -947,6 +947,12 @@ proc updateTextUI {} {
         if {$algorithm eq "curupira"} {
             # Para Curupira: apenas lettersoup e eax
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+            set incompatible_modes {gcm ocb1 ocb3 ccm mgm}
+            
+            if {$mode in $incompatible_modes} {
+                # Se o modo atual não é compatível, mudar para "eax" (padrão para 64 bits)
+                .nb.text_tab.main.algo_frame.row1.modeCombo set "lettersoup"
+            }
         } elseif {$algorithm in $block64_ciphers} {
             # Para cifras de 64 bits: modos convencionais + eax, mgm, siv
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
@@ -1061,6 +1067,11 @@ proc updateFilesUI {} {
         if {$algorithm eq "curupira"} {
             # Para Curupira: apenas lettersoup e eax
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+            set incompatible_modes {gcm ocb1 ocb3 ccm mgm}
+            if {$mode in $incompatible_modes} {
+                # Se o modo atual não é compatível, mudar para "eax" (padrão para 64 bits)
+                .nb.file_tab.main.algo_frame.row1.modeCombo set "lettersoup"
+            }
         } elseif {$algorithm in $block64_ciphers} {
             # Para cifras de 64 bits: modos convencionais + eax, mgm, siv
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
@@ -2146,7 +2157,7 @@ set ::hashAlgorithmComboData {
     bash224 bash256 bash384 bash512
     belt
     blake2b256 blake2b512
-    blake2s128 blake2s256
+    blake2s256
     blake3
     bmw224 bmw256 bmw384 bmw512
     cubehash256 cubehash512
@@ -2491,7 +2502,7 @@ set hashAlgorithms {
     bash224 bash256 bash384 bash512
     belt
     blake2b256 blake2b512
-    blake2s128 blake2s256
+    blake2s256
     blake3
     bmw224 bmw256 bmw384 bmw512
     cubehash256 cubehash512
@@ -2712,7 +2723,7 @@ set hashAlgorithms {
     bash224 bash256 bash384 bash512
     belt
     blake2b256 blake2b512
-    blake2s128 blake2s256
+    blake2s256
     blake3
     bmw224 bmw256 bmw384 bmw512
     cubehash256 cubehash512
@@ -2984,7 +2995,7 @@ set ::hashAlgorithmComboData {
     bash224 bash256 bash384 bash512
     belt
     blake2b256 blake2b512
-    blake2s128 blake2s256
+    blake2s256
     blake3
     bmw224 bmw256 bmw384 bmw512
     cubehash256 cubehash512
@@ -3101,7 +3112,7 @@ pack .nb.ecdh_tab.main.output_frame.buttons.clearButton -side left -padx 3
 
 # ========== MAC TEXT TAB ==========
 frame .nb.mac_tab -bg $bg_color
-.nb add .nb.mac_tab -text " MAC "
+.nb add .nb.mac_tab -text " Authentication "
 
 # Main frame for content (MAC Text)
 frame .nb.mac_tab.main -bg $bg_color
@@ -3128,7 +3139,7 @@ set hmacHashes {
     bash224 bash256 bash384 bash512
     belt
     blake2b256 blake2b512
-    blake2s128 blake2s256
+    blake2s256
     blake3
     bmw224 bmw256 bmw384 bmw512
     cubehash256 cubehash512
@@ -3357,6 +3368,442 @@ button .nb.mac_tab.main.action_frame.clearButton -text "🗑️ Clear All" -comm
 # Execute Menu
 menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_hover
 . configure -menu .menubar
+
+# ========== DIGEST TAB ==========
+frame .nb.digest_tab -bg $bg_color
+.nb add .nb.digest_tab -text " Digest "
+
+# Main frame for content (Digest)
+frame .nb.digest_tab.main -bg $bg_color
+pack .nb.digest_tab.main -fill both -expand yes -padx 8 -pady 5
+
+# Algorithm settings frame
+frame .nb.digest_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
+pack .nb.digest_tab.main.algo_frame -fill x -padx 8 -pady 5
+
+label .nb.digest_tab.main.algo_frame.title -text "DIGEST SETTINGS" -font {Arial 10 bold} -bg $frame_color
+pack .nb.digest_tab.main.algo_frame.title -anchor w -padx 8 -pady 3
+
+frame .nb.digest_tab.main.algo_frame.content -bg $frame_color
+pack .nb.digest_tab.main.algo_frame.content -fill x -padx 8 -pady 3
+
+# Hash Algorithm ComboBox
+set ::digestHashComboData {
+    bash224 bash256 bash384 bash512
+    belt
+    blake2b256 blake2b512
+    blake2s256
+    blake3
+    bmw224 bmw256 bmw384 bmw512
+    cubehash256 cubehash512
+    echo224 echo256 echo384 echo512
+    esch256 esch384
+    fugue224 fugue256 fugue384 fugue512
+    fugue512
+    gost94
+    groestl224 groestl256 groestl384 groestl512
+    hamsi224 hamsi256 hamsi384 hamsi512
+    has160
+    jh224 jh256 jh384 jh512
+    keccak256 keccak512
+    kupyna256 kupyna384 kupyna512
+    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
+    luffa224 luffa256 luffa384 luffa512
+    md4 md5
+    md6-224 md6-256 md6-384 md6-512
+    radiogatun32 radiogatun64
+    ripemd128 ripemd160 ripemd256 ripemd320
+    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
+    sha512-256
+    shake128 shake256
+    shavite224 shavite256 shavite384 shavite512
+    simd224 simd256 simd384 simd512
+    siphash64 siphash
+    skein256 skein512
+    sm3
+    streebog256 streebog512
+    tiger tiger2
+    whirlpool
+    xoodyak
+}
+
+label .nb.digest_tab.main.algo_frame.content.hashLabel -text "Hash Algorithm:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.digest_tab.main.algo_frame.content.hashCombo -values $::digestHashComboData -state readonly -width 20
+.nb.digest_tab.main.algo_frame.content.hashCombo set "sha3-256"
+
+# Recursive checkbox
+checkbutton .nb.digest_tab.main.algo_frame.content.recursiveCheck -text "Recursive" \
+    -variable ::recursiveFlag -bg $frame_color -font {Arial 9} -anchor w
+set ::recursiveFlag 0  ;# Valor padrão: desmarcado
+
+pack .nb.digest_tab.main.algo_frame.content.hashLabel .nb.digest_tab.main.algo_frame.content.hashCombo .nb.digest_tab.main.algo_frame.content.recursiveCheck -side left -padx 5 -pady 3
+
+# File selection frame
+frame .nb.digest_tab.main.file_frame -bg $frame_color -relief solid -bd 1
+pack .nb.digest_tab.main.file_frame -fill x -padx 8 -pady 5
+
+label .nb.digest_tab.main.file_frame.title -text "FILE SELECTION" -font {Arial 10 bold} -bg $frame_color
+pack .nb.digest_tab.main.file_frame.title -anchor w -padx 8 -pady 3
+
+frame .nb.digest_tab.main.file_frame.content -bg $frame_color
+pack .nb.digest_tab.main.file_frame.content -fill x -padx 8 -pady 3
+
+# Directory path
+label .nb.digest_tab.main.file_frame.content.dirLabel -text "Directory:" -font {Arial 9 bold} -bg $frame_color -width 10 -anchor e
+entry .nb.digest_tab.main.file_frame.content.dirEntry -width 50 -font {Consolas 9}
+# Definir valor padrão como "." (diretório atual)
+.nb.digest_tab.main.file_frame.content.dirEntry insert 0 "."
+button .nb.digest_tab.main.file_frame.content.dirButton -text "📂 Open" -command {
+    set dir_path [tk_chooseDirectory -title "Select Directory" -mustexist 1]
+    if {$dir_path ne ""} {
+        .nb.digest_tab.main.file_frame.content.dirEntry delete 0 end
+        .nb.digest_tab.main.file_frame.content.dirEntry insert 0 $dir_path
+    }
+} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.digest_tab.main.file_frame.content.dirLabel -row 0 -column 0 -sticky e -padx 3 -pady 3
+grid .nb.digest_tab.main.file_frame.content.dirEntry -row 0 -column 1 -sticky ew -padx 3 -pady 3
+grid .nb.digest_tab.main.file_frame.content.dirButton -row 0 -column 2 -sticky w -padx 3 -pady 3
+
+# File pattern/wildcard
+label .nb.digest_tab.main.file_frame.content.patternLabel -text "Pattern:" -font {Arial 9 bold} -bg $frame_color -width 10 -anchor e
+entry .nb.digest_tab.main.file_frame.content.patternEntry -width 50 -font {Consolas 9}
+.nb.digest_tab.main.file_frame.content.patternEntry insert 0 "*"
+
+grid .nb.digest_tab.main.file_frame.content.patternLabel -row 1 -column 0 -sticky e -padx 3 -pady 3
+grid .nb.digest_tab.main.file_frame.content.patternEntry -row 1 -column 1 -sticky ew -padx 3 -pady 3
+
+# Add current directory button
+button .nb.digest_tab.main.file_frame.content.currentDirButton -text "📁 Current Dir" -command {
+    .nb.digest_tab.main.file_frame.content.dirEntry delete 0 end
+    .nb.digest_tab.main.file_frame.content.dirEntry insert 0 "."
+} -bg "#95a5a6" -fg white -font {Arial 9 bold} -padx 8
+grid .nb.digest_tab.main.file_frame.content.currentDirButton -row 1 -column 2 -sticky w -padx 3 -pady 3
+
+grid columnconfigure .nb.digest_tab.main.file_frame.content 1 -weight 1
+
+# Output frame
+frame .nb.digest_tab.main.output_frame -bg $frame_color -relief solid -bd 1
+pack .nb.digest_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
+
+label .nb.digest_tab.main.output_frame.title -text "DIGEST" -font {Arial 10 bold} -bg $frame_color
+pack .nb.digest_tab.main.output_frame.title -anchor w -padx 8 -pady 3
+
+# Create output text area with ONLY vertical scrollbar
+frame .nb.digest_tab.main.output_frame.textframe -bg $frame_color
+pack .nb.digest_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
+
+text .nb.digest_tab.main.output_frame.textframe.outputArea -width 70 -height 15 -wrap word \
+    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+scrollbar .nb.digest_tab.main.output_frame.textframe.yscroll -orient vertical \
+    -command {.nb.digest_tab.main.output_frame.textframe.outputArea yview}
+.nb.digest_tab.main.output_frame.textframe.outputArea configure \
+    -yscrollcommand {.nb.digest_tab.main.output_frame.textframe.yscroll set}
+
+grid .nb.digest_tab.main.output_frame.textframe.outputArea -row 0 -column 0 -sticky "nsew"
+grid .nb.digest_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -sticky "ns"
+
+grid rowconfigure .nb.digest_tab.main.output_frame.textframe 0 -weight 1
+grid columnconfigure .nb.digest_tab.main.output_frame.textframe 0 -weight 1
+
+# Action buttons frame
+frame .nb.digest_tab.main.action_frame -bg $bg_color
+pack .nb.digest_tab.main.action_frame -fill x -padx 8 -pady 8
+
+# Digest button (botão principal - verde)
+button .nb.digest_tab.main.action_frame.digestButton -text "🧮 Calculate Digests" \
+    -command calculateDigests -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -relief raised -bd 2
+pack .nb.digest_tab.main.action_frame.digestButton -side left -padx 5
+
+# Check button (botão principal - azul)
+button .nb.digest_tab.main.action_frame.checkButton -text "✓ Verify Digests" \
+    -command verifyDigests -bg "#3498db" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -relief raised -bd 2
+pack .nb.digest_tab.main.action_frame.checkButton -side left -padx 5
+
+# Save button (botão auxiliar - laranja)
+button .nb.digest_tab.main.action_frame.saveButton -text "💾 Save" \
+    -command saveDigests -bg "#f39c12" -fg white -font {Arial 9 bold} \
+    -padx 12 -pady 4
+pack .nb.digest_tab.main.action_frame.saveButton -side right -padx 3
+
+# Copy button (botão auxiliar - verde)
+button .nb.digest_tab.main.action_frame.copyButton -text "📋 Copy" \
+    -command {
+        set text [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
+        clipboard clear
+        clipboard append $text
+    } -bg "#27ae60" -fg white -font {Arial 9 bold} \
+    -padx 12 -pady 4
+pack .nb.digest_tab.main.action_frame.copyButton -side right -padx 3
+
+# Clear button (botão auxiliar - vermelho)
+button .nb.digest_tab.main.action_frame.clearButton -text "🗑️ Clear" \
+    -command {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    } -bg "#e74c3c" -fg white -font {Arial 9 bold} \
+    -padx 12 -pady 4
+pack .nb.digest_tab.main.action_frame.clearButton -side right -padx 3
+
+# ===== FUNÇÕES DIGEST =====
+
+# Função para salvar os digests em arquivo
+proc saveDigests {} {
+    set text [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
+    
+    if {$text eq ""} {
+        tk_messageBox -icon warning -title "No Data" -message "No data to save!" \
+            -type ok
+        return
+    }
+    
+    # Sugerir nome de arquivo baseado no algoritmo e data
+    set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
+    set timestamp [clock format [clock seconds] -format "%Y%m%d_%H%M%S"]
+    set default_filename "digests_${hash_algorithm}_${timestamp}.txt"
+    
+    # Perguntar onde salvar
+    set filepath [tk_getSaveFile \
+        -title "Save Digests As" \
+        -initialfile $default_filename \
+        -defaultextension ".txt" \
+        -filetypes {
+            {"Text files" {.txt}}
+            {"All files" *}
+        }]
+    
+    if {$filepath ne ""} {
+        if {[catch {
+            set fd [open $filepath w]
+            puts $fd $text
+            close $fd
+            tk_messageBox -icon info -title "Saved" \
+                -message "Digests saved to:\n$filepath"
+        } errorMsg]} {
+            tk_messageBox -icon error -title "Error" \
+                -message "Failed to save file:\n$errorMsg"
+        }
+    }
+}
+
+# Função para calcular digests de arquivos
+proc calculateDigests {} {
+    set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
+    set directory [.nb.digest_tab.main.file_frame.content.dirEntry get]
+    set pattern [.nb.digest_tab.main.file_frame.content.patternEntry get]
+    
+    # Validar diretório - "." sempre será válido
+    if {$directory eq ""} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Please select a directory!"
+        return
+    }
+    
+    # Não precisa verificar se "." existe - sempre existe
+    # Mas se for outro caminho, verifica
+    if {$directory ne "." && (![file exists $directory] || ![file isdirectory $directory])} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Directory not found: $directory"
+        return
+    }
+    
+    # Limpar área de saída
+    .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    
+    # Adicionar cabeçalho com informações
+    set timestamp [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S"]
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Digests generated on: $timestamp\n"
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Algorithm: $hash_algorithm\n"
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Directory: $directory\n"
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Pattern: $pattern\n"
+    if {$::recursiveFlag} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Recursive: Yes\n"
+    }
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "#\n"
+    
+    # Mudar para o diretório selecionado
+    set original_dir [pwd]
+    if {$directory ne "."} {
+        cd $directory
+    }
+    
+    # Construir comando base
+    set cmd [list edgetk -digest -md $hash_algorithm]
+    
+    # Adicionar flag -recursive se o checkbox estiver marcado
+    if {$::recursiveFlag} {
+        lappend cmd -recursive
+    }
+    
+    # Para modo não-recursivo: obter e ordenar arquivos antes
+    if {!$::recursiveFlag} {
+        # Obter lista de arquivos
+        set files [glob -nocomplain -- $pattern]
+        
+        # Se não houver arquivos, mostrar mensagem
+        if {[llength $files] == 0} {
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ No files found matching pattern: $pattern\n"
+            
+            # Voltar ao diretório original
+            if {$directory ne "."} {
+                cd $original_dir
+            }
+            return
+        }
+        
+        # Ordenar arquivos alfabeticamente (ASCII - maiúsculas primeiro)
+        set files [lsort -ascii $files]
+        
+        # Adicionar os arquivos ordenados ao comando
+        lappend cmd {*}$files
+    } else {
+        # Para modo recursivo: adicionar padrão diretamente
+        lappend cmd {*}[glob -nocomplain -- $pattern]
+    }
+    
+    # Executar comando edgetk -digest
+    if {[catch {
+        set result [exec {*}$cmd 2>@1]
+        
+        # Ordenar linhas alfabeticamente pelo nome do arquivo
+        set lines [split $result "\n"]
+        set sorted_lines {}
+        
+        foreach line $lines {
+            # Linhas que começam com hash (hex + espaço + asterisco + nome de arquivo)
+            if {[regexp {^([0-9a-fA-F]+)\s+\*(.+)$} $line -> hash filename]} {
+                lappend sorted_lines [list $filename $line]
+            } elseif {[string trim $line] ne ""} {
+                # Linhas que não são hashes mas não estão vazias - manter na ordem original
+                lappend sorted_lines [list "" $line]
+            }
+        }
+        
+        # Ordenar pelo nome do arquivo (primeiro elemento de cada lista)
+        # Usar ordem ASCII (maiúsculas primeiro)
+        set sorted_lines [lsort -index 0 -ascii $sorted_lines]
+        
+        # Reconstruir resultado ordenado
+        set sorted_result ""
+        foreach item $sorted_lines {
+            append sorted_result [lindex $item 1]\n
+        }
+        
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end $sorted_result
+        
+    } errorMsg]} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: $errorMsg"
+    }
+    
+    # Voltar ao diretório original
+    if {$directory ne "."} {
+        cd $original_dir
+    }
+}
+
+# Função para verificar digests de arquivos
+proc verifyDigests {} {
+    set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
+    set directory [.nb.digest_tab.main.file_frame.content.dirEntry get]
+    
+    # Validar diretório
+    if {$directory eq ""} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Please select a directory!"
+        return
+    }
+    
+    # Não precisa verificar se "." existe - sempre existe
+    # Mas se for outro caminho, verifica
+    if {$directory ne "." && (![file exists $directory] || ![file isdirectory $directory])} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Directory not found: $directory"
+        return
+    }
+    
+    # Obter todo o conteúdo e filtrar apenas linhas que são hashes
+    set all_content [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
+    set hash_lines ""
+    
+    foreach line [split $all_content "\n"] {
+        # Manter apenas linhas que parecem ser hashes (hex + espaço + asterisco + nome de arquivo)
+        if {[regexp {^[0-9a-fA-F]+\s+\*} $line]} {
+            append hash_lines "$line\n"
+        }
+    }
+    
+    if {[string trim $hash_lines] eq ""} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: No valid hash data found!\nPlease calculate digests first."
+        return
+    }
+    
+    # Limpar área de saída
+    .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    
+    # Adicionar cabeçalho
+    set timestamp [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S"]
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Verification started on: $timestamp\n"
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Algorithm: $hash_algorithm\n"
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Directory: $directory\n"
+    if {$::recursiveFlag} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Recursive: Yes\n"
+    }
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "#\n"
+    
+    # Mudar para o diretório selecionado
+    set original_dir [pwd]
+    if {$directory ne "."} {
+        cd $directory
+    }
+    
+    # Variável para capturar exit code
+    set exit_code 0
+    
+    # Construir comando base
+    set cmd [list edgetk -check -md $hash_algorithm]
+    
+    # Adicionar flag -recursive se o checkbox estiver marcado
+    if {$::recursiveFlag} {
+        lappend cmd -recursive
+    }
+    
+    # Executar comando edgetk -check e capturar exit code
+    if {[catch {
+        # Usar exec com redirect para capturar stderr e exit code
+        set result [exec {*}$cmd << $hash_lines 2>@1]
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end $result
+    } errorMsg error_options]} {
+        # Se houve erro, capturar exit code das options
+        set exit_code [dict get $error_options -errorcode]
+        
+        # Extrair o número do exit code (geralmente no formato CHILDSTATUS pid code)
+        if {[lindex $exit_code 0] eq "CHILDSTATUS"} {
+            set exit_code [lindex $exit_code 2]
+        } else {
+            set exit_code 1  # Código de erro genérico
+        }
+        
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: $errorMsg"
+    }
+    
+    # Voltar ao diretório original
+    if {$directory ne "."} {
+        cd $original_dir
+    }
+    
+    # Mostrar resultado baseado no exit code
+    if {$exit_code == 0} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n"
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✓ All checks passed successfully! (exit code: 0)\n"
+    } else {
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n" + "=" * 60 + "\n"
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Some checks failed! (exit code: $exit_code)\n"
+    }
+}
+
+# ===== FIM DAS FUNÇÕES DIGEST =====
 
 .menubar add command -label "About" -command showAbout -background $accent_color
 
