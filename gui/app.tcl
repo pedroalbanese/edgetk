@@ -1450,7 +1450,7 @@ proc calculateMAC {} {
                 set keySize 16
             }
             "poly1305" {
-                set keySize 24
+                set keySize 32
             }
             "siphash" {
                 set keySize 16
@@ -1459,7 +1459,7 @@ proc calculateMAC {} {
                 set keySize 64
             }
             "xoodyak" {
-                set keySize 48
+                set keySize 32
             }
         }
         
@@ -1815,6 +1815,7 @@ proc encrypt {} {
     set iter [.nb.text_tab.main.algo_frame.row2.iterBox get]
     set algorithm [.nb.text_tab.main.algo_frame.row1.algorithmCombo get]
     set mode [.nb.text_tab.main.algo_frame.row1.modeCombo get]
+    set encoding [.nb.text_tab.main.algo_frame.row1.encodingCombo get]
     set pbkdf2Hash [.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo get]
 
     set kdfOptionAlgorithm ""
@@ -1835,7 +1836,12 @@ proc encrypt {} {
     
     # Usar catch para capturar erros
     if {[catch {
-        set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base64]
+        # Executar encriptação e codificar com base64 ou base32
+        if {$encoding eq "base64"} {
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base64]
+        } else {
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base32]
+        }
         .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 $encryptedMsg
     } errorMsg]} {
         # Se houver erro, mostrar na área de saída (ciphertext)
@@ -1851,6 +1857,7 @@ proc decrypt {} {
     set iter [.nb.text_tab.main.algo_frame.row2.iterBox get]
     set algorithm [.nb.text_tab.main.algo_frame.row1.algorithmCombo get]
     set mode [.nb.text_tab.main.algo_frame.row1.modeCombo get]
+    set encoding [.nb.text_tab.main.algo_frame.row1.encodingCombo get]
     set pbkdf2Hash [.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo get]
 
     set kdfOptionAlgorithm ""
@@ -1871,7 +1878,12 @@ proc decrypt {} {
     
     # Usar catch para capturar erros
     if {[catch {
-        set decryptedMsg [exec base64 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+        # Decodificar base64 ou base32 antes de desencriptar
+        if {$encoding eq "base64"} {
+            set decryptedMsg [exec base64 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+        } else {
+            set decryptedMsg [exec base32 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+        }
         .nb.text_tab.main.plain_frame.textframe.text insert 1.0 $decryptedMsg
     } errorMsg]} {
         # Se houver erro, mostrar na área de saída (plaintext)
@@ -2428,8 +2440,17 @@ ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
 
+# NOVO: Adicionar combobox para Encoding
+label .nb.text_tab.main.algo_frame.row1.encodingLabel -text "Encoding:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.text_tab.main.algo_frame.row1.encodingCombo \
+    -values {"base64" "base32"} \
+    -width 10 -state readonly
+.nb.text_tab.main.algo_frame.row1.encodingCombo set "base64"
+
 pack .nb.text_tab.main.algo_frame.row1.algorithmLabel .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-     .nb.text_tab.main.algo_frame.row1.modeLabel .nb.text_tab.main.algo_frame.row1.modeCombo -side left -padx 5
+     .nb.text_tab.main.algo_frame.row1.modeLabel .nb.text_tab.main.algo_frame.row1.modeCombo \
+     .nb.text_tab.main.algo_frame.row1.encodingLabel .nb.text_tab.main.algo_frame.row1.encodingCombo \
+     -side left -padx 5
 
 # Row 2: KDF settings (Text)
 frame .nb.text_tab.main.algo_frame.row2 -bg $frame_color
@@ -2539,7 +2560,7 @@ grid .nb.text_tab.main.cipher_frame -row 2 -column 0 -columnspan 6 -sticky "nsew
 grid rowconfigure .nb.text_tab.main.cipher_frame 1 -weight 1
 grid columnconfigure .nb.text_tab.main.cipher_frame 0 -weight 1
 
-label .nb.text_tab.main.cipher_frame.label -text "CIPHERTEXT (Base64)" -font {Arial 10 bold} -bg $frame_color
+label .nb.text_tab.main.cipher_frame.label -text "CIPHERTEXT" -font {Arial 10 bold} -bg $frame_color
 grid .nb.text_tab.main.cipher_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
 
 # Create ciphertext text box with scrollbar (shorter)
@@ -3303,6 +3324,149 @@ button .nb.mac_tab.main.action_frame.clearButton -text "🗑️ Clear All" -comm
     .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
     .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
 } -bg "#e74c3c" -fg white -font {Arial 10 bold} -padx 15 -pady 6
+
+# Execute Menu
+menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_hover
+. configure -menu .menubar
+
+.menubar add command -label "About" -command showAbout -background $accent_color
+
+# Adicione ao menu
+.menubar add command -label "Debug" -command {
+    toplevel .debug_win
+    wm title .debug_win "Debug Information"
+    wm geometry .debug_win 600x450
+    
+    # Definir background da janela principal
+    .debug_win configure -bg $bg_color
+    
+    # Frame principal com background correto
+    frame .debug_win.main -bg $bg_color
+    pack .debug_win.main -fill both -expand true -padx 10 -pady 10
+    
+    # Frame para a área de texto com scrollbar
+    frame .debug_win.main.textframe -bg $bg_color
+    pack .debug_win.main.textframe -fill both -expand true
+    
+    # Área de texto com background branco para contraste
+    text .debug_win.main.textframe.text -width 80 -height 25 -wrap word \
+        -font {Consolas 9} -bg white -relief solid -bd 1
+    scrollbar .debug_win.main.textframe.scroll -command {.debug_win.main.textframe.text yview}
+    .debug_win.main.textframe.text configure -yscrollcommand {.debug_win.main.textframe.scroll set}
+    
+    # Usar grid para melhor layout
+    grid .debug_win.main.textframe.text -row 0 -column 0 -sticky "nsew"
+    grid .debug_win.main.textframe.scroll -row 0 -column 1 -sticky "ns"
+    grid rowconfigure .debug_win.main.textframe 0 -weight 1
+    grid columnconfigure .debug_win.main.textframe 0 -weight 1
+    
+    # Captura toda a saída de debug
+    .debug_win.main.textframe.text insert end "=== DEBUG INFO ===\n\n"
+    .debug_win.main.textframe.text insert end "Platform: $::tcl_platform(platform)\n"
+    .debug_win.main.textframe.text insert end "OS: $::tcl_platform(os)\n"
+    if {[info exists ::tcl_platform(osVersion)]} {
+        .debug_win.main.textframe.text insert end "OS Version: $::tcl_platform(osVersion)\n"
+    }
+    .debug_win.main.textframe.text insert end "Current dir: [pwd]\n"
+    .debug_win.main.textframe.text insert end "Tcl Version: [info patchlevel]\n"
+    
+    # Obter versão do Tk de forma compatível
+    if {[catch {package require Tk} tk_version]} {
+        .debug_win.main.textframe.text insert end "Tk Version: Not available\n"
+    } else {
+        if {[catch {tk version} tk_ver]} {
+            .debug_win.main.textframe.text insert end "Tk Version: $tk_version (loaded)\n"
+        } else {
+            .debug_win.main.textframe.text insert end "Tk Version: $tk_ver\n"
+        }
+    }
+    .debug_win.main.textframe.text insert end "\n"
+    
+    # Testa edgetk
+    .debug_win.main.textframe.text insert end "=== EDGETK INFO ===\n"
+    if {[catch {exec which edgetk} result]} {
+        .debug_win.main.textframe.text insert end "✗ edgetk not found in PATH\n"
+    } else {
+        .debug_win.main.textframe.text insert end "✓ edgetk found at: $result\n\n"
+        
+        # Tenta obter a versão do edgetk
+        .debug_win.main.textframe.text insert end "Trying to get edgetk version...\n"
+        if {[catch {exec edgetk -version} version_result]} {
+            # Se -version falhar, tenta --version ou outras opções
+            .debug_win.main.textframe.text insert end "✗ Error with 'edgetk -version': $version_result\n"
+            
+            # Tenta outras opções comuns de versão
+            set version_found 0
+            foreach version_flag {--version -v -V version} {
+                if {[catch {exec edgetk $version_flag 2>&1} alt_result]} {
+                    continue
+                } else {
+                    .debug_win.main.textframe.text insert end "✓ Version (using '$version_flag'):\n$alt_result\n"
+                    set version_found 1
+                    break
+                }
+            }
+            if {!$version_found} {
+                .debug_win.main.textframe.text insert end "✗ Could not determine edgetk version\n"
+            }
+        } else {
+            .debug_win.main.textframe.text insert end "✓ Version:\n$version_result\n"
+        }
+     }
+    
+    # Informações de sistema
+    .debug_win.main.textframe.text insert end "\n=== SYSTEM INFO ===\n"
+    if {[file exists "/proc/cpuinfo"]} {
+        if {![catch {exec grep -m 1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2} cpu_info]} {
+            .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
+        }
+        if {![catch {exec grep -c ^processor /proc/cpuinfo 2>/dev/null} cpu_cores]} {
+            .debug_win.main.textframe.text insert end "CPU Cores: [string trim $cpu_cores]\n"
+        }
+    } elseif {$::tcl_platform(platform) eq "windows"} {
+        if {![catch {exec wmic cpu get name 2>/dev/null | findstr /v "Name"} cpu_info]} {
+            .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
+        }
+    }
+    
+    if {![catch {exec free -h 2>/dev/null | grep Mem: | awk '{print $2}'} mem_total]} {
+        .debug_win.main.textframe.text insert end "Memory Total: [string trim $mem_total]\n"
+    } elseif {$::tcl_platform(platform) eq "windows"} {
+        if {![catch {exec wmic OS get TotalVisibleMemorySize 2>/dev/null | findstr /v "TotalVisibleMemorySize"} mem_bytes]} {
+            set mem_mb [expr {[string trim $mem_bytes] / 1024.0 / 1024.0}]
+            .debug_win.main.textframe.text insert end "Memory Total: [format "%.1f" $mem_mb] GB\n"
+        }
+    }
+    
+    # Informações de ambiente
+    .debug_win.main.textframe.text insert end "\n=== ENVIRONMENT ===\n"
+    if {[info exists ::env(PATH)]} {
+        .debug_win.main.textframe.text insert end "PATH: $::env(PATH)\n"
+    } else {
+        .debug_win.main.textframe.text insert end "PATH: Not set\n"
+    }
+    
+    # Frame para botões com background correto
+    frame .debug_win.main.buttons -bg $bg_color
+    pack .debug_win.main.buttons -fill x -pady 10
+    
+    button .debug_win.main.buttons.copy -text "📋 Copy Debug Info" -command {
+        set debug_text [.debug_win.main.textframe.text get 1.0 end]
+        clipboard clear
+        clipboard append $debug_text
+    } -bg "#3498db" -fg white -font {Arial 9 bold} -padx 15 -pady 5
+    pack .debug_win.main.buttons.copy -side left -padx 5
+    
+    button .debug_win.main.buttons.close -text "Close" -command {destroy .debug_win} \
+        -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 15 -pady 5
+    pack .debug_win.main.buttons.close -side right -padx 5
+    
+    # Rola para o topo
+    .debug_win.main.textframe.text see 1.0
+    
+    # Tornar a área de texto somente leitura após inserir conteúdo
+    .debug_win.main.textframe.text configure -state disabled
+}
 
 # Footer
 frame .footer -bg $accent_color -height 25
