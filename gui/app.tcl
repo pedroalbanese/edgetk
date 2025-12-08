@@ -365,18 +365,27 @@ proc verifySignature {} {
 
 # ===== FIM DAS FUNÇÕES DE ASSINATURAS =====
 
-# ===== FUNÇÕES MAC (do segundo código) =====
+# ===== FUNÇÕES MAC MODIFICADAS (agora apenas uma aba) =====
 
-# Function to copy result to clipboard
-proc copyResult {} {
-    set result [.nb.mac_tab.main.output_frame.textframe.resultBox get 1.0 end]
-    clipboard clear
-    clipboard append [string trim $result]
+# Função para selecionar tipo de entrada (texto ou arquivo) para MAC
+proc selectMACInputType {} {
+    set input_type [.nb.mac_tab.main.input_frame.content.inputTypeCombo get]
+    if {$input_type eq "Text"} {
+        .nb.mac_tab.main.input_frame.content.textframe.inputText configure -state normal
+        .nb.mac_tab.main.input_frame.content.inputFile configure -state disabled
+        .nb.mac_tab.main.input_frame.content.openFileButton configure -state disabled
+        # Clear file entry when switching to text mode
+        .nb.mac_tab.main.input_frame.content.inputFile delete 0 end
+    } else {
+        .nb.mac_tab.main.input_frame.content.textframe.inputText configure -state disabled
+        .nb.mac_tab.main.input_frame.content.inputFile configure -state normal
+        .nb.mac_tab.main.input_frame.content.openFileButton configure -state normal
+    }
 }
 
-# Function to copy file result to clipboard
-proc copyFileResult {} {
-    set result [.nb.mac_file_tab.main.status_frame.textframe.text get 1.0 end]
+# Function to copy result to clipboard
+proc copyMACResult {} {
+    set result [.nb.mac_tab.main.output_frame.textframe.resultBox get 1.0 end]
     clipboard clear
     clipboard append [string trim $result]
 }
@@ -385,7 +394,6 @@ proc copyFileResult {} {
 proc updateAlgorithmUI {} {
     set algorithm [.nb.mac_tab.main.algo_frame.content.algorithmCombo get]
     
-    # Update Text tab
     if {$algorithm == "hmac"} {
         .nb.mac_tab.main.algo_frame.content.hashLabel configure -state normal
         .nb.mac_tab.main.algo_frame.content.hmacHashCombo configure -state normal
@@ -430,7 +438,7 @@ proc updateAlgorithmUI {} {
         .nb.mac_tab.main.algo_frame.content.outSizeCombo configure -state disabled
     }
     
-    # Controle do campo IV para Text tab
+    # Controle do campo IV para MAC
     # Algoritmos que precisam de IV: vmac, gost, eia128, eia256
     if {$algorithm in {"vmac" "gost" "eia128" "eia256"}} {
         .nb.mac_tab.main.keys_frame.content.ivLabel configure -state normal
@@ -441,65 +449,309 @@ proc updateAlgorithmUI {} {
         .nb.mac_tab.main.keys_frame.content.ivEntry configure -state disabled
         .nb.mac_tab.main.keys_frame.content.ivEntry configure -background "#f0f0f0"
     }
-    
-    # Update Files tab
-    set algorithm [.nb.mac_file_tab.main.algo_frame.content.algorithmCombo get]
-    if {$algorithm == "hmac"} {
-        .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.cipherLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state disabled
-    } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
-        .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cipherLabel configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state disabled
-    } elseif {$algorithm == "vmac"} {
-        .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cipherLabel configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state normal
-        # Para outros algoritmos, manter valores padrão do VMAC
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -values {8 16 32}
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo set "8"
-    } elseif {$algorithm == "eia256"} {
-        # Apenas EIA256 tem tamanho de saída configurável
-        .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cipherLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state normal
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state normal
-        # Configurar valores para EIA256: 4, 8, 16 bits
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -values {4 8 16}
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo set "16"
-    } else {
-        .nb.mac_file_tab.main.algo_frame.content.hashLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cipherLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.outSizeLabel configure -state disabled
-        .nb.mac_file_tab.main.algo_frame.content.outSizeCombo configure -state disabled
-    }
-    
-    # Controle do campo IV para Files tab
-    # Algoritmos que precisam de IV: vmac, gost, eia128, eia256
-    if {$algorithm in {"vmac" "gost" "eia128" "eia256"}} {
-        .nb.mac_file_tab.main.keys_frame.content.ivLabel configure -state normal
-        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -state normal
-        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -background "white"
-    } else {
-        .nb.mac_file_tab.main.keys_frame.content.ivLabel configure -state disabled
-        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -state disabled
-        .nb.mac_file_tab.main.keys_frame.content.ivEntry configure -background "#f0f0f0"
-    }
 }
+
+# Function to calculate MAC, HMAC, or CMAC
+proc calculateMAC {} {
+    set algorithm [.nb.mac_tab.main.algo_frame.content.algorithmCombo get]
+    set key [.nb.mac_tab.main.keys_frame.content.keyEntry get]
+    set iv [.nb.mac_tab.main.keys_frame.content.ivEntry get]
+    set input_type [.nb.mac_tab.main.input_frame.content.inputTypeCombo get]
+
+    .nb.mac_tab.main.output_frame.textframe.resultBox configure -state normal
+    .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
+
+    if {$algorithm == "hmac"} {
+        # Check if the key is empty
+        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+            set key ""
+        }
+        set hash [.nb.mac_tab.main.algo_frame.content.hmacHashCombo get]
+    } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
+        set cipher [.nb.mac_tab.main.algo_frame.content.cmacCipherCombo get]
+
+        # Check if the key is empty
+        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+            # Set a null key with the appropriate size
+            set keySize 0
+            switch $cipher {
+                "3des" -
+                "blowfish" -
+                "cast5" -
+                "cast256" -
+                "hight" -
+                "idea" -
+                "misty1" -
+                "noekeon" -
+                "present" -
+                "rc2" -
+                "rc5" -
+                "rc6" -
+                "safer+" -
+                "sm4" -
+                "seed" -
+                "kalyna128_128" -
+                "twine" {
+                    set keySize 16
+                }
+                "curupira" {
+                    set keySize 24
+                }
+                "aes" -
+                "anubis" -
+                "aria" -
+                "belt" -
+                "camellia" -
+                "clefia" -
+                "crypton" -
+                "e2" -
+                "kalyna128_256" -
+                "khazad" -
+                "kuznechik" -
+                "lea" -
+                "loki97" -
+                "magma" -
+                "gost89" -
+                "magenta" -
+                "mars" -
+                "serpent" -
+                "shacal2" -
+                "kalyna256_256" -
+                "twofish" -
+                "threefish256" {
+                    set keySize 32
+                }
+                "kalyna256_512" -
+                "kalyna512_512" -
+                "threefish512" {
+                    set keySize 64
+                }
+                "threefish1024" {
+                    set keySize 128
+                }
+                default {
+                    set keySize 32 ;# Default size for most ciphers
+                }
+            }
+            set key [string repeat "0" $keySize]
+            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
+        }
+    } elseif {$algorithm == "vmac"} {
+        set cipher [.nb.mac_tab.main.algo_frame.content.cmacCipherCombo get]
+        set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
+
+        # Check if the key is empty
+        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+            # Set a null key with the appropriate size
+            set keySize 0
+            switch $cipher {
+                "3des" -
+                "blowfish" -
+                "cast5" -
+                "cast256" -
+                "hight" -
+                "idea" -
+                "misty1" -
+                "noekeon" -
+                "present" -
+                "rc2" -
+                "rc5" -
+                "rc6" -
+                "safer+" -
+                "sm4" -
+                "seed" -
+                "kalyna128_128" -
+                "twine" {
+                    set keySize 16
+                }
+                "curupira" {
+                    set keySize 24
+                }
+                "aes" -
+                "anubis" -
+                "aria" -
+                "belt" -
+                "camellia" -
+                "clefia" -
+                "crypton" -
+                "e2" -
+                "kalyna128_256" -
+                "khazad" -
+                "kuznechik" -
+                "lea" -
+                "loki97" -
+                "magma" -
+                "gost89" -
+                "magenta" -
+                "mars" -
+                "serpent" -
+                "shacal2" -
+                "kalyna256_256" -
+                "twofish" -
+                "threefish256" {
+                    set keySize 32
+                }
+                "kalyna256_512" -
+                "kalyna512_512" -
+                "threefish512" {
+                    set keySize 64
+                }
+                "threefish1024" {
+                    set keySize 128
+                }
+                default {
+                    set keySize 32 ;# Default size for most ciphers
+                }
+            }
+            set key [string repeat "0" $keySize]
+            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
+        }
+        
+        # For VMAC, IV is required and must be 1 to block_length-1 bytes
+        # Default to "00" (1 byte) if empty
+        if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+            set iv "00"
+            .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+            .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+        }
+    } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
+        set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
+        set keySize 0
+        switch $algorithm {
+            "eia128" {
+                set keySize 32
+                # EIA128: 128-bit = 16 bytes = 32 caracteres hex
+                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                    set iv "00000000000000000000000000000000"
+                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                }
+            }
+            "eia256" {
+                set keySize 64
+                # EIA256: 184-bit = 23 bytes = 46 caracteres hex
+                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                    set iv "0000000000000000000000000000000000000000000000"
+                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                }
+            }
+            "gost" {
+                set keySize 32
+                # GOST: 64-bit = 8 bytes = 16 caracteres hex
+                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
+                    set iv "0000000000000000"
+                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
+                }
+            }
+        }
+        
+        # Check if the key is empty
+        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+            # Set a null key with the appropriate size
+            set key [string repeat "0" $keySize]
+            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
+        }
+    } else {
+        set keySize 0
+        switch $algorithm {
+            "chaskey" {
+                set keySize 16
+            }
+            "poly1305" {
+                set keySize 64
+            }
+            "siphash" {
+                set keySize 16
+            }
+            "skein" {
+                set keySize 64
+            }
+            "xoodyak" {
+                set keySize 48
+            }
+        }
+        
+        # Check if the key is empty
+        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
+            # Set a null key with the appropriate size
+            set key [string repeat "0" $keySize]
+            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
+        }
+    }
+    
+    # Processamento baseado no tipo de entrada
+    if {$input_type eq "Text"} {
+        # Get text input
+        set input_text [.nb.mac_tab.main.input_frame.content.textframe.inputText get 1.0 end-1c]
+        
+        if {[string trim $input_text] eq ""} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert end "✗ Error: Please enter text to process!"
+            .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
+            return
+        }
+        
+        # Calculate MAC from text
+        if {[catch {
+            if {$algorithm == "hmac"} {
+                set result [exec edgetk -mac hmac -md $hash -key $key << $input_text 2>@1]
+            } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
+                set result [exec edgetk -mac $algorithm -cipher $cipher -key $key << $input_text 2>@1]
+            } elseif {$algorithm == "vmac"} {
+                set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] << $input_text 2>@1]
+            } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
+                set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] << $input_text 2>@1]
+            } else {
+                set result [exec edgetk -mac $algorithm -key $key -iv $iv << $input_text 2>@1]
+            }
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert end "✓ MAC calculated successfully!\n\n$result"
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert end "✗ ERROR: $errorMsg"
+        }
+    } else {
+        # Get file input
+        set input_file [.nb.mac_tab.main.input_frame.content.inputFile get]
+        
+        if {$input_file eq "" || ![file exists $input_file]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert end "✗ Error: Please select a valid file!"
+            .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
+            return
+        }
+        
+        # Calculate MAC from file
+        .nb.mac_tab.main.output_frame.textframe.resultBox insert end "Calculating MAC for: [file tail $input_file]\nPlease wait..."
+        update
+        
+        if {[catch {
+            if {$algorithm == "hmac"} {
+                set result [exec edgetk -mac hmac -md $hash -key $key $input_file 2>@1]
+            } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
+                set result [exec edgetk -mac $algorithm -cipher $cipher -key $key $input_file 2>@1]
+            } elseif {$algorithm == "vmac"} {
+                set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] $input_file 2>@1]
+            } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
+                set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] $input_file 2>@1]
+            } else {
+                set result [exec edgetk -mac $algorithm -key $key -iv $iv $input_file 2>@1]
+            }
+            .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert end "✓ MAC calculated successfully!\n\nFile: [file tail $input_file]\nResult: $result"
+        } errorMsg]} {
+            .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
+            .nb.mac_tab.main.output_frame.textframe.resultBox insert end "✗ ERROR: $errorMsg"
+        }
+    }
+    
+    .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
+}
+
+# ===== FIM DAS FUNÇÕES MAC =====
 
 # Função para atualizar a UI da aba de assinaturas baseada no algoritmo selecionado
 proc updateSignatureUI {} {
@@ -1080,569 +1332,7 @@ proc updateModeFiles {} {
     updateFilesUI
 }
 
-# Function to calculate MAC, HMAC, or CMAC for text
-# Function to calculate MAC, HMAC, or CMAC for text
-proc calculateMAC {} {
-    set algorithm [.nb.mac_tab.main.algo_frame.content.algorithmCombo get]
-    set key [.nb.mac_tab.main.keys_frame.content.keyEntry get]
-    set iv [.nb.mac_tab.main.keys_frame.content.ivEntry get]
-    set message [.nb.mac_tab.main.input_frame.textframe.messageBox get 1.0 end]
-
-    .nb.mac_tab.main.output_frame.textframe.resultBox configure -state normal
-    .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
-
-    if {$algorithm == "hmac"} {
-        # Check if the key is empty
-        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
-            set key ""
-        }
-        set hash [.nb.mac_tab.main.algo_frame.content.hmacHashCombo get]
-        
-        # USAR CATCH PARA CAPTURAR ERROS
-        if {[catch {
-            set result [exec edgetk -mac hmac -md $hash -key $key << $message 2>@1]
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
-        } errorMsg]} {
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
-        }
-        
-    } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
-        set cipher [.nb.mac_tab.main.algo_frame.content.cmacCipherCombo get]
-
-        # Check if the key is empty
-        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-            # Set a null key with the appropriate size
-            set keySize 0
-            switch $cipher {
-                "3des" -
-                "blowfish" -
-                "cast5" -
-                "cast256" -
-                "hight" -
-                "idea" -
-                "misty1" -
-                "noekeon" -
-                "present" -
-                "rc2" -
-                "rc5" -
-                "rc6" -
-                "safer+" -
-                "sm4" -
-                "seed" -
-                "kalyna128_128" -
-                "twine" {
-                    set keySize 16
-                }
-                "curupira" {
-                    set keySize 24
-                }
-                "aes" -
-                "anubis" -
-                "aria" -
-                "belt" -
-                "camellia" -
-                "clefia" -
-                "crypton" -
-                "e2" -
-                "kalyna128_256" -
-                "khazad" -
-                "kuznechik" -
-                "lea" -
-                "loki97" -
-                "magma" -
-                "gost89" -
-                "magenta" -
-                "mars" -
-                "serpent" -
-                "shacal2" -
-                "kalyna256_256" -
-                "twofish" -
-                "threefish256" {
-                    set keySize 32
-                }
-                "kalyna256_512" -
-                "kalyna512_512" -
-                "threefish512" {
-                    set keySize 64
-                }
-                "threefish1024" {
-                    set keySize 128
-                }
-                default {
-                    set keySize 32 ;# Default size for most ciphers
-                }
-            }
-            set key [string repeat "0" $keySize]
-            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
-            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
-        }
-        # CMAC e PMAC não usam IV
-        
-        # USAR CATCH PARA CAPTURAR ERROS
-        if {[catch {
-            set result [exec edgetk -mac $algorithm -cipher $cipher -key $key << $message 2>@1]
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
-        } errorMsg]} {
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
-        }
-        
-    } elseif {$algorithm == "vmac"} {
-        set cipher [.nb.mac_tab.main.algo_frame.content.cmacCipherCombo get]
-        set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
-
-        # Check if the key is empty
-        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-            # Set a null key with the appropriate size
-            set keySize 0
-            switch $cipher {
-                "3des" -
-                "blowfish" -
-                "cast5" -
-                "cast256" -
-                "hight" -
-                "idea" -
-                "misty1" -
-                "noekeon" -
-                "present" -
-                "rc2" -
-                "rc5" -
-                "rc6" -
-                "safer+" -
-                "sm4" -
-                "seed" -
-                "kalyna128_128" -
-                "twine" {
-                    set keySize 16
-                }
-                "curupira" {
-                    set keySize 24
-                }
-                "aes" -
-                "anubis" -
-                "aria" -
-                "belt" -
-                "camellia" -
-                "clefia" -
-                "crypton" -
-                "e2" -
-                "kalyna128_256" -
-                "khazad" -
-                "kuznechik" -
-                "lea" -
-                "loki97" -
-                "magma" -
-                "gost89" -
-                "magenta" -
-                "mars" -
-                "serpent" -
-                "shacal2" -
-                "kalyna256_256" -
-                "twofish" -
-                "threefish256" {
-                    set keySize 32
-                }
-                "kalyna256_512" -
-                "kalyna512_512" -
-                "threefish512" {
-                    set keySize 64
-                }
-                "threefish1024" {
-                    set keySize 128
-                }
-                default {
-                    set keySize 32 ;# Default size for most ciphers
-                }
-            }
-            set key [string repeat "0" $keySize]
-            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
-            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
-        }
-        
-        # For VMAC, IV is required and must be 1 to block_length-1 bytes
-        # Default to "00" (1 byte) if empty
-        if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-            set iv "00"
-            .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
-            .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
-        }
-        
-        # USAR CATCH PARA CAPTURAR ERROS
-        if {[catch {
-            set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] << $message 2>@1]
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
-        } errorMsg]} {
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
-        }
-        
-    } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
-        set outSize [.nb.mac_tab.main.algo_frame.content.outSizeCombo get]
-        set keySize 0
-        switch $algorithm {
-            "eia128" {
-                set keySize 32
-                # EIA128: 128-bit = 16 bytes = 32 caracteres hex
-                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                    set iv "00000000000000000000000000000000"
-                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
-                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
-                }
-            }
-            "eia256" {
-                set keySize 64
-                # EIA256: 184-bit = 23 bytes = 46 caracteres hex
-                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                    set iv "0000000000000000000000000000000000000000000000"
-                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
-                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
-                }
-            }
-            "gost" {
-                set keySize 32
-                # GOST: 64-bit = 8 bytes = 16 caracteres hex
-                if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                    set iv "0000000000000000"
-                    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
-                    .nb.mac_tab.main.keys_frame.content.ivEntry insert 0 $iv
-                }
-            }
-        }
-        
-        # Check if the key is empty
-        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-            # Set a null key with the appropriate size
-            set key [string repeat "0" $keySize]
-            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
-            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
-        }
-
-        # USAR CATCH PARA CAPTURAR ERROS
-        if {[catch {
-            set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] << $message 2>@1]
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
-        } errorMsg]} {
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
-        }
-        
-    } else {
-        set keySize 0
-        switch $algorithm {
-            "chaskey" {
-                set keySize 16
-            }
-            "poly1305" {
-                set keySize 64
-            }
-            "siphash" {
-                set keySize 16
-            }
-            "skein" {
-                set keySize 64
-            }
-            "xoodyak" {
-                set keySize 48
-            }
-        }
-        
-        # Check if the key is empty
-        if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-            # Set a null key with the appropriate size
-            set key [string repeat "0" $keySize]
-            .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
-            .nb.mac_tab.main.keys_frame.content.keyEntry insert 0 $key
-        }
-
-        # USAR CATCH PARA CAPTURAR ERROS
-        if {[catch {
-            set result [exec edgetk -mac $algorithm -key $key -iv $iv << $message 2>@1]
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 $result
-        } errorMsg]} {
-            .nb.mac_tab.main.output_frame.textframe.resultBox insert 1.0 "✗ ERROR: $errorMsg"
-        }
-    }
-    
-    .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
-}
-
-# Function to calculate MAC for files
-proc calculateMACFile {} {
-    set algorithm [.nb.mac_file_tab.main.algo_frame.content.algorithmCombo get]
-    set key [.nb.mac_file_tab.main.keys_frame.content.keyEntry get]
-    set iv [.nb.mac_file_tab.main.keys_frame.content.ivEntry get]
-    set inputFile [.nb.mac_file_tab.main.file_selection.input_frame.path get]
-    
-    if {$inputFile eq ""} {
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-        .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-        .nb.mac_file_tab.main.status_frame.textframe.text insert end "ERROR: Please select an input file first!"
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-        return
-    }
-    
-    if {![file exists $inputFile]} {
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-        .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-        .nb.mac_file_tab.main.status_frame.textframe.text insert end "ERROR: Input file does not exist!"
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-        return
-    }
-    
-    .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-    .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-    .nb.mac_file_tab.main.status_frame.textframe.text insert end "Calculating MAC for: [file tail $inputFile]\nPlease wait..."
-    .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-    update
-    
-    # Calculate MAC directly from file (not stdin)
-    if {[catch {
-        if {$algorithm == "hmac"} {
-            # Check if the key is empty
-            if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
-                set key ""
-            }
-            set hash [.nb.mac_file_tab.main.algo_frame.content.hmacHashCombo get]
-            set result [exec edgetk -mac hmac -md $hash -key $key $inputFile]
-        } elseif {$algorithm == "cmac" || $algorithm == "pmac"} {
-            set cipher [.nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo get]
-
-            # Check if the key is empty
-            if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-                # Set a null key with the appropriate size
-                set keySize 0
-                switch $cipher {
-                    "3des" -
-                    "blowfish" -
-                    "cast5" -
-                    "cast256" -
-                    "hight" -
-                    "idea" -
-                    "misty1" -
-                    "noekeon" -
-                    "present" -
-                    "rc2" -
-                    "rc5" -
-                    "rc6" -
-                    "safer+" -
-                    "sm4" -
-                    "seed" -
-                    "kalyna128_128" -
-                    "twine" {
-                        set keySize 16
-                    }
-                    "curupira" {
-                        set keySize 24
-                    }
-                    "aes" -
-                    "anubis" -
-                    "aria" -
-                    "belt" -
-                    "camellia" -
-                    "clefia" -
-                    "crypton" -
-                    "e2" -
-                    "gost89" -
-                    "magma" -
-                    "kalyna128_256" -
-                    "khazad" -
-                    "kuznechik" -
-                    "lea" -
-                    "loki97" -
-                    "magenta" -
-                    "mars" -
-                    "serpent" -
-                    "shacal2" -
-                    "kalyna256_256" -
-                    "twofish" -
-                    "threefish256" {
-                        set keySize 32
-                    }
-                    "kalyna256_512" -
-                    "kalyna512_512" -
-                    "threefish512" {
-                        set keySize 64
-                    }
-                    "threefish1024" {
-                        set keySize 128
-                    }
-                    default {
-                        set keySize 32 ;# Default size for most ciphers
-                    }
-                }
-                set key [string repeat "0" $keySize]
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry insert 0 $key
-            }
-            # CMAC e PMAC não usam IV
-            set result [exec edgetk -mac $algorithm -cipher $cipher -key $key $inputFile]
-        } elseif {$algorithm == "vmac"} {
-            set cipher [.nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo get]
-            set outSize [.nb.mac_file_tab.main.algo_frame.content.outSizeCombo get]
-
-            # Check if the key is empty
-            if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-                # Set a null key with the appropriate size
-                set keySize 0
-                switch $cipher {
-                    "3des" -
-                    "blowfish" -
-                    "cast5" -
-                    "cast256" -
-                    "hight" -
-                    "idea" -
-                    "misty1" -
-                    "noekeon" -
-                    "present" -
-                    "rc2" -
-                    "rc5" -
-                    "rc6" -
-                    "safer+" -
-                    "sm4" -
-                    "seed" -
-                    "kalyna128_128" -
-                    "twine" {
-                        set keySize 16
-                    }
-                    "curupira" {
-                        set keySize 24
-                    }
-                    "aes" -
-                    "anubis" -
-                    "aria" -
-                    "belt" -
-                    "camellia" -
-                    "clefia" -
-                    "crypton" -
-                    "e2" -
-                    "gost89" -
-                    "magma" -
-                    "kalyna128_256" -
-                    "khazad" -
-                    "kuznechik" -
-                    "lea" -
-                    "loki97" -
-                    "magenta" -
-                    "mars" -
-                    "serpent" -
-                    "shacal2" -
-                    "kalyna256_256" -
-                    "twofish" -
-                    "threefish256" {
-                        set keySize 32
-                    }
-                    "kalyna256_512" -
-                    "kalyna512_512" -
-                    "threefish512" {
-                        set keySize 64
-                    }
-                    "threefish1024" {
-                        set keySize 128
-                    }
-                    default {
-                        set keySize 32 ;# Default size for most ciphers
-                    }
-                }
-                set key [string repeat "0" $keySize]
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry insert 0 $key
-            }
-            
-            # For VMAC, IV is required and must be 1 to block_length-1 bytes
-            # Default to "00" (1 byte) if empty
-            if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                set iv "00"
-                .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
-                .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
-            }
-            
-            set result [exec edgetk -mac vmac -cipher $cipher -key $key -iv $iv -bits [expr {$outSize * 8}] $inputFile]
-        } elseif {$algorithm in {"eia128" "eia256" "gost"}} {
-            set outSize [.nb.mac_file_tab.main.algo_frame.content.outSizeCombo get]
-            set keySize 0
-            switch $algorithm {
-                "eia128" {
-                    set keySize 32
-                    # EIA128: 128-bit = 16 bytes = 32 caracteres hex
-                    if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                        set iv "00000000000000000000000000000000"
-                        .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
-                        .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
-                    }
-                }
-                "eia256" {
-                    set keySize 64
-                    # EIA256: 184-bit = 23 bytes = 46 caracteres hex
-                    if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                        set iv "0000000000000000000000000000000000000000000000"
-                        .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
-                        .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
-                    }
-                }
-                "gost" {
-                    set keySize 32
-                    # GOST: 64-bit = 8 bytes = 16 caracteres hex
-                    if {[string length $iv] < 1 || [string trim $iv 0] eq ""} {
-                        set iv "0000000000000000"
-                        .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
-                        .nb.mac_file_tab.main.keys_frame.content.ivEntry insert 0 $iv
-                    }
-                }
-            }
-            
-            # Check if the key is empty
-            if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-                # Set a null key with the appropriate size
-                set key [string repeat "0" $keySize]
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry insert 0 $key
-            }
-
-            set result [exec edgetk -mac $algorithm -key $key -iv $iv -bits [expr {$outSize * 8}] $inputFile 2>@1]
-        } else {
-            set keySize 0
-            switch $algorithm {
-                "chaskey" {
-                    set keySize 16
-                }
-                "poly1305" {
-                    set keySize 64
-                }
-                "siphash" {
-                    set keySize 16
-                }
-                "skein" {
-                    set keySize 64
-                }
-                "xoodyak" {
-                    set keySize 48
-                }
-            }
-            
-            # Check if the key is empty
-            if {[string length $key] < 1 || [string trim $key 0] eq ""} {
-                # Set a null key with the appropriate size
-                set key [string repeat "0" $keySize]
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
-                .nb.mac_file_tab.main.keys_frame.content.keyEntry insert 0 $key
-            }
-
-            set result [exec edgetk -mac $algorithm -key $key -iv $iv $inputFile 2>@1]
-        }
-    } errorMsg]} {
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-        .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-        .nb.mac_file_tab.main.status_frame.textframe.text insert end "ERROR: MAC calculation failed!\n$errorMsg"
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-        return
-    }
-    
-    .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-    .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-    .nb.mac_file_tab.main.status_frame.textframe.text insert end "SUCCESS: MAC calculated!\nResult: $result"
-    .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-}
-
-# ===== FIM DAS FUNÇÕES MAC =====
+# ===== FIM DAS FUNÇÕES MAC ANTIGAS =====
 
 # ===== FUNÇÕES ECDH (do segundo código) =====
 
@@ -1855,72 +1545,6 @@ proc selectInputFile {} {
         
         # Show file information
         updateStatus "Input file selected: [file tail $filename]\nSize: [formatSize [file size $filename]]\nOutput file: [file tail $outputFile]"
-    }
-}
-
-# Function to select input file for MAC
-proc selectInputFileMAC {} {
-    set filetypes {
-        {"All files" *}
-        {"Text files" {.txt .text}}
-        {"PDF files" {.pdf}}
-        {"Image files" {.jpg .jpeg .png .gif .bmp}}
-        {"Executable files" {.exe .bin}}
-        {"Data files" {.dat .data .db .sqlite}}
-    }
-    
-    set filename [tk_getOpenFile -title "Select Input File" \
-        -filetypes $filetypes]
-    
-    if {$filename ne ""} {
-        .nb.mac_file_tab.main.file_selection.input_frame.path configure -state normal
-        .nb.mac_file_tab.main.file_selection.input_frame.path delete 0 end
-        .nb.mac_file_tab.main.file_selection.input_frame.path insert 0 $filename
-        .nb.mac_file_tab.main.file_selection.input_frame.path configure -state readonly
-        
-        # Show file information
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-        .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-        .nb.mac_file_tab.main.status_frame.textframe.text insert end "Input file selected: [file tail $filename]\nSize: [formatSize [file size $filename]]"
-        .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-    }
-}
-
-# Function to select output file
-proc selectOutputFile {} {
-    set inputFile [.nb.file_tab.main.file_selection.input_frame.path get]
-    
-    if {$inputFile eq ""} {
-        updateStatus "ERROR: Please select an input file first!"
-        return
-    }
-    
-    set filetypes {
-        {"All files" *}
-        {"Encrypted files" {.enc}}
-        {"Decrypted files" {.dec .txt .pdf .jpg .png .exe .dat}}
-    }
-    
-    set initialDir [file dirname $inputFile]
-    set initialFile [file tail $inputFile]
-    
-    # Suggest .enc for encryption, .dec for decryption, or original name
-    if {[string match "*.enc" $inputFile]} {
-        set initialFile "[file rootname $initialFile]"
-    } else {
-        set initialFile "${initialFile}.enc"
-    }
-    
-    set filename [tk_getSaveFile -title "Select Output File" \
-        -initialdir $initialDir \
-        -initialfile $initialFile \
-        -filetypes $filetypes]
-    
-    if {$filename ne ""} {
-        .nb.file_tab.main.file_selection.output_frame.path delete 0 end
-        .nb.file_tab.main.file_selection.output_frame.path insert 0 $filename
-        
-        updateStatus "Output file set: [file tail $filename]"
     }
 }
 
@@ -3233,15 +2857,15 @@ button .nb.ecdh_tab.main.output_frame.buttons.clearButton -text "🗑️ Clear" 
 } -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.clearButton -side left -padx 3
 
-# ========== MAC TEXT TAB ==========
+# ========== MAC TAB (UNIFICADA) ==========
 frame .nb.mac_tab -bg $bg_color
-.nb add .nb.mac_tab -text " MAC Text "
+.nb add .nb.mac_tab -text " MAC "
 
-# Main frame for content (MAC Text)
+# Main frame for content (MAC)
 frame .nb.mac_tab.main -bg $bg_color
-pack .nb.mac_tab.main -fill both -expand true
+pack .nb.mac_tab.main -fill both -expand yes -padx 8 -pady 5
 
-# Frame for algorithm settings
+# Algorithm settings frame
 frame .nb.mac_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
 pack .nb.mac_tab.main.algo_frame -fill x -padx 8 -pady 5
 
@@ -3352,7 +2976,7 @@ label .nb.mac_tab.main.algo_frame.content.cipherLabel -text "Cipher:" -font {Ari
 ttk::combobox .nb.mac_tab.main.algo_frame.content.cmacCipherCombo -values $cmacCiphers -state readonly -width 12
 .nb.mac_tab.main.algo_frame.content.cmacCipherCombo set "aes"
 
-# Out Size ComboBox para VMAC (Text)
+# Out Size ComboBox para VMAC
 label .nb.mac_tab.main.algo_frame.content.outSizeLabel -text "Out Size:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.mac_tab.main.algo_frame.content.outSizeCombo -values {8 16 32} -state readonly -width 6
 .nb.mac_tab.main.algo_frame.content.outSizeCombo set "8"
@@ -3367,7 +2991,7 @@ grid .nb.mac_tab.main.algo_frame.content.outSizeCombo -row 0 -column 5 -sticky w
 grid .nb.mac_tab.main.algo_frame.content.cipherLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.mac_tab.main.algo_frame.content.cmacCipherCombo -row 1 -column 1 -sticky w -padx 3 -pady 3
 
-# Frame for key management
+# Key management frame
 frame .nb.mac_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
 pack .nb.mac_tab.main.keys_frame -fill x -padx 8 -pady 5
 
@@ -3391,213 +3015,113 @@ grid .nb.mac_tab.main.keys_frame.content.ivEntry -row 1 -column 1 -sticky ew -pa
 
 grid columnconfigure .nb.mac_tab.main.keys_frame.content 1 -weight 1
 
-# Frame for message input
+# Input data frame - USANDO O MESMO ESQUEMA DA ABA DE ASSINATURAS
 frame .nb.mac_tab.main.input_frame -bg $frame_color -relief solid -bd 1
-pack .nb.mac_tab.main.input_frame -fill both -expand true -padx 8 -pady 5
+pack .nb.mac_tab.main.input_frame -fill x -padx 8 -pady 5
 
-label .nb.mac_tab.main.input_frame.title -text "MESSAGE INPUT" -font {Arial 10 bold} -bg $frame_color
+label .nb.mac_tab.main.input_frame.title -text "INPUT DATA" -font {Arial 10 bold} -bg $frame_color
 pack .nb.mac_tab.main.input_frame.title -anchor w -padx 8 -pady 3
 
-# Create Message input area with scrollbar
-frame .nb.mac_tab.main.input_frame.textframe -bg $frame_color
-pack .nb.mac_tab.main.input_frame.textframe -fill both -expand true -padx 8 -pady 3
+frame .nb.mac_tab.main.input_frame.content -bg $frame_color
+pack .nb.mac_tab.main.input_frame.content -fill x -padx 8 -pady 3
 
-text .nb.mac_tab.main.input_frame.textframe.messageBox -width 60 -height 4 -wrap word \
+# Input type
+label .nb.mac_tab.main.input_frame.content.inputTypeLabel -text "Input Type:" -font {Arial 9 bold} -bg $frame_color
+set ::macInputTypeComboData {"Text" "File"}
+ttk::combobox .nb.mac_tab.main.input_frame.content.inputTypeCombo -values $::macInputTypeComboData -state readonly -width 8
+.nb.mac_tab.main.input_frame.content.inputTypeCombo set "Text"
+
+# Bind combobox selection
+bind .nb.mac_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelected>> selectMACInputType
+
+# File input
+label .nb.mac_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.mac_tab.main.input_frame.content.inputFile -width 50 -font {Consolas 9}
+button .nb.mac_tab.main.input_frame.content.openFileButton -text "📂 Open" -command {
+    openFileDialog .nb.mac_tab.main.input_frame.content.inputFile
+} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.mac_tab.main.input_frame.content.inputTypeLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
+grid .nb.mac_tab.main.input_frame.content.inputTypeCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
+grid .nb.mac_tab.main.input_frame.content.fileLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
+grid .nb.mac_tab.main.input_frame.content.inputFile -row 0 -column 3 -sticky ew -padx 3 -pady 3
+grid .nb.mac_tab.main.input_frame.content.openFileButton -row 0 -column 4 -sticky w -padx 3 -pady 3
+
+# Frame para área de texto
+frame .nb.mac_tab.main.input_frame.content.textframe -bg $frame_color
+grid .nb.mac_tab.main.input_frame.content.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 3 -pady 3
+
+# Text area for text input - 2 LINHAS
+text .nb.mac_tab.main.input_frame.content.textframe.inputText -width 70 -height 2 -wrap word \
     -font {Consolas 9} -bg $text_bg -relief solid -bd 1
-scrollbar .nb.mac_tab.main.input_frame.textframe.messageScroll -command {.nb.mac_tab.main.input_frame.textframe.messageBox yview}
-.nb.mac_tab.main.input_frame.textframe.messageBox configure -yscrollcommand {.nb.mac_tab.main.input_frame.textframe.messageScroll set}
+scrollbar .nb.mac_tab.main.input_frame.content.textframe.yscroll -orient vertical \
+    -command {.nb.mac_tab.main.input_frame.content.textframe.inputText yview}
+.nb.mac_tab.main.input_frame.content.textframe.inputText configure \
+    -yscrollcommand {.nb.mac_tab.main.input_frame.content.textframe.yscroll set}
 
-grid .nb.mac_tab.main.input_frame.textframe.messageBox -row 0 -column 0 -sticky "nsew"
-grid .nb.mac_tab.main.input_frame.textframe.messageScroll -row 0 -column 1 -sticky "ns"
+grid .nb.mac_tab.main.input_frame.content.textframe.inputText -row 0 -column 0 -sticky "nsew"
+grid .nb.mac_tab.main.input_frame.content.textframe.yscroll -row 0 -column 1 -sticky "ns"
 
-grid rowconfigure .nb.mac_tab.main.input_frame.textframe 0 -weight 1
-grid columnconfigure .nb.mac_tab.main.input_frame.textframe 0 -weight 1
+grid rowconfigure .nb.mac_tab.main.input_frame.content.textframe 0 -weight 1
+grid columnconfigure .nb.mac_tab.main.input_frame.content.textframe 0 -weight 1
 
-# Frame for output
+grid columnconfigure .nb.mac_tab.main.input_frame.content 3 -weight 1
+grid rowconfigure .nb.mac_tab.main.input_frame.content 1 -weight 1
+
+# Initially set input type
+selectMACInputType
+
+# Output frame
 frame .nb.mac_tab.main.output_frame -bg $frame_color -relief solid -bd 1
 pack .nb.mac_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
 
 label .nb.mac_tab.main.output_frame.title -text "MAC RESULT" -font {Arial 10 bold} -bg $frame_color
 pack .nb.mac_tab.main.output_frame.title -anchor w -padx 8 -pady 3
 
-# Create Result text area with scrollbar
+# Create output text area
 frame .nb.mac_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.mac_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
-text .nb.mac_tab.main.output_frame.textframe.resultBox -width 60 -height 4 -wrap word \
+text .nb.mac_tab.main.output_frame.textframe.resultBox -width 70 -height 4 -wrap word \
     -font {Consolas 9} -bg $text_bg -relief solid -bd 1 -state disabled
-scrollbar .nb.mac_tab.main.output_frame.textframe.resultScroll -command {.nb.mac_tab.main.output_frame.textframe.resultBox yview}
-.nb.mac_tab.main.output_frame.textframe.resultBox configure -yscrollcommand {.nb.mac_tab.main.output_frame.textframe.resultScroll set}
+scrollbar .nb.mac_tab.main.output_frame.textframe.yscroll -orient vertical \
+    -command {.nb.mac_tab.main.output_frame.textframe.resultBox yview}
+.nb.mac_tab.main.output_frame.textframe.resultBox configure \
+    -yscrollcommand {.nb.mac_tab.main.output_frame.textframe.yscroll set}
 
 grid .nb.mac_tab.main.output_frame.textframe.resultBox -row 0 -column 0 -sticky "nsew"
-grid .nb.mac_tab.main.output_frame.textframe.resultScroll -row 0 -column 1 -sticky "ns"
+grid .nb.mac_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -sticky "ns"
 
 grid rowconfigure .nb.mac_tab.main.output_frame.textframe 0 -weight 1
 grid columnconfigure .nb.mac_tab.main.output_frame.textframe 0 -weight 1
 
-# Action buttons
-frame .nb.mac_tab.main.action_frame -bg $bg_color
-pack .nb.mac_tab.main.action_frame -fill x -padx 8 -pady 8
+# Utility buttons
+frame .nb.mac_tab.main.output_frame.utility_buttons -bg $frame_color
+pack .nb.mac_tab.main.output_frame.utility_buttons -fill x -padx 8 -pady 3
 
-button .nb.mac_tab.main.action_frame.calculateButton -text "🧮 Calculate MAC" -command calculateMAC \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -padx 15 -pady 6
-pack .nb.mac_tab.main.action_frame.calculateButton -side left -padx 5
+button .nb.mac_tab.main.output_frame.utility_buttons.copyButton -text "📋 Copy Result" -command copyMACResult \
+    -bg "#3498db" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.mac_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
 
-button .nb.mac_tab.main.action_frame.copyButton -text "📋 Copy Result" -command copyResult \
-    -bg "#3498db" -fg white -font {Arial 10 bold} -padx 15 -pady 6
-pack .nb.mac_tab.main.action_frame.copyButton -side left -padx 5
-
-button .nb.mac_tab.main.action_frame.clearButton -text "🗑️ Clear All" -command {
-    .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
-    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
-    .nb.mac_tab.main.input_frame.textframe.messageBox delete 1.0 end
+button .nb.mac_tab.main.output_frame.utility_buttons.clearOutputButton -text "🗑️ Clear" -command {
     .nb.mac_tab.main.output_frame.textframe.resultBox configure -state normal
     .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
     .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
-} -bg "#e74c3c" -fg white -font {Arial 10 bold} -padx 15 -pady 6
-pack .nb.mac_tab.main.action_frame.clearButton -side left -padx 5
+} -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.mac_tab.main.output_frame.utility_buttons.clearOutputButton -side left -padx 2
 
-# ========== MAC FILES TAB ==========
-frame .nb.mac_file_tab -bg $bg_color
-.nb add .nb.mac_file_tab -text " MAC Files "
+button .nb.mac_tab.main.output_frame.utility_buttons.clearInputButton -text "Clear Input" -command {
+    .nb.mac_tab.main.input_frame.content.textframe.inputText delete 1.0 end
+    .nb.mac_tab.main.input_frame.content.inputFile delete 0 end
+    .nb.mac_tab.main.keys_frame.content.keyEntry delete 0 end
+    .nb.mac_tab.main.keys_frame.content.ivEntry delete 0 end
+} -bg "#f39c12" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.mac_tab.main.output_frame.utility_buttons.clearInputButton -side left -padx 2
 
-# Main frame for content (MAC Files)
-frame .nb.mac_file_tab.main -bg $bg_color
-pack .nb.mac_file_tab.main -fill both -expand true
-
-# Frame for algorithm settings (Files)
-frame .nb.mac_file_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
-pack .nb.mac_file_tab.main.algo_frame -fill x -padx 8 -pady 5
-
-label .nb.mac_file_tab.main.algo_frame.title -text "ALGORITHM SETTINGS" -font {Arial 10 bold} -bg $frame_color
-pack .nb.mac_file_tab.main.algo_frame.title -anchor w -padx 8 -pady 3
-
-frame .nb.mac_file_tab.main.algo_frame.content -bg $frame_color
-pack .nb.mac_file_tab.main.algo_frame.content -fill x -padx 8 -pady 3
-
-# Create Algorithm ComboBox (Files)
-label .nb.mac_file_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.mac_file_tab.main.algo_frame.content.algorithmCombo -values $macAlgorithms -state readonly -width 12
-.nb.mac_file_tab.main.algo_frame.content.algorithmCombo set "hmac"
-
-# Create Hash ComboBox for HMAC (Files)
-label .nb.mac_file_tab.main.algo_frame.content.hashLabel -text "Hash:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo -values $hmacHashes -state readonly -width 12
-.nb.mac_file_tab.main.algo_frame.content.hmacHashCombo set "sha3-256"
-
-# Create Cipher ComboBox for CMAC/PMAC/VMAC (Files)
-label .nb.mac_file_tab.main.algo_frame.content.cipherLabel -text "Cipher:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo -values $cmacCiphers -state readonly -width 12
-.nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo set "aes"
-
-# Out Size ComboBox para VMAC (Files)
-label .nb.mac_file_tab.main.algo_frame.content.outSizeLabel -text "Out Size:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.mac_file_tab.main.algo_frame.content.outSizeCombo -values {8 16 32} -state readonly -width 6
-.nb.mac_file_tab.main.algo_frame.content.outSizeCombo set "8"
-
-# Grid for algorithm settings (Files)
-grid .nb.mac_file_tab.main.algo_frame.content.algorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.algorithmCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.hashLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.hmacHashCombo -row 0 -column 3 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.outSizeLabel -row 0 -column 4 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.outSizeCombo -row 0 -column 5 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.cipherLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.algo_frame.content.cmacCipherCombo -row 1 -column 1 -sticky w -padx 3 -pady 3
-
-# File selection frame
-frame .nb.mac_file_tab.main.file_selection -bg $frame_color -relief solid -bd 1
-pack .nb.mac_file_tab.main.file_selection -fill x -padx 8 -pady 5
-
-label .nb.mac_file_tab.main.file_selection.title -text "FILE SELECTION" -font {Arial 10 bold} -bg $frame_color
-pack .nb.mac_file_tab.main.file_selection.title -anchor w -padx 8 -pady 3
-
-# Input file row
-frame .nb.mac_file_tab.main.file_selection.input_frame -bg $frame_color
-pack .nb.mac_file_tab.main.file_selection.input_frame -fill x -padx 8 -pady 5
-
-label .nb.mac_file_tab.main.file_selection.input_frame.label -text "Input File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
-grid .nb.mac_file_tab.main.file_selection.input_frame.label -row 0 -column 0 -sticky e -padx 5
-
-entry .nb.mac_file_tab.main.file_selection.input_frame.path -width 40 -font {Arial 9} \
-    -bg white -state readonly
-grid .nb.mac_file_tab.main.file_selection.input_frame.path -row 0 -column 1 -sticky "ew" -padx 5
-
-button .nb.mac_file_tab.main.file_selection.input_frame.browse -text "📁 Browse" \
-    -command selectInputFileMAC -bg $button_color -fg white -font {Arial 9 bold} \
-    -width 10
-grid .nb.mac_file_tab.main.file_selection.input_frame.browse -row 0 -column 2 -sticky "e" -padx 5
-
-grid columnconfigure .nb.mac_file_tab.main.file_selection.input_frame 1 -weight 1
-
-# Frame for key management (Files)
-frame .nb.mac_file_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
-pack .nb.mac_file_tab.main.keys_frame -fill x -padx 8 -pady 5
-
-label .nb.mac_file_tab.main.keys_frame.title -text "KEY MANAGEMENT" -font {Arial 10 bold} -bg $frame_color
-pack .nb.mac_file_tab.main.keys_frame.title -anchor w -padx 8 -pady 3
-
-frame .nb.mac_file_tab.main.keys_frame.content -bg $frame_color
-pack .nb.mac_file_tab.main.keys_frame.content -fill x -padx 8 -pady 3
-
-# Key Entry (Files)
-label .nb.mac_file_tab.main.keys_frame.content.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_file_tab.main.keys_frame.content.keyEntry -width 50 -font {Consolas 9}
-grid .nb.mac_file_tab.main.keys_frame.content.keyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.keys_frame.content.keyEntry -row 0 -column 1 -sticky ew -padx 3 -pady 3
-
-# IV Entry (Files)
-label .nb.mac_file_tab.main.keys_frame.content.ivLabel -text "IV:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_file_tab.main.keys_frame.content.ivEntry -width 50 -font {Consolas 9}
-grid .nb.mac_file_tab.main.keys_frame.content.ivLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
-grid .nb.mac_file_tab.main.keys_frame.content.ivEntry -row 1 -column 1 -sticky ew -padx 3 -pady 3
-
-grid columnconfigure .nb.mac_file_tab.main.keys_frame.content 1 -weight 1
-
-# Action buttons (Files)
-frame .nb.mac_file_tab.main.action_frame -bg $bg_color
-pack .nb.mac_file_tab.main.action_frame -fill x -padx 8 -pady 8
-
-button .nb.mac_file_tab.main.action_frame.calculateButton -text "🧮 Calculate MAC" -command calculateMACFile \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -padx 15 -pady 6
-pack .nb.mac_file_tab.main.action_frame.calculateButton -side left -padx 5
-
-button .nb.mac_file_tab.main.action_frame.copyButton -text "📋 Copy Result" -command copyFileResult \
-    -bg "#3498db" -fg white -font {Arial 10 bold} -padx 15 -pady 6
-pack .nb.mac_file_tab.main.action_frame.copyButton -side left -padx 5
-
-button .nb.mac_file_tab.main.action_frame.clearButton -text "🗑️ Clear All" -command {
-    .nb.mac_file_tab.main.file_selection.input_frame.path configure -state normal
-    .nb.mac_file_tab.main.file_selection.input_frame.path delete 0 end
-    .nb.mac_file_tab.main.file_selection.input_frame.path configure -state readonly
-    .nb.mac_file_tab.main.keys_frame.content.keyEntry delete 0 end
-    .nb.mac_file_tab.main.keys_frame.content.ivEntry delete 0 end
-    .nb.mac_file_tab.main.status_frame.textframe.text configure -state normal
-    .nb.mac_file_tab.main.status_frame.textframe.text delete 1.0 end
-    .nb.mac_file_tab.main.status_frame.textframe.text configure -state disabled
-} -bg "#e74c3c" -fg white -font {Arial 10 bold} -padx 15 -pady 6
-pack .nb.mac_file_tab.main.action_frame.clearButton -side left -padx 5
-
-# Status frame (Files)
-frame .nb.mac_file_tab.main.status_frame -bg $frame_color -relief solid -bd 1
-pack .nb.mac_file_tab.main.status_frame -fill both -expand true -padx 8 -pady 5
-
-label .nb.mac_file_tab.main.status_frame.title -text "STATUS & RESULT" -font {Arial 10 bold} -bg $frame_color
-pack .nb.mac_file_tab.main.status_frame.title -anchor w -padx 8 -pady 3
-
-# Status area
-frame .nb.mac_file_tab.main.status_frame.textframe -bg $frame_color
-pack .nb.mac_file_tab.main.status_frame.textframe -fill both -expand true -padx 8 -pady 3
-
-# Create text widget and scrollbar using pack
-text .nb.mac_file_tab.main.status_frame.textframe.text -width 60 -height 4 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1 -state disabled
-scrollbar .nb.mac_file_tab.main.status_frame.textframe.scroll -command {.nb.mac_file_tab.main.status_frame.textframe.text yview}
-.nb.mac_file_tab.main.status_frame.textframe.text configure -yscrollcommand {.nb.mac_file_tab.main.status_frame.textframe.scroll set}
-
-# Pack them side by side
-pack .nb.mac_file_tab.main.status_frame.textframe.text -side left -fill both -expand true
-pack .nb.mac_file_tab.main.status_frame.textframe.scroll -side right -fill y
+# Calculate button
+button .nb.mac_tab.main.output_frame.utility_buttons.calculateButton -text "🧮 Calculate MAC" -command calculateMAC \
+    -bg "#27ae60" -fg white -font {Arial 10 bold} -padx 20 -pady 3
+pack .nb.mac_tab.main.output_frame.utility_buttons.calculateButton -side right -padx 2
 
 # Execute Menu
 menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_hover
@@ -3605,7 +3129,6 @@ menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_h
 
 .menubar add command -label "About" -command showAbout -background $accent_color
 
-# Adicione ao menu
 .menubar add command -label "Debug" -command {
     toplevel .debug_win
     wm title .debug_win "Debug Information"
@@ -3753,19 +3276,17 @@ pack .footer.text -pady 3
 grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
 grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
 grid columnconfigure .nb.mac_tab.main.keys_frame.content 1 -weight 1
-grid columnconfigure .nb.mac_file_tab.main.keys_frame.content 1 -weight 1
 grid columnconfigure .nb.signatures_tab.main.keys_frame.content 1 -weight 1
 
 # Bind the combobox to update UI when algorithm changes
 bind .nb.mac_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateAlgorithmUI}
-bind .nb.mac_file_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateAlgorithmUI}
 bind .nb.signatures_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateSignatureUI}
 bind .nb.ecdh_tab.main.algo_frame.content.algorithmCombo <<ComboboxSelected>> {updateECDHUI}
 
-# Para Text tab (procure esta linha):
+# Para Text tab
 .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox configure -command updateKDFText
 
-# Para Files tab (procure esta linha):
+# Para Files tab
 .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox configure -command updateKDFFiles
 
 bind .nb.text_tab.main.algo_frame.row1.algorithmCombo <<ComboboxSelected>> {updateTextUI}
