@@ -1613,9 +1613,10 @@ proc deriveECDHKey {} {
     }
 }
 
-# Função para executar HKDF
+# Função para executar HKDF - MODIFICADA PARA USAR INFO ADICIONAL
 proc executeECDHHKDF {} {
     set salt [.nb.ecdh_tab.main.kdf_frame.content.saltInput get]
+    set info [.nb.ecdh_tab.main.kdf_frame.content.infoInput get]
     set hashAlgorithm [.nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo get]
     set outputKeySize [.nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo get]
     set outputSize [expr {$outputKeySize * 8}]
@@ -1651,8 +1652,21 @@ proc executeECDHHKDF {} {
         return
     }
     
+    # Construir comando HKDF
+    set cmd "edgetk -kdf hkdf -md $hashAlgorithm -key $hexValue -bits $outputSize"
+    
+    # Adicionar salt se fornecido
+    if {$salt ne ""} {
+        append cmd " -salt $salt"
+    }
+    
+    # Adicionar info se fornecido
+    if {$info ne ""} {
+        append cmd " -info $info"
+    }
+    
     if {[catch {
-        set hkdfResult [exec edgetk -kdf hkdf -salt $salt -md $hashAlgorithm -key $hexValue -bits $outputSize 2>@1]
+        set hkdfResult [exec {*}$cmd 2>@1]
         
         .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "HKDF Applied Successfully:\n\n$hkdfResult"
@@ -1836,11 +1850,14 @@ proc encrypt {} {
     
     # Usar catch para capturar erros
     if {[catch {
-        # Executar encriptação e codificar com base64 ou base32
+        # Executar encriptação e codificar com edgetk -baseNN enc
         if {$encoding eq "base64"} {
-            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base64]
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base64 enc]
+        } elseif {$encoding eq "base32"} {
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base32 enc]
         } else {
-            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | base32]
+            # base85
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base85 enc]
         }
         .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 $encryptedMsg
     } errorMsg]} {
@@ -1878,11 +1895,14 @@ proc decrypt {} {
     
     # Usar catch para capturar erros
     if {[catch {
-        # Decodificar base64 ou base32 antes de desencriptar
+        # Decodificar com edgetk -baseNN dec antes de desencriptar
         if {$encoding eq "base64"} {
-            set decryptedMsg [exec base64 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+            set decryptedMsg [exec edgetk -base64 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+        } elseif {$encoding eq "base32"} {
+            set decryptedMsg [exec edgetk -base32 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
         } else {
-            set decryptedMsg [exec base32 -d << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+            # base85
+            set decryptedMsg [exec edgetk -base85 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
         }
         .nb.text_tab.main.plain_frame.textframe.text insert 1.0 $decryptedMsg
     } errorMsg]} {
@@ -2443,7 +2463,7 @@ ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
 # NOVO: Adicionar combobox para Encoding
 label .nb.text_tab.main.algo_frame.row1.encodingLabel -text "Encoding:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.encodingCombo \
-    -values {"base64" "base32"} \
+    -values {"base32" "base64" "base85"} \
     -width 10 -state readonly
 .nb.text_tab.main.algo_frame.row1.encodingCombo set "base64"
 
@@ -2949,7 +2969,7 @@ grid .nb.ecdh_tab.main.keys_frame.content.generateButton -row 3 -column 0 -colum
 # Configure column weights
 grid columnconfigure .nb.ecdh_tab.main.keys_frame.content 1 -weight 1
 
-# Frame para KDF
+# Frame para KDF - MODIFICADO PARA INCLUIR INFO ADICIONAL
 frame .nb.ecdh_tab.main.kdf_frame -bg $frame_color -relief solid -bd 1
 pack .nb.ecdh_tab.main.kdf_frame -fill x -padx 8 -pady 5
 
@@ -3006,10 +3026,19 @@ ttk::combobox .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo -values $::
 label .nb.ecdh_tab.main.kdf_frame.content.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.ecdh_tab.main.kdf_frame.content.saltInput -width 25 -font {Consolas 9}
 
+# NOVO: Additional Info Input
+label .nb.ecdh_tab.main.kdf_frame.content.infoLabel -text "Additional Info:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.ecdh_tab.main.kdf_frame.content.infoInput -width 25 -font {Consolas 9}
+
+# Primeira linha: Hash e Salt
 grid .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.kdf_frame.content.saltLabel -row 0 -column 2 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.kdf_frame.content.saltInput -row 0 -column 3 -sticky ew -padx 3 -pady 3
+
+# Segunda linha: Additional Info
+grid .nb.ecdh_tab.main.kdf_frame.content.infoLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
+grid .nb.ecdh_tab.main.kdf_frame.content.infoInput -row 1 -column 1 -columnspan 3 -sticky ew -padx 3 -pady 3
 
 grid columnconfigure .nb.ecdh_tab.main.kdf_frame.content 3 -weight 1
 
