@@ -3510,25 +3510,13 @@ grid columnconfigure .nb.digest_tab.main.output_frame.textframe 0 -weight 1
 frame .nb.digest_tab.main.action_frame -bg $bg_color
 pack .nb.digest_tab.main.action_frame -fill x -padx 8 -pady 8
 
-# Digest button (botão principal - verde)
-button .nb.digest_tab.main.action_frame.digestButton -text "🧮 Calculate Digests" \
-    -command calculateDigests -bg "#27ae60" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
-pack .nb.digest_tab.main.action_frame.digestButton -side left -padx 5
-
-# Check button (botão principal - azul)
-button .nb.digest_tab.main.action_frame.checkButton -text "✓ Verify Digests" \
-    -command verifyDigests -bg "#3498db" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
-pack .nb.digest_tab.main.action_frame.checkButton -side left -padx 5
-
-# Save button (botão auxiliar - laranja)
+# Save button (botão auxiliar - laranja) - À ESQUERDA
 button .nb.digest_tab.main.action_frame.saveButton -text "💾 Save" \
     -command saveDigests -bg "#f39c12" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
-pack .nb.digest_tab.main.action_frame.saveButton -side right -padx 3
+pack .nb.digest_tab.main.action_frame.saveButton -side left -padx 3
 
-# Copy button (botão auxiliar - verde)
+# Copy button (botão auxiliar - verde) - À ESQUERDA
 button .nb.digest_tab.main.action_frame.copyButton -text "📋 Copy" \
     -command {
         set text [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
@@ -3536,15 +3524,31 @@ button .nb.digest_tab.main.action_frame.copyButton -text "📋 Copy" \
         clipboard append $text
     } -bg "#27ae60" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
-pack .nb.digest_tab.main.action_frame.copyButton -side right -padx 3
+pack .nb.digest_tab.main.action_frame.copyButton -side left -padx 3
 
-# Clear button (botão auxiliar - vermelho)
+# Clear button (botão auxiliar - vermelho) - À ESQUERDA
 button .nb.digest_tab.main.action_frame.clearButton -text "🗑️ Clear" \
     -command {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
     } -bg "#e74c3c" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
-pack .nb.digest_tab.main.action_frame.clearButton -side right -padx 3
+pack .nb.digest_tab.main.action_frame.clearButton -side left -padx 3
+
+# Frame para os botões principais (direita)
+frame .nb.digest_tab.main.action_frame.main_buttons -bg $bg_color
+pack .nb.digest_tab.main.action_frame.main_buttons -side right
+
+# Digest button (botão principal - verde) - À ESQUERDA dentro do frame principal
+button .nb.digest_tab.main.action_frame.main_buttons.digestButton -text "🧮 Compute" \
+    -command calculateDigests -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -relief raised -bd 2
+pack .nb.digest_tab.main.action_frame.main_buttons.digestButton -side left -padx 5
+
+# Check button (botão principal - azul) - À DIREITA do Calculate
+button .nb.digest_tab.main.action_frame.main_buttons.checkButton -text "✓ Check" \
+    -command verifyDigests -bg "#3498db" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -relief raised -bd 2
+pack .nb.digest_tab.main.action_frame.main_buttons.checkButton -side left -padx 5
 
 # ===== FUNÇÕES DIGEST =====
 
