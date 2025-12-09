@@ -3392,7 +3392,7 @@ set ::digestHashComboData {
     bash224 bash256 bash384 bash512
     belt
     blake2b256 blake2b512
-    blake2s256
+    blake2s128 blake2s256
     blake3
     bmw224 bmw256 bmw384 bmw512
     cubehash256 cubehash512
@@ -3436,7 +3436,14 @@ checkbutton .nb.digest_tab.main.algo_frame.content.recursiveCheck -text "Recursi
     -variable ::recursiveFlag -bg $frame_color -font {Arial 9} -anchor w
 set ::recursiveFlag 0  ;# Valor padrão: desmarcado
 
-pack .nb.digest_tab.main.algo_frame.content.hashLabel .nb.digest_tab.main.algo_frame.content.hashCombo .nb.digest_tab.main.algo_frame.content.recursiveCheck -side left -padx 5 -pady 3
+# Key entry frame (inicialmente desabilitado)
+frame .nb.digest_tab.main.algo_frame.content.keyFrame -bg $frame_color
+label .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color -state disabled
+entry .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -width 50 -font {Consolas 9} -state disabled -background "#f0f0f0"
+
+pack .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -side left -padx 3
+
+pack .nb.digest_tab.main.algo_frame.content.hashLabel .nb.digest_tab.main.algo_frame.content.hashCombo .nb.digest_tab.main.algo_frame.content.recursiveCheck .nb.digest_tab.main.algo_frame.content.keyFrame -side left -padx 5 -pady 3
 
 # File selection frame
 frame .nb.digest_tab.main.file_frame -bg $frame_color -relief solid -bd 1
@@ -3510,6 +3517,12 @@ grid columnconfigure .nb.digest_tab.main.output_frame.textframe 0 -weight 1
 frame .nb.digest_tab.main.action_frame -bg $bg_color
 pack .nb.digest_tab.main.action_frame -fill x -padx 8 -pady 8
 
+# Open button (botão auxiliar - azul) - À ESQUERDA
+button .nb.digest_tab.main.action_frame.openButton -text "📂 Open" \
+    -command openHashFile -bg "#3498db" -fg white -font {Arial 9 bold} \
+    -padx 12 -pady 4
+pack .nb.digest_tab.main.action_frame.openButton -side left -padx 3
+
 # Save button (botão auxiliar - laranja) - À ESQUERDA
 button .nb.digest_tab.main.action_frame.saveButton -text "💾 Save" \
     -command saveDigests -bg "#f39c12" -fg white -font {Arial 9 bold} \
@@ -3525,6 +3538,15 @@ button .nb.digest_tab.main.action_frame.copyButton -text "📋 Copy" \
     } -bg "#27ae60" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
 pack .nb.digest_tab.main.action_frame.copyButton -side left -padx 3
+
+# Paste button (botão auxiliar - laranja escuro) - À ESQUERDA
+button .nb.digest_tab.main.action_frame.pasteButton -text "📥 Paste" \
+    -command {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end [clipboard get]
+    } -bg "#e67e22" -fg white -font {Arial 9 bold} \
+    -padx 12 -pady 4
+pack .nb.digest_tab.main.action_frame.pasteButton -side left -padx 3
 
 # Clear button (botão auxiliar - vermelho) - À ESQUERDA
 button .nb.digest_tab.main.action_frame.clearButton -text "🗑️ Clear" \
@@ -3551,6 +3573,82 @@ button .nb.digest_tab.main.action_frame.main_buttons.checkButton -text "✓ Chec
 pack .nb.digest_tab.main.action_frame.main_buttons.checkButton -side left -padx 5
 
 # ===== FUNÇÕES DIGEST =====
+
+# Função para atualizar a UI baseada no algoritmo selecionado
+proc updateDigestUI {} {
+    set algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
+    
+    # Lista de algoritmos que suportam chave (keyed hash functions)
+    set keyed_algorithms {
+        blake2b256 blake2b512
+        blake2s128 blake2s256
+        siphash64 siphash
+        skein256 skein512
+    }
+    
+    # Verificar se o algoritmo suporta chave
+    if {$algorithm in $keyed_algorithms} {
+        # Habilitar campo de chave
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel configure -state normal
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry configure -state normal
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry configure -background "white"
+        switch -- $algorithm {
+        "blake2s128" {
+            .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry delete 0 end
+            .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry insert 0 "0000000000000000"
+        }
+    }
+    } else {
+        # Desabilitar campo de chave
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel configure -state disabled
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry configure -state disabled
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry configure -background "#f0f0f0"
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry configure -fg "black"
+        .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry delete 0 end
+        
+        # Remover binds
+        bind .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry <FocusIn> {}
+        bind .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry <FocusOut> {}
+    }
+}
+
+# Função para abrir arquivo de hash
+proc openHashFile {} {
+    # Tipos de arquivo suportados
+    set filetypes {
+        {"Text files" {.txt}}
+        {"Hash files" {.hash .md5 .sha1 .sha256 .sha512}}
+        {"All files" *}
+    }
+    
+    # Abrir diálogo de seleção de arquivo
+    set filepath [tk_getOpenFile \
+        -title "Open Hash File" \
+        -filetypes $filetypes]
+    
+    if {$filepath ne ""} {
+        if {[catch {
+            # Ler conteúdo do arquivo
+            set fd [open $filepath r]
+            set content [read $fd]
+            close $fd
+            
+            # Atualizar área de saída
+            .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end $content
+            
+            # Adicionar cabeçalho informativo
+            set timestamp [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S"]
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n\n# File loaded: [file tail $filepath]\n"
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Loaded on: $timestamp\n"
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end "# Full path: $filepath\n"
+            
+        } errorMsg]} {
+            tk_messageBox -icon error -title "Error" \
+                -message "Failed to open file:\n$errorMsg"
+        }
+    }
+}
 
 # Função para salvar os digests em arquivo
 proc saveDigests {} {
@@ -3596,6 +3694,7 @@ proc calculateDigests {} {
     set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
     set directory [.nb.digest_tab.main.file_frame.content.dirEntry get]
     set pattern [.nb.digest_tab.main.file_frame.content.patternEntry get]
+    set key [.nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry get]
     
     # Validar diretório - "." sempre será válido
     if {$directory eq ""} {
@@ -3633,7 +3732,7 @@ proc calculateDigests {} {
     }
     
     # Construir comando base
-    set cmd [list edgetk -digest -md $hash_algorithm]
+    set cmd [list edgetk -digest -md $hash_algorithm -key $key]
     
     # Adicionar flag -recursive se o checkbox estiver marcado
     if {$::recursiveFlag} {
@@ -3710,6 +3809,7 @@ proc calculateDigests {} {
 proc verifyDigests {} {
     set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
     set directory [.nb.digest_tab.main.file_frame.content.dirEntry get]
+    set key [.nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry get]
     
     # Validar diretório
     if {$directory eq ""} {
@@ -3766,7 +3866,7 @@ proc verifyDigests {} {
     set exit_code 0
     
     # Construir comando base
-    set cmd [list edgetk -check -md $hash_algorithm]
+    set cmd [list edgetk -check -md $hash_algorithm -key $key]
     
     # Adicionar flag -recursive se o checkbox estiver marcado
     if {$::recursiveFlag} {
@@ -3789,7 +3889,7 @@ proc verifyDigests {} {
             set exit_code 1  # Código de erro genérico
         }
         
-        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: $errorMsg"
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "$errorMsg"
     }
     
     # Voltar ao diretório original
@@ -3802,7 +3902,7 @@ proc verifyDigests {} {
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n"
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✓ All checks passed successfully! (exit code: 0)\n"
     } else {
-        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n" + "=" * 60 + "\n"
+        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n"
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Some checks failed! (exit code: $exit_code)\n"
     }
 }
@@ -3976,6 +4076,7 @@ bind .nb.text_tab.main.algo_frame.row1.algorithmCombo <<ComboboxSelected>> {upda
 bind .nb.text_tab.main.algo_frame.row1.modeCombo <<ComboboxSelected>> {updateTextUI}
 bind .nb.file_tab.main.algo_frame.row1.algorithmCombo <<ComboboxSelected>> {updateFilesUI}
 bind .nb.file_tab.main.algo_frame.row1.modeCombo <<ComboboxSelected>> {updateFilesUI}
+bind .nb.digest_tab.main.algo_frame.content.hashCombo <<ComboboxSelected>> {updateDigestUI}
 
 # Initialize key displays
 updateKeyEntryDisplay
@@ -3985,6 +4086,7 @@ updateSignatureUI
 updateECDHUI
 updateTextUI
 updateFilesUI
+updateDigestUI
 
 selectMACInputType
 
