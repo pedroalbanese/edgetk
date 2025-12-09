@@ -85,7 +85,7 @@ proc showAbout {} {
         -font {Arial 14 bold} -bg white
     pack .about_window.main.title -pady 5
     
-    label .about_window.main.version -text "Version 1.0" \
+    label .about_window.main.version -text "Version 1.1" \
         -font {Arial 10} -bg white
     pack .about_window.main.version -pady 2
     
@@ -1819,7 +1819,7 @@ proc calculateIVSize {algorithm mode} {
         "curupira" { set ivSize 24 }
         "aes" - "serpent" - "aria" - "lea" - "anubis" - "twofish" - "sm4" - "camellia" - "kuznechik" - "seed" - "hc128" - "zuc128" { set ivSize 32 }
         "zuc256" { set ivSize 46 }
-        "hc256" - "skein512" - "threefish" - "kalyna256_256" - "shacal2" { set ivSize 64 }
+        "hc256" - "skein" - "threefish" - "kalyna256_256" - "shacal2" { set ivSize 64 }
         "kalyna512_512" - "threefish512" { set ivSize 128 }
         "rc4" - "chacha20poly1305" { set ivSize 0 }
         "salsa20" - "chacha20" { set ivSize 48 }
@@ -2461,7 +2461,7 @@ pack .nb.text_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.text_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein512" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
@@ -2691,7 +2691,7 @@ pack .nb.file_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.file_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein512" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.file_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
@@ -3502,6 +3502,13 @@ pack .nb.digest_tab.main.output_frame.textframe -fill both -expand true -padx 8 
 
 text .nb.digest_tab.main.output_frame.textframe.outputArea -width 70 -height 15 -wrap word \
     -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+
+# Configurar tags para formatação (deve ser feito APÓS criar o widget Text)
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure bold -font {Consolas 9 bold}
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure error -foreground red
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure success -foreground "#27ae60"
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure warning -foreground "#f39c12"
+
 scrollbar .nb.digest_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.digest_tab.main.output_frame.textframe.outputArea yview}
 .nb.digest_tab.main.output_frame.textframe.outputArea configure \
@@ -3700,6 +3707,7 @@ proc calculateDigests {} {
     if {$directory eq ""} {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Please select a directory!"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error 1.0 "1.end"
         return
     }
     
@@ -3708,6 +3716,7 @@ proc calculateDigests {} {
     if {$directory ne "." && (![file exists $directory] || ![file isdirectory $directory])} {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Directory not found: $directory"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error 1.0 "1.end"
         return
     }
     
@@ -3747,6 +3756,7 @@ proc calculateDigests {} {
         # Se não houver arquivos, mostrar mensagem
         if {[llength $files] == 0} {
             .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ No files found matching pattern: $pattern\n"
+            .nb.digest_tab.main.output_frame.textframe.outputArea tag add error "end-1l linestart" "end-1l lineend"
             
             # Voltar ao diretório original
             if {$directory ne "."} {
@@ -3797,6 +3807,7 @@ proc calculateDigests {} {
         
     } errorMsg]} {
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: $errorMsg"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error "end-1l linestart" "end-1l lineend"
     }
     
     # Voltar ao diretório original
@@ -3807,6 +3818,36 @@ proc calculateDigests {} {
 
 # Função para verificar digests de arquivos
 proc verifyDigests {} {
+    # Primeiro, tentar detectar o algoritmo do cabeçalho
+    set all_content [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
+    set detected_algorithm ""
+    
+    # Procurar por linha que começa com "# Algorithm:"
+    foreach line [split $all_content "\n"] {
+        if {[regexp {^#\s*Algorithm:\s*(.+)$} $line -> algo]} {
+            set detected_algorithm [string trim $algo]
+            break
+        }
+    }
+    
+    # Se encontrou algoritmo no cabeçalho, atualizar o combobox
+    if {$detected_algorithm ne ""} {
+        # Verificar se o algoritmo está na lista de valores
+        if {$detected_algorithm in $::digestHashComboData} {
+            .nb.digest_tab.main.algo_frame.content.hashCombo set $detected_algorithm
+            # Atualizar UI para refletir o novo algoritmo
+            updateDigestUI
+        } else {
+            # Se não estiver na lista, manter o atual mas mostrar aviso
+            set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
+            .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end "⚠ Warning: Algorithm '$detected_algorithm' not found in list.\n"
+            .nb.digest_tab.main.output_frame.textframe.outputArea insert end "Using current algorithm: $hash_algorithm\n\n"
+            .nb.digest_tab.main.output_frame.textframe.outputArea tag add warning 1.0 "2.end"
+        }
+    }
+    
+    # Agora continuar com a verificação normal
     set hash_algorithm [.nb.digest_tab.main.algo_frame.content.hashCombo get]
     set directory [.nb.digest_tab.main.file_frame.content.dirEntry get]
     set key [.nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry get]
@@ -3815,6 +3856,7 @@ proc verifyDigests {} {
     if {$directory eq ""} {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Please select a directory!"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error 1.0 "1.end"
         return
     }
     
@@ -3823,11 +3865,11 @@ proc verifyDigests {} {
     if {$directory ne "." && (![file exists $directory] || ![file isdirectory $directory])} {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: Directory not found: $directory"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error 1.0 "1.end"
         return
     }
     
     # Obter todo o conteúdo e filtrar apenas linhas que são hashes
-    set all_content [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
     set hash_lines ""
     
     foreach line [split $all_content "\n"] {
@@ -3840,11 +3882,14 @@ proc verifyDigests {} {
     if {[string trim $hash_lines] eq ""} {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Error: No valid hash data found!\nPlease calculate digests first."
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error 1.0 "2.end"
         return
     }
     
-    # Limpar área de saída
-    .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    # Limpar área de saída (se ainda não foi limpa pelo warning)
+    if {$detected_algorithm eq "" || $detected_algorithm in $::digestHashComboData} {
+        .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
+    }
     
     # Adicionar cabeçalho
     set timestamp [clock format [clock seconds] -format "%Y-%m-%d %H:%M:%S"]
@@ -3864,6 +3909,7 @@ proc verifyDigests {} {
     
     # Variável para capturar exit code
     set exit_code 0
+    set result_text ""
     
     # Construir comando base
     set cmd [list edgetk -check -md $hash_algorithm -key $key]
@@ -3877,7 +3923,7 @@ proc verifyDigests {} {
     if {[catch {
         # Usar exec com redirect para capturar stderr e exit code
         set result [exec {*}$cmd << $hash_lines 2>@1]
-        .nb.digest_tab.main.output_frame.textframe.outputArea insert end $result
+        set result_text $result
     } errorMsg error_options]} {
         # Se houve erro, capturar exit code das options
         set exit_code [dict get $error_options -errorcode]
@@ -3889,7 +3935,53 @@ proc verifyDigests {} {
             set exit_code 1  # Código de erro genérico
         }
         
-        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "$errorMsg"
+        set result_text $errorMsg
+    }
+    
+    # Processar o resultado para adicionar formatação
+    set output_start [.nb.digest_tab.main.output_frame.textframe.outputArea index "end-1c linestart"]
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end $result_text
+    
+    # Procurar por palavras específicas e aplicar tags
+    set text_content [.nb.digest_tab.main.output_frame.textframe.outputArea get $output_start "end-1c"]
+    
+    # Padrões a procurar (com expressões regulares)
+    set patterns {
+        {FAILED}
+        {Not found!}
+    }
+    
+    # Para cada padrão, aplicar tag bold
+    foreach pattern $patterns {
+        set idx [.nb.digest_tab.main.output_frame.textframe.outputArea search -regexp -- $pattern $output_start "end-1c"]
+        
+        while {$idx ne ""} {
+            # Encontrar o fim da palavra
+            set end_idx [.nb.digest_tab.main.output_frame.textframe.outputArea index "$idx + [string length [.nb.digest_tab.main.output_frame.textframe.outputArea get $idx "$idx lineend"]]c"]
+            
+            # Aplicar tag bold
+            .nb.digest_tab.main.output_frame.textframe.outputArea tag add bold $idx $end_idx
+            
+            # Se for "FAILED" ou "Not found!", também aplicar tag de erro (vermelho)
+            if {[regexp {(FAILED|Not found!)} [.nb.digest_tab.main.output_frame.textframe.outputArea get $idx $end_idx]]} {
+                .nb.digest_tab.main.output_frame.textframe.outputArea tag add error $idx $end_idx
+            }
+            
+            # Continuar procurando a partir do final desta ocorrência
+            set idx [.nb.digest_tab.main.output_frame.textframe.outputArea search -regexp -- $pattern $end_idx "end-1c"]
+        }
+    }
+    
+    # Também procurar por "OK" e aplicar tag de sucesso (verde)
+    set idx [.nb.digest_tab.main.output_frame.textframe.outputArea search -regexp -- {OK} $output_start "end-1c"]
+    while {$idx ne ""} {
+        set end_idx [.nb.digest_tab.main.output_frame.textframe.outputArea index "$idx + 2c"] ;# "OK" tem 2 caracteres
+        
+        # Aplicar tag success (verde)
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add success $idx $end_idx
+        
+        # Continuar procurando a partir do final desta ocorrência
+        set idx [.nb.digest_tab.main.output_frame.textframe.outputArea search -regexp -- {OK} $end_idx "end-1c"]
     }
     
     # Voltar ao diretório original
@@ -3898,12 +3990,14 @@ proc verifyDigests {} {
     }
     
     # Mostrar resultado baseado no exit code
+    .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n"
+    
     if {$exit_code == 0} {
-        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n"
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✓ All checks passed successfully! (exit code: 0)\n"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add success "end-2l linestart" "end-1l lineend"
     } else {
-        .nb.digest_tab.main.output_frame.textframe.outputArea insert end "\n"
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end "✗ Some checks failed! (exit code: $exit_code)\n"
+        .nb.digest_tab.main.output_frame.textframe.outputArea tag add error "end-2l linestart" "end-1l lineend"
     }
 }
 
@@ -4051,7 +4145,7 @@ proc verifyDigests {} {
 # Footer
 frame .footer -bg $accent_color -height 25
 pack .footer -fill x
-label .footer.text -text "ALBANESE Research Lab © 2024 | Secure Cryptographic Operations" \
+label .footer.text -text "ALBANESE Research Lab © 2025 | Secure Cryptographic Operations" \
     -bg $accent_color -fg "#bdc3c7" -font {Arial 8}
 pack .footer.text -pady 3
 
