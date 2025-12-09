@@ -78,7 +78,8 @@ proc showAbout {} {
     frame .about_window.main -bg white -relief solid -bd 1
     pack .about_window.main -fill both -expand true -padx 10 -pady 10
     
-    label .about_window.main.logo -text "EDGE" -font {Arial 24} -bg white
+    # Usar Segoe UI Symbol para exibir o ícone de cadeado
+    label .about_window.main.logo -text "🔏" -font {"Segoe UI Symbol" 24} -bg white
     pack .about_window.main.logo -pady 10
     
     label .about_window.main.title -text "EDGE Crypto Suite" \
@@ -2107,12 +2108,17 @@ pack .header.subtitle -pady 0
 ttk::notebook .nb
 pack .nb -fill both -expand yes -padx 8 -pady 5
 
-# Notebook style configuration
-ttk::style configure TNotebook -background $bg_color
+# Configuração BASE (funciona em todos)
 ttk::style configure TNotebook.Tab -padding {10 5}
-ttk::style map TNotebook.Tab \
-    -background [list selected $accent_color !selected $frame_color] \
-    -foreground [list selected white !selected $accent_color]
+
+# Aplicar cores personalizadas APENAS se NÃO for Windows
+if {$tcl_platform(platform) ne "windows"} {
+    # Estas linhas só executam no Linux/Mac
+    ttk::style configure TNotebook -background $bg_color
+    ttk::style map TNotebook.Tab \
+        -background [list selected $accent_color !selected $frame_color] \
+        -foreground [list selected white !selected $accent_color]
+}
 
 
 
