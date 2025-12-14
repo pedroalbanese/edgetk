@@ -78,9 +78,15 @@ proc showAbout {} {
     frame .about_window.main -bg white -relief solid -bd 1
     pack .about_window.main -fill both -expand true -padx 10 -pady 10
     
-    # Usar Segoe UI Symbol para exibir o ícone de cadeado
-    label .about_window.main.logo -text "🔏" -font {"Segoe UI Symbol" 24} -bg white
-    pack .about_window.main.logo -pady 10
+    if {$::tcl_platform(os) ne "Windows NT"} {
+        # Usar Segoe UI Symbol para exibir o ícone de cadeado
+        label .about_window.main.logo -text "🔏" -font {"Segoe UI Emoji" 24} -bg white
+        pack .about_window.main.logo -pady 10
+    } else {
+        # Usar Segoe UI Symbol para exibir o ícone de cadeado
+        label .about_window.main.logo -text "\uF023" -font {"Segoe UI Emoji" 36} -bg white
+        pack .about_window.main.logo -pady 5
+    }
     
     label .about_window.main.title -text "EDGE Crypto Suite" \
         -font {Arial 14 bold} -bg white
