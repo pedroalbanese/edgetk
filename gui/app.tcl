@@ -4047,7 +4047,11 @@ proc verifyDigests {} {
     if {[info exists ::tcl_platform(osVersion)]} {
         .debug_win.main.textframe.text insert end "OS Version: $::tcl_platform(osVersion)\n"
     }
-    .debug_win.main.textframe.text insert end "Current dir: [pwd]\n"
+    
+    # Fix: mostrar diretório atual de forma segura
+    set current_dir [pwd]
+    .debug_win.main.textframe.text insert end "Current dir: $current_dir\n"
+    
     .debug_win.main.textframe.text insert end "Tcl Version: [info patchlevel]\n"
     
     # Get Tk version in compatible way
@@ -4064,64 +4068,190 @@ proc verifyDigests {} {
     
     # Test edgetk
     .debug_win.main.textframe.text insert end "=== EDGETK INFO ===\n"
-    if {[catch {exec which edgetk} result]} {
-        .debug_win.main.textframe.text insert end "edgetk not found in PATH\n"
-    } else {
-        .debug_win.main.textframe.text insert end "edgetk found at: $result\n\n"
+    
+    # Verificar se estamos no Windows
+    if {$::tcl_platform(platform) eq "windows"} {
+        # No Windows, verificar edgetk de forma diferente
+        set found 0
+        set edgetk_path ""
         
-        # Try to get edgetk version
-        .debug_win.main.textframe.text insert end "Trying to get edgetk version...\n"
-        if {[catch {exec edgetk -version} version_result]} {
-            # If -version fails, try --version or other options
-            .debug_win.main.textframe.text insert end "Error with 'edgetk -version': $version_result\n"
-            
-            # Try other common version options
-            set version_found 0
-            foreach version_flag {--version -v -V version} {
-                if {[catch {exec edgetk $version_flag 2>&1} alt_result]} {
-                    continue
-                } else {
-                    .debug_win.main.textframe.text insert end "Version (using '$version_flag'):\n$alt_result\n"
-                    set version_found 1
+        # Verificar no PATH do Windows
+        if {[info exists ::env(PATH)]} {
+            set path_dirs [split $::env(PATH) ";"]
+            foreach dir $path_dirs {
+                set edgetk_exe [file join $dir "edgetk.exe"]
+                if {[file exists $edgetk_exe]} {
+                    set edgetk_path $edgetk_exe
+                    set found 1
                     break
                 }
             }
+        }
+        
+        # Se não encontrou no PATH, tentar encontrar de outras formas
+        if {!$found} {
+            # Tentar 'where' no Windows
+            if {[catch {exec where edgetk} result]} {
+                # Tentar 'where edgetk.exe'
+                catch {exec where edgetk.exe} result2
+                if {[info exists result2] && $result2 ne ""} {
+                    set edgetk_path $result2
+                    set found 1
+                }
+            } else {
+                set edgetk_path $result
+                set found 1
+            }
+        }
+        
+        if {$found} {
+            .debug_win.main.textframe.text insert end "edgetk found at: $edgetk_path\n\n"
+            
+            # Tentar obter a versão
+            .debug_win.main.textframe.text insert end "Trying to get edgetk version...\n"
+            set version_found 0
+            
+            # Tentar diferentes opções de versão
+            foreach version_flag {--version -version -v -V version} {
+                # CORREÇÃO AQUI: no Windows, usar 2>NUL em vez de 2>&1
+                if {[catch {exec cmd /c "\"$edgetk_path\" $version_flag" 2>NUL} version_result]} {
+                    continue
+                } else {
+                    if {[string trim $version_result] ne ""} {
+                        .debug_win.main.textframe.text insert end "Version (using '$version_flag'):\n$version_result\n"
+                        set version_found 1
+                        break
+                    }
+                }
+            }
+            
             if {!$version_found} {
                 .debug_win.main.textframe.text insert end "Could not determine edgetk version\n"
             }
         } else {
-            .debug_win.main.textframe.text insert end "Version:\n$version_result\n"
+            .debug_win.main.textframe.text insert end "edgetk not found\n"
         }
-     }
-    
-    # System information
-    .debug_win.main.textframe.text insert end "\n=== SYSTEM INFO ===\n"
-    if {[file exists "/proc/cpuinfo"]} {
-        if {![catch {exec grep -m 1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2} cpu_info]} {
-            .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
-        }
-        if {![catch {exec grep -c ^processor /proc/cpuinfo 2>/dev/null} cpu_cores]} {
-            .debug_win.main.textframe.text insert end "CPU Cores: [string trim $cpu_cores]\n"
-        }
-    } elseif {$::tcl_platform(platform) eq "windows"} {
-        if {![catch {exec wmic cpu get name 2>/dev/null | findstr /v "Name"} cpu_info]} {
-            .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
+    } else {
+        # Para Linux/Mac
+        if {[catch {exec which edgetk} result]} {
+            .debug_win.main.textframe.text insert end "edgetk not found in PATH\n"
+        } else {
+            .debug_win.main.textframe.text insert end "edgetk found at: $result\n\n"
+            
+            # Try to get edgetk version
+            .debug_win.main.textframe.text insert end "Trying to get edgetk version...\n"
+            if {[catch {exec edgetk -version} version_result]} {
+                # If -version fails, try --version or other options
+                .debug_win.main.textframe.text insert end "Error with 'edgetk -version': $version_result\n"
+                
+                # Try other common version options
+                set version_found 0
+                foreach version_flag {--version -v -V version} {
+                    if {[catch {exec edgetk $version_flag 2>&1} alt_result]} {
+                        continue
+                    } else {
+                        .debug_win.main.textframe.text insert end "Version (using '$version_flag'):\n$alt_result\n"
+                        set version_found 1
+                        break
+                    }
+                }
+                if {!$version_found} {
+                    .debug_win.main.textframe.text insert end "Could not determine edgetk version\n"
+                }
+            } else {
+                .debug_win.main.textframe.text insert end "Version:\n$version_result\n"
+            }
         }
     }
     
-    if {![catch {exec free -h 2>/dev/null | grep Mem: | awk '{print $2}'} mem_total]} {
-        .debug_win.main.textframe.text insert end "Memory Total: [string trim $mem_total]\n"
-    } elseif {$::tcl_platform(platform) eq "windows"} {
-        if {![catch {exec wmic OS get TotalVisibleMemorySize 2>/dev/null | findstr /v "TotalVisibleMemorySize"} mem_bytes]} {
-            set mem_mb [expr {[string trim $mem_bytes] / 1024.0 / 1024.0}]
-            .debug_win.main.textframe.text insert end "Memory Total: [format "%.1f" $mem_mb] GB\n"
+    # System information
+    .debug_win.main.textframe.text insert end "\n=== SYSTEM INFO ===\n"
+    
+    if {$::tcl_platform(platform) eq "windows"} {
+        # Informações do sistema para Windows
+        
+        # CPU
+        if {![catch {exec wmic cpu get name /value 2>NUL} cpu_info]} {
+            # Processar saída do wmic
+            foreach line [split $cpu_info \n] {
+                if {[string match "Name=*" $line]} {
+                    set cpu_name [string range $line 5 end]
+                    .debug_win.main.textframe.text insert end "CPU: $cpu_name\n"
+                    break
+                }
+            }
+        }
+        
+        # Número de cores
+        if {![catch {exec wmic cpu get NumberOfCores /value 2>NUL} cpu_cores_info]} {
+            foreach line [split $cpu_cores_info \n] {
+                if {[string match "NumberOfCores=*" $line]} {
+                    set cores [string range $line 14 end]
+                    .debug_win.main.textframe.text insert end "CPU Cores: $cores\n"
+                    break
+                }
+            }
+        }
+        
+        # Memória - CORREÇÃO AQUI
+        if {![catch {exec wmic ComputerSystem get TotalPhysicalMemory /value 2>NUL} mem_info]} {
+            foreach line [split $mem_info \n] {
+                if {[string match "TotalPhysicalMemory=*" $line]} {
+                    set mem_bytes_str [string range $line 22 end]
+                    # Remover caracteres não numéricos (espaços, CR, LF, etc.)
+                    set mem_bytes [string trim $mem_bytes_str]
+                    # Verificar se é um número válido
+                    if {[string is integer $mem_bytes]} {
+                        # Converter bytes para GB
+                        set mem_gb [expr {$mem_bytes / 1024.0 / 1024.0 / 1024.0}]
+                        .debug_win.main.textframe.text insert end "Memory Total: [format "%.2f" $mem_gb] GB\n"
+                    } else {
+                        .debug_win.main.textframe.text insert end "Memory Total: Could not parse memory value\n"
+                    }
+                    break
+                }
+            }
+        } else {
+            .debug_win.main.textframe.text insert end "Memory Total: Could not retrieve memory information\n"
+        }
+        
+    } else {
+        # Informações do sistema para Linux/Mac
+        if {[file exists "/proc/cpuinfo"]} {
+            if {![catch {exec grep -m 1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2} cpu_info]} {
+                .debug_win.main.textframe.text insert end "CPU: [string trim $cpu_info]\n"
+            }
+            if {![catch {exec grep -c ^processor /proc/cpuinfo 2>/dev/null} cpu_cores]} {
+                .debug_win.main.textframe.text insert end "CPU Cores: [string trim $cpu_cores]\n"
+            }
+        }
+        
+        if {![catch {exec free -h 2>/dev/null | grep Mem: | awk '{print $2}'} mem_total]} {
+            .debug_win.main.textframe.text insert end "Memory Total: [string trim $mem_total]\n"
         }
     }
     
     # Environment information
     .debug_win.main.textframe.text insert end "\n=== ENVIRONMENT ===\n"
     if {[info exists ::env(PATH)]} {
-        .debug_win.main.textframe.text insert end "PATH: $::env(PATH)\n"
+        if {$::tcl_platform(platform) eq "windows"} {
+            # No Windows, mostrar PATH formatado
+            set path_dirs [split $::env(PATH) ";"]
+            .debug_win.main.textframe.text insert end "PATH (first 10 entries):\n"
+            set count 0
+            foreach dir $path_dirs {
+                if {$count < 10 && [string trim $dir] ne ""} {
+                    .debug_win.main.textframe.text insert end "  $dir\n"
+                    incr count
+                }
+            }
+            if {[llength $path_dirs] > 10} {
+                .debug_win.main.textframe.text insert end "  ... and [expr {[llength $path_dirs] - 10}] more\n"
+            }
+        } else {
+            # No Linux/Mac
+            .debug_win.main.textframe.text insert end "PATH: $::env(PATH)\n"
+        }
     } else {
         .debug_win.main.textframe.text insert end "PATH: Not set\n"
     }
@@ -4151,7 +4281,7 @@ proc verifyDigests {} {
 # Footer
 frame .footer -bg $accent_color -height 25
 pack .footer -fill x
-label .footer.text -text "ALBANESE Research Lab © 2025 | Secure Cryptographic Operations" \
+label .footer.text -text "ALBANESE Research Lab \u00a9 2025 | Secure Cryptographic Operations" \
     -bg $accent_color -fg "#bdc3c7" -font {Arial 8}
 pack .footer.text -pady 3
 
