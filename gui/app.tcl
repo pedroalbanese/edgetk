@@ -64,55 +64,73 @@ proc openFileDialog {entry_widget} {
     }
 }
 
-# Function to display application information
+# About window for EDGE Crypto Suite
 proc showAbout {} {
     toplevel .about_window
     wm title .about_window "About EDGE Crypto Suite"
-    wm geometry .about_window 400x290
+    wm geometry .about_window 460x500
     wm resizable .about_window 0 0
-    
-    set x [expr {[winfo screenwidth .] / 2 - 200}]
-    set y [expr {[winfo screenheight .] / 2 - 110}]
+
+    set x [expr {[winfo screenwidth .] / 2 - 230}]
+    set y [expr {[winfo screenheight .] / 2 - 180}]
     wm geometry .about_window +$x+$y
-    
+
     frame .about_window.main -bg white -relief solid -bd 1
-    pack .about_window.main -fill both -expand true -padx 10 -pady 10
-    
+    pack .about_window.main -fill both -expand true -padx 12 -pady 12
+
+    # Logo
     if {$::tcl_platform(os) ne "Windows NT"} {
-        # Usar Segoe UI Symbol para exibir o ícone de cadeado
-        label .about_window.main.logo -text "🔏" -font {"Segoe UI Emoji" 24} -bg white
+        label .about_window.main.logo -text "🔏" -font {"Segoe UI Emoji" 28} -bg white
         pack .about_window.main.logo -pady 10
     } else {
-        # Usar Segoe UI Symbol para exibir o ícone de cadeado
-        label .about_window.main.logo -text "\uF023" -font {"Segoe UI Emoji" 36} -bg white
-        pack .about_window.main.logo -pady 5
+        label .about_window.main.logo -text "\uF023" -font {"Segoe UI Emoji" 40} -bg white
+        pack .about_window.main.logo -pady 6
     }
-    
+
+    # Title
     label .about_window.main.title -text "EDGE Crypto Suite" \
-        -font {Arial 14 bold} -bg white
-    pack .about_window.main.title -pady 5
-    
+        -font {Arial 15 bold} -bg white
+    pack .about_window.main.title -pady 4
+
+    # Version
     label .about_window.main.version -text "Version 1.1" \
         -font {Arial 10} -bg white
     pack .about_window.main.version -pady 2
-    
-    label .about_window.main.dev -text "Bulk Encryption + ECDH + MAC + Digital Signatures" \
-        -font {Arial 9} -bg white
-    pack .about_window.main.dev -pady 2
-    
+
+    # Description
+    label .about_window.main.desc -text \
+"EDGE Crypto Suite is a research and development project in
+applied cryptography, designed to provide a unified, reliable,
+and cross-platform environment for data protection and secure
+communications.
+
+Developed in accordance with internationally recognized
+cryptographic standards, the software emphasizes
+interoperability, technical correctness, and conceptual
+consistency across different operating systems and computing
+architectures.
+
+The project reflects a commitment to sound security engineering
+practices, methodological transparency, and alignment with the
+current state of the art in modern cryptography." \
+        -font {Arial 9} -bg white -justify center -wraplength 480
+    pack .about_window.main.desc -pady 10
+
+    # Author / Lab
     label .about_window.main.features -text "All-in-One Cryptographic Toolkit" \
         -font {Arial 9} -bg white
     pack .about_window.main.features -pady 2
-    
+
     label .about_window.main.lab -text "ALBANESE Research Lab" \
         -font {Arial 9 bold} -bg white
     pack .about_window.main.lab -pady 10
-    
+
+    # OK Button
     button .about_window.main.ok -text "OK" -command {destroy .about_window} \
-        -bg "#3498db" -fg white -font {Arial 10 bold} -relief flat \
-        -padx 20 -pady 5
-    pack .about_window.main.ok -pady 10
-    
+        -bg "#2c3e50" -fg white -font {Arial 10 bold} -relief flat \
+        -padx 22 -pady 6
+    pack .about_window.main.ok -pady 14
+
     bind .about_window <Key-Escape> {destroy .about_window}
     bind .about_window <Return> {destroy .about_window}
     focus .about_window
@@ -141,24 +159,111 @@ proc generateKey {} {
     set clean_algo [string map {"ph" ""} $algorithm]
     set algo_upper [string toupper $clean_algo]
     
-    # Find available name for private key
-    set counter 1
+    # Base names
     set base_private_name "${algo_upper}_Private"
-    set private_key_path [file join $current_dir "${base_private_name}.pem"]
+    set base_public_name "${algo_upper}_Public"
     
-    while {[file exists $private_key_path]} {
-        set private_key_path [file join $current_dir "${base_private_name}_${counter}.pem"]
-        incr counter
+    # Default paths without suffix
+    set default_private_path [file join $current_dir "${base_private_name}.pem"]
+    set default_public_path [file join $current_dir "${base_public_name}.pem"]
+    
+    # Get current values from input fields (if any)
+    set current_private [.nb.signatures_tab.main.keys_frame.content.privateKeyInput get]
+    set current_public [.nb.signatures_tab.main.keys_frame.content.publicKeyInput get]
+    
+    # Check if input fields already have values with numeric suffix
+    set has_numeric_suffix 0
+    set private_key_path $default_private_path
+    set public_key_path $default_public_path
+    
+    if {$current_private ne "" && [file exists $current_private]} {
+        # User already selected a specific file, check if it has numeric suffix
+        set filename [file tail $current_private]
+        if {[regexp {_(\d+)\.pem$} $filename]} {
+            # File has numeric suffix, use it
+            set private_key_path $current_private
+            set has_numeric_suffix 1
+            
+            # Check if corresponding public key exists with same suffix
+            if {[regexp {^(.*)_(\d+)\.pem$} $filename -> base suffix]} {
+                set public_candidate [file join $current_dir "${base_public_name}_${suffix}.pem"]
+                if {[file exists $public_candidate] && $current_public eq ""} {
+                    set public_key_path $public_candidate
+                }
+            }
+        }
     }
     
-    # Reset counter for public key
-    set counter 1
-    set base_public_name "${algo_upper}_Public"
-    set public_key_path [file join $current_dir "${base_public_name}.pem"]
+    # If user manually entered public key, use it
+    if {$current_public ne "" && [file exists $current_public]} {
+        set public_key_path $current_public
+    }
     
-    while {[file exists $public_key_path]} {
-        set public_key_path [file join $current_dir "${base_public_name}_${counter}.pem"]
-        incr counter
+    # Check if the selected files already exist
+    set private_exists [file exists $private_key_path]
+    set public_exists [file exists $public_key_path]
+    
+    if {$private_exists || $public_exists} {
+        # Show dialog window
+        set files_message ""
+        if {$private_exists && $public_exists} {
+            set files_message "Both private and public key files already exist."
+        } elseif {$private_exists} {
+            set files_message "Private key file already exists."
+        } else {
+            set files_message "Public key file already exists."
+        }
+        
+        set choice [tk_messageBox \
+            -title "Keys Already Exist" \
+            -message "Files already exist:\n\nPrivate: [file tail $private_key_path]\nPublic: [file tail $public_key_path]\n\nWhat do you want to do?" \
+            -type yesnocancel \
+            -icon warning \
+            -detail "Yes: Overwrite existing files\nNo: Generate with NEW numeric suffix (rename)\nCancel: Abort operation" \
+            -default cancel]
+        
+        if {$choice eq "cancel"} {
+            # User canceled
+            .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
+            .nb.signatures_tab.main.output_frame.textframe.outputArea insert end "Key generation cancelled."
+            return
+        } elseif {$choice eq "no"} {
+            # User wants to rename with NEW numeric suffix
+            # Find NEXT available name for private key
+            set counter 1
+            set new_private_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+            
+            # Start from 1 and find the first available number
+            while {[file exists $new_private_path]} {
+                incr counter
+                set new_private_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+            }
+            
+            # Use the same counter for public key
+            set new_public_path [file join $current_dir "${base_public_name}_${counter}.pem"]
+            
+            # If public key with that number already exists, find next available
+            while {[file exists $new_public_path]} {
+                incr counter
+                set new_private_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+                set new_public_path [file join $current_dir "${base_public_name}_${counter}.pem"]
+            }
+            
+            set private_key_path $new_private_path
+            set public_key_path $new_public_path
+        }
+        # If choice is "yes", keep the existing paths (will be overwritten)
+    } else {
+        # Files don't exist, check if we should use the current input values
+        if {$current_private ne "" && [file dirname $current_private] eq $current_dir} {
+            # User has entered a specific path, use it
+            set private_key_path $current_private
+        }
+        
+        if {$current_public ne "" && [file dirname $current_public] eq $current_dir} {
+            # User has entered a specific path, use it
+            set public_key_path $current_public
+        }
     }
     
     # Update entry fields with full paths
@@ -629,6 +734,12 @@ proc updateSignatureUI {} {
     # List of hashes compatible only with RSA
     set rsa_hash_algorithms {md5 sha256 sha384 sha512 ripemd160}
     
+    # Get current hash value before making changes
+    set current_hash [.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo get]
+    
+    # Get current bits value before making changes
+    set current_bits [.nb.signatures_tab.main.algo_frame.content.bitsCombo get]
+    
     # 1. Control bits combo box (size)
     if {[lsearch $fixed_size_algorithms $algorithm] >= 0} {
         # Algorithm with fixed size - disable bits combo
@@ -671,25 +782,34 @@ proc updateSignatureUI {} {
         if {$algorithm eq "rsa"} {
             # ONLY for RSA: use reduced hash list
             .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -values $rsa_hash_algorithms
-            .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha256"
+            
+            # Check if current hash is in RSA-compatible list
+            if {$current_hash ni $rsa_hash_algorithms} {
+                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha256"
+            }
         } else {
             # For ALL other algorithms: restore COMPLETE hash list
             .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo configure -values $all_hash_algorithms
             
-            # Set default hash based on algorithm
+            # Set default hash based on algorithm - ONLY if necessary
             if {$algorithm eq "sm2ph"} {
                 # SM2ph uses SM3 as default hash
-                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sm3"
+                if {$current_hash eq "" || $current_hash eq "sm3"} {
+                    .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sm3"
+                }
             } elseif {$algorithm eq "bign"} {
-                # BIGN: sha256 as default
-                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "bash256"
+                # BIGN: bash256 as default
+                if {$current_hash eq "" || $current_hash eq "bash256"} {
+                    .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "bash256"
+                }
             } elseif {$algorithm eq "gost2012"} {
-                # BIGN: sha256 as default
-                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "streebog256"
-            } else {
-                # For ECDSA and others: sha256 as default
-                .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
+                # GOST2012: streebog256 as default
+                if {$current_hash eq "" || $current_hash eq "streebog256"} {
+                    .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "streebog256"
+                }
             }
+            # For ECDSA and others: DO NOT automatically change to sha3-256
+            # Keep whatever hash the user has selected
         }
     }
     
@@ -774,14 +894,33 @@ proc updateSignatureUI {} {
     }
     
     # 5. Update available values in bits combo based on algorithm
+    # Define available bits for each algorithm type
     if {[string match "rsa*" $algorithm]} {
-        # RSA and BIGN use different bits
+        # RSA: values 1024, 2048, 3072, 4096
         .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {1024 2048 3072 4096}
-        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "2048"
+        
+        # Check if current bits is valid for RSA
+        if {$current_bits in {1024 2048 3072 4096}} {
+            # Keep current value if valid
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set $current_bits
+        } else {
+            # Otherwise set default
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "2048"
+        }
+        
     } elseif {[string match "bign*" $algorithm]} {
-        # RSA and BIGN use different bits
+        # BIGN: values 256, 384, 512
         .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {256 384 512}
-        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        
+        # Check if current bits is valid for BIGN
+        if {$current_bits in {256 384 512}} {
+            # Keep current value if valid
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set $current_bits
+        } else {
+            # Otherwise set default
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        }
+        
     } elseif {[string match "ed*" $algorithm]} {
         # EdDSA has fixed sizes based on algorithm
         if {[string match "*25519*" $algorithm]} {
@@ -791,17 +930,36 @@ proc updateSignatureUI {} {
         } elseif {[string match "*521*" $algorithm]} {
             .nb.signatures_tab.main.algo_frame.content.bitsCombo set "521"
         }
+        
     } elseif {$algorithm eq "sm2" || $algorithm eq "sm2ph"} {
         # SM2 has fixed size 256
         .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        
     } elseif {$algorithm eq "gost2012"} {
-        # GOST has fixed size 256, but allows selection
+        # GOST: values 256, 512
         .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {256 512}
-        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        
+        # Check if current bits is valid for GOST2012
+        if {$current_bits in {256 512}} {
+            # Keep current value if valid
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set $current_bits
+        } else {
+            # Otherwise set default
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        }
+        
     } else {
-        # ECDSA and variants use these sizes
+        # ECDSA and variants use these sizes: 224, 256, 384, 521
         .nb.signatures_tab.main.algo_frame.content.bitsCombo configure -values {224 256 384 521}
-        .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        
+        # Check if current bits is valid for ECDSA
+        if {$current_bits in {224 256 384 521}} {
+            # Keep current value if valid
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set $current_bits
+        } else {
+            # Otherwise set default
+            .nb.signatures_tab.main.algo_frame.content.bitsCombo set "256"
+        }
     }
     
     # 6. Update default curve based on algorithm
@@ -1555,24 +1713,111 @@ proc generateECDHKey {} {
     # Generate unique filenames
     set algo_upper [string toupper $algorithm]
     
-    # Find available name for private key
-    set counter 1
+    # Base names
     set base_private_name "${algo_upper}_Private"
-    set private_key_path [file join $current_dir "${base_private_name}.pem"]
+    set base_public_name "${algo_upper}_Public"
     
-    while {[file exists $private_key_path]} {
-        set private_key_path [file join $current_dir "${base_private_name}_${counter}.pem"]
-        incr counter
+    # Default paths without suffix
+    set default_private_path [file join $current_dir "${base_private_name}.pem"]
+    set default_public_path [file join $current_dir "${base_public_name}.pem"]
+    
+    # Get current values from input fields (if any)
+    set current_private [.nb.ecdh_tab.main.keys_frame.content.privateKeyInput get]
+    set current_public [.nb.ecdh_tab.main.keys_frame.content.publicKeyInput get]
+    
+    # Check if input fields already have values with numeric suffix
+    set has_numeric_suffix 0
+    set private_key_path $default_private_path
+    set public_key_path $default_public_path
+    
+    if {$current_private ne "" && [file exists $current_private]} {
+        # User already selected a specific file, check if it has numeric suffix
+        set filename [file tail $current_private]
+        if {[regexp {_(\d+)\.pem$} $filename]} {
+            # File has numeric suffix, use it
+            set private_key_path $current_private
+            set has_numeric_suffix 1
+            
+            # Check if corresponding public key exists with same suffix
+            if {[regexp {^(.*)_(\d+)\.pem$} $filename -> base suffix]} {
+                set public_candidate [file join $current_dir "${base_public_name}_${suffix}.pem"]
+                if {[file exists $public_candidate] && $current_public eq ""} {
+                    set public_key_path $public_candidate
+                }
+            }
+        }
     }
     
-    # Reset counter for public key
-    set counter 1
-    set base_public_name "${algo_upper}_Public"
-    set public_key_path [file join $current_dir "${base_public_name}.pem"]
+    # If user manually entered public key, use it
+    if {$current_public ne "" && [file exists $current_public]} {
+        set public_key_path $current_public
+    }
     
-    while {[file exists $public_key_path]} {
-        set public_key_path [file join $current_dir "${base_public_name}_${counter}.pem"]
-        incr counter
+    # Check if the selected files already exist
+    set private_exists [file exists $private_key_path]
+    set public_exists [file exists $public_key_path]
+    
+    if {$private_exists || $public_exists} {
+        # Show dialog window
+        set files_message ""
+        if {$private_exists && $public_exists} {
+            set files_message "Both private and public key files already exist."
+        } elseif {$private_exists} {
+            set files_message "Private key file already exists."
+        } else {
+            set files_message "Public key file already exists."
+        }
+        
+        set choice [tk_messageBox \
+            -title "Keys Already Exist" \
+            -message "Files already exist:\n\nPrivate: [file tail $private_key_path]\nPublic: [file tail $public_key_path]\n\nWhat do you want to do?" \
+            -type yesnocancel \
+            -icon warning \
+            -detail "Yes: Overwrite existing files\nNo: Generate with NEW numeric suffix (rename)\nCancel: Abort operation" \
+            -default cancel]
+        
+        if {$choice eq "cancel"} {
+            # User canceled
+            .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
+            .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Key generation cancelled."
+            return
+        } elseif {$choice eq "no"} {
+            # User wants to rename with NEW numeric suffix
+            # Find NEXT available name for private key
+            set counter 1
+            set new_private_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+            
+            # Start from 1 and find the first available number
+            while {[file exists $new_private_path]} {
+                incr counter
+                set new_private_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+            }
+            
+            # Use the same counter for public key
+            set new_public_path [file join $current_dir "${base_public_name}_${counter}.pem"]
+            
+            # If public key with that number already exists, find next available
+            while {[file exists $new_public_path]} {
+                incr counter
+                set new_private_path [file join $current_dir "${base_private_name}_${counter}.pem"]
+                set new_public_path [file join $current_dir "${base_public_name}_${counter}.pem"]
+            }
+            
+            set private_key_path $new_private_path
+            set public_key_path $new_public_path
+        }
+        # If choice is "yes", keep the existing paths (will be overwritten)
+    } else {
+        # Files don't exist, check if we should use the current input values
+        if {$current_private ne "" && [file dirname $current_private] eq $current_dir} {
+            # User has entered a specific path, use it
+            set private_key_path $current_private
+        }
+        
+        if {$current_public ne "" && [file dirname $current_public] eq $current_dir} {
+            # User has entered a specific path, use it
+            set public_key_path $current_public
+        }
     }
     
     if {[catch {
