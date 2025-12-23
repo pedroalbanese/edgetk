@@ -2701,7 +2701,7 @@ pack .nb.text_tab.main -fill both -expand yes
 
 # Grid configuration for expansion (Text)
 grid columnconfigure .nb.text_tab.main 0 -weight 1
-grid rowconfigure .nb.text_tab.main 8 -weight 1
+grid rowconfigure .nb.text_tab.main {1 2} -weight 1
 
 # Algorithm configuration frame (Text)
 frame .nb.text_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
@@ -2800,19 +2800,19 @@ pack .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.text_tab.main.al
      .nb.text_tab.main.algo_frame.row2.iterLabel .nb.text_tab.main.algo_frame.row2.iterBox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo \
      -side left -padx 3
 
-# Plaintext frame (shorter)
+# Plaintext frame (shorter) - MODIFICADO para permitir expansão
 frame .nb.text_tab.main.plain_frame -bg $frame_color -relief solid -bd 1
 grid .nb.text_tab.main.plain_frame -row 1 -column 0 -columnspan 6 -sticky "nsew" -padx 8 -pady 5
-grid rowconfigure .nb.text_tab.main.plain_frame 1 -weight 1
+grid rowconfigure .nb.text_tab.main.plain_frame 1 -weight 1  ;# Linha do text widget com peso 1
 grid columnconfigure .nb.text_tab.main.plain_frame 0 -weight 1
 
 label .nb.text_tab.main.plain_frame.label -text "PLAINTEXT" -font {Arial 10 bold} -bg $frame_color
 grid .nb.text_tab.main.plain_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
 
-# Create plaintext text box with scrollbar (shorter)
+# Create plaintext text box with scrollbar (shorter) - MODIFICADO para expansão
 frame .nb.text_tab.main.plain_frame.textframe -bg $frame_color
 grid .nb.text_tab.main.plain_frame.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 8 -pady 3
-grid rowconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1
+grid rowconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1  ;# Text widget com peso 1
 grid columnconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1
 
 text .nb.text_tab.main.plain_frame.textframe.text -width 60 -height 5 -wrap word \
@@ -2822,39 +2822,19 @@ scrollbar .nb.text_tab.main.plain_frame.textframe.scroll -command {.nb.text_tab.
 grid .nb.text_tab.main.plain_frame.textframe.text -row 0 -column 0 -sticky "nsew"
 grid .nb.text_tab.main.plain_frame.textframe.scroll -row 0 -column 1 -sticky "ns"
 
-# Buttons for plaintext
-frame .nb.text_tab.main.plain_frame.buttons -bg $frame_color
-grid .nb.text_tab.main.plain_frame.buttons -row 2 -column 0 -sticky "ew" -padx 8 -pady 3
-
-button .nb.text_tab.main.plain_frame.buttons.copy -text "Copy" -command {
-    clipboard clear; clipboard append [.nb.text_tab.main.plain_frame.textframe.text get 1.0 end]
-} -bg "#27ae60" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.plain_frame.buttons.copy -side left -padx 3
-
-button .nb.text_tab.main.plain_frame.buttons.paste -text "Paste" -command {
-    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
-    .nb.text_tab.main.plain_frame.textframe.text insert 1.0 [clipboard get]
-} -bg "#e67e22" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.plain_frame.buttons.paste -side left -padx 3
-
-button .nb.text_tab.main.plain_frame.buttons.clear -text "Clear" -command {
-    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
-} -bg "#e74c3c" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.plain_frame.buttons.clear -side left -padx 3
-
-# Ciphertext frame (shorter)
+# Ciphertext frame (shorter) - MODIFICADO para permitir expansão
 frame .nb.text_tab.main.cipher_frame -bg $frame_color -relief solid -bd 1
 grid .nb.text_tab.main.cipher_frame -row 2 -column 0 -columnspan 6 -sticky "nsew" -padx 8 -pady 5
-grid rowconfigure .nb.text_tab.main.cipher_frame 1 -weight 1
+grid rowconfigure .nb.text_tab.main.cipher_frame 1 -weight 1  ;# Linha do text widget com peso 1
 grid columnconfigure .nb.text_tab.main.cipher_frame 0 -weight 1
 
 label .nb.text_tab.main.cipher_frame.label -text "CIPHERTEXT" -font {Arial 10 bold} -bg $frame_color
 grid .nb.text_tab.main.cipher_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
 
-# Create ciphertext text box with scrollbar (shorter)
+# Create ciphertext text box with scrollbar (shorter) - MODIFICADO para expansão
 frame .nb.text_tab.main.cipher_frame.textframe -bg $frame_color
 grid .nb.text_tab.main.cipher_frame.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 8 -pady 3
-grid rowconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1
+grid rowconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1  ;# Text widget com peso 1
 grid columnconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1
 
 text .nb.text_tab.main.cipher_frame.textframe.text -width 60 -height 5 -wrap word \
