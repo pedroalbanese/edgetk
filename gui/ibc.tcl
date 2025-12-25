@@ -1758,7 +1758,7 @@ bind .nb.encryption_tab.main.output_frame.content.outputTypeCombo <<ComboboxSele
 # File output
 label .nb.encryption_tab.main.output_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.encryption_tab.main.output_frame.content.outputFile -width 40 -font {Consolas 9}
-button .nb.encryption_tab.main.output_frame.content.saveFileButton -text "Save As" -command saveOutputFile \
+button .nb.encryption_tab.main.output_frame.content.saveFileButton -text "Save" -command saveOutputFile \
     -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
 grid .nb.encryption_tab.main.output_frame.content.outputTypeLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
@@ -1893,7 +1893,7 @@ grid .nb.threshold_tab.main.partial_frame.content.hidCombo -row 1 -column 3 -sti
 # Partial key output
 label .nb.threshold_tab.main.partial_frame.content.partialOutputLabel -text "Partial Key:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.threshold_tab.main.partial_frame.content.partialOutputInput -width 40 -font {Consolas 9}
-button .nb.threshold_tab.main.partial_frame.content.openPartialButton -text "Save As" -command {
+button .nb.threshold_tab.main.partial_frame.content.openPartialButton -text "Save" -command {
     set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
     if {$file_path ne ""} {
         .nb.threshold_tab.main.partial_frame.content.partialOutputInput delete 0 end
@@ -1989,7 +1989,7 @@ grid .nb.threshold_tab.main.combine_frame.content.openPartial3Button -row 2 -col
 # Output key
 label .nb.threshold_tab.main.combine_frame.content.outputKeyLabel -text "Output Key:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.threshold_tab.main.combine_frame.content.outputKeyInput -width 40 -font {Consolas 9}
-button .nb.threshold_tab.main.combine_frame.content.openOutputButton -text "Save As" -command {
+button .nb.threshold_tab.main.combine_frame.content.openOutputButton -text "Save" -command {
     set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
     if {$file_path ne ""} {
         .nb.threshold_tab.main.combine_frame.content.outputKeyInput delete 0 end
