@@ -1496,6 +1496,11 @@ grid rowconfigure .nb.signatures_tab.main.input_frame.content 1 -weight 1
 frame .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons -bg $frame_color
 grid .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons -row 1 -column 0 -columnspan 2 -sticky w -pady 2 -padx 2
 
+button .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons.copyButton -text "Copy" -command {
+    copyText [.nb.signatures_tab.main.input_frame.content.textframe.inputText get 1.0 end]
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
+pack .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons.copyButton -side left -padx 2
+
 button .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons.pasteButton -text "Paste" -command {
     .nb.signatures_tab.main.input_frame.content.textframe.inputText insert end [clipboard get]
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1505,6 +1510,7 @@ button .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons.cle
     .nb.signatures_tab.main.input_frame.content.textframe.inputText delete 1.0 end
 } -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 8
 pack .nb.signatures_tab.main.input_frame.content.textframe.utility_buttons.clearButton -side left -padx 2
+
 
 # Initially disable file input
 selectSignatureInputType
@@ -1541,10 +1547,16 @@ button .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -text "Co
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
 
+button .nb.signatures_tab.main.output_frame.utility_buttons.pasteButton -text "Paste" -command {
+    .nb.signatures_tab.main.output_frame.textframe.outputArea insert end [clipboard get]
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.signatures_tab.main.output_frame.utility_buttons.pasteButton -side left -padx 2
+
 button .nb.signatures_tab.main.output_frame.utility_buttons.clearButton -text "Clear" -command {
     .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
 } -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.clearButton -side left -padx 2
+
 
 # ========== ACTION BUTTONS ==========
 frame .nb.signatures_tab.main.action_frame -bg $bg_color
@@ -1696,17 +1708,17 @@ grid .nb.encryption_tab.main.input_frame.content.textframe.yscroll -row 0 -colum
 frame .nb.encryption_tab.main.input_frame.content.textframe.button_frame -bg $frame_color
 grid .nb.encryption_tab.main.input_frame.content.textframe.button_frame -row 1 -column 0 -columnspan 2 -sticky "ew" -padx 3 -pady 2
 
-# Paste button (for input)
-button .nb.encryption_tab.main.input_frame.content.textframe.button_frame.pasteButton -text "Paste" -command {
-    .nb.encryption_tab.main.input_frame.content.textframe.inputText insert insert [clipboard get]
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.encryption_tab.main.input_frame.content.textframe.button_frame.pasteButton -side left -padx 2
-
 # Copy button (for input)
 button .nb.encryption_tab.main.input_frame.content.textframe.button_frame.copyInputButton -text "Copy" -command {
     copyText [.nb.encryption_tab.main.input_frame.content.textframe.inputText get 1.0 end-1c]
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.encryption_tab.main.input_frame.content.textframe.button_frame.copyInputButton -side left -padx 2
+
+# Paste button (for input)
+button .nb.encryption_tab.main.input_frame.content.textframe.button_frame.pasteButton -text "Paste" -command {
+    .nb.encryption_tab.main.input_frame.content.textframe.inputText insert insert [clipboard get]
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.encryption_tab.main.input_frame.content.textframe.button_frame.pasteButton -side left -padx 2
 
 # Clear button (for input)
 button .nb.encryption_tab.main.input_frame.content.textframe.button_frame.clearInputButton -text "Clear" -command {
@@ -1778,17 +1790,17 @@ grid .nb.encryption_tab.main.output_frame.content.textframe.yscroll -row 0 -colu
 frame .nb.encryption_tab.main.output_frame.content.textframe.button_frame -bg $frame_color
 grid .nb.encryption_tab.main.output_frame.content.textframe.button_frame -row 2 -column 0 -columnspan 2 -sticky "ew" -padx 3 -pady 2
 
-# Paste button (para área de saída)
-button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.pasteButton -text "Paste" -command {
-    .nb.encryption_tab.main.output_frame.content.textframe.outputText insert insert [clipboard get]
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.encryption_tab.main.output_frame.content.textframe.button_frame.pasteButton -side left -padx 2
-
 # Copy button (para área de saída)
 button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.copyButton -text "Copy" -command {
     copyText [.nb.encryption_tab.main.output_frame.content.textframe.outputText get 1.0 end-1c]
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.encryption_tab.main.output_frame.content.textframe.button_frame.copyButton -side left -padx 2
+
+# Paste button (para área de saída)
+button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.pasteButton -text "Paste" -command {
+    .nb.encryption_tab.main.output_frame.content.textframe.outputText insert insert [clipboard get]
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.encryption_tab.main.output_frame.content.textframe.button_frame.pasteButton -side left -padx 2
 
 # Clear button (para área de saída)
 button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.clearButton -text "Clear" -command {
