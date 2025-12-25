@@ -376,7 +376,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.15  06 Dec 2025")
+		fmt.Println("EDGE Toolkit v1.5.16  20 Dec 2025")
 	}
 
 	if len(os.Args) < 2 {
@@ -817,6 +817,8 @@ Subcommands:
 		print("Passphrase: ")
 		pass, _ := gopass.GetPasswdMasked()
 		*pwd = string(pass)
+	} else if (*pkey == "combine-threshold") && *pwd == "nil" {
+		*pwd = ""
 	}
 
 	if *pkey == "keygen" {
