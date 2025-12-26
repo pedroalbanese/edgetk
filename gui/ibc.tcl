@@ -912,7 +912,7 @@ proc generateThresholdMasterKey {} {
     set current_dir [pwd]
     
     # Default names - adicionar sufixo se fornecido
-    set master_name "Master"
+    set master_name "Share"
     set master_public_name "MasterPublic"
     
     # Adicionar sufixo aos nomes se fornecido
@@ -1146,7 +1146,7 @@ option add *Combobox*font {Arial 9}
 
 # Text widget styling
 option add *Text*background $text_bg
-option add *Text*font {Consolas 9}
+option add *Text*font {"DejaVu Sans Mono" 9}
 option add *Text*relief solid
 option add *Text*bd 1
 
@@ -1190,52 +1190,55 @@ frame .nb.keys_tab -bg $bg_color
 
 # Main frame for content
 frame .nb.keys_tab.main -bg $bg_color
-pack .nb.keys_tab.main -fill both -expand yes -padx 6 -pady 3  ;# Reduzido padding
+pack .nb.keys_tab.main -fill both -expand yes -padx 6 -pady 3
 
 # Master key frame
 frame .nb.keys_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
-pack .nb.keys_tab.main.keys_frame -fill x -padx 6 -pady 3  ;# Reduzido padding
+pack .nb.keys_tab.main.keys_frame -fill x -padx 6 -pady 3
 
-# Title frame with passphrase and cipher aligned to the right
+# Title frame with passphrase on the left and cipher on the right
 frame .nb.keys_tab.main.keys_frame.title_frame -bg $frame_color
 pack .nb.keys_tab.main.keys_frame.title_frame -fill x -padx 6 -pady 2
 
+# Main title
 label .nb.keys_tab.main.keys_frame.title_frame.title -text "MASTER KEY GENERATION" \
     -font {Arial 10 bold} -bg $frame_color
 pack .nb.keys_tab.main.keys_frame.title_frame.title -side left -anchor w
 
-# Frame to hold passphrase and cipher aligned to the right
+# Frame for widgets on the right
 frame .nb.keys_tab.main.keys_frame.title_frame.right_frame -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame -side right -padx 10
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame -side right -anchor e
 
-# PRIMEIRO: Cipher (vai para a direita extrema)
+# Passphrase label
+label .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -side left -padx {0 3}
+
+# Passphrase entry
+entry .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -side left -padx {0 10}
+
+# Cipher label
+label .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -side left -padx {0 3}
+
+# Cipher combo (far right)
 ttk::combobox .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo \
     -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
     -width 10 -state readonly
 .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo set "aes"
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo -side right -padx {0 5}
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo -side left
 
-# SEGUNDO: Cipher label (vai à esquerda do combo)
-label .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -side right -padx {3 0}
-
-# TERCEIRO: Passphrase entry (vai à esquerda do cipher label)
-entry .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -width 12 \
-    -font {Consolas 9} -show "*"
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -side right -padx {0 10}
-
-# QUARTO: Passphrase label (vai à esquerda do passphrase entry)
-label .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -side right -padx {10 3}
-
+# Content frame below the title
 frame .nb.keys_tab.main.keys_frame.content -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.content -fill x -padx 6 -pady 2  ;# Reduzido padding
+pack .nb.keys_tab.main.keys_frame.content -fill x -padx 6 -pady 2
+
 
 # Master key file
 label .nb.keys_tab.main.keys_frame.content.masterKeyLabel -text "Master Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.keys_frame.content.masterKeyInput -width 40 -font {Consolas 9}
+entry .nb.keys_tab.main.keys_frame.content.masterKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.keys_tab.main.keys_frame.content.openMasterButton -text "Open" -command {
     openFileDialog .nb.keys_tab.main.keys_frame.content.masterKeyInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1246,7 +1249,7 @@ grid .nb.keys_tab.main.keys_frame.content.openMasterButton -row 0 -column 2 -sti
 
 # Master public key file
 label .nb.keys_tab.main.keys_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.keys_frame.content.masterPublicInput -width 40 -font {Consolas 9}
+entry .nb.keys_tab.main.keys_frame.content.masterPublicInput -width 40 -font {"DejaVu Sans Mono" 9}
 .nb.keys_tab.main.keys_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
 
 grid .nb.keys_tab.main.keys_frame.content.masterPublicLabel -row 1 -column 0 -sticky w -padx 3 -pady 2
@@ -1261,52 +1264,50 @@ grid columnconfigure .nb.keys_tab.main.keys_frame.content 1 -weight 1
 
 # User key frame
 frame .nb.keys_tab.main.user_frame -bg $frame_color -relief solid -bd 1
-pack .nb.keys_tab.main.user_frame -fill x -padx 6 -pady 3  ;# Reduzido padding
+pack .nb.keys_tab.main.user_frame -fill x -padx 6 -pady 3
 
-# Title frame with passphrase and cipher aligned to the right
+# Title frame with passphrase on the left and cipher on the right
 frame .nb.keys_tab.main.user_frame.title_frame -bg $frame_color
 pack .nb.keys_tab.main.user_frame.title_frame -fill x -padx 6 -pady 2
 
+# Main title
 label .nb.keys_tab.main.user_frame.title_frame.title -text "USER KEY DERIVATION" \
     -font {Arial 10 bold} -bg $frame_color
 pack .nb.keys_tab.main.user_frame.title_frame.title -side left -anchor w
 
-# Frame to hold passphrase and cipher aligned to the right
+# Frame for widgets on the right
 frame .nb.keys_tab.main.user_frame.title_frame.right_frame -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame -side right -padx 10
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame -side right -anchor e
 
-# *** CORREÇÃO: Ordem inversa para pack com side right ***
-# Para ter [Passphrase: campo] [Cipher: combo] usando pack -side right,
-# precisamos empacotar na ordem INVERSA
+# Passphrase label
+label .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -side left -padx {0 3}
 
-# Primeiro: Cipher combo (vai para a direita extrema)
+# Passphrase entry
+entry .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -side left -padx {0 10}
+
+# Cipher label
+label .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -side left -padx {0 3}
+
+# Cipher combo (far right)
 ttk::combobox .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo \
     -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
     -width 10 -state readonly
 .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo set "aes"
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo -side right
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo -side left
 
-# Segundo: Cipher label (vai à esquerda do combo)
-label .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -side right -padx {0 3}
-
-# Terceiro: Passphrase entry (vai à esquerda do cipher label)
-entry .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -width 12 \
-    -font {Consolas 9} -show "*"
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -side right -padx {0 10}
-
-# Quarto: Passphrase label (vai à esquerda do passphrase entry)
-label .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -side right -padx {0 3}
-
+# Content frame below the title
 frame .nb.keys_tab.main.user_frame.content -bg $frame_color
 pack .nb.keys_tab.main.user_frame.content -fill x -padx 6 -pady 2
 
 # User ID
 label .nb.keys_tab.main.user_frame.content.userIdLabel -text "User ID:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.user_frame.content.userIdEntry -width 30 -font {Consolas 9}
+entry .nb.keys_tab.main.user_frame.content.userIdEntry -width 30 -font {"DejaVu Sans Mono" 9}
 grid .nb.keys_tab.main.user_frame.content.userIdLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
 grid .nb.keys_tab.main.user_frame.content.userIdEntry -row 0 -column 1 -sticky ew -padx 3 -pady 2
 
@@ -1319,7 +1320,7 @@ grid .nb.keys_tab.main.user_frame.content.hidCombo -row 0 -column 3 -sticky w -p
 
 # User key file
 label .nb.keys_tab.main.user_frame.content.userKeyLabel -text "User Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.user_frame.content.userKeyInput -width 40 -font {Consolas 9}
+entry .nb.keys_tab.main.user_frame.content.userKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 
 button .nb.keys_tab.main.user_frame.content.openUserButton -text "Save" -command {
     set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
@@ -1348,31 +1349,33 @@ pack .nb.keys_tab.main.parse_frame -fill x -padx 6 -pady 3  ;# Reduzido padding
 frame .nb.keys_tab.main.parse_frame.title_frame -bg $frame_color
 pack .nb.keys_tab.main.parse_frame.title_frame -fill x -padx 6 -pady 2
 
+# Main title
 label .nb.keys_tab.main.parse_frame.title_frame.title -text "KEY PARSING" \
     -font {Arial 10 bold} -bg $frame_color
 pack .nb.keys_tab.main.parse_frame.title_frame.title -side left -anchor w
 
-# Frame to hold passphrase aligned to the right
+# Frame to hold passphrase aligned to the right, filling horizontal space
 frame .nb.keys_tab.main.parse_frame.title_frame.right_frame -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.title_frame.right_frame -side right -padx 10
+pack .nb.keys_tab.main.parse_frame.title_frame.right_frame -side right -fill x
 
-# CORREÇÃO: Passphrase label and entry (ORDEM INVERSA para pack -side right)
-# Primeiro: entry (campo de password) - vai para a direita extrema
-entry .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -width 12 \
-    -font {Consolas 9} -show "*"
-pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -side right
+# Passphrase entry (far right)
+entry .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
+pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -side right -padx {0 0}
 
-# Segundo: label (texto "Passphrase:") - vai à esquerda do campo
+# Passphrase label (left of entry)
 label .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
     -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -side right -padx {10 3}
+pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -side right -padx {3 5}
 
+# Content frame below
 frame .nb.keys_tab.main.parse_frame.content -bg $frame_color
 pack .nb.keys_tab.main.parse_frame.content -fill x -padx 6 -pady 2
 
+
 # Key file to parse
 label .nb.keys_tab.main.parse_frame.content.keyLabel -text "Key File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.parse_frame.content.keyInput -width 40 -font {Consolas 9}
+entry .nb.keys_tab.main.parse_frame.content.keyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.keys_tab.main.parse_frame.content.openKeyButton -text "Open" -command {
     openFileDialog .nb.keys_tab.main.parse_frame.content.keyInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1400,7 +1403,7 @@ frame .nb.keys_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.keys_tab.main.output_frame.textframe -fill both -expand true -padx 6 -pady 2
 
 text .nb.keys_tab.main.output_frame.textframe.outputArea -width 70 -height 6 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.keys_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.keys_tab.main.output_frame.textframe.outputArea yview}
 .nb.keys_tab.main.output_frame.textframe.outputArea configure \
@@ -1446,7 +1449,7 @@ pack .nb.signatures_tab.main.keys_frame.content -fill x -padx 6 -pady 2
 
 # Master public key file
 label .nb.signatures_tab.main.keys_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.masterPublicInput -width 40 -font {Consolas 9}
+entry .nb.signatures_tab.main.keys_frame.content.masterPublicInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.signatures_tab.main.keys_frame.content.openMasterPublicButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.keys_frame.content.masterPublicInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1457,7 +1460,7 @@ grid .nb.signatures_tab.main.keys_frame.content.openMasterPublicButton -row 0 -c
 
 # User key file
 label .nb.signatures_tab.main.keys_frame.content.userKeyLabel -text "User Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.userKeyInput -width 40 -font {Consolas 9}
+entry .nb.signatures_tab.main.keys_frame.content.userKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.signatures_tab.main.keys_frame.content.openUserButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.keys_frame.content.userKeyInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1468,7 +1471,7 @@ grid .nb.signatures_tab.main.keys_frame.content.openUserButton -row 1 -column 4 
 
 # User ID and HID
 label .nb.signatures_tab.main.keys_frame.content.userIdLabel -text "User ID:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.userIdEntry -width 30 -font {Consolas 9}
+entry .nb.signatures_tab.main.keys_frame.content.userIdEntry -width 30 -font {"DejaVu Sans Mono" 9}
 
 label .nb.signatures_tab.main.keys_frame.content.hidLabel -text "HID:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.signatures_tab.main.keys_frame.content.hidCombo -values [generateHIDValues] -state readonly -width 5
@@ -1481,7 +1484,7 @@ grid .nb.signatures_tab.main.keys_frame.content.hidCombo -row 2 -column 4 -stick
 
 # Passphrase
 label .nb.signatures_tab.main.keys_frame.content.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.passEntry -width 15 -font {Consolas 9} -show "*"
+entry .nb.signatures_tab.main.keys_frame.content.passEntry -width 15 -font {"DejaVu Sans Mono" 9} -show "*"
 
 grid .nb.signatures_tab.main.keys_frame.content.passLabel -row 3 -column 0 -sticky w -padx 3 -pady 2
 grid .nb.signatures_tab.main.keys_frame.content.passEntry -row 3 -column 1 -sticky w -padx 3 -pady 2
@@ -1509,7 +1512,7 @@ bind .nb.signatures_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelect
 
 # File input
 label .nb.signatures_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.input_frame.content.inputFile -width 40 -font {Consolas 9}
+entry .nb.signatures_tab.main.input_frame.content.inputFile -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.signatures_tab.main.input_frame.content.openFileButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.input_frame.content.inputFile
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1525,7 +1528,7 @@ frame .nb.signatures_tab.main.input_frame.content.textframe -bg $frame_color
 grid .nb.signatures_tab.main.input_frame.content.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 3 -pady 2
 
 text .nb.signatures_tab.main.input_frame.content.textframe.inputText -width 70 -height 7 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.signatures_tab.main.input_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.signatures_tab.main.input_frame.content.textframe.inputText yview}
 .nb.signatures_tab.main.input_frame.content.textframe.inputText configure \
@@ -1574,7 +1577,7 @@ frame .nb.signatures_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.signatures_tab.main.output_frame.textframe -fill x -padx 6 -pady 2
 
 text .nb.signatures_tab.main.output_frame.textframe.outputArea -width 70 -height 3 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.signatures_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.signatures_tab.main.output_frame.textframe.outputArea yview}
 .nb.signatures_tab.main.output_frame.textframe.outputArea configure \
@@ -1646,7 +1649,7 @@ pack .nb.encryption_tab.main.keys_frame.content -fill x -padx 6 -pady 2
 
 # Master public key file (for encryption)
 label .nb.encryption_tab.main.keys_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.encryption_tab.main.keys_frame.content.masterPublicInput -width 40 -font {Consolas 9}
+entry .nb.encryption_tab.main.keys_frame.content.masterPublicInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.encryption_tab.main.keys_frame.content.openMasterPublicButton -text "Open" -command {
     openFileDialog .nb.encryption_tab.main.keys_frame.content.masterPublicInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1657,7 +1660,7 @@ grid .nb.encryption_tab.main.keys_frame.content.openMasterPublicButton -row 0 -c
 
 # User key file (for decryption)
 label .nb.encryption_tab.main.keys_frame.content.userKeyLabel -text "User Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.encryption_tab.main.keys_frame.content.userKeyInput -width 40 -font {Consolas 9}
+entry .nb.encryption_tab.main.keys_frame.content.userKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.encryption_tab.main.keys_frame.content.openUserButton -text "Open" -command {
     openFileDialog .nb.encryption_tab.main.keys_frame.content.userKeyInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1668,7 +1671,7 @@ grid .nb.encryption_tab.main.keys_frame.content.openUserButton -row 1 -column 4 
 
 # User ID and HID
 label .nb.encryption_tab.main.keys_frame.content.userIdLabel -text "User ID:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.encryption_tab.main.keys_frame.content.userIdEntry -width 30 -font {Consolas 9}
+entry .nb.encryption_tab.main.keys_frame.content.userIdEntry -width 30 -font {"DejaVu Sans Mono" 9}
 
 label .nb.encryption_tab.main.keys_frame.content.hidLabel -text "HID:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.encryption_tab.main.keys_frame.content.hidCombo -values [generateHIDValues] -state readonly -width 5
@@ -1683,7 +1686,7 @@ grid .nb.encryption_tab.main.keys_frame.content.hidCombo -row 2 -column 4 -stick
 
 # Passphrase (for decryption)
 label .nb.encryption_tab.main.keys_frame.content.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.encryption_tab.main.keys_frame.content.passEntry -width 15 -font {Consolas 9} -show "*"
+entry .nb.encryption_tab.main.keys_frame.content.passEntry -width 15 -font {"DejaVu Sans Mono" 9} -show "*"
 
 grid .nb.encryption_tab.main.keys_frame.content.passLabel -row 3 -column 0 -sticky w -padx 3 -pady 2
 grid .nb.encryption_tab.main.keys_frame.content.passEntry -row 3 -column 1 -sticky w -padx 3 -pady 2
@@ -1722,7 +1725,7 @@ bind .nb.encryption_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelect
 
 # File input
 label .nb.encryption_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.encryption_tab.main.input_frame.content.inputFile -width 40 -font {Consolas 9}
+entry .nb.encryption_tab.main.input_frame.content.inputFile -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.encryption_tab.main.input_frame.content.openFileButton -text "Open" -command {
     openFileDialog .nb.encryption_tab.main.input_frame.content.inputFile
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1743,7 +1746,7 @@ grid rowconfigure .nb.encryption_tab.main.input_frame.content.textframe 0 -weigh
 
 # Text area for text input - REMOVER width fixo para permitir expansão
 text .nb.encryption_tab.main.input_frame.content.textframe.inputText -height 5 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.encryption_tab.main.input_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.encryption_tab.main.input_frame.content.textframe.inputText yview}
 .nb.encryption_tab.main.input_frame.content.textframe.inputText configure \
@@ -1805,7 +1808,7 @@ bind .nb.encryption_tab.main.output_frame.content.outputTypeCombo <<ComboboxSele
 
 # File output
 label .nb.encryption_tab.main.output_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.encryption_tab.main.output_frame.content.outputFile -width 40 -font {Consolas 9}
+entry .nb.encryption_tab.main.output_frame.content.outputFile -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.encryption_tab.main.output_frame.content.saveFileButton -text "Save" -command saveOutputFile \
     -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
@@ -1825,7 +1828,7 @@ grid rowconfigure .nb.encryption_tab.main.output_frame.content.textframe 0 -weig
 
 # Text area for output - REMOVER width fixo para permitir expansão
 text .nb.encryption_tab.main.output_frame.content.textframe.outputText -height 4 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.encryption_tab.main.output_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.encryption_tab.main.output_frame.content.textframe.outputText yview}
 .nb.encryption_tab.main.output_frame.content.textframe.outputText configure \
@@ -1892,12 +1895,12 @@ pack .nb.threshold_tab.main.master_frame.content -fill x -padx 6 -pady 2
 
 # Master public key file
 label .nb.threshold_tab.main.master_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.master_frame.content.masterPublicInput -width 45 -font {Consolas 9}
+entry .nb.threshold_tab.main.master_frame.content.masterPublicInput -width 45 -font {"DejaVu Sans Mono" 9}
 .nb.threshold_tab.main.master_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
 
 # Adicionar campo de sufixo com ajuda
 label .nb.threshold_tab.main.master_frame.content.suffixLabel -text "Suffix:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.master_frame.content.suffixInput -width 15 -font {Consolas 9}
+entry .nb.threshold_tab.main.master_frame.content.suffixInput -width 15 -font {"DejaVu Sans Mono" 9}
 
 grid .nb.threshold_tab.main.master_frame.content.masterPublicLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
 grid .nb.threshold_tab.main.master_frame.content.masterPublicInput -row 0 -column 1 -sticky ew -padx 3 -pady 2
@@ -1923,7 +1926,7 @@ pack .nb.threshold_tab.main.partial_frame.content -fill x -padx 6 -pady 2
 
 # Share file
 label .nb.threshold_tab.main.partial_frame.content.shareLabel -text "Master Share:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.partial_frame.content.shareInput -width 40 -font {Consolas 9}
+entry .nb.threshold_tab.main.partial_frame.content.shareInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.threshold_tab.main.partial_frame.content.openShareButton -text "Open" -command {
     openFileDialog .nb.threshold_tab.main.partial_frame.content.shareInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -1934,7 +1937,7 @@ grid .nb.threshold_tab.main.partial_frame.content.openShareButton -row 0 -column
 
 # User ID and HID na mesma linha
 label .nb.threshold_tab.main.partial_frame.content.userIdLabel -text "User ID:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.partial_frame.content.userIdEntry -width 30 -font {Consolas 9}
+entry .nb.threshold_tab.main.partial_frame.content.userIdEntry -width 30 -font {"DejaVu Sans Mono" 9}
 
 label .nb.threshold_tab.main.partial_frame.content.hidLabel -text "HID:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.threshold_tab.main.partial_frame.content.hidCombo -values [generateHIDValues] -state readonly -width 5
@@ -1947,7 +1950,7 @@ grid .nb.threshold_tab.main.partial_frame.content.hidCombo -row 1 -column 3 -sti
 
 # Partial key output
 label .nb.threshold_tab.main.partial_frame.content.partialOutputLabel -text "Partial Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.partial_frame.content.partialOutputInput -width 40 -font {Consolas 9}
+entry .nb.threshold_tab.main.partial_frame.content.partialOutputInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.threshold_tab.main.partial_frame.content.openPartialButton -text "Save" -command {
     set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
     if {$file_path ne ""} {
@@ -1975,42 +1978,44 @@ pack .nb.threshold_tab.main.combine_frame -fill x -padx 6 -pady 3
 frame .nb.threshold_tab.main.combine_frame.title_frame -bg $frame_color
 pack .nb.threshold_tab.main.combine_frame.title_frame -fill x -padx 6 -pady 2
 
+# Main title
 label .nb.threshold_tab.main.combine_frame.title_frame.title -text "COMBINE PARTIAL KEYS (minimum 3)" \
     -font {Arial 10 bold} -bg $frame_color
 pack .nb.threshold_tab.main.combine_frame.title_frame.title -side left -anchor w
 
 # Frame to hold passphrase and cipher aligned to the right
 frame .nb.threshold_tab.main.combine_frame.title_frame.right_frame -bg $frame_color
-pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame -side right -padx 10
+pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame -side right -fill x
 
-# PRIMEIRO: Cipher (vai para a direita extrema)
+# Combo cipher - extreme right
 ttk::combobox .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherCombo \
     -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
     -width 10 -state readonly
 .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherCombo set "aes"
-pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherCombo -side right -padx {0 5}
+pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherCombo -side right -padx {0 0}
 
-# SEGUNDO: Cipher label (vai à esquerda do combo)
+# Cipher label - left of combo
 label .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
     -font {Arial 9 bold} -bg $frame_color
-pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherLabel -side right -padx {3 0}
+pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.cipherLabel -side right -padx {3 5}
 
-# TERCEIRO: Passphrase entry (vai à esquerda do cipher label)
-entry .nb.threshold_tab.main.combine_frame.title_frame.right_frame.passEntry -width 12 \
-    -font {Consolas 9} -show "*"
+# Passphrase entry - left of cipher label
+entry .nb.threshold_tab.main.combine_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
 pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.passEntry -side right -padx {0 10}
 
-# QUARTO: Passphrase label (vai à esquerda do passphrase entry)
+# Passphrase label - left of passphrase entry
 label .nb.threshold_tab.main.combine_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
     -font {Arial 9 bold} -bg $frame_color
-pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.passLabel -side right -padx {10 3}
+pack .nb.threshold_tab.main.combine_frame.title_frame.right_frame.passLabel -side right -padx {0 3}
 
+# Content frame below
 frame .nb.threshold_tab.main.combine_frame.content -bg $frame_color
 pack .nb.threshold_tab.main.combine_frame.content -fill x -padx 6 -pady 2
 
 # Partial key 1
 label .nb.threshold_tab.main.combine_frame.content.partialKey1Label -text "Partial Key 1:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.combine_frame.content.partialKey1Input -width 40 -font {Consolas 9}
+entry .nb.threshold_tab.main.combine_frame.content.partialKey1Input -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.threshold_tab.main.combine_frame.content.openPartial1Button -text "Open" -command {
     openFileDialog .nb.threshold_tab.main.combine_frame.content.partialKey1Input
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -2021,7 +2026,7 @@ grid .nb.threshold_tab.main.combine_frame.content.openPartial1Button -row 0 -col
 
 # Partial key 2
 label .nb.threshold_tab.main.combine_frame.content.partialKey2Label -text "Partial Key 2:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.combine_frame.content.partialKey2Input -width 40 -font {Consolas 9}
+entry .nb.threshold_tab.main.combine_frame.content.partialKey2Input -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.threshold_tab.main.combine_frame.content.openPartial2Button -text "Open" -command {
     openFileDialog .nb.threshold_tab.main.combine_frame.content.partialKey2Input
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -2032,7 +2037,7 @@ grid .nb.threshold_tab.main.combine_frame.content.openPartial2Button -row 1 -col
 
 # Partial key 3
 label .nb.threshold_tab.main.combine_frame.content.partialKey3Label -text "Partial Key 3:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.combine_frame.content.partialKey3Input -width 40 -font {Consolas 9}
+entry .nb.threshold_tab.main.combine_frame.content.partialKey3Input -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.threshold_tab.main.combine_frame.content.openPartial3Button -text "Open" -command {
     openFileDialog .nb.threshold_tab.main.combine_frame.content.partialKey3Input
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -2043,7 +2048,7 @@ grid .nb.threshold_tab.main.combine_frame.content.openPartial3Button -row 2 -col
 
 # Output key
 label .nb.threshold_tab.main.combine_frame.content.outputKeyLabel -text "Output Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.threshold_tab.main.combine_frame.content.outputKeyInput -width 40 -font {Consolas 9}
+entry .nb.threshold_tab.main.combine_frame.content.outputKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.threshold_tab.main.combine_frame.content.openOutputButton -text "Save" -command {
     set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
     if {$file_path ne ""} {
@@ -2072,7 +2077,7 @@ frame .nb.threshold_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.threshold_tab.main.output_frame.textframe -fill both -expand true -padx 6 -pady 2
 
 text .nb.threshold_tab.main.output_frame.textframe.outputArea -width 70 -height 1 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.threshold_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.threshold_tab.main.output_frame.textframe.outputArea yview}
 .nb.threshold_tab.main.output_frame.textframe.outputArea configure \
@@ -2123,7 +2128,7 @@ menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_h
     
     # Text area with white background for contrast
     text .debug_win.main.textframe.text -width 80 -height 25 -wrap word \
-        -font {Consolas 9} -bg white -relief solid -bd 1
+        -font {"DejaVu Sans Mono" 9} -bg white -relief solid -bd 1
     scrollbar .debug_win.main.textframe.scroll -command {.debug_win.main.textframe.text yview}
     .debug_win.main.textframe.text configure -yscrollcommand {.debug_win.main.textframe.scroll set}
     
@@ -2376,7 +2381,7 @@ menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_h
 # Footer
 frame .footer -bg $accent_color -height 20  ;# Reduzido de 25 para 20
 pack .footer -fill x
-label .footer.text -text "ALBANESE Research Lab \u00a9 2025 | Identity-Based Cryptography" \
+label .footer.text -text "ALBANESE Research Lab \u00a9 2026 | Identity-Based Cryptography" \
     -bg $accent_color -fg "#bdc3c7" -font {Arial 8}
 pack .footer.text -pady 2  ;# Reduzido pady
 
