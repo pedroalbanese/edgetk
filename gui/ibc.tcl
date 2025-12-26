@@ -207,12 +207,18 @@ proc generateMasterKey {} {
         }
     }
     
-    # Update entry fields
+    # Update entry fields - mesmo se estiverem desabilitados
+    
+    # Master key (normalmente habilitado)
     .nb.keys_tab.main.keys_frame.content.masterKeyInput delete 0 end
     .nb.keys_tab.main.keys_frame.content.masterKeyInput insert 0 $master_path
     
+    # Master public key (pode estar desabilitado)
+    # Habilitar temporariamente para atualizar
+    .nb.keys_tab.main.keys_frame.content.masterPublicInput configure -state normal
     .nb.keys_tab.main.keys_frame.content.masterPublicInput delete 0 end
     .nb.keys_tab.main.keys_frame.content.masterPublicInput insert 0 $master_public_path
+    .nb.keys_tab.main.keys_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
     
     # Execute key generation command (boneh-franklin for IBE)
     if {[catch {
@@ -894,14 +900,26 @@ proc saveOutputFile {} {
 
 # Function to generate threshold master key
 proc generateThresholdMasterKey {} {
+    # Habilitar temporariamente para obter o valor atual
+    .nb.threshold_tab.main.master_frame.content.masterPublicInput configure -state normal
     set master_public_path [.nb.threshold_tab.main.master_frame.content.masterPublicInput get]
+    .nb.threshold_tab.main.master_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
+    
+    # Obter sufixo do campo
+    set suffix [string trim [.nb.threshold_tab.main.master_frame.content.suffixInput get]]
     
     # Get current directory
     set current_dir [pwd]
     
-    # Default names
-    set master_name "MasterTH"
-    set master_public_name "MasterPublicTH"
+    # Default names - adicionar sufixo se fornecido
+    set master_name "Master"
+    set master_public_name "MasterPublic"
+    
+    # Adicionar sufixo aos nomes se fornecido
+    if {$suffix ne ""} {
+        set master_name "${master_name}${suffix}"
+        set master_public_name "${master_public_name}${suffix}"
+    }
     
     # Default paths
     set master_path [file join $current_dir "${master_name}.pem"]
@@ -912,23 +930,44 @@ proc generateThresholdMasterKey {} {
     set master_public_exists [file exists $master_public_path]
     
     if {$master_exists || $master_public_exists} {
+        # Show dialog window - igual à primeira aba
         set choice [tk_messageBox \
             -title "Files Already Exist" \
-            -message "Threshold key files already exist:\n\nMaster: [file tail $master_path]\nMaster Public: [file tail $master_public_path]\n\nOverwrite?" \
-            -type yesno \
+            -message "Files already exist:\n\nMaster: [file tail $master_path]\nMaster Public: [file tail $master_public_path]\n\nWhat do you want to do?" \
+            -type yesnocancel \
             -icon warning \
-            -default no]
+            -detail "Yes: Overwrite existing files\nNo: Generate with NEW numeric suffix (rename)\nCancel: Abort operation" \
+            -default cancel]
         
-        if {$choice eq "no"} {
+        if {$choice eq "cancel"} {
             .nb.threshold_tab.main.output_frame.textframe.outputArea delete 1.0 end
             .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Threshold key generation cancelled."
             return
+        } elseif {$choice eq "no"} {
+            # Find next available name - igual à primeira aba
+            set counter 1
+            set new_master_path [file join $current_dir "${master_name}_${counter}.pem"]
+            set new_master_public_path [file join $current_dir "${master_public_name}_${counter}.pem"]
+            
+            while {[file exists $new_master_path] || [file exists $new_master_public_path]} {
+                incr counter
+                set new_master_path [file join $current_dir "${master_name}_${counter}.pem"]
+                set new_master_public_path [file join $current_dir "${master_public_name}_${counter}.pem"]
+            }
+            
+            set master_path $new_master_path
+            set master_public_path $new_master_public_path
         }
+        # Se choice = "yes", mantém os paths originais (sobrescrever)
     }
     
-    # Update entry fields
+    # Update entry fields - mesmo se estiverem desabilitados
+    
+    # Na aba Threshold IBE (quarta aba)
+    .nb.threshold_tab.main.master_frame.content.masterPublicInput configure -state normal
     .nb.threshold_tab.main.master_frame.content.masterPublicInput delete 0 end
     .nb.threshold_tab.main.master_frame.content.masterPublicInput insert 0 $master_public_path
+    .nb.threshold_tab.main.master_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
     
     # Execute threshold master key generation
     if {[catch {
@@ -939,11 +978,23 @@ proc generateThresholdMasterKey {} {
     } else {
         .nb.threshold_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Threshold master key pair generated successfully!\n\n"
-        .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Threshold master shares saved as: MasterTH_01.pem ... MasterTH_05.pem\n"
-        .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Master public key: [file tail $master_public_path]\n\n"
-        .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Shares generated:\n"
+        
+        # Determinar base do nome para os shares
+        set base_master_name [file rootname [file tail $master_path]]
+        
+        .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Master public key: [file tail $master_public_path]\n"
+        .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Master private key: [file tail $master_path]\n\n"
+        
+        # Mostrar todos os shares gerados
+        .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "Threshold shares generated (5-of-5):\n"
         for {set i 1} {$i <= 5} {incr i} {
-            .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "  Share $i: ${master_name}_[format "%02d" $i].pem\n"
+            set share_name "${base_master_name}_[format "%02d" $i].pem"
+            .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "  Share $i: $share_name\n"
+        }
+        
+        # Mostrar sufixo usado, se houver
+        if {$suffix ne ""} {
+            .nb.threshold_tab.main.output_frame.textframe.outputArea insert end "\nSuffix used: '$suffix'\n"
         }
     }
 }
@@ -1196,13 +1247,10 @@ grid .nb.keys_tab.main.keys_frame.content.openMasterButton -row 0 -column 2 -sti
 # Master public key file
 label .nb.keys_tab.main.keys_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.keys_tab.main.keys_frame.content.masterPublicInput -width 40 -font {Consolas 9}
-button .nb.keys_tab.main.keys_frame.content.openMasterPublicButton -text "Open" -command {
-    openFileDialog .nb.keys_tab.main.keys_frame.content.masterPublicInput
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
+.nb.keys_tab.main.keys_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
 
 grid .nb.keys_tab.main.keys_frame.content.masterPublicLabel -row 1 -column 0 -sticky w -padx 3 -pady 2
 grid .nb.keys_tab.main.keys_frame.content.masterPublicInput -row 1 -column 1 -sticky ew -padx 3 -pady 2
-grid .nb.keys_tab.main.keys_frame.content.openMasterPublicButton -row 1 -column 2 -sticky w -padx 3 -pady 2
 
 # Generate master key button
 button .nb.keys_tab.main.keys_frame.content.generateMasterButton -text "Generate Master Key Pair" -command generateMasterKey \
@@ -1845,9 +1893,16 @@ pack .nb.threshold_tab.main.master_frame.content -fill x -padx 6 -pady 2
 # Master public key file
 label .nb.threshold_tab.main.master_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.threshold_tab.main.master_frame.content.masterPublicInput -width 45 -font {Consolas 9}
+.nb.threshold_tab.main.master_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
+
+# Adicionar campo de sufixo com ajuda
+label .nb.threshold_tab.main.master_frame.content.suffixLabel -text "Suffix:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.threshold_tab.main.master_frame.content.suffixInput -width 15 -font {Consolas 9}
 
 grid .nb.threshold_tab.main.master_frame.content.masterPublicLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
-grid .nb.threshold_tab.main.master_frame.content.masterPublicInput -row 0 -column 1 -columnspan 2 -sticky ew -padx 3 -pady 2
+grid .nb.threshold_tab.main.master_frame.content.masterPublicInput -row 0 -column 1 -sticky ew -padx 3 -pady 2
+grid .nb.threshold_tab.main.master_frame.content.suffixLabel -row 0 -column 2 -sticky w -padx {10 3} -pady 2
+grid .nb.threshold_tab.main.master_frame.content.suffixInput -row 0 -column 3 -sticky w -padx 3 -pady 2
 
 # Generate threshold master key button
 button .nb.threshold_tab.main.master_frame.content.generateButton -text "Generate Threshold Master Key (5 shares)" -command generateThresholdMasterKey \
