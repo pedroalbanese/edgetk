@@ -15,11 +15,11 @@
 #   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.            #
 ###############################################################################
 
-# Style settings
+# Style settings - Cores Neutras
 set bg_color "#f5f5f5"
-set accent_color "#2c3e50"
-set button_color "#3498db"
-set button_hover "#2980b9"
+set accent_color "#4a4a4a"
+set button_color "#6c757d"
+set button_hover "#5a6268"
 set frame_color "#ecf0f1"
 set text_bg "#ffffff"
 
@@ -127,7 +127,7 @@ current state of the art in modern cryptography." \
 
     # OK Button
     button .about_window.main.ok -text "OK" -command {destroy .about_window} \
-        -bg "#2c3e50" -fg white -font {Arial 10 bold} -relief flat \
+        -bg "#4a4a4a" -fg white -font {Arial 10 bold} -relief flat \
         -padx 22 -pady 6
     pack .about_window.main.ok -pady 14
 
@@ -2333,7 +2333,7 @@ option add *Combobox*font {Arial 9}
 
 # Text widget styling
 option add *Text*background $text_bg
-option add *Text*font {Consolas 9}
+option add *Text*font {"DejaVu Sans Mono" 9}
 option add *Text*relief solid
 option add *Text*bd 1
 
@@ -2346,7 +2346,7 @@ frame .header -bg $accent_color -height 60
 pack .header -fill x
 
 # Title in header
-label .header.title -text "EDGE CRYPTO SUITE v1" \
+label .header.title -text "EDGE CRYPTO SUITE v1.2" \
     -bg $accent_color -fg white -font {Arial 14 bold}
 pack .header.title -pady 2
 
@@ -2522,7 +2522,7 @@ ttk::combobox .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCo
 .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
 # Passphrase entry (box)
-entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {Consolas 9} -show "*"
+entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {"DejaVu Sans Mono" 9} -show "*"
 
 # Passphrase label
 label .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
@@ -2538,10 +2538,10 @@ pack .nb.signatures_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 
 # Private Key
 label .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.privateKeyInput -width 50 -font {Consolas 9}
+entry .nb.signatures_tab.main.keys_frame.content.privateKeyInput -width 50 -font {"DejaVu Sans Mono" 9}
 button .nb.signatures_tab.main.keys_frame.content.openPrivateButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.keys_frame.content.privateKeyInput
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
 grid .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.signatures_tab.main.keys_frame.content.privateKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 3
@@ -2549,10 +2549,10 @@ grid .nb.signatures_tab.main.keys_frame.content.openPrivateButton -row 0 -column
 
 # Public Key
 label .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.publicKeyInput -width 50 -font {Consolas 9}
+entry .nb.signatures_tab.main.keys_frame.content.publicKeyInput -width 50 -font {"DejaVu Sans Mono" 9}
 button .nb.signatures_tab.main.keys_frame.content.openPublicButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.keys_frame.content.publicKeyInput
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
 grid .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.signatures_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -sticky ew -padx 3 -pady 3
@@ -2560,7 +2560,7 @@ grid .nb.signatures_tab.main.keys_frame.content.openPublicButton -row 1 -column 
 
 # Generate Keys button
 button .nb.signatures_tab.main.keys_frame.content.generateButton -text "Generate Keys" -command generateKey \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -pady 3 -width 20
+    -bg "#28a745" -fg white -font {Arial 10 bold} -pady 3 -width 20
 grid .nb.signatures_tab.main.keys_frame.content.generateButton -row 2 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 8
 
 # Configure column weights
@@ -2587,10 +2587,10 @@ bind .nb.signatures_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelect
 
 # File input
 label .nb.signatures_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.input_frame.content.inputFile -width 50 -font {Consolas 9}
+entry .nb.signatures_tab.main.input_frame.content.inputFile -width 50 -font {"DejaVu Sans Mono" 9}
 button .nb.signatures_tab.main.input_frame.content.openFileButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.input_frame.content.inputFile
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
 grid .nb.signatures_tab.main.input_frame.content.inputTypeLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.signatures_tab.main.input_frame.content.inputTypeCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
@@ -2604,7 +2604,7 @@ grid .nb.signatures_tab.main.input_frame.content.textframe -row 1 -column 0 -col
 
 # Text area for text input - 4 LINES, SAME STRUCTURE AS OUTPUT
 text .nb.signatures_tab.main.input_frame.content.textframe.inputText -width 70 -height 2 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.signatures_tab.main.input_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.signatures_tab.main.input_frame.content.textframe.inputText yview}
 .nb.signatures_tab.main.input_frame.content.textframe.inputText configure \
@@ -2634,7 +2634,7 @@ frame .nb.signatures_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.signatures_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
 text .nb.signatures_tab.main.output_frame.textframe.outputArea -width 70 -height 4 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.signatures_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.signatures_tab.main.output_frame.textframe.outputArea yview}
 .nb.signatures_tab.main.output_frame.textframe.outputArea configure \
@@ -2652,25 +2652,25 @@ pack .nb.signatures_tab.main.output_frame.utility_buttons -fill x -padx 8 -pady 
 
 button .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -text "Copy" -command {
     copyText [.nb.signatures_tab.main.output_frame.textframe.outputArea get 1.0 end]
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 10
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
 
 button .nb.signatures_tab.main.output_frame.utility_buttons.pasteButton -text "Paste" -command {
     .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
     .nb.signatures_tab.main.output_frame.textframe.outputArea insert end [clipboard get]
-} -bg "#e67e22" -fg white -font {Arial 9 bold} -padx 10
+} -bg "#fd7e14" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.pasteButton -side left -padx 2
 
 button .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -text "Clear" -command {
     .nb.signatures_tab.main.output_frame.textframe.outputArea delete 1.0 end
     set ::signature_data ""
-} -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 10
+} -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.clearOutputButton -side left -padx 2
 
 button .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -text "Clear Input" -command {
     .nb.signatures_tab.main.input_frame.content.textframe.inputText delete 1.0 end
     .nb.signatures_tab.main.input_frame.content.inputFile delete 0 end
-} -bg "#f39c12" -fg white -font {Arial 9 bold} -padx 10
+} -bg "#fd7e14" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.signatures_tab.main.output_frame.utility_buttons.clearInputButton -side left -padx 2
 
 # Sign/Verify buttons (outside SIGNATURE OUTPUT section)
@@ -2679,13 +2679,13 @@ pack .nb.signatures_tab.main.sign_verify_frame -fill x -padx 8 -pady 10
 
 # Pack Verify first (rightmost)
 button .nb.signatures_tab.main.sign_verify_frame.verifyButton -text "Verify" -command verifySignature \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -bg "#28a745" -fg white -font {Arial 10 bold} \
     -padx 20 -pady 3 -relief raised -bd 2
 pack .nb.signatures_tab.main.sign_verify_frame.verifyButton -side right -padx 3
 
 # Then pack Sign (left of Verify)
 button .nb.signatures_tab.main.sign_verify_frame.signButton -text "Sign" -command createSignature \
-    -bg "#9b59b6" -fg white -font {Arial 10 bold} \
+    -bg "#6c757d" -fg white -font {Arial 10 bold} \
     -padx 20 -pady 3 -relief raised -bd 2
 pack .nb.signatures_tab.main.sign_verify_frame.signButton -side right -padx 3
 
@@ -2816,7 +2816,7 @@ grid rowconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1  ;# Text w
 grid columnconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1
 
 text .nb.text_tab.main.plain_frame.textframe.text -width 60 -height 5 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.text_tab.main.plain_frame.textframe.scroll -command {.nb.text_tab.main.plain_frame.textframe.text yview}
 .nb.text_tab.main.plain_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.plain_frame.textframe.scroll set}
 grid .nb.text_tab.main.plain_frame.textframe.text -row 0 -column 0 -sticky "nsew"
@@ -2828,6 +2828,23 @@ grid .nb.text_tab.main.cipher_frame -row 2 -column 0 -columnspan 6 -sticky "nsew
 grid rowconfigure .nb.text_tab.main.cipher_frame 1 -weight 1  ;# Linha do text widget com peso 1
 grid columnconfigure .nb.text_tab.main.cipher_frame 0 -weight 1
 
+frame .nb.text_tab.main.plain_frame.buttons -bg $frame_color
+grid .nb.text_tab.main.plain_frame.buttons -row 2 -column 0 -sticky "ew" -padx 8 -pady 3
+button .nb.text_tab.main.plain_frame.buttons.copy -text "Copy" -command {
+    clipboard clear; clipboard append [.nb.text_tab.main.plain_frame.textframe.text get 1.0 end]
+
+} -bg "#27ae60" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.plain_frame.buttons.copy -side left -padx 3
+button .nb.text_tab.main.plain_frame.buttons.paste -text "Paste" -command {
+    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
+    .nb.text_tab.main.plain_frame.textframe.text insert 1.0 [clipboard get]
+} -bg "#e67e22" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.plain_frame.buttons.paste -side left -padx 3
+button .nb.text_tab.main.plain_frame.buttons.clear -text "Clear" -command {
+    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
+} -bg "#e74c3c" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.plain_frame.buttons.clear -side left -padx 3
+
 label .nb.text_tab.main.cipher_frame.label -text "CIPHERTEXT" -font {Arial 10 bold} -bg $frame_color
 grid .nb.text_tab.main.cipher_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
 
@@ -2838,7 +2855,7 @@ grid rowconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1  ;# Text 
 grid columnconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1
 
 text .nb.text_tab.main.cipher_frame.textframe.text -width 60 -height 5 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.text_tab.main.cipher_frame.textframe.scroll -command {.nb.text_tab.main.cipher_frame.textframe.text yview}
 .nb.text_tab.main.cipher_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.cipher_frame.textframe.scroll set}
 grid .nb.text_tab.main.cipher_frame.textframe.text -row 0 -column 0 -sticky "nsew"
@@ -2850,18 +2867,18 @@ grid .nb.text_tab.main.cipher_frame.buttons -row 2 -column 0 -sticky "ew" -padx 
 
 button .nb.text_tab.main.cipher_frame.buttons.copy -text "Copy" -command {
     clipboard clear; clipboard append [.nb.text_tab.main.cipher_frame.textframe.text get 1.0 end]
-} -bg "#27ae60" -fg white -font {Arial 9 bold}
+} -bg "#28a745" -fg white -font {Arial 9 bold}
 pack .nb.text_tab.main.cipher_frame.buttons.copy -side left -padx 3
 
 button .nb.text_tab.main.cipher_frame.buttons.paste -text "Paste" -command {
     .nb.text_tab.main.cipher_frame.textframe.text delete 1.0 end
     .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 [clipboard get]
-} -bg "#e67e22" -fg white -font {Arial 9 bold}
+} -bg "#fd7e14" -fg white -font {Arial 9 bold}
 pack .nb.text_tab.main.cipher_frame.buttons.paste -side left -padx 3
 
 button .nb.text_tab.main.cipher_frame.buttons.clear -text "Clear" -command {
     .nb.text_tab.main.cipher_frame.textframe.text delete 1.0 end
-} -bg "#e74c3c" -fg white -font {Arial 9 bold}
+} -bg "#dc3545" -fg white -font {Arial 9 bold}
 pack .nb.text_tab.main.cipher_frame.buttons.clear -side left -padx 3
 
 # Keys frame (more compact)
@@ -2873,7 +2890,7 @@ label .nb.text_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -w
 grid .nb.text_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 3
 
 # Create key input box
-entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {Consolas 9} -show ""
+entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
 grid .nb.text_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
 grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
 
@@ -2882,7 +2899,7 @@ label .nb.text_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -wid
 grid .nb.text_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
 
 # Create IV input box
-entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {Consolas 9}
+entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
 grid .nb.text_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
 
 # Action buttons frame
@@ -2891,13 +2908,13 @@ grid .nb.text_tab.main.action_frame -row 4 -column 0 -columnspan 6 -sticky "e" -
 
 # Create Encrypt button
 button .nb.text_tab.main.action_frame.encryptButton -text "Encrypt" \
-    -command {encrypt} -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -command {encrypt} -bg "#28a745" -fg white -font {Arial 10 bold} \
     -padx 15 -pady 6 -relief raised -bd 2
 pack .nb.text_tab.main.action_frame.encryptButton -side left -padx 8
 
 # Create Decrypt button
 button .nb.text_tab.main.action_frame.decryptButton -text "Decrypt" \
-    -command {decrypt} -bg "#3498db" -fg white -font {Arial 10 bold} \
+    -command {decrypt} -bg "#6c757d" -fg white -font {Arial 10 bold} \
     -padx 15 -pady 6 -relief raised -bd 2
 pack .nb.text_tab.main.action_frame.decryptButton -side left -padx 8
 
@@ -3051,7 +3068,7 @@ label .nb.file_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -w
 grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 8
 
 # Create key input box (Files)
-entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {Consolas 9} -show ""
+entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
 grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 3
 grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
 
@@ -3060,7 +3077,7 @@ label .nb.file_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -wid
 grid .nb.file_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
 
 # Create IV input box (Files)
-entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {Consolas 9}
+entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
 grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 8
 
 # Action buttons frame (Files)
@@ -3069,12 +3086,12 @@ grid .nb.file_tab.main.action_frame -row 3 -column 0 -columnspan 3 -sticky "e" -
 
 # Buttons for file processing
 button .nb.file_tab.main.action_frame.encryptButton -text "Encrypt File" \
-    -command {encryptFile} -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -command {encryptFile} -bg "#28a745" -fg white -font {Arial 10 bold} \
     -padx 15 -pady 6 -relief raised -bd 2
 pack .nb.file_tab.main.action_frame.encryptButton -side left -padx 8
 
 button .nb.file_tab.main.action_frame.decryptButton -text "Decrypt File" \
-    -command {decryptFile} -bg "#3498db" -fg white -font {Arial 10 bold} \
+    -command {decryptFile} -bg "#6c757d" -fg white -font {Arial 10 bold} \
     -padx 15 -pady 6 -relief raised -bd 2
 pack .nb.file_tab.main.action_frame.decryptButton -side left -padx 8
 
@@ -3089,7 +3106,7 @@ grid .nb.file_tab.main.status_frame.label -row 0 -column 0 -sticky w -padx 8 -pa
 
 # Status area
 text .nb.file_tab.main.status_frame.text -width 60 -height 5 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1 -state disabled
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
 grid .nb.file_tab.main.status_frame.text -row 1 -column 0 -sticky "nsew" -padx 8 -pady 5
 
 # ========== ECDH TAB ==========
@@ -3167,7 +3184,7 @@ ttk::combobox .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
 .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
 # Passphrase entry (box)
-entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {Consolas 9} -show "*"
+entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {"DejaVu Sans Mono" 9} -show "*"
 
 # Passphrase label
 label .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
@@ -3183,9 +3200,9 @@ pack .nb.ecdh_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 
 # Private Key
 label .nb.ecdh_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -width 40 -font {Consolas 9}
+entry .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -text "Open" -command openPrivateKeyECDH \
-    -bg "#3498db" -fg white -font {Arial 9 bold}
+    -bg "#6c757d" -fg white -font {Arial 9 bold}
 
 grid .nb.ecdh_tab.main.keys_frame.content.privateKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 3
@@ -3193,7 +3210,7 @@ grid .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -row 0 -column 2 -st
 
 # Public Key
 label .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 50 -font {Consolas 9} \
+entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 50 -font {"DejaVu Sans Mono" 9} \
     -bg "#f0f0f0" -state readonly -readonlybackground "#f0f0f0"
 
 grid .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
@@ -3201,9 +3218,9 @@ grid .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -stick
 
 # Peer Key
 label .nb.ecdh_tab.main.keys_frame.content.peerKeyLabel -text "Peer Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.peerKeyInput -width 40 -font {Consolas 9}
+entry .nb.ecdh_tab.main.keys_frame.content.peerKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
 button .nb.ecdh_tab.main.keys_frame.content.openPeerKeyButton -text "Open" -command openPeerKey \
-    -bg "#3498db" -fg white -font {Arial 9 bold}
+    -bg "#6c757d" -fg white -font {Arial 9 bold}
 
 grid .nb.ecdh_tab.main.keys_frame.content.peerKeyLabel -row 2 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.peerKeyInput -row 2 -column 1 -sticky ew -padx 3 -pady 3
@@ -3211,7 +3228,7 @@ grid .nb.ecdh_tab.main.keys_frame.content.openPeerKeyButton -row 2 -column 2 -st
 
 # Generate Keys button
 button .nb.ecdh_tab.main.keys_frame.content.generateButton -text "Generate Keys" -command generateECDHKey \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -pady 3
+    -bg "#28a745" -fg white -font {Arial 10 bold} -pady 3
 grid .nb.ecdh_tab.main.keys_frame.content.generateButton -row 3 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 8
 
 # Configure column weights
@@ -3272,11 +3289,11 @@ ttk::combobox .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo -values $::
 
 # Salt Input
 label .nb.ecdh_tab.main.kdf_frame.content.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.kdf_frame.content.saltInput -width 25 -font {Consolas 9}
+entry .nb.ecdh_tab.main.kdf_frame.content.saltInput -width 25 -font {"DejaVu Sans Mono" 9}
 
 # NEW: Additional Info Input
 label .nb.ecdh_tab.main.kdf_frame.content.infoLabel -text "Additional Info:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.kdf_frame.content.infoInput -width 25 -font {Consolas 9}
+entry .nb.ecdh_tab.main.kdf_frame.content.infoInput -width 25 -font {"DejaVu Sans Mono" 9}
 
 # First row: Hash and Salt
 grid .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
@@ -3302,7 +3319,7 @@ frame .nb.ecdh_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.ecdh_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
 text .nb.ecdh_tab.main.output_frame.textframe.outputArea -width 60 -height 5 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.ecdh_tab.main.output_frame.textframe.scroll -command {.nb.ecdh_tab.main.output_frame.textframe.outputArea yview}
 .nb.ecdh_tab.main.output_frame.textframe.outputArea configure -yscrollcommand {.nb.ecdh_tab.main.output_frame.textframe.scroll set}
 
@@ -3317,11 +3334,11 @@ frame .nb.ecdh_tab.main.output_frame.buttons -bg $frame_color
 pack .nb.ecdh_tab.main.output_frame.buttons -fill x -padx 8 -pady 3
 
 button .nb.ecdh_tab.main.output_frame.buttons.deriveButton -text "Derive" -command deriveECDHKey \
-    -bg "#9b59b6" -fg white -font {Arial 9 bold} -padx 12
+    -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.deriveButton -side left -padx 3
 
 button .nb.ecdh_tab.main.output_frame.buttons.hkdfButton -text "HKDF" -command executeECDHHKDF \
-    -bg "#e67e22" -fg white -font {Arial 9 bold} -padx 12
+    -bg "#fd7e14" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.hkdfButton -side left -padx 3
 
 button .nb.ecdh_tab.main.output_frame.buttons.copyButton -text "Copy" -command {
@@ -3339,12 +3356,12 @@ button .nb.ecdh_tab.main.output_frame.buttons.copyButton -text "Copy" -command {
     
     clipboard clear
     clipboard append $last_line
-} -bg "#27ae60" -fg white -font {Arial 9 bold} -padx 12
+} -bg "#28a745" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.copyButton -side left -padx 3
 
 button .nb.ecdh_tab.main.output_frame.buttons.clearButton -text "Clear" -command {
     .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
-} -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 12
+} -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.clearButton -side left -padx 3
 
 # ========== MAC TEXT TAB ==========
@@ -3493,13 +3510,13 @@ pack .nb.mac_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 
 # Key Entry
 label .nb.mac_tab.main.keys_frame.content.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_tab.main.keys_frame.content.keyEntry -width 50 -font {Consolas 9}
+entry .nb.mac_tab.main.keys_frame.content.keyEntry -width 50 -font {"DejaVu Sans Mono" 9}
 grid .nb.mac_tab.main.keys_frame.content.keyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.mac_tab.main.keys_frame.content.keyEntry -row 0 -column 1 -sticky ew -padx 3 -pady 3
 
 # IV Entry
 label .nb.mac_tab.main.keys_frame.content.ivLabel -text "IV:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_tab.main.keys_frame.content.ivEntry -width 50 -font {Consolas 9}
+entry .nb.mac_tab.main.keys_frame.content.ivEntry -width 50 -font {"DejaVu Sans Mono" 9}
 grid .nb.mac_tab.main.keys_frame.content.ivLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.mac_tab.main.keys_frame.content.ivEntry -row 1 -column 1 -sticky ew -padx 3 -pady 3
 
@@ -3526,10 +3543,10 @@ bind .nb.mac_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelected>> se
 
 # File input
 label .nb.mac_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_tab.main.input_frame.content.inputFile -width 50 -font {Consolas 9}
+entry .nb.mac_tab.main.input_frame.content.inputFile -width 50 -font {"DejaVu Sans Mono" 9}
 button .nb.mac_tab.main.input_frame.content.openFileButton -text "Open" -command {
     openFileDialog .nb.mac_tab.main.input_frame.content.inputFile
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
 grid .nb.mac_tab.main.input_frame.content.inputTypeLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.mac_tab.main.input_frame.content.inputTypeCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
@@ -3543,7 +3560,7 @@ grid .nb.mac_tab.main.input_frame.content.textframe -row 1 -column 0 -columnspan
 
 # Text area for text input - 4 LINES, SAME STRUCTURE AS OUTPUT
 text .nb.mac_tab.main.input_frame.content.textframe.inputText -width 70 -height 6 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.mac_tab.main.input_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.mac_tab.main.input_frame.content.textframe.inputText yview}
 .nb.mac_tab.main.input_frame.content.textframe.inputText configure \
@@ -3570,7 +3587,7 @@ frame .nb.mac_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.mac_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
 text .nb.mac_tab.main.output_frame.textframe.resultBox -width 60 -height 3 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1 -state disabled
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
 scrollbar .nb.mac_tab.main.output_frame.textframe.resultScroll -command {.nb.mac_tab.main.output_frame.textframe.resultBox yview}
 .nb.mac_tab.main.output_frame.textframe.resultBox configure -yscrollcommand {.nb.mac_tab.main.output_frame.textframe.resultScroll set}
 
@@ -3585,11 +3602,11 @@ frame .nb.mac_tab.main.action_frame -bg $bg_color
 pack .nb.mac_tab.main.action_frame -fill x -padx 8 -pady 8
 
 button .nb.mac_tab.main.action_frame.calculateButton -text "Calculate MAC" -command calculateMAC \
-    -bg "#27ae60" -fg white -font {Arial 10 bold} -padx 15 -pady 6
+    -bg "#28a745" -fg white -font {Arial 10 bold} -padx 15 -pady 6
 pack .nb.mac_tab.main.action_frame.calculateButton -side left -padx 5
 
 button .nb.mac_tab.main.action_frame.copyButton -text "Copy Result" -command copyResult \
-    -bg "#3498db" -fg white -font {Arial 10 bold} -padx 15 -pady 6
+    -bg "#6c757d" -fg white -font {Arial 10 bold} -padx 15 -pady 6
 pack .nb.mac_tab.main.action_frame.copyButton -side left -padx 5
 
 button .nb.mac_tab.main.action_frame.clearButton -text "Clear All" -command {
@@ -3600,7 +3617,7 @@ button .nb.mac_tab.main.action_frame.clearButton -text "Clear All" -command {
     .nb.mac_tab.main.output_frame.textframe.resultBox configure -state normal
     .nb.mac_tab.main.output_frame.textframe.resultBox delete 1.0 end
     .nb.mac_tab.main.output_frame.textframe.resultBox configure -state disabled
-} -bg "#e74c3c" -fg white -font {Arial 10 bold} -padx 15 -pady 6
+} -bg "#dc3545" -fg white -font {Arial 10 bold} -padx 15 -pady 6
 
 # Execute Menu
 menu .menubar -tearoff 0 -bg $accent_color -fg white -activebackground $button_hover
@@ -3676,7 +3693,7 @@ set ::recursiveFlag 0  ;# Default value: unchecked
 # Key entry frame (initially disabled)
 frame .nb.digest_tab.main.algo_frame.content.keyFrame -bg $frame_color
 label .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color -state disabled
-entry .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -width 50 -font {Consolas 9} -state disabled -background "#f0f0f0"
+entry .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -width 50 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
 
 pack .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -side left -padx 3
 
@@ -3694,7 +3711,7 @@ pack .nb.digest_tab.main.file_frame.content -fill x -padx 8 -pady 3
 
 # Directory path
 label .nb.digest_tab.main.file_frame.content.dirLabel -text "Directory:" -font {Arial 9 bold} -bg $frame_color -width 10 -anchor e
-entry .nb.digest_tab.main.file_frame.content.dirEntry -width 50 -font {Consolas 9}
+entry .nb.digest_tab.main.file_frame.content.dirEntry -width 50 -font {"DejaVu Sans Mono" 9}
 # Set default value as "." (current directory)
 .nb.digest_tab.main.file_frame.content.dirEntry insert 0 "."
 button .nb.digest_tab.main.file_frame.content.dirButton -text "Open" -command {
@@ -3703,7 +3720,7 @@ button .nb.digest_tab.main.file_frame.content.dirButton -text "Open" -command {
         .nb.digest_tab.main.file_frame.content.dirEntry delete 0 end
         .nb.digest_tab.main.file_frame.content.dirEntry insert 0 $dir_path
     }
-} -bg "#3498db" -fg white -font {Arial 9 bold} -padx 8
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
 
 grid .nb.digest_tab.main.file_frame.content.dirLabel -row 0 -column 0 -sticky e -padx 3 -pady 3
 grid .nb.digest_tab.main.file_frame.content.dirEntry -row 0 -column 1 -sticky ew -padx 3 -pady 3
@@ -3711,7 +3728,7 @@ grid .nb.digest_tab.main.file_frame.content.dirButton -row 0 -column 2 -sticky w
 
 # File pattern/wildcard
 label .nb.digest_tab.main.file_frame.content.patternLabel -text "Pattern:" -font {Arial 9 bold} -bg $frame_color -width 10 -anchor e
-entry .nb.digest_tab.main.file_frame.content.patternEntry -width 50 -font {Consolas 9}
+entry .nb.digest_tab.main.file_frame.content.patternEntry -width 50 -font {"DejaVu Sans Mono" 9}
 .nb.digest_tab.main.file_frame.content.patternEntry insert 0 "*"
 
 grid .nb.digest_tab.main.file_frame.content.patternLabel -row 1 -column 0 -sticky e -padx 3 -pady 3
@@ -3738,13 +3755,13 @@ frame .nb.digest_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.digest_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
 text .nb.digest_tab.main.output_frame.textframe.outputArea -width 70 -height 15 -wrap word \
-    -font {Consolas 9} -bg $text_bg -relief solid -bd 1
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
 
 # Configure tags for formatting (must be done AFTER creating Text widget)
-.nb.digest_tab.main.output_frame.textframe.outputArea tag configure bold -font {Consolas 9 bold}
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure bold -font {"DejaVu Sans Mono" 9 bold}
 .nb.digest_tab.main.output_frame.textframe.outputArea tag configure error -foreground red
-.nb.digest_tab.main.output_frame.textframe.outputArea tag configure success -foreground "#27ae60"
-.nb.digest_tab.main.output_frame.textframe.outputArea tag configure warning -foreground "#f39c12"
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure success -foreground "#28a745"
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure warning -foreground "#fd7e14"
 
 scrollbar .nb.digest_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.digest_tab.main.output_frame.textframe.outputArea yview}
@@ -3761,15 +3778,15 @@ grid columnconfigure .nb.digest_tab.main.output_frame.textframe 0 -weight 1
 frame .nb.digest_tab.main.action_frame -bg $bg_color
 pack .nb.digest_tab.main.action_frame -fill x -padx 8 -pady 8
 
-# Open button (auxiliary button - blue) - LEFT
+# Open button (auxiliary button - gray) - LEFT
 button .nb.digest_tab.main.action_frame.openButton -text "Open" \
-    -command openHashFile -bg "#3498db" -fg white -font {Arial 9 bold} \
+    -command openHashFile -bg "#6c757d" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
 pack .nb.digest_tab.main.action_frame.openButton -side left -padx 3
 
 # Save button (auxiliary button - orange) - LEFT
 button .nb.digest_tab.main.action_frame.saveButton -text "Save" \
-    -command saveDigests -bg "#f39c12" -fg white -font {Arial 9 bold} \
+    -command saveDigests -bg "#fd7e14" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
 pack .nb.digest_tab.main.action_frame.saveButton -side left -padx 3
 
@@ -3779,16 +3796,16 @@ button .nb.digest_tab.main.action_frame.copyButton -text "Copy" \
         set text [.nb.digest_tab.main.output_frame.textframe.outputArea get 1.0 end-1c]
         clipboard clear
         clipboard append $text
-    } -bg "#27ae60" -fg white -font {Arial 9 bold} \
+    } -bg "#28a745" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
 pack .nb.digest_tab.main.action_frame.copyButton -side left -padx 3
 
-# Paste button (auxiliary button - dark orange) - LEFT
+# Paste button (auxiliary button - orange) - LEFT
 button .nb.digest_tab.main.action_frame.pasteButton -text "Paste" \
     -command {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.digest_tab.main.output_frame.textframe.outputArea insert end [clipboard get]
-    } -bg "#e67e22" -fg white -font {Arial 9 bold} \
+    } -bg "#fd7e14" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
 pack .nb.digest_tab.main.action_frame.pasteButton -side left -padx 3
 
@@ -3796,7 +3813,7 @@ pack .nb.digest_tab.main.action_frame.pasteButton -side left -padx 3
 button .nb.digest_tab.main.action_frame.clearButton -text "Clear" \
     -command {
         .nb.digest_tab.main.output_frame.textframe.outputArea delete 1.0 end
-    } -bg "#e74c3c" -fg white -font {Arial 9 bold} \
+    } -bg "#dc3545" -fg white -font {Arial 9 bold} \
     -padx 12 -pady 4
 pack .nb.digest_tab.main.action_frame.clearButton -side left -padx 3
 
@@ -3806,13 +3823,13 @@ pack .nb.digest_tab.main.action_frame.main_buttons -side right
 
 # Digest button (main button - green) - LEFT inside main frame
 button .nb.digest_tab.main.action_frame.main_buttons.digestButton -text "Compute" \
-    -command calculateDigests -bg "#27ae60" -fg white -font {Arial 10 bold} \
+    -command calculateDigests -bg "#28a745" -fg white -font {Arial 10 bold} \
     -padx 15 -pady 6 -relief raised -bd 2
 pack .nb.digest_tab.main.action_frame.main_buttons.digestButton -side left -padx 5
 
-# Check button (main button - blue) - RIGHT of Calculate
+# Check button (main button - gray) - RIGHT of Calculate
 button .nb.digest_tab.main.action_frame.main_buttons.checkButton -text "Check" \
-    -command verifyDigests -bg "#3498db" -fg white -font {Arial 10 bold} \
+    -command verifyDigests -bg "#6c757d" -fg white -font {Arial 10 bold} \
     -padx 15 -pady 6 -relief raised -bd 2
 pack .nb.digest_tab.main.action_frame.main_buttons.checkButton -side left -padx 5
 
@@ -4261,7 +4278,7 @@ proc verifyDigests {} {
     
     # Text area with white background for contrast
     text .debug_win.main.textframe.text -width 80 -height 25 -wrap word \
-        -font {Consolas 9} -bg white -relief solid -bd 1
+        -font {"DejaVu Sans Mono" 9} -bg white -relief solid -bd 1
     scrollbar .debug_win.main.textframe.scroll -command {.debug_win.main.textframe.text yview}
     .debug_win.main.textframe.text configure -yscrollcommand {.debug_win.main.textframe.scroll set}
     
@@ -4495,11 +4512,11 @@ proc verifyDigests {} {
         set debug_text [.debug_win.main.textframe.text get 1.0 end]
         clipboard clear
         clipboard append $debug_text
-    } -bg "#3498db" -fg white -font {Arial 9 bold} -padx 15 -pady 5
+    } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 15 -pady 5
     pack .debug_win.main.buttons.copy -side left -padx 5
     
     button .debug_win.main.buttons.close -text "Close" -command {destroy .debug_win} \
-        -bg "#e74c3c" -fg white -font {Arial 9 bold} -padx 15 -pady 5
+        -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 15 -pady 5
     pack .debug_win.main.buttons.close -side right -padx 5
     
     # Scroll to top
