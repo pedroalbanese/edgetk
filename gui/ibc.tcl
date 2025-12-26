@@ -116,6 +116,7 @@ Features:
 - Master key pair generation
 - User private key derivation based on ID/HID
 - Identity-Based Encryption (IBE) - Boneh-Franklin
+- Fujisaki-Okamoto Transform to achieve IND-CCA2 Security
 - Identity-Based Signatures (IBS) - Hess
 - Support for Threshold IBE" \
         -font {Arial 9} -bg white -justify center -wraplength 480
@@ -256,45 +257,27 @@ proc generateUserKey {} {
         return
     }
     
-    # If passphrases are empty, use "nil"
-    if {$master_pass eq ""} {
-        set master_pass "nil"
-    }
-    if {$user_pass eq ""} {
-        set user_pass "nil"
-    }
-    
     # Get user-specified key path from the input field
     set user_key_path [.nb.keys_tab.main.user_frame.content.userKeyInput get]
     
     # If no user-specified path, generate a default one
     if {$user_key_path eq ""} {
-        # Get current directory
         set current_dir [pwd]
-        
-        # Generate unique filename based on user ID
         set clean_id [string map {":" "_" "/" "_" "\\" "_" "*" "_" "?" "_" "\"" "_" "<" "_" ">" "_" "|" "_"} $user_id]
         set user_key_name "Private_${clean_id}"
-        
-        # Default path
         set user_key_path [file join $current_dir "${user_key_name}.pem"]
     } else {
-        # User has specified a path, check if it's a directory or file
         if {[file isdirectory $user_key_path]} {
-            # User entered a directory, generate filename inside it
             set clean_id [string map {":" "_" "/" "_" "\\" "_" "*" "_" "?" "_" "\"" "_" "<" "_" ">" "_" "|" "_"} $user_id]
             set user_key_name "Private_${clean_id}"
             set user_key_path [file join $user_key_path "${user_key_name}.pem"]
         } elseif {![string match "*.pem" $user_key_path]} {
-            # User entered a filename without extension, add .pem
             set user_key_path "${user_key_path}.pem"
         }
     }
     
-    # Extract directory from the final path
     set user_key_dir [file dirname $user_key_path]
     
-    # Check if directory exists, if not, ask user
     if {![file exists $user_key_dir]} {
         set choice [tk_messageBox \
             -title "Directory Not Found" \
@@ -309,7 +292,6 @@ proc generateUserKey {} {
             return
         }
         
-        # Try to create directory
         if {[catch {file mkdir $user_key_dir} errorMsg]} {
             .nb.keys_tab.main.output_frame.textframe.outputArea delete 1.0 end
             .nb.keys_tab.main.output_frame.textframe.outputArea insert end "Error creating directory:\n$errorMsg"
@@ -317,7 +299,6 @@ proc generateUserKey {} {
         }
     }
     
-    # Check if file already exists
     if {[file exists $user_key_path]} {
         set choice [tk_messageBox \
             -title "File Already Exists" \
@@ -332,33 +313,42 @@ proc generateUserKey {} {
             .nb.keys_tab.main.output_frame.textframe.outputArea insert end "User key generation cancelled."
             return
         } elseif {$choice eq "no"} {
-            # Find next available name
             set counter 1
             set dir [file dirname $user_key_path]
             set base_name [file rootname [file tail $user_key_path]]
             set ext [file extension $user_key_path]
             
             set new_user_key_path [file join $dir "${base_name}_${counter}${ext}"]
-            
             while {[file exists $new_user_key_path]} {
                 incr counter
                 set new_user_key_path [file join $dir "${base_name}_${counter}${ext}"]
             }
-            
             set user_key_path $new_user_key_path
         }
     }
     
-    # Update entry field with the final path
     .nb.keys_tab.main.user_frame.content.userKeyInput delete 0 end
     .nb.keys_tab.main.user_frame.content.userKeyInput insert 0 $user_key_path
     
     # IBE key generation (boneh-franklin)
-    set cmd "edgetk -pkey keygen -algorithm bls12381 -master \"$master_key_path\" -pass \"$master_pass\" -prv \"$user_key_path\" -passout \"$user_pass\" -cipher \"$user_cipher\" -id \"$user_id\" -hid $hid"
+    set cmd [list edgetk -pkey keygen -algorithm bls12381 \
+        -master $master_key_path \
+        -prv $user_key_path \
+        -cipher $user_cipher \
+        -id $user_id \
+        -hid $hid]
     
-    # Execute command
+    if {$master_pass ne ""} {
+        lappend cmd -pass $master_pass
+    }
+    
+    if {$user_pass ne ""} {
+        lappend cmd -passout $user_pass
+    }
+    
+    # Execute command (prevent interactive Passphrase prompt)
     if {[catch {
-        exec {*}$cmd 2>@1
+        exec {*}$cmd << "" 2>@1
     } result]} {
         .nb.keys_tab.main.output_frame.textframe.outputArea delete 1.0 end
         .nb.keys_tab.main.output_frame.textframe.outputArea insert end "Error generating user key:\n$result"
@@ -721,7 +711,7 @@ proc encryptIBE {} {
         
         # Encrypt text (boneh-franklin for IBE) e converter para base64
         if {[catch {
-            set result [exec edgetk -pkey encrypt -algorithm bls12381 -key $master_public_path -id $user_id -hid $hid << $input_text | edgetk -base64 enc 2>@1]
+            set result [exec edgetk -pkey encrypt -algorithm bls12381 -scheme fo -key $master_public_path -id $user_id -hid $hid << $input_text | edgetk -base64 enc 2>@1]
         } result]} {
             if {$output_type eq "Text"} {
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error encrypting text:\n$result"
@@ -762,11 +752,11 @@ proc encryptIBE {} {
         if {[catch {
             if {$output_type eq "Text"} {
                 # Output to text area
-                set result [exec edgetk -pkey encrypt -algorithm bls12381 -key $master_public_path -id $user_id -hid $hid $input_file | edgetk -base64 enc 2>@1]
+                set result [exec edgetk -pkey encrypt -algorithm bls12381 -scheme fo -key $master_public_path -id $user_id -hid $hid $input_file | edgetk -base64 enc 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end $result
             } else {
                 # Output to file
-                set result [exec edgetk -pkey encrypt -algorithm bls12381 -key $master_public_path -id $user_id -hid $hid $input_file | edgetk -base64 enc > $output_file 2>@1]
+                set result [exec edgetk -pkey encrypt -algorithm bls12381 -scheme fo -key $master_public_path -id $user_id -hid $hid $input_file | edgetk -base64 enc > $output_file 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "File encrypted successfully!\n"
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Output: $output_file\n"
             }
@@ -779,6 +769,14 @@ proc encryptIBE {} {
 proc decryptIBE {} {
     set user_key_path [.nb.encryption_tab.main.keys_frame.content.userKeyInput get]
     set passphrase [.nb.encryption_tab.main.keys_frame.content.passEntry get]
+
+    # Verifica se a chave privada está protegida
+    set first_line [exec head -n 10 $user_key_path]
+    if {[regexp {DEK-Info} $first_line] && $passphrase eq ""} {
+        .nb.encryption_tab.main.output_frame.content.textframe.outputText delete 1.0 end
+        .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error: This private key is password-protected. Please enter passphrase!\n"
+        return
+    }
 
     # Validação de inputs
     if {$user_key_path eq ""} {
@@ -824,7 +822,7 @@ proc decryptIBE {} {
 
             if {$output_type eq "Text"} {
                 # Decrypt para variável
-                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -key $user_key_path -pass $passphrase $temp_dec 2>@1]
+                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end $decrypted
             } else {
                 # Decrypt para arquivo de saída
@@ -834,7 +832,7 @@ proc decryptIBE {} {
                     .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error: Please specify an output file!\n"
                     return
                 }
-                exec edgetk -pkey decrypt -algorithm bls12381 -key $user_key_path -pass $passphrase $temp_dec > $output_file 2>@1
+                exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec > $output_file 2>@1
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "File decrypted successfully!\nOutput: $output_file\n"
             }
 
@@ -865,7 +863,7 @@ proc decryptIBE {} {
 
             if {$output_type eq "Text"} {
                 # Decrypt para variável e mostrar na área de texto
-                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -key $user_key_path -pass $passphrase $temp_dec 2>@1]
+                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end $decrypted
             } else {
                 # Decrypt para arquivo de saída
@@ -874,7 +872,7 @@ proc decryptIBE {} {
                     .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error: Please specify an output file!\n"
                     return
                 }
-                exec edgetk -pkey decrypt -algorithm bls12381 -key $user_key_path -pass $passphrase $temp_dec > $output_file 2>@1
+                exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec > $output_file 2>@1
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "File decrypted successfully!\nOutput: $output_file\n"
             }
 
