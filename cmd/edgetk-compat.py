@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Crypto Toolbox - Integrated Cryptographic Tools
+EDGE Crypto Toolbox - Integrated Cryptographic Tools
 Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519
 """
 
