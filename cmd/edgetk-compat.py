@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 EDGE Crypto Toolbox - Integrated Cryptographic Tools
-Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519
+Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519, Hashsum, HMAC
 """
 
 import argparse
@@ -11,6 +11,17 @@ import os
 import hashlib
 import base64
 import binascii
+import glob
+import json
+from pathlib import Path
+import time
+import hmac as hmac_lib
+
+try:
+    import blake3
+    BLAKE3_AVAILABLE = True
+except ImportError:
+    BLAKE3_AVAILABLE = False
 
 # Required libraries
 import nacl.pwhash
@@ -663,6 +674,555 @@ def x25519_compute_shared(priv_path, peer_pub_path):
     print("Shared key (hex):", shared.hex())
 
 # =========================
+# 6. HASHSUM (File Hash Calculator and Verifier)
+# =========================
+
+def calculate_file_hash(file_path, hash_algo='sha256'):
+    """Calculate hash of a single file with support for modern algorithms"""
+    try:
+        if hash_algo.startswith('blake2'):
+            # BLAKE2 family
+            if hash_algo == 'blake2b':
+                hash_func = hashlib.blake2b()
+            elif hash_algo == 'blake2s':
+                hash_func = hashlib.blake2s()
+            elif hash_algo == 'blake2b_256':
+                hash_func = hashlib.blake2b(digest_size=32)
+            elif hash_algo == 'blake2b_512':
+                hash_func = hashlib.blake2b(digest_size=64)
+            elif hash_algo == 'blake2s_128':
+                hash_func = hashlib.blake2s(digest_size=16)
+            elif hash_algo == 'blake2s_256':
+                hash_func = hashlib.blake2s(digest_size=32)
+            else:
+                # Default BLAKE2b-512
+                hash_func = hashlib.blake2b()
+        
+        elif hash_algo.startswith('sha3_'):
+            # SHA-3 family
+            if hash_algo == 'sha3_224':
+                hash_func = hashlib.sha3_224()
+            elif hash_algo == 'sha3_256':
+                hash_func = hashlib.sha3_256()
+            elif hash_algo == 'sha3_384':
+                hash_func = hashlib.sha3_384()
+            elif hash_algo == 'sha3_512':
+                hash_func = hashlib.sha3_512()
+            else:
+                # Default SHA3-256
+                hash_func = hashlib.sha3_256()
+        
+        elif hash_algo == 'blake3':
+            # BLAKE3 requires the blake3 library
+            if not BLAKE3_AVAILABLE:
+                print(f"✖ BLAKE3 not available. Install with: pip install blake3", file=sys.stderr)
+                return None
+            hash_func = blake3.blake3()
+        
+        elif hash_algo == 'shake_128':
+            # SHAKE128 - extensible output function
+            hash_func = hashlib.shake_128()
+        
+        elif hash_algo == 'shake_256':
+            # SHAKE256 - extensible output function
+            hash_func = hashlib.shake_256()
+        
+        else:
+            # Standard hashlib algorithms
+            hash_func = hashlib.new(hash_algo)
+        
+        with open(file_path, 'rb') as f:
+            # Read file in chunks to handle large files
+            for chunk in iter(lambda: f.read(4096), b''):
+                hash_func.update(chunk)
+        
+        # Handle variable-length outputs
+        if hash_algo in ['shake_128', 'shake_256']:
+            # SHAKE algorithms need output length specified
+            return hash_func.hexdigest(32)  # 32 bytes = 256 bits
+        else:
+            return hash_func.hexdigest()
+            
+    except FileNotFoundError:
+        return None
+    except PermissionError:
+        return None
+    except ValueError as e:
+        print(f"✖ Error with algorithm {hash_algo}: {e}", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"✖ Error processing {file_path}: {e}", file=sys.stderr)
+        return None
+
+def list_hash_algorithms():
+    """List all available hash algorithms"""
+    print("Available hash algorithms:")
+    print("-" * 60)
+    
+    # Standard algorithms
+    print("Standard algorithms:")
+    std_algs = ['md5', 'sha1', 'sha224', 'sha256', 'sha384', 'sha512']
+    for alg in std_algs:
+        if alg in hashlib.algorithms_available:
+            print(f"  {alg:15} - {hashlib.new(alg).digest_size * 8}-bit")
+    
+    # SHA-3 family
+    print("\nSHA-3 family (Keccak):")
+    sha3_algs = ['sha3_224', 'sha3_256', 'sha3_384', 'sha3_512', 
+                 'shake_128', 'shake_256']
+    for alg in sha3_algs:
+        if alg in hashlib.algorithms_available:
+            if alg.startswith('shake'):
+                print(f"  {alg:15} - Variable length (extensible output)")
+            else:
+                print(f"  {alg:15} - {hashlib.new(alg).digest_size * 8}-bit")
+    
+    # BLAKE2 family
+    print("\nBLAKE2 family:")
+    blake2_algs = ['blake2b', 'blake2s']
+    for alg in blake2_algs:
+        if alg in hashlib.algorithms_available:
+            print(f"  {alg:15} - {hashlib.new(alg).digest_size * 8}-bit")
+    # BLAKE2 variants
+    print("  blake2b_256      - 256-bit BLAKE2b")
+    print("  blake2b_512      - 512-bit BLAKE2b")
+    print("  blake2s_128      - 128-bit BLAKE2s")
+    print("  blake2s_256      - 256-bit BLAKE2s")
+    
+    # BLAKE3
+    if BLAKE3_AVAILABLE:
+        print(f"\nBLAKE3 family:")
+        print("  blake3          - 256-bit BLAKE3 (modern, fast)")
+    else:
+        print(f"\nBLAKE3: Install with 'pip install blake3'")
+    
+    print("\nOther available algorithms:")
+    other_algs = sorted([alg for alg in hashlib.algorithms_available 
+                        if alg not in std_algs + sha3_algs + blake2_algs])
+    for alg in other_algs:
+        print(f"  {alg:15}")
+    
+    print("\nNotes:")
+    print("  • Recommended: sha256, sha3_256, blake2b, blake3")
+    print("  • Avoid: md5, sha1 (cryptographically broken)")
+    print("  • Default: sha256")
+
+def hashsum(pattern, recursive=False, hash_algo='sha256', output_file=None):
+    """
+    Calculate hashes for files matching a pattern
+    
+    Args:
+        pattern: File pattern (e.g., *.py, file.txt)
+        recursive: Whether to process subdirectories
+        hash_algo: Hash algorithm
+        output_file: Optional file to save results
+    """
+    # Check if algorithm is available
+    available_algs = list(hashlib.algorithms_available)
+    # Add our custom BLAKE2 variants
+    custom_algs = ['blake2b_256', 'blake2b_512', 'blake2s_128', 'blake2s_256']
+    
+    if hash_algo in custom_algs:
+        # Custom variants are always available if base BLAKE2 is available
+        if 'blake2b' not in hashlib.algorithms_available or 'blake2s' not in hashlib.algorithms_available:
+            print(f"✖ BLAKE2 not available in this Python version", file=sys.stderr)
+            sys.exit(1)
+    elif hash_algo == 'blake3':
+        if not BLAKE3_AVAILABLE:
+            print(f"✖ BLAKE3 not available. Install with: pip install blake3", file=sys.stderr)
+            sys.exit(1)
+    elif hash_algo not in available_algs:
+        print(f"✖ Unsupported hash algorithm: {hash_algo}", file=sys.stderr)
+        print(f"\nUse 'hashsum list' to see available algorithms")
+        sys.exit(1)
+    
+    results = {}
+    files_found = 0
+    files_processed = 0
+    errors = 0
+    
+    print(f"Calculating {hash_algo} hashes...")
+    print(f"Pattern: {pattern}")
+    print(f"Recursive: {'Yes' if recursive else 'No'}")
+    print("-" * 80)
+    
+    if recursive:
+        # Use pathlib for recursive pattern matching
+        base_dir = Path.cwd()
+        for file_path in base_dir.rglob(pattern):
+            files_found += 1
+            if file_path.is_file():
+                relative_path = str(file_path.relative_to(base_dir))
+                file_hash = calculate_file_hash(file_path, hash_algo)
+                if file_hash:
+                    results[relative_path] = file_hash
+                    files_processed += 1
+                    print(f"{file_hash}  {relative_path}")
+                else:
+                    errors += 1
+                    print(f"✖ ERROR: Could not process {relative_path}", file=sys.stderr)
+    else:
+        # Non-recursive glob
+        for file_path in glob.glob(pattern):
+            files_found += 1
+            if os.path.isfile(file_path):
+                file_hash = calculate_file_hash(file_path, hash_algo)
+                if file_hash:
+                    results[file_path] = file_hash
+                    files_processed += 1
+                    print(f"{file_hash}  {file_path}")
+                else:
+                    errors += 1
+                    print(f"✖ ERROR: Could not process {file_path}", file=sys.stderr)
+    
+    # Save results to file if specified
+    if output_file:
+        try:
+            with open(output_file, 'w') as f:
+                # Include metadata
+                f.write(f"# Hashsum generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# Algorithm: {hash_algo}\n")
+                f.write(f"# Pattern: {pattern}\n")
+                f.write(f"# Recursive: {recursive}\n")
+                f.write("#\n")
+                for file_path, file_hash in sorted(results.items()):
+                    # Adicionar asterisco antes do nome do arquivo como em outros hashers
+                    f.write(f"{file_hash} *{file_path}\n")
+            print(f"\n✔ Results saved to: {output_file}")
+        except Exception as e:
+            print(f"✖ Error saving results to {output_file}: {e}", file=sys.stderr)
+    
+    # Print summary
+    print("-" * 80)
+    print(f"Summary:")
+    print(f"  Files found: {files_found}")
+    print(f"  Files processed: {files_processed}")
+    print(f"  Errors: {errors}")
+    
+    if files_processed == 0:
+        print("⚠ No files were processed. Check your pattern or directory permissions.")
+    
+    return results
+
+def check_hashsum(hash_file, check_all=False):
+    """
+    Verify hashes from a hash file
+    
+    Args:
+        hash_file: File containing hashes to verify
+        check_all: If True, continue checking even if some files are missing
+    """
+    if not os.path.exists(hash_file):
+        print(f"✖ Hash file not found: {hash_file}", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        with open(hash_file, 'r') as f:
+            lines = f.readlines()
+    except Exception as e:
+        print(f"✖ Error reading hash file: {e}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Parse hash file
+    expected_hashes = {}
+    hash_algo = 'sha256'  # default
+    
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            # Extract hash algorithm from comment if available
+            if line.startswith('# Algorithm:'):
+                hash_algo = line.split(':')[1].strip()
+            continue
+        
+        # Parse hash and filename
+        parts = line.split()
+        if len(parts) >= 2:
+            # Hash is first part, filename is the rest (pode ter asterisco)
+            file_hash = parts[0]
+            file_path = ' '.join(parts[1:])
+            
+            # Remover asterisco se presente
+            if file_path.startswith('*'):
+                file_path = file_path[1:]
+            
+            expected_hashes[file_path] = file_hash
+    
+    if not expected_hashes:
+        print("⚠ No hashes found in the file")
+        return
+    
+    print(f"Verifying {hash_algo} hashes from: {hash_file}")
+    print(f"Files to check: {len(expected_hashes)}")
+    print("-" * 80)
+    
+    checked = 0
+    passed = 0
+    failed = 0
+    missing = 0
+    
+    for file_path, expected_hash in sorted(expected_hashes.items()):
+        if os.path.exists(file_path):
+            current_hash = calculate_file_hash(file_path, hash_algo)
+            if current_hash:
+                checked += 1
+                if current_hash.lower() == expected_hash.lower():
+                    passed += 1
+                    print(f"✔ {file_path}: OK")
+                else:
+                    failed += 1
+                    print(f"✖ {file_path}: FAILED")
+                    print(f"  Expected: {expected_hash}")
+                    print(f"  Got:      {current_hash}")
+            else:
+                failed += 1
+                print(f"✖ {file_path}: ERROR (could not read file)")
+        else:
+            missing += 1
+            if check_all:
+                print(f"✖ {file_path}: MISSING")
+            else:
+                print(f"✖ {file_path}: MISSING - stopping verification")
+                print("Use --all to continue even if some files are missing")
+                break
+    
+    print("-" * 80)
+    print(f"Verification complete:")
+    print(f"  Checked: {checked}")
+    print(f"  Passed: {passed}")
+    print(f"  Failed: {failed}")
+    print(f"  Missing: {missing}")
+    
+    if failed == 0 and missing == 0:
+        print("\n✔ All files verified successfully!")
+        return True
+    else:
+        print("\n⚠ Verification failed or incomplete")
+        return False
+
+# =========================
+# 7. HMAC (Hash-based Message Authentication Code)
+# =========================
+
+def generate_hmac(key, data, hash_algo='sha256'):
+    """
+    Generate HMAC for data using specified hash algorithm
+    
+    Args:
+        key: Secret key (bytes or string)
+        data: Data to authenticate (bytes or string)
+        hash_algo: Hash algorithm to use (default: sha256)
+    
+    Returns:
+        HMAC digest in hex
+    """
+    if isinstance(key, str):
+        key = key.encode('utf-8')
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    
+    # Get the hash function constructor
+    try:
+        # Try to get hash function from hashlib
+        hash_func = getattr(hashlib, hash_algo, None)
+        if hash_func is None:
+            # For custom variants or SHA-3
+            if hash_algo.startswith('sha3_'):
+                hash_func = getattr(hashlib, hash_algo)
+            elif hash_algo.startswith('blake2'):
+                # For BLAKE2, we need to use hashlib.new
+                hmac_obj = hmac_lib.new(key, data, digestmod=hash_algo)
+                return hmac_obj.hexdigest()
+            else:
+                # Try to create via hashlib.new
+                hmac_obj = hmac_lib.new(key, data, digestmod=hash_algo)
+                return hmac_obj.hexdigest()
+    except AttributeError:
+        # Fall back to hashlib.new
+        try:
+            hmac_obj = hmac_lib.new(key, data, digestmod=hash_algo)
+            return hmac_obj.hexdigest()
+        except ValueError:
+            raise ValueError(f"Unsupported hash algorithm for HMAC: {hash_algo}")
+    
+    # Create HMAC with the hash function
+    hmac_obj = hmac_lib.HMAC(key, data, digestmod=hash_func)
+    return hmac_obj.hexdigest()
+
+def hmac_calc(key=None, data=None, file_path=None, hash_algo='sha256'):
+    """
+    Calculate HMAC for data or file
+    
+    Args:
+        key: Secret key (prompt if not provided)
+        data: String data to authenticate
+        file_path: File to authenticate (takes precedence over data)
+        hash_algo: Hash algorithm to use
+    """
+    # Get key
+    if key is None:
+        key = getpass.getpass("Enter secret key: ")
+    
+    # Get data from file or input
+    if file_path:
+        if not os.path.exists(file_path):
+            print(f"✖ File not found: {file_path}", file=sys.stderr)
+            sys.exit(1)
+        try:
+            with open(file_path, 'rb') as f:
+                data_bytes = f.read()
+            data_source = f"file: {file_path}"
+        except Exception as e:
+            print(f"✖ Error reading file: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif data is None:
+        print("Enter data to authenticate (Ctrl+D to finish):")
+        try:
+            data_lines = []
+            while True:
+                line = sys.stdin.readline()
+                if not line:
+                    break
+                data_lines.append(line)
+            data_bytes = ''.join(data_lines).encode('utf-8')
+            data_source = "stdin input"
+        except KeyboardInterrupt:
+            print("\n✖ Input cancelled", file=sys.stderr)
+            sys.exit(1)
+    else:
+        data_bytes = data.encode('utf-8') if isinstance(data, str) else data
+        data_source = "provided data"
+    
+    # Calculate HMAC
+    try:
+        hmac_result = generate_hmac(key, data_bytes, hash_algo)
+        
+        print(f"HMAC-{hash_algo} calculation:")
+        print(f"  Data source: {data_source}")
+        print(f"  Key length: {len(key) if isinstance(key, bytes) else len(key.encode('utf-8'))} bytes")
+        print(f"  Data length: {len(data_bytes)} bytes")
+        print(f"  HMAC (hex): {hmac_result}")
+        print(f"  HMAC (base64): {base64.b64encode(bytes.fromhex(hmac_result)).decode()}")
+        
+        return hmac_result
+        
+    except Exception as e:
+        print(f"✖ HMAC calculation failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def hmac_verify(key=None, hmac_value=None, data=None, file_path=None, hash_algo='sha256'):
+    """
+    Verify HMAC for data or file
+    
+    Args:
+        key: Secret key (prompt if not provided)
+        hmac_value: HMAC to verify (hex string)
+        data: String data to verify
+        file_path: File to verify (takes precedence over data)
+        hash_algo: Hash algorithm used
+    """
+    # Get key
+    if key is None:
+        key = getpass.getpass("Enter secret key: ")
+    
+    # Get HMAC value
+    if hmac_value is None:
+        hmac_value = input("Enter HMAC to verify (hex): ").strip()
+    
+    # Get data from file or input
+    if file_path:
+        if not os.path.exists(file_path):
+            print(f"✖ File not found: {file_path}", file=sys.stderr)
+            sys.exit(1)
+        try:
+            with open(file_path, 'rb') as f:
+                data_bytes = f.read()
+            data_source = f"file: {file_path}"
+        except Exception as e:
+            print(f"✖ Error reading file: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif data is None:
+        print("Enter data to verify (Ctrl+D to finish):")
+        try:
+            data_lines = []
+            while True:
+                line = sys.stdin.readline()
+                if not line:
+                    break
+                data_lines.append(line)
+            data_bytes = ''.join(data_lines).encode('utf-8')
+            data_source = "stdin input"
+        except KeyboardInterrupt:
+            print("\n✖ Input cancelled", file=sys.stderr)
+            sys.exit(1)
+    else:
+        data_bytes = data.encode('utf-8') if isinstance(data, str) else data
+        data_source = "provided data"
+    
+    # Calculate HMAC for comparison
+    try:
+        calculated_hmac = generate_hmac(key, data_bytes, hash_algo)
+        
+        print(f"HMAC-{hash_algo} verification:")
+        print(f"  Data source: {data_source}")
+        print(f"  Provided HMAC: {hmac_value}")
+        print(f"  Calculated HMAC: {calculated_hmac}")
+        
+        # Compare using constant-time comparison to prevent timing attacks
+        if hmac_lib.compare_digest(calculated_hmac.lower(), hmac_value.lower()):
+            print("\n✔ HMAC verification successful! The data is authentic.")
+            return True
+        else:
+            print("\n✖ HMAC verification FAILED! The data has been tampered with or the key is wrong.")
+            return False
+            
+    except Exception as e:
+        print(f"✖ HMAC verification failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def list_hmac_algorithms():
+    """List all available algorithms for HMAC"""
+    print("Available algorithms for HMAC:")
+    print("-" * 60)
+    
+    # Algorithms commonly used with HMAC
+    hmac_algs = [
+        ('md5', '64-bit (INSECURE, for legacy only)'),
+        ('sha1', '80-bit (WEAK, not recommended)'),
+        ('sha224', '112-bit'),
+        ('sha256', '128-bit (Recommended)'),
+        ('sha384', '192-bit'),
+        ('sha512', '256-bit (Strong)'),
+        ('sha3_224', '112-bit SHA-3'),
+        ('sha3_256', '128-bit SHA-3'),
+        ('sha3_384', '192-bit SHA-3'),
+        ('sha3_512', '256-bit SHA-3'),
+        ('blake2b', 'Variable (256-512 bit)'),
+        ('blake2s', 'Variable (128-256 bit)'),
+    ]
+    
+    for alg, security in hmac_algs:
+        if hasattr(hashlib, alg) or alg in hashlib.algorithms_available:
+            print(f"  {alg:15} - {security}")
+    
+    print("\nAdditional algorithms available via hashlib.new():")
+    other_algs = sorted([alg for alg in hashlib.algorithms_available 
+                        if alg not in [a[0] for a in hmac_algs]])
+    for alg in other_algs[:10]:  # Show first 10
+        print(f"  {alg:15}")
+    
+    if len(other_algs) > 10:
+        print(f"  ... and {len(other_algs) - 10} more")
+    
+    print("\nSecurity recommendations:")
+    print("  • Use SHA-256 or SHA-512 for general purposes")
+    print("  • Use SHA-3 family for post-quantum security")
+    print("  • Use BLAKE2 for high performance")
+    print("  • AVOID: MD5, SHA-1 (cryptographically broken)")
+    print("  • Key should be at least as long as the hash output")
+    print("  • Default: sha256")
+
+# =========================
 # List available ciphers
 # =========================
 
@@ -701,9 +1261,59 @@ def list_ciphers():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519)"
+        description="Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # HMAC - calculate
+  python %(prog)s hmac calc --key "secret" --data "message"
+  python %(prog)s hmac calc --key "secret" --file message.txt
+  python %(prog)s hmac calc --key "secret" --data "message" --algo sha512
+  
+  # HMAC - verify
+  python %(prog)s hmac verify --key "secret" --hmac "abc123..." --data "message"
+  python %(prog)s hmac verify --key "secret" --hmac "abc123..." --file message.txt
+  
+  # HMAC - list algorithms
+  python %(prog)s hmac list
+  
+  # Hashsum - calculate hashes
+  python %(prog)s hashsum calc "*.py"
+  python %(prog)s hashsum calc "*.py" -r -a sha3_256 -o hashes.txt
+  
+  # Hashsum - list available algorithms
+  python %(prog)s hashsum list
+  
+  # Hashsum - verify hashes
+  python %(prog)s hashsum check hashes.txt
+  
+  # Argon2 password hashing
+  python %(prog)s argon2 hash
+  python %(prog)s argon2 verify --hash "$HASH"
+  
+  # ChaCha20 encryption
+  python %(prog)s chacha20 encrypt --key $(openssl rand -hex 32) --infile secret.txt
+  cat encrypted.bin | python %(prog)s chacha20 decrypt --key $(openssl rand -hex 32)
+  
+  # Ed25519 signatures
+  python %(prog)s eddsa gen --priv private.pem --pub public.pem
+  python %(prog)s eddsa sign --priv private.pem --msg message.txt
+  python %(prog)s eddsa verify --pub public.pem --msg message.txt --sig SIGNATURE_HEX
+  
+  # Scrypt key derivation
+  python %(prog)s scrypt derive
+  python %(prog)s scrypt compare --derived DERIVED_HEX
+  
+  # X25519 key exchange
+  python %(prog)s x25519 gen --priv alice_priv.pem --pub alice_pub.pem
+  python %(prog)s x25519 shared --priv alice_priv.pem --peer bob_pub.pem
+  
+  # List available ciphers
+  python %(prog)s ciphers
+        """
     )
-    sub = parser.add_subparsers(dest="tool")
+    
+    sub = parser.add_subparsers(dest="tool", title="Available tools")
 
     # ======================
     # Argon2
@@ -789,6 +1399,56 @@ def main():
     x_sh.add_argument("--peer", required=True, help="Peer's public key")
 
     # ======================
+    # Hashsum
+    # ======================
+    hs = sub.add_parser("hashsum", help="Calculate and verify file hashes")
+    hssub = hs.add_subparsers(dest="cmd")
+
+    hs_calc = hssub.add_parser("calc", help="Calculate hashes for files")
+    hs_calc.add_argument("pattern", nargs='?', default="*", 
+                        help="File pattern (e.g., '*.py', 'file.txt'). Default: '*' (all files)")
+    
+    # Para capturar todos os argumentos restantes quando o shell expande
+    hs_calc.add_argument("files", nargs='*', 
+                        help="Files to process (when shell expands pattern)")
+    
+    hs_calc.add_argument("-r", "--recursive", action="store_true", 
+                        help="Process subdirectories recursively")
+    hs_calc.add_argument("-a", "--algorithm", default="sha256",
+                        help="Hash algorithm (default: sha256). Use 'list' to see all options")
+    hs_calc.add_argument("-o", "--output", help="Save hashes to file")
+    
+    hs_check = hssub.add_parser("check", help="Verify hashes from a file")
+    hs_check.add_argument("hash_file", help="File containing hashes to verify")
+    hs_check.add_argument("--all", action="store_true", 
+                         help="Continue even if some files are missing")
+    
+    hs_list = hssub.add_parser("list", help="List all available hash algorithms")
+
+    # ======================
+    # HMAC
+    # ======================
+    hm = sub.add_parser("hmac", help="HMAC (Hash-based Message Authentication Code)")
+    hmsub = hm.add_subparsers(dest="cmd")
+
+    hm_calc = hmsub.add_parser("calc", help="Calculate HMAC")
+    hm_calc.add_argument("--key", help="Secret key (optional, will prompt if not provided)")
+    hm_calc.add_argument("--data", help="Data to authenticate (string)")
+    hm_calc.add_argument("--file", help="File to authenticate (takes precedence over --data)")
+    hm_calc.add_argument("--algo", default="sha256",
+                        help="Hash algorithm (default: sha256). Use 'list' to see options")
+
+    hm_ver = hmsub.add_parser("verify", help="Verify HMAC")
+    hm_ver.add_argument("--key", help="Secret key (optional, will prompt if not provided)")
+    hm_ver.add_argument("--hmac", required=True, help="HMAC to verify (hex string)")
+    hm_ver.add_argument("--data", help="Data to verify (string)")
+    hm_ver.add_argument("--file", help="File to verify (takes precedence over --data)")
+    hm_ver.add_argument("--algo", default="sha256",
+                       help="Hash algorithm (default: sha256)")
+
+    hm_list = hmsub.add_parser("list", help="List all available HMAC algorithms")
+
+    # ======================
     # List ciphers
     # ======================
     list_cmd = sub.add_parser("ciphers", help="List available cipher algorithms")
@@ -836,11 +1496,107 @@ def main():
         elif args.cmd == "shared":
             x25519_compute_shared(args.priv, args.peer)
 
+    elif args.tool == "hashsum":
+        if args.cmd == "calc":
+            # Determinar se estamos processando um padrão ou arquivos específicos
+            if args.files:
+                # Se temos arquivos específicos (shell expandiu o padrão)
+                _hashsum_list(args.files, args.recursive, args.algorithm, args.output)
+            else:
+                # Usar padrão
+                hashsum(args.pattern, args.recursive, args.algorithm, args.output)
+        elif args.cmd == "check":
+            check_hashsum(args.hash_file, args.all)
+        elif args.cmd == "list":
+            list_hash_algorithms()
+
+    elif args.tool == "hmac":
+        if args.cmd == "calc":
+            hmac_calc(args.key, args.data, args.file, args.algo)
+        elif args.cmd == "verify":
+            hmac_verify(args.key, args.hmac, args.data, args.file, args.algo)
+        elif args.cmd == "list":
+            list_hmac_algorithms()
+
     elif args.tool == "ciphers":
         list_ciphers()
         
     else:
         parser.print_help()
+
+def _hashsum_list(file_list, recursive=False, hash_algo='sha256', output_file=None):
+    """
+    Versão alternativa do hashsum que aceita uma lista de arquivos
+    em vez de um padrão (para lidar com expansão do shell)
+    """
+    # Check algorithm availability (simplified check)
+    if hash_algo == 'blake3' and not BLAKE3_AVAILABLE:
+        print(f"✖ BLAKE3 not available. Install with: pip install blake3", file=sys.stderr)
+        sys.exit(1)
+    
+    results = {}
+    files_found = len(file_list)
+    files_processed = 0
+    errors = 0
+    
+    print(f"Calculating {hash_algo} hashes...")
+    print(f"Processing {files_found} files")
+    print(f"Recursive: {'Yes' if recursive else 'No'}")
+    print("-" * 80)
+    
+    for file_path in file_list:
+        if os.path.isfile(file_path):
+            file_hash = calculate_file_hash(file_path, hash_algo)
+            if file_hash:
+                results[file_path] = file_hash
+                files_processed += 1
+                print(f"{file_hash}  {file_path}")
+            else:
+                errors += 1
+                print(f"✖ ERROR: Could not process {file_path}", file=sys.stderr)
+        elif recursive and os.path.isdir(file_path):
+            # Se for diretório e recursivo estiver habilitado
+            for root, dirs, files in os.walk(file_path):
+                for file in files:
+                    full_path = os.path.join(root, file)
+                    file_hash = calculate_file_hash(full_path, hash_algo)
+                    if file_hash:
+                        results[full_path] = file_hash
+                        files_processed += 1
+                        print(f"{file_hash}  {full_path}")
+                    else:
+                        errors += 1
+                        print(f"✖ ERROR: Could not process {full_path}", file=sys.stderr)
+        else:
+            errors += 1
+            print(f"✖ ERROR: Not a file {file_path}", file=sys.stderr)
+    
+    # Save results to file if specified
+    if output_file:
+        try:
+            with open(output_file, 'w') as f:
+                # Include metadata
+                f.write(f"# Hashsum generated: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# Algorithm: {hash_algo}\n")
+                f.write(f"# Files processed: {files_found}\n")
+                f.write(f"# Recursive: {recursive}\n")
+                f.write("#\n")
+                for file_path, file_hash in sorted(results.items()):
+                    # Adicionar asterisco antes do nome do arquivo como em outros hashers
+                    f.write(f"{file_hash} *{file_path}\n")
+            print(f"\n✔ Results saved to: {output_file}")
+        except Exception as e:
+            print(f"✖ Error saving results to {output_file}: {e}", file=sys.stderr)
+    
+    # Print summary
+    print("-" * 80)
+    print(f"Summary:")
+    print(f"  Files provided: {files_found}")
+    print(f"  Files processed: {files_processed}")
+    print(f"  Errors: {errors}")
+    
+    if files_processed == 0:
+        print("⚠ No files were processed. Check file paths and permissions.")
 
 if __name__ == "__main__":
     main()
