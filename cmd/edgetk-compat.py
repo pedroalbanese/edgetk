@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 EDGE Crypto Toolbox - Integrated Cryptographic Tools
-Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519, Hashsum, HMAC
+Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519, Hashsum, HMAC, AES-GCM, SM4-GCM, Camellia-GCM
 """
 
 import argparse
@@ -1223,6 +1223,217 @@ def list_hmac_algorithms():
     print("  • Default: sha256")
 
 # =========================
+# 8. AEAD ENCRYPTION (AES-GCM, SM4-GCM, Camellia-GCM)
+# =========================
+
+def gcm_encrypt_file(cipher_algo, key_hex, infile, aad_str=None):
+    """
+    Encrypt file using AES-GCM, SM4-GCM or Camellia-GCM
+    
+    Args:
+        cipher_algo: Algorithm to use ('aes', 'sm4', or 'camellia')
+        key_hex: Key in hex format (length depends on algorithm)
+        infile: Input file to encrypt
+        aad_str: Additional authenticated data (optional)
+    """
+    # Validate and normalize algorithm
+    cipher_algo = cipher_algo.lower()
+    
+    # Determine key length based on algorithm
+    if cipher_algo == 'aes':
+        # AES supports 128, 192, 256 bits (16, 24, 32 bytes)
+        key = bytes.fromhex(key_hex)
+        if len(key) not in [16, 24, 32]:
+            print(f"✖ AES key must be 16, 24, or 32 bytes (got {len(key)} bytes)", file=sys.stderr)
+            sys.exit(1)
+        algorithm = algorithms.AES(key)
+        
+    elif cipher_algo == 'sm4':
+        # SM4 uses 128-bit key (16 bytes)
+        key = bytes.fromhex(key_hex)
+        if len(key) != 16:
+            print(f"✖ SM4 key must be 16 bytes (128 bits), got {len(key)} bytes", file=sys.stderr)
+            sys.exit(1)
+        try:
+            from cryptography.hazmat.primitives.ciphers.algorithms import SM4
+            algorithm = SM4(key)
+        except ImportError:
+            print("✖ SM4 not supported in this cryptography version", file=sys.stderr)
+            sys.exit(1)
+            
+    elif cipher_algo == 'camellia':
+        # Camellia supports 128, 192, 256 bits (16, 24, 32 bytes)
+        key = bytes.fromhex(key_hex)
+        if len(key) not in [16, 24, 32]:
+            print(f"✖ Camellia key must be 16, 24, or 32 bytes (got {len(key)} bytes)", file=sys.stderr)
+            sys.exit(1)
+        try:
+            from cryptography.hazmat.primitives.ciphers.algorithms import Camellia
+            algorithm = Camellia(key)
+        except ImportError:
+            print("✖ Camellia not supported in this cryptography version", file=sys.stderr)
+            sys.exit(1)
+            
+    else:
+        print(f"✖ Unsupported algorithm: {cipher_algo}. Use 'aes', 'sm4', or 'camellia'", file=sys.stderr)
+        sys.exit(1)
+    
+    # Generate random nonce (12 bytes recommended for GCM)
+    nonce = os.urandom(12)
+    
+    # Prepare AAD if provided
+    aad = aad_str.encode() if aad_str else None
+    
+    # Read input file
+    with open(infile, "rb") as f:
+        plaintext = f.read()
+    
+    # Create cipher and encrypt
+    cipher = Cipher(algorithm, modes.GCM(nonce))
+    encryptor = cipher.encryptor()
+    
+    # Update AAD if provided
+    if aad:
+        encryptor.authenticate_additional_data(aad)
+    
+    # Encrypt data
+    ciphertext = encryptor.update(plaintext) + encryptor.finalize()
+    
+    # Get authentication tag
+    tag = encryptor.tag
+    
+    # Write nonce + ciphertext + tag to stdout
+    # Format: nonce (12 bytes) + ciphertext + tag (16 bytes)
+    sys.stdout.buffer.write(nonce + ciphertext + tag)
+    
+    # Also print info to stderr for user feedback
+    print(f"✔ {cipher_algo.upper()}-GCM encryption complete", file=sys.stderr)
+    print(f"  Key size: {len(key) * 8} bits", file=sys.stderr)
+    print(f"  Nonce size: {len(nonce) * 8} bits", file=sys.stderr)
+    print(f"  Tag size: {len(tag) * 8} bits", file=sys.stderr)
+    print(f"  Input size: {len(plaintext)} bytes", file=sys.stderr)
+    print(f"  Output size: {len(nonce) + len(ciphertext) + len(tag)} bytes", file=sys.stderr)
+    if aad:
+        print(f"  AAD size: {len(aad)} bytes", file=sys.stderr)
+
+def gcm_decrypt_file(cipher_algo, key_hex, aad_str=None):
+    """
+    Decrypt from stdin using AES-GCM, SM4-GCM or Camellia-GCM
+    
+    Args:
+        cipher_algo: Algorithm to use ('aes', 'sm4', or 'camellia')
+        key_hex: Key in hex format (length depends on algorithm)
+        aad_str: Additional authenticated data (optional)
+    """
+    # Validate and normalize algorithm
+    cipher_algo = cipher_algo.lower()
+    
+    # Determine key based on algorithm
+    if cipher_algo == 'aes':
+        key = bytes.fromhex(key_hex)
+        if len(key) not in [16, 24, 32]:
+            print(f"✖ AES key must be 16, 24, or 32 bytes (got {len(key)} bytes)", file=sys.stderr)
+            sys.exit(1)
+        algorithm = algorithms.AES(key)
+        
+    elif cipher_algo == 'sm4':
+        key = bytes.fromhex(key_hex)
+        if len(key) != 16:
+            print(f"✖ SM4 key must be 16 bytes (128 bits), got {len(key)} bytes", file=sys.stderr)
+            sys.exit(1)
+        try:
+            from cryptography.hazmat.primitives.ciphers.algorithms import SM4
+            algorithm = SM4(key)
+        except ImportError:
+            print("✖ SM4 not supported in this cryptography version", file=sys.stderr)
+            sys.exit(1)
+            
+    elif cipher_algo == 'camellia':
+        key = bytes.fromhex(key_hex)
+        if len(key) not in [16, 24, 32]:
+            print(f"✖ Camellia key must be 16, 24, or 32 bytes (got {len(key)} bytes)", file=sys.stderr)
+            sys.exit(1)
+        try:
+            from cryptography.hazmat.primitives.ciphers.algorithms import Camellia
+            algorithm = Camellia(key)
+        except ImportError:
+            print("✖ Camellia not supported in this cryptography version", file=sys.stderr)
+            sys.exit(1)
+            
+    else:
+        print(f"✖ Unsupported algorithm: {cipher_algo}. Use 'aes', 'sm4', or 'camellia'", file=sys.stderr)
+        sys.exit(1)
+    
+    # Prepare AAD if provided
+    aad = aad_str.encode() if aad_str else None
+    
+    # Read encrypted data from stdin
+    data = sys.stdin.buffer.read()
+    
+    # Minimum size: nonce (12) + tag (16) = 28 bytes
+    if len(data) < 28:
+        print("✖ Invalid input, too short", file=sys.stderr)
+        sys.exit(1)
+    
+    # Extract nonce (first 12 bytes), tag (last 16 bytes), ciphertext (middle)
+    nonce = data[:12]
+    tag = data[-16:]
+    ciphertext = data[12:-16]
+    
+    # Create cipher and decrypt
+    cipher = Cipher(algorithm, modes.GCM(nonce, tag))
+    decryptor = cipher.decryptor()
+    
+    # Update AAD if provided
+    if aad:
+        decryptor.authenticate_additional_data(aad)
+    
+    try:
+        # Decrypt data
+        plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+        
+        # Write plaintext to stdout
+        sys.stdout.buffer.write(plaintext)
+        
+        # Print success message to stderr
+        print(f"✔ {cipher_algo.upper()}-GCM decryption successful", file=sys.stderr)
+        print(f"  Decrypted size: {len(plaintext)} bytes", file=sys.stderr)
+        
+    except Exception as e:
+        print(f"✖ Decryption failed: {e}", file=sys.stderr)
+        print("  Possible causes:", file=sys.stderr)
+        print("  • Incorrect key", file=sys.stderr)
+        print("  • Incorrect AAD", file=sys.stderr)
+        print("  • Corrupted or tampered data", file=sys.stderr)
+        sys.exit(1)
+
+def list_gcm_algorithms():
+    """List all available GCM algorithms"""
+    print("Available GCM algorithms:")
+    print("-" * 50)
+    
+    print("AES-GCM (Recommended):")
+    print("  aes-128-gcm     - 128-bit key, 12-byte nonce")
+    print("  aes-192-gcm     - 192-bit key, 12-byte nonce")
+    print("  aes-256-gcm     - 256-bit key, 12-byte nonce (Default)")
+    
+    print("\nCamellia-GCM:")
+    print("  camellia-128-gcm - 128-bit key, 12-byte nonce")
+    print("  camellia-192-gcm - 192-bit key, 12-byte nonce")
+    print("  camellia-256-gcm - 256-bit key, 12-byte nonce")
+    
+    print("\nSM4-GCM (Chinese standard):")
+    print("  sm4-gcm         - 128-bit key, 12-byte nonce")
+    
+    print("\nNotes:")
+    print("  • GCM provides both confidentiality and authentication")
+    print("  • Nonce should be unique for each encryption with the same key")
+    print("  • Default nonce size: 12 bytes (96 bits)")
+    print("  • Tag size: 16 bytes (128 bits)")
+    print("  • AAD (Additional Authenticated Data) is optional")
+    print("  • Recommended: AES-256-GCM")
+
+# =========================
 # List available ciphers
 # =========================
 
@@ -1261,18 +1472,30 @@ def list_ciphers():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC)",
+        description="Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC, GCM)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # GCM - AES-GCM encryption
+  python %(prog)s gcm encrypt --algo aes --key $(openssl rand -hex 32) --infile secret.txt
+  python %(prog)s gcm encrypt --algo aes --key $(openssl rand -hex 32) --infile secret.txt --aad "metadata"
+  
+  # GCM - AES-GCM decryption
+  cat encrypted.bin | python %(prog)s gcm decrypt --algo aes --key $(openssl rand -hex 32)
+  cat encrypted.bin | python %(prog)s gcm decrypt --algo aes --key $(openssl rand -hex 32) --aad "metadata"
+  
+  # GCM - SM4-GCM encryption
+  python %(prog)s gcm encrypt --algo sm4 --key $(openssl rand -hex 16) --infile secret.txt
+  
+  # GCM - Camellia-GCM encryption
+  python %(prog)s gcm encrypt --algo camellia --key $(openssl rand -hex 32) --infile secret.txt
+  
+  # GCM - list algorithms
+  python %(prog)s gcm list
+  
   # HMAC - calculate
   python %(prog)s hmac calc --key "secret" --data "message"
   python %(prog)s hmac calc --key "secret" --file message.txt
-  python %(prog)s hmac calc --key "secret" --data "message" --algo sha512
-  
-  # HMAC - verify
-  python %(prog)s hmac verify --key "secret" --hmac "abc123..." --data "message"
-  python %(prog)s hmac verify --key "secret" --hmac "abc123..." --file message.txt
   
   # HMAC - list algorithms
   python %(prog)s hmac list
@@ -1449,6 +1672,29 @@ Examples:
     hm_list = hmsub.add_parser("list", help="List all available HMAC algorithms")
 
     # ======================
+    # GCM (AEAD Encryption)
+    # ======================
+    gcm = sub.add_parser("gcm", help="GCM encryption (AES-GCM, SM4-GCM, Camellia-GCM)")
+    gcmsub = gcm.add_subparsers(dest="cmd")
+
+    gcm_enc = gcmsub.add_parser("encrypt", help="Encrypt a file with GCM")
+    gcm_enc.add_argument("--algo", required=True, choices=['aes', 'sm4', 'camellia'],
+                        help="Algorithm to use: aes, sm4, or camellia")
+    gcm_enc.add_argument("--key", required=True, 
+                        help="Key in hex (16 bytes for AES-128/SM4, 24 for AES-192, 32 for AES-256/Camellia-256)")
+    gcm_enc.add_argument("--infile", required=True, help="Input file to encrypt")
+    gcm_enc.add_argument("--aad", help="AAD as string (optional)")
+
+    gcm_dec = gcmsub.add_parser("decrypt", help="Decrypt from stdin with GCM")
+    gcm_dec.add_argument("--algo", required=True, choices=['aes', 'sm4', 'camellia'],
+                        help="Algorithm to use: aes, sm4, or camellia")
+    gcm_dec.add_argument("--key", required=True, 
+                        help="Key in hex (16 bytes for AES-128/SM4, 24 for AES-192, 32 for AES-256/Camellia-256)")
+    gcm_dec.add_argument("--aad", help="AAD as string (optional)")
+
+    gcm_list = gcmsub.add_parser("list", help="List all available GCM algorithms")
+
+    # ======================
     # List ciphers
     # ======================
     list_cmd = sub.add_parser("ciphers", help="List available cipher algorithms")
@@ -1517,6 +1763,14 @@ Examples:
             hmac_verify(args.key, args.hmac, args.data, args.file, args.algo)
         elif args.cmd == "list":
             list_hmac_algorithms()
+
+    elif args.tool == "gcm":
+        if args.cmd == "encrypt":
+            gcm_encrypt_file(args.algo, args.key, args.infile, args.aad)
+        elif args.cmd == "decrypt":
+            gcm_decrypt_file(args.algo, args.key, args.aad)
+        elif args.cmd == "list":
+            list_gcm_algorithms()
 
     elif args.tool == "ciphers":
         list_ciphers()
