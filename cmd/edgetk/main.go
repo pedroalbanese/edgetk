@@ -4652,28 +4652,90 @@ Subcommands:
 	}
 
 	if *digest && *md == "argon2" && !*check {
-		hash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
-		fmt.Println(hex.EncodeToString(hash))
+		password := []byte(*key)
+		salt := []byte(*salt)
+
+		time := uint32(*iter)
+		memory := uint32(64 * 1024)
+		threads := uint8(1)
+		keyLen := uint32(*length / 8)
+
+		hash := argon2.IDKey(
+			password,
+			salt,
+			time,
+			memory,
+			threads,
+			keyLen,
+		)
+
+		saltB64 := base64.RawStdEncoding.EncodeToString(salt)
+		hashB64 := base64.RawStdEncoding.EncodeToString(hash)
+
+		encoded := fmt.Sprintf(
+			"$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s",
+			memory, time, threads, saltB64, hashB64,
+		)
+
+		fmt.Println(encoded)
 		os.Exit(0)
 	}
 
 	if *md == "argon2" && *check {
-		hashedPassword, err := ioutil.ReadAll(inputfile)
+		encodedBytes, err := ioutil.ReadAll(inputfile)
 		if err != nil {
 			log.Fatal(err)
 		}
-		hashedPasswordString := strings.TrimSpace(string(hashedPassword))
-		expectedHash, err := hex.DecodeString(hashedPasswordString)
-		if err != nil {
-			log.Fatalf("Erro ao decodificar hash hexadecimal: %v", err)
+
+		encoded := strings.TrimSpace(string(encodedBytes))
+		parts := strings.Split(encoded, "$")
+
+		if len(parts) != 6 {
+			log.Fatal(errors.New("invalid argon2 encoded format"))
 		}
-		computedHash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
+
+		if parts[1] != "argon2id" {
+			log.Fatal(errors.New("unsupported argon2 variant"))
+		}
+
+		var memory, time uint32
+		var threads uint8
+
+		_, err = fmt.Sscanf(
+			parts[3],
+			"m=%d,t=%d,p=%d",
+			&memory, &time, &threads,
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		expectedHash, err := base64.RawStdEncoding.DecodeString(parts[5])
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		computedHash := argon2.IDKey(
+			[]byte(*key),
+			salt,
+			time,
+			memory,
+			threads,
+			uint32(len(expectedHash)),
+		)
+
 		if subtle.ConstantTimeCompare(expectedHash, computedHash) == 1 {
 			fmt.Println("Verify: true")
 		} else {
 			fmt.Println("Verify: false")
 			os.Exit(1)
 		}
+
 		os.Exit(0)
 	}
 
@@ -9492,7 +9554,7 @@ Subcommands:
 		}
 
 		block := &pem.Block{
-			Type:  "X25519 PRIVATE KEY",
+			Type:  "PRIVATE KEY",
 			Bytes: privateStream,
 		}
 		file, err := os.Create(*priv)
@@ -9582,7 +9644,7 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			privPEM = pem.EncodeToMemory(&pem.Block{Type: "X25519 PRIVATE KEY", Bytes: privKeyBytes})
+			privPEM = pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyBytes})
 		} else {
 			privPEM = buf
 		}
@@ -10271,8 +10333,6 @@ Subcommands:
 			*alg = "EC"
 		} else if strings.Contains(s, "GOST PRIVATE") {
 			*alg = "GOST2012"
-		} else if strings.Contains(s, "X25519 PRIVATE") {
-			*alg = "X25519"
 		} else if strings.Contains(s, "SM9 ENC") {
 			*alg = "SM9ENCRYPT"
 		} else if strings.Contains(s, "SM9 SIGN") {
@@ -10338,7 +10398,33 @@ Subcommands:
 		} else if strings.Contains(s, "X448 PRIVATE") {
 			*alg = "X448"
 		} else if strings.Contains(s, "PRIVATE") {
-			*alg = "ED25519"
+			block, _ := pem.Decode(b)
+			if block == nil {
+				log.Fatalf("failed to decode PEM block")
+			}
+
+			der := block.Bytes
+
+			if smx509.IsEncryptedPEMBlock(block) {
+				der, err = DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatalf("failed to decrypt PEM block: %v", err)
+				}
+			}
+
+			privKeyInterface, err := smx509.ParsePKCS8PrivateKey(der)
+			if err != nil {
+				log.Fatalf("failed to parse PKCS8 private key: %v", err)
+			}
+
+			switch k := privKeyInterface.(type) {
+			case ed25519.PrivateKey:
+				*alg = "ED25519"
+			case *ecdh.PrivateKey:
+				*alg = "X25519"
+			default:
+				log.Fatalf("unknown key type: %T", k)
+			}
 		}
 	}
 
@@ -20267,6 +20353,10 @@ Subcommands:
 			var publicKey = publicInterface.(x448.PublicKey)
 			fmt.Printf("Public=%X\n", publicKey)
 			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "X25519") {
+			publicKey := publicInterface.(*ecdh.PublicKey)
+			fmt.Printf("Public=%X\n", publicKey.Bytes())
+			os.Exit(0)
 		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "GOST2012") {
 			var publicKey = publicInterface.(*gost3410.PublicKey)
 			fmt.Printf("Public.X=%X\n", publicKey.X)
@@ -21905,6 +21995,13 @@ Subcommands:
 				log.Fatal(err)
 			}
 			edKey := privKey.(*ecdh.PrivateKey)
+
+			if *pkey == "modulus" {
+				pub := edKey.Public().(*ecdh.PublicKey)
+				fmt.Printf("Public=%X\n", pub.Bytes())
+				os.Exit(0)
+			}
+
 			fmt.Printf(string(privPEM))
 			derBytes, err := x509.MarshalPKIXPublicKey(edKey.Public())
 			if err != nil {
