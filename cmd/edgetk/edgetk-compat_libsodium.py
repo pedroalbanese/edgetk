@@ -995,54 +995,62 @@ def list_hmac_algorithms():
     print("  • Default: sha256")
 
 # =========================
-# 4. SCRYPT KDF (standard Python)
+# 4. SCRYPT (Key Derivation)
 # =========================
 
-def scrypt_derive():
-    """Derive key with scrypt"""
-    secret = getpass.getpass("Secret: ")
-    salt_str = getpass.getpass("Salt (text): ")
-    
-    if isinstance(secret, str):
-        secret = secret.encode('utf-8')
-    salt = salt_str.encode('utf-8')
-    
+def scrypt_derive(secret=None, salt_str=None, n=16384, key_len=32):
+    """Derive key using hashlib.scrypt (KDF)"""
+    if secret is None:
+        secret = getpass.getpass("Secret: ").encode()
+    else:
+        secret = secret.encode()
+
+    if salt_str is None:
+        salt_str = getpass.getpass("Salt (string): ")
+    salt = salt_str.encode()
+
     derived_key = hashlib.scrypt(
         secret,
         salt=salt,
-        n=16384,
+        n=n,
         r=8,
         p=1,
-        dklen=32
+        maxmem=0,
+        dklen=key_len
     )
-    
-    print(f"Salt: {salt_str}")
+
+    print(f"Salt (string): {salt_str}")
     print(f"Derived key (hex): {derived_key.hex()}")
 
-def scrypt_compare():
-    """Compare derived key"""
-    secret = getpass.getpass("Secret: ")
-    salt_str = getpass.getpass("Salt (text): ")
-    derived_hex = getpass.getpass("Derived key (hex): ").strip()
-    
-    if isinstance(secret, str):
-        secret = secret.encode('utf-8')
-    salt = salt_str.encode('utf-8')
+def scrypt_compare(secret=None, salt_str=None, derived_hex=None, n=16384):
+    """Re-derive and compare key"""
+    if secret is None:
+        secret = getpass.getpass("Secret: ").encode()
+    else:
+        secret = secret.encode()
+
+    if salt_str is None:
+        salt_str = getpass.getpass("Salt (string): ")
+    salt = salt_str.encode()
+
+    if derived_hex is None:
+        derived_hex = getpass.getpass("Derived key (hex): ").strip()
     derived_bytes = bytes.fromhex(derived_hex)
-    
+
     new_derived = hashlib.scrypt(
         secret,
         salt=salt,
-        n=16384,
+        n=n,
         r=8,
         p=1,
+        maxmem=0,
         dklen=len(derived_bytes)
     )
-    
+
     if new_derived == derived_bytes:
-        print("✔ Keys match")
+        print("✔ Derived key matches")
     else:
-        print("✖ Keys differ")
+        print("✖ Derived key does NOT match")
 
 # =========================
 # 5. FUNCTIONS WITH PYSODIUM (if available)
@@ -1126,30 +1134,9 @@ if PYSODIUM_AVAILABLE:
         print(f"✔ Public key saved in {pub_path} (PEM)")
         
         # Save private key
-        if encrypt:
-            password = getpass.getpass("Password to encrypt: ")
-            salt = generate_random_bytes(16)
-            key = derive_key_scrypt(password, salt, 32)
-            
-            # Encrypt with improvised AES
-            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-            from cryptography.hazmat.primitives import padding
-            
-            iv = generate_random_bytes(16)
-            cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-            encryptor = cipher.encryptor()
-            
-            padder = padding.PKCS7(128).padder()
-            padded_private = padder.update(private_pem.encode()) + padder.finalize()
-            encrypted = encryptor.update(padded_private) + encryptor.finalize()
-            
-            with open(priv_path, "wb") as f:
-                f.write(salt + iv + encrypted)
-            print(f"✔ Encrypted private key saved in {priv_path}")
-        else:
-            with open(priv_path, "w") as f:
-                f.write(private_pem)
-            print(f"✔ Unencrypted private key saved in {priv_path} (PEM PKCS8)")
+        with open(priv_path, "w") as f:
+            f.write(private_pem)
+        print(f"✔ Unencrypted private key saved in {priv_path} (PEM PKCS8)")
     
     def ed25519_sign(priv_path, msg_path):
         """Sign with Ed25519 (PKCS#8 seed → libsodium key)"""
@@ -1225,30 +1212,9 @@ if PYSODIUM_AVAILABLE:
             f.write(public_pem)
         print(f"✔ Public key saved in {pub_path} (PEM)")
         
-        # Save private key
-        if encrypt:
-            password = getpass.getpass("Password to encrypt: ")
-            salt = generate_random_bytes(16)
-            key = derive_key_scrypt(password, salt, 32)
-            
-            # Simple encryption
-            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-            iv = generate_random_bytes(16)
-            cipher = Cipher(algorithms.AES(key), modes.CBC(iv))
-            encryptor = cipher.encryptor()
-            
-            # Simple padding
-            padding_len = 16 - (len(private_pem) % 16)
-            padded_private = private_pem.encode() + bytes([padding_len]) * padding_len
-            encrypted = encryptor.update(padded_private) + encryptor.finalize()
-            
-            with open(priv_path, "wb") as f:
-                f.write(salt + iv + encrypted)
-            print(f"✔ Encrypted private key saved in {priv_path}")
-        else:
-            with open(priv_path, "w") as f:
-                f.write(private_pem)
-            print(f"✔ Unencrypted private key saved in {priv_path} (PEM PKCS8)")
+        with open(priv_path, "w") as f:
+            f.write(private_pem)
+        print(f"✔ Unencrypted private key saved in {priv_path} (PEM PKCS8)")
     
     def x25519_shared(priv_path, peer_pub_path):
         """Calculate X25519 shared secret using pure pysodium"""
@@ -1320,9 +1286,9 @@ Advanced features (require pysodium):
   cat encrypted.bin | python %(prog)s chacha20 decrypt --key $(openssl rand -hex 32)
   
   # Ed25519 signatures
-  python %(prog)s eddsa gen --priv private.pem --pub public.pem
-  python %(prog)s eddsa sign --priv private.pem --msg message.txt
-  python %(prog)s eddsa verify --pub public.pem --msg message.txt --sig SIGNATURE_HEX
+  python %(prog)s ed25519 gen --priv private.pem --pub public.pem
+  python %(prog)s ed25519 sign --priv private.pem --msg message.txt
+  python %(prog)s ed25519 verify --pub public.pem --msg message.txt --sig SIGNATURE_HEX
   
   # Scrypt key derivation
   python %(prog)s scrypt derive
@@ -1397,10 +1363,20 @@ Advanced features (require pysodium):
     # ======================
     # Scrypt
     # ======================
-    sc = sub.add_parser("scrypt", help="Scrypt KDF")
-    scsub = sc.add_subparsers(dest="cmd", required=True)
-    scsub.add_parser("derive", help="Derive key")
-    scsub.add_parser("compare", help="Compare key")
+    sc = sub.add_parser("scrypt", help="Scrypt key derivation")
+    scsub = sc.add_subparsers(dest="cmd")
+
+    sc_d = scsub.add_parser("derive", help="Derive a key")
+    sc_d.add_argument("--secret", help="Input secret")
+    sc_d.add_argument("--salt", help="Salt as string")
+    sc_d.add_argument("--iter", type=int, default=16384, help="Scrypt N parameter")
+    sc_d.add_argument("--keylen", type=int, default=32, help="Derived key length (bytes)")
+
+    sc_c = scsub.add_parser("compare", help="Re-derive and compare a key")
+    sc_c.add_argument("--secret", help="Input secret")
+    sc_c.add_argument("--salt", help="Salt as string")
+    sc_c.add_argument("--derived", help="Derived key (hex)")
+    sc_c.add_argument("--iter", type=int, default=16384, help="Scrypt N parameter")
 
     # ======================
     # Advanced features (only if pysodium available)
@@ -1431,7 +1407,6 @@ Advanced features (require pysodium):
         ed_gen = edsub.add_parser("gen", help="Generate keys")
         ed_gen.add_argument("--priv", default="private.pem", help="Private key PEM")
         ed_gen.add_argument("--pub", default="public.pem", help="Public key PEM")
-        ed_gen.add_argument("--encrypt", action="store_true", help="Encrypt")
         ed_sign = edsub.add_parser("sign", help="Sign")
         ed_sign.add_argument("--priv", required=True, help="Private key PEM")
         ed_sign.add_argument("--msg", required=True, help="Message file")
@@ -1445,7 +1420,6 @@ Advanced features (require pysodium):
         x_gen = xsub.add_parser("gen", help="Generate keys")
         x_gen.add_argument("--priv", default="private.pem", help="Private key PEM")
         x_gen.add_argument("--pub", default="public.pem", help="Public key PEM")
-        x_gen.add_argument("--encrypt", action="store_true", help="Encrypt")
         x_sh = xsub.add_parser("shared", help="Shared secret")
         x_sh.add_argument("--priv", required=True, help="Your private key PEM")
         x_sh.add_argument("--peer", required=True, help="Peer public key PEM")
@@ -1503,9 +1477,9 @@ Advanced features (require pysodium):
     
     elif args.tool == "scrypt":
         if args.cmd == "derive":
-            scrypt_derive()
+            scrypt_derive(args.secret, args.salt, args.iter, args.keylen)
         elif args.cmd == "compare":
-            scrypt_compare()
+            scrypt_compare(args.secret, args.salt, args.derived, args.iter)
     
     # Dispatcher for advanced features (if available)
     elif PYSODIUM_AVAILABLE:
@@ -1517,7 +1491,7 @@ Advanced features (require pysodium):
         
         elif args.tool == "ed25519":
             if args.cmd == "gen":
-                ed25519_generate(args.priv, args.pub, args.encrypt)
+                ed25519_generate(args.priv, args.pub)
             elif args.cmd == "sign":
                 ed25519_sign(args.priv, args.msg)
             elif args.cmd == "verify":
@@ -1525,7 +1499,7 @@ Advanced features (require pysodium):
         
         elif args.tool == "x25519":
             if args.cmd == "gen":
-                x25519_generate(args.priv, args.pub, args.encrypt)
+                x25519_generate(args.priv, args.pub)
             elif args.cmd == "shared":
                 x25519_shared(args.priv, args.peer)
     
