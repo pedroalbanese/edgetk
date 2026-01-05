@@ -93,7 +93,7 @@ proc showAbout {} {
     pack .about_window.main.title -pady 4
 
     # Version
-    label .about_window.main.version -text "Version 1.1" \
+    label .about_window.main.version -text "Version 1.2" \
         -font {Arial 10} -bg white
     pack .about_window.main.version -pady 2
 
@@ -192,11 +192,6 @@ proc generateKey {} {
                 }
             }
         }
-    }
-    
-    # If user manually entered public key, use it
-    if {$current_public ne "" && [file exists $current_public]} {
-        set public_key_path $current_public
     }
     
     # Check if the selected files already exist
@@ -1067,8 +1062,7 @@ proc updateTextUI {} {
     
     # 64-bit ciphers (block size)
     set block64_ciphers {
-        3des blowfish cast5 gost89 hight idea misty1 present rc2 rc5
-        rc6 seed twine kalyna128_128 kalyna128_256
+        3des blowfish cast5 gost89 hight idea misty1 present rc2 rc5 twine
     }
     
     # 1. Control Mode combo box
@@ -1076,14 +1070,6 @@ proc updateTextUI {} {
         # Stream ciphers: disable mode
         .nb.text_tab.main.algo_frame.row1.modeLabel configure -state disabled
         .nb.text_tab.main.algo_frame.row1.modeCombo configure -state disabled
-        .nb.text_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
-        
-        # For stream ciphers, set mode automatically
-        if {$algorithm eq "rc4"} {
-            .nb.text_tab.main.algo_frame.row1.modeCombo set "ecb"
-        } else {
-            .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
-        }
     } elseif {$algorithm eq "xoodyak"} {
         # Xoodyak (permutation): fixed mode
         .nb.text_tab.main.algo_frame.row1.modeLabel configure -state disabled
@@ -1130,6 +1116,10 @@ proc updateTextUI {} {
         }
     }
     
+    if {$algorithm ne "curupira" && $mode eq "lettersoup"} {
+        .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
+    }
+    
     # 2. Control KDF fields
     if {$useKDF} {
         # KDF active: enable fields
@@ -1160,8 +1150,8 @@ proc updateTextUI {} {
     # 3. Control IV field
     # Define AEAD modes that don't use IV
     set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
-    
-    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes} {
+
+    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes && $algorithm ni $stream_ciphers} {
         # AEAD ciphers or AEAD modes: disable IV
         .nb.text_tab.main.keys_frame.ivLabel configure -state disabled
         .nb.text_tab.main.keys_frame.ivBox configure -state disabled
@@ -1199,8 +1189,7 @@ proc updateFilesUI {} {
     
     # 64-bit ciphers (block size)
     set block64_ciphers {
-        3des blowfish cast5 curupira gost89 hight idea misty1 present rc2 rc5
-        rc6 seed twine kalyna128_128 kalyna128_256
+        3des blowfish cast5 curupira gost89 hight idea misty1 present rc2 rc5 twine
     }
     
     # 1. Control Mode combo box
@@ -1209,13 +1198,6 @@ proc updateFilesUI {} {
         .nb.file_tab.main.algo_frame.row1.modeLabel configure -state disabled
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -state disabled
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
-        
-        # For stream ciphers, set mode automatically
-        if {$algorithm eq "rc4"} {
-            .nb.file_tab.main.algo_frame.row1.modeCombo set "ecb"
-        } else {
-            .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
-        }
     } elseif {$algorithm eq "xoodyak"} {
         # Xoodyak (permutation): fixed mode
         .nb.file_tab.main.algo_frame.row1.modeLabel configure -state disabled
@@ -1258,6 +1240,10 @@ proc updateFilesUI {} {
         }
     }
     
+    if {$algorithm ne "curupira" && $mode eq "lettersoup"} {
+        .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
+    }
+    
     # 2. Control KDF fields
     if {$useKDF} {
         # KDF active: enable fields
@@ -1289,7 +1275,7 @@ proc updateFilesUI {} {
     # Define AEAD modes that don't use IV
     set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
     
-    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes} {
+    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes && $algorithm ni $stream_ciphers} {
         # AEAD ciphers or AEAD modes: disable IV
         .nb.file_tab.main.keys_frame.ivLabel configure -state disabled
         .nb.file_tab.main.keys_frame.ivBox configure -state disabled
@@ -1748,11 +1734,6 @@ proc generateECDHKey {} {
         }
     }
     
-    # If user manually entered public key, use it
-    if {$current_public ne "" && [file exists $current_public]} {
-        set public_key_path $current_public
-    }
-    
     # Check if the selected files already exist
     set private_exists [file exists $private_key_path]
     set public_exists [file exists $public_key_path]
@@ -1939,6 +1920,70 @@ proc executeECDHHKDF {} {
     }
 }
 
+# Function to execute HKDF - MODIFIED TO USE ADDITIONAL INFO
+proc executeECDHSCRYPT {} {
+    set salt [.nb.ecdh_tab.main.kdf_frame.content.saltInput get]
+    set info [.nb.ecdh_tab.main.kdf_frame.content.infoInput get]
+    set hashAlgorithm [.nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo get]
+    set outputKeySize [.nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo get]
+    set iter [.nb.ecdh_tab.main.algo_frame.content.iterCombo get]
+    set outputSize [expr {$outputKeySize * 8}]
+    
+    # Get text from output area
+    set full_text [string trim [.nb.ecdh_tab.main.output_frame.textframe.outputArea get 1.0 end]]
+    
+    # Extract hexadecimal (same logic as Copy button)
+    set hexValue ""
+    set lines [split $full_text "\n"]
+    
+    # Find last non-empty line
+    set last_line ""
+    foreach line [lreverse $lines] {
+        if {[string trim $line] ne ""} {
+            set last_line [string trim $line]
+            break
+        }
+    }
+    
+    # Check if it's hexadecimal
+    if {[regexp {^[0-9a-fA-F]+$} $last_line]} {
+        set hexValue $last_line
+    } else {
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "ERROR: No valid hexadecimal found in last line.\nPlease derive a shared secret first."
+        return
+    }
+    
+    if {$hexValue eq ""} {
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "ERROR: No input key found. Please derive a shared secret first."
+        return
+    }
+    
+    # Build HKDF command
+    set cmd "edgetk -kdf scrypt -md $hashAlgorithm -iter $iter -key $hexValue -bits $outputSize"
+    
+    # Add salt if provided
+    if {$salt ne ""} {
+        append cmd " -salt $salt"
+    }
+    
+    # Add info if provided
+    if {$info ne ""} {
+        append cmd " -info $info"
+    }
+    
+    if {[catch {
+        set hkdfResult [exec {*}$cmd 2>@1]
+        
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "Scrypt Applied Successfully:\n\n$hkdfResult"
+    } error]} {
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
+        .nb.ecdh_tab.main.output_frame.textframe.outputArea insert end "ERROR applying Scrypt: $error"
+    }
+}
+
 # ===== END OF ECDH FUNCTIONS =====
 
 # ===== ENCRYPTION FUNCTIONS (from second code) =====
@@ -2085,7 +2130,7 @@ proc calculateIVSize {algorithm mode} {
 
 # Functions for text processing
 proc encrypt {} {
-    set plaintext [.nb.text_tab.main.plain_frame.textframe.text get 1.0 end]
+    set plaintext [.nb.text_tab.main.input_frame.textframe.text get 1.0 end]
     set key [.nb.text_tab.main.keys_frame.keyBox get]
     set iv [.nb.text_tab.main.keys_frame.ivBox get]
     set salt [.nb.text_tab.main.algo_frame.row2.saltBox get]
@@ -2109,7 +2154,7 @@ proc encrypt {} {
     }
 
     # Clear output area
-    .nb.text_tab.main.cipher_frame.textframe.text delete 1.0 end
+    .nb.text_tab.main.output_frame.textframe.text delete 1.0 end
     
     # Use catch to capture errors
     if {[catch {
@@ -2122,15 +2167,15 @@ proc encrypt {} {
             # base85
             set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base85 enc]
         }
-        .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 $encryptedMsg
+        .nb.text_tab.main.output_frame.textframe.text insert 1.0 $encryptedMsg
     } errorMsg]} {
         # If error occurs, show in output area (ciphertext)
-        .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 "Error: $errorMsg"
+        .nb.text_tab.main.output_frame.textframe.text insert 1.0 "Error: $errorMsg"
     }
 }
 
 proc decrypt {} {
-    set ciphertext [.nb.text_tab.main.cipher_frame.textframe.text get 1.0 end]
+    set ciphertext [.nb.text_tab.main.input_frame.textframe.text get 1.0 end]
     set key [.nb.text_tab.main.keys_frame.keyBox get]
     set iv [.nb.text_tab.main.keys_frame.ivBox get]
     set salt [.nb.text_tab.main.algo_frame.row2.saltBox get]
@@ -2154,7 +2199,7 @@ proc decrypt {} {
     }
 
     # Clear output area
-    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
+    .nb.text_tab.main.output_frame.textframe.text delete 1.0 end
     
     # Use catch to capture errors
     if {[catch {
@@ -2167,10 +2212,10 @@ proc decrypt {} {
             # base85
             set decryptedMsg [exec edgetk -base85 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
         }
-        .nb.text_tab.main.plain_frame.textframe.text insert 1.0 $decryptedMsg
+        .nb.text_tab.main.output_frame.textframe.text insert 1.0 $decryptedMsg
     } errorMsg]} {
         # If error occurs, show in output area (plaintext)
-        .nb.text_tab.main.plain_frame.textframe.text insert 1.0 "Error: $errorMsg"
+        .nb.text_tab.main.output_frame.textframe.text insert 1.0 "Error: $errorMsg"
     }
 }
 
@@ -2395,7 +2440,7 @@ pack .nb.signatures_tab.main.algo_frame.content -fill x -padx 8 -pady 3
 set ::algorithmComboData {"ecdsa" "ecsdsa" "eckcdsa" "ecgdsa" "sm2" "sm2ph" "gost2012" "rsa" "ed25519" "ed25519ph" "ed448" "ed448ph" "ed521" "ed521ph" "bign" "bip0340"}
 label .nb.signatures_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.signatures_tab.main.algo_frame.content.algorithmCombo -values $::algorithmComboData -state readonly -width 10
-.nb.signatures_tab.main.algo_frame.content.algorithmCombo set "ecdsa"
+.nb.signatures_tab.main.algo_frame.content.algorithmCombo set "ed25519"
 
 # Create Bits ComboBox
 set ::bitsComboData {"224" "256" "384" "512" "521" "1024" "2048" "3072" "4096"}
@@ -2518,11 +2563,11 @@ pack .nb.signatures_tab.main.keys_frame.title_frame.pass_frame -side right -anch
 # Cipher combobox (after passphrase box)
 ttk::combobox .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
     -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
-    -width 8 -state readonly
+    -width 12 -state readonly
 .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
 # Passphrase entry (box)
-entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {"DejaVu Sans Mono" 9} -show "*"
+entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 16 -font {"DejaVu Sans Mono" 9} -show "*"
 
 # Passphrase label
 label .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
@@ -2568,13 +2613,13 @@ grid columnconfigure .nb.signatures_tab.main.keys_frame.content 1 -weight 1
 
 # Input data frame - SAME STRUCTURE AS OUTPUT
 frame .nb.signatures_tab.main.input_frame -bg $frame_color -relief solid -bd 1
-pack .nb.signatures_tab.main.input_frame -fill x -padx 8 -pady 5
+pack .nb.signatures_tab.main.input_frame -fill both -expand true -padx 8 -pady 5
 
 label .nb.signatures_tab.main.input_frame.title -text "INPUT DATA" -font {Arial 10 bold} -bg $frame_color
 pack .nb.signatures_tab.main.input_frame.title -anchor w -padx 8 -pady 3
 
 frame .nb.signatures_tab.main.input_frame.content -bg $frame_color
-pack .nb.signatures_tab.main.input_frame.content -fill x -padx 8 -pady 3
+pack .nb.signatures_tab.main.input_frame.content -fill both -expand true -padx 8 -pady 3
 
 # Input type
 label .nb.signatures_tab.main.input_frame.content.inputTypeLabel -text "Input Type:" -font {Arial 9 bold} -bg $frame_color
@@ -2624,14 +2669,14 @@ selectInputType
 
 # Output frame
 frame .nb.signatures_tab.main.output_frame -bg $frame_color -relief solid -bd 1
-pack .nb.signatures_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
+pack .nb.signatures_tab.main.output_frame -fill both -expand false -padx 8 -pady 5
 
 label .nb.signatures_tab.main.output_frame.title -text "SIGNATURE" -font {Arial 10 bold} -bg $frame_color
 pack .nb.signatures_tab.main.output_frame.title -anchor w -padx 8 -pady 3
 
 # Create output text area - 2 LINES FOR SIGNATURE
 frame .nb.signatures_tab.main.output_frame.textframe -bg $frame_color
-pack .nb.signatures_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
+pack .nb.signatures_tab.main.output_frame.textframe -fill both -expand false -padx 8 -pady 3
 
 text .nb.signatures_tab.main.output_frame.textframe.outputArea -width 70 -height 4 -wrap word \
     -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
@@ -2680,434 +2725,17 @@ pack .nb.signatures_tab.main.sign_verify_frame -fill x -padx 8 -pady 10
 # Pack Verify first (rightmost)
 button .nb.signatures_tab.main.sign_verify_frame.verifyButton -text "Verify" -command verifySignature \
     -bg "#28a745" -fg white -font {Arial 10 bold} \
-    -padx 20 -pady 3 -relief raised -bd 2
+    -padx 20 -pady 3 -bd 1
 pack .nb.signatures_tab.main.sign_verify_frame.verifyButton -side right -padx 3
 
 # Then pack Sign (left of Verify)
 button .nb.signatures_tab.main.sign_verify_frame.signButton -text "Sign" -command createSignature \
     -bg "#6c757d" -fg white -font {Arial 10 bold} \
-    -padx 20 -pady 3 -relief raised -bd 2
+    -padx 20 -pady 3 -bd 1
 pack .nb.signatures_tab.main.sign_verify_frame.signButton -side right -padx 3
 
 # ========== END OF SIGNATURES TAB ==========
 
-# ========== TEXT TAB (ORIGINAL LAYOUT) ==========
-frame .nb.text_tab -bg $bg_color
-.nb add .nb.text_tab -text " Encrypt Text "
-
-# Main frame for content (Text)
-frame .nb.text_tab.main -bg $bg_color
-pack .nb.text_tab.main -fill both -expand yes
-
-# Grid configuration for expansion (Text)
-grid columnconfigure .nb.text_tab.main 0 -weight 1
-grid rowconfigure .nb.text_tab.main {1 2} -weight 1
-
-# Algorithm configuration frame (Text)
-frame .nb.text_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
-grid .nb.text_tab.main.algo_frame -row 0 -column 0 -columnspan 6 -sticky "ew" -padx 8 -pady 5
-
-# ALGORITHM SETTINGS title
-label .nb.text_tab.main.algo_frame.title -text "ALGORITHM SETTINGS" \
-    -font {Arial 10 bold} -bg $frame_color -fg $accent_color
-pack .nb.text_tab.main.algo_frame.title -anchor w -padx 8 -pady 5
-
-# Row 1: Algorithm and Mode (Text)
-frame .nb.text_tab.main.algo_frame.row1 -bg $frame_color
-pack .nb.text_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
-
-label .nb.text_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
-    -width 18 -state readonly
-.nb.text_tab.main.algo_frame.row1.algorithmCombo set "aes"
-
-label .nb.text_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
-    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
-    -width 18 -state readonly
-.nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
-
-# NEW: Add combobox for Encoding
-label .nb.text_tab.main.algo_frame.row1.encodingLabel -text "Encoding:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.text_tab.main.algo_frame.row1.encodingCombo \
-    -values {"base32" "base64" "base85"} \
-    -width 10 -state readonly
-.nb.text_tab.main.algo_frame.row1.encodingCombo set "base64"
-
-pack .nb.text_tab.main.algo_frame.row1.algorithmLabel .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-     .nb.text_tab.main.algo_frame.row1.modeLabel .nb.text_tab.main.algo_frame.row1.modeCombo \
-     .nb.text_tab.main.algo_frame.row1.encodingLabel .nb.text_tab.main.algo_frame.row1.encodingCombo \
-     -side left -padx 5
-
-# Row 2: KDF settings (Text)
-frame .nb.text_tab.main.algo_frame.row2 -bg $frame_color
-pack .nb.text_tab.main.algo_frame.row2 -fill x -padx 8 -pady 3
-
-checkbutton .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KDF" \
-    -variable ::useKDFAlgorithm -font {Arial 9} -bg $frame_color \
-    -command updateKeyEntryDisplay
-
-label .nb.text_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.text_tab.main.algo_frame.row2.saltBox -width 12 -font {Arial 9}
-
-label .nb.text_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.text_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValue
-set ::iterValue 10000
-
-set hashAlgorithms {
-    bash224 bash256 bash384 bash512
-    belt
-    blake2b256 blake2b512
-    blake2s256
-    blake3
-    bmw224 bmw256 bmw384 bmw512
-    cubehash256 cubehash512
-    echo224 echo256 echo384 echo512
-    esch256 esch384
-    fugue224 fugue256 fugue384 fugue512
-    fugue512
-    gost94
-    groestl224 groestl256 groestl384 groestl512
-    hamsi224 hamsi256 hamsi384 hamsi512
-    has160
-    jh224 jh256 jh384 jh512
-    keccak256 keccak512
-    kupyna256 kupyna384 kupyna512
-    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
-    luffa224 luffa256 luffa384 luffa512
-    md4 md5
-    md6-224 md6-256 md6-384 md6-512
-    radiogatun32 radiogatun64
-    ripemd128 ripemd160 ripemd256 ripemd320
-    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
-    sha512-256
-    shake128 shake256
-    shavite224 shavite256 shavite384 shavite512
-    simd224 simd256 simd384 simd512
-    siphash64 siphash
-    skein256 skein512
-    sm3
-    streebog256 streebog512
-    tiger tiger2
-    whirlpool
-    xoodyak
-}
-ttk::combobox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo -values $hashAlgorithms -width 12 -state readonly
-.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo set "sha3-256"
-
-pack .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.text_tab.main.algo_frame.row2.saltLabel .nb.text_tab.main.algo_frame.row2.saltBox \
-     .nb.text_tab.main.algo_frame.row2.iterLabel .nb.text_tab.main.algo_frame.row2.iterBox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo \
-     -side left -padx 3
-
-# Plaintext frame (shorter) - MODIFICADO para permitir expansão
-frame .nb.text_tab.main.plain_frame -bg $frame_color -relief solid -bd 1
-grid .nb.text_tab.main.plain_frame -row 1 -column 0 -columnspan 6 -sticky "nsew" -padx 8 -pady 5
-grid rowconfigure .nb.text_tab.main.plain_frame 1 -weight 1  ;# Linha do text widget com peso 1
-grid columnconfigure .nb.text_tab.main.plain_frame 0 -weight 1
-
-label .nb.text_tab.main.plain_frame.label -text "PLAINTEXT" -font {Arial 10 bold} -bg $frame_color
-grid .nb.text_tab.main.plain_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
-
-# Create plaintext text box with scrollbar (shorter) - MODIFICADO para expansão
-frame .nb.text_tab.main.plain_frame.textframe -bg $frame_color
-grid .nb.text_tab.main.plain_frame.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 8 -pady 3
-grid rowconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1  ;# Text widget com peso 1
-grid columnconfigure .nb.text_tab.main.plain_frame.textframe 0 -weight 1
-
-text .nb.text_tab.main.plain_frame.textframe.text -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
-scrollbar .nb.text_tab.main.plain_frame.textframe.scroll -command {.nb.text_tab.main.plain_frame.textframe.text yview}
-.nb.text_tab.main.plain_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.plain_frame.textframe.scroll set}
-grid .nb.text_tab.main.plain_frame.textframe.text -row 0 -column 0 -sticky "nsew"
-grid .nb.text_tab.main.plain_frame.textframe.scroll -row 0 -column 1 -sticky "ns"
-
-# Ciphertext frame (shorter) - MODIFICADO para permitir expansão
-frame .nb.text_tab.main.cipher_frame -bg $frame_color -relief solid -bd 1
-grid .nb.text_tab.main.cipher_frame -row 2 -column 0 -columnspan 6 -sticky "nsew" -padx 8 -pady 5
-grid rowconfigure .nb.text_tab.main.cipher_frame 1 -weight 1  ;# Linha do text widget com peso 1
-grid columnconfigure .nb.text_tab.main.cipher_frame 0 -weight 1
-
-frame .nb.text_tab.main.plain_frame.buttons -bg $frame_color
-grid .nb.text_tab.main.plain_frame.buttons -row 2 -column 0 -sticky "ew" -padx 8 -pady 3
-button .nb.text_tab.main.plain_frame.buttons.copy -text "Copy" -command {
-    clipboard clear; clipboard append [.nb.text_tab.main.plain_frame.textframe.text get 1.0 end]
-
-} -bg "#27ae60" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.plain_frame.buttons.copy -side left -padx 3
-button .nb.text_tab.main.plain_frame.buttons.paste -text "Paste" -command {
-    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
-    .nb.text_tab.main.plain_frame.textframe.text insert 1.0 [clipboard get]
-} -bg "#e67e22" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.plain_frame.buttons.paste -side left -padx 3
-button .nb.text_tab.main.plain_frame.buttons.clear -text "Clear" -command {
-    .nb.text_tab.main.plain_frame.textframe.text delete 1.0 end
-} -bg "#e74c3c" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.plain_frame.buttons.clear -side left -padx 3
-
-label .nb.text_tab.main.cipher_frame.label -text "CIPHERTEXT" -font {Arial 10 bold} -bg $frame_color
-grid .nb.text_tab.main.cipher_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
-
-# Create ciphertext text box with scrollbar (shorter) - MODIFICADO para expansão
-frame .nb.text_tab.main.cipher_frame.textframe -bg $frame_color
-grid .nb.text_tab.main.cipher_frame.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 8 -pady 3
-grid rowconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1  ;# Text widget com peso 1
-grid columnconfigure .nb.text_tab.main.cipher_frame.textframe 0 -weight 1
-
-text .nb.text_tab.main.cipher_frame.textframe.text -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
-scrollbar .nb.text_tab.main.cipher_frame.textframe.scroll -command {.nb.text_tab.main.cipher_frame.textframe.text yview}
-.nb.text_tab.main.cipher_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.cipher_frame.textframe.scroll set}
-grid .nb.text_tab.main.cipher_frame.textframe.text -row 0 -column 0 -sticky "nsew"
-grid .nb.text_tab.main.cipher_frame.textframe.scroll -row 0 -column 1 -sticky "ns"
-
-# Buttons for ciphertext
-frame .nb.text_tab.main.cipher_frame.buttons -bg $frame_color
-grid .nb.text_tab.main.cipher_frame.buttons -row 2 -column 0 -sticky "ew" -padx 8 -pady 3
-
-button .nb.text_tab.main.cipher_frame.buttons.copy -text "Copy" -command {
-    clipboard clear; clipboard append [.nb.text_tab.main.cipher_frame.textframe.text get 1.0 end]
-} -bg "#28a745" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.cipher_frame.buttons.copy -side left -padx 3
-
-button .nb.text_tab.main.cipher_frame.buttons.paste -text "Paste" -command {
-    .nb.text_tab.main.cipher_frame.textframe.text delete 1.0 end
-    .nb.text_tab.main.cipher_frame.textframe.text insert 1.0 [clipboard get]
-} -bg "#fd7e14" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.cipher_frame.buttons.paste -side left -padx 3
-
-button .nb.text_tab.main.cipher_frame.buttons.clear -text "Clear" -command {
-    .nb.text_tab.main.cipher_frame.textframe.text delete 1.0 end
-} -bg "#dc3545" -fg white -font {Arial 9 bold}
-pack .nb.text_tab.main.cipher_frame.buttons.clear -side left -padx 3
-
-# Keys frame (more compact)
-frame .nb.text_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
-grid .nb.text_tab.main.keys_frame -row 3 -column 0 -columnspan 6 -sticky "ew" -padx 8 -pady 5
-
-# Create Key label
-label .nb.text_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -width 8 -anchor e
-grid .nb.text_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 3
-
-# Create key input box
-entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
-grid .nb.text_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
-grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
-
-# Create IV label
-label .nb.text_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -width 8 -anchor e
-grid .nb.text_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
-
-# Create IV input box
-entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
-grid .nb.text_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
-
-# Action buttons frame
-frame .nb.text_tab.main.action_frame -bg $bg_color
-grid .nb.text_tab.main.action_frame -row 4 -column 0 -columnspan 6 -sticky "e" -padx 8 -pady 8
-
-# Create Encrypt button
-button .nb.text_tab.main.action_frame.encryptButton -text "Encrypt" \
-    -command {encrypt} -bg "#28a745" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
-pack .nb.text_tab.main.action_frame.encryptButton -side left -padx 8
-
-# Create Decrypt button
-button .nb.text_tab.main.action_frame.decryptButton -text "Decrypt" \
-    -command {decrypt} -bg "#6c757d" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
-pack .nb.text_tab.main.action_frame.decryptButton -side left -padx 8
-
-# ========== FILES TAB ==========
-frame .nb.file_tab -bg $bg_color
-.nb add .nb.file_tab -text " Encrypt Files "
-
-# Main frame for content (Files)
-frame .nb.file_tab.main -bg $bg_color
-pack .nb.file_tab.main -fill both -expand yes
-
-# Grid configuration for expansion (Files)
-grid columnconfigure .nb.file_tab.main 0 -weight 1
-grid rowconfigure .nb.file_tab.main 6 -weight 1
-
-# Algorithm configuration frame (Files)
-frame .nb.file_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
-grid .nb.file_tab.main.algo_frame -row 0 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
-
-# ALGORITHM SETTINGS title
-label .nb.file_tab.main.algo_frame.title -text "ALGORITHM SETTINGS" \
-    -font {Arial 10 bold} -bg $frame_color -fg $accent_color
-pack .nb.file_tab.main.algo_frame.title -anchor w -padx 8 -pady 5
-
-# Row 1: Algorithm and Mode (Files)
-frame .nb.file_tab.main.algo_frame.row1 -bg $frame_color
-pack .nb.file_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
-
-label .nb.file_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
-    -width 18 -state readonly
-.nb.file_tab.main.algo_frame.row1.algorithmCombo set "aes"
-
-label .nb.file_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.file_tab.main.algo_frame.row1.modeCombo \
-    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
-    -width 18 -state readonly
-.nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
-
-pack .nb.file_tab.main.algo_frame.row1.algorithmLabel .nb.file_tab.main.algo_frame.row1.algorithmCombo \
-     .nb.file_tab.main.algo_frame.row1.modeLabel .nb.file_tab.main.algo_frame.row1.modeCombo -side left -padx 5
-
-# Row 2: KDF settings (Files)
-frame .nb.file_tab.main.algo_frame.row2 -bg $frame_color
-pack .nb.file_tab.main.algo_frame.row2 -fill x -padx 8 -pady 3
-
-checkbutton .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KDF" \
-    -variable ::useKDFAlgorithmFiles -font {Arial 9} -bg $frame_color \
-    -command updateKeyEntryDisplayFiles
-
-label .nb.file_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.file_tab.main.algo_frame.row2.saltBox -width 12 -font {Arial 9}
-
-label .nb.file_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.file_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValueFiles
-set ::iterValueFiles 10000
-
-set hashAlgorithms {
-    bash224 bash256 bash384 bash512
-    belt
-    blake2b256 blake2b512
-    blake2s256
-    blake3
-    bmw224 bmw256 bmw384 bmw512
-    cubehash256 cubehash512
-    echo224 echo256 echo384 echo512
-    esch256 esch384
-    fugue224 fugue256 fugue384 fugue512
-    fugue512
-    gost94
-    groestl224 groestl256 groestl384 groestl512
-    hamsi224 hamsi256 hamsi384 hamsi512
-    has160
-    jh224 jh256 jh384 jh512
-    keccak256 keccak512
-    kupyna256 kupyna384 kupyna512
-    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
-    luffa224 luffa256 luffa384 luffa512
-    md4 md5
-    md6-224 md6-256 md6-384 md6-512
-    radiogatun32 radiogatun64
-    ripemd128 ripemd160 ripemd256 ripemd320
-    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
-    sha512-256
-    shake128 shake256
-    shavite224 shavite256 shavite384 shavite512
-    simd224 simd256 simd384 simd512
-    siphash64 siphash
-    skein256 skein512
-    sm3
-    streebog256 streebog512
-    tiger tiger2
-    whirlpool
-    xoodyak
-}
-ttk::combobox .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo -values $hashAlgorithms -width 12 -state readonly
-.nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo set "sha3-256"
-
-pack .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.file_tab.main.algo_frame.row2.saltLabel .nb.file_tab.main.algo_frame.row2.saltBox \
-     .nb.file_tab.main.algo_frame.row2.iterLabel .nb.file_tab.main.algo_frame.row2.iterBox .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo \
-     -side left -padx 3
-
-# File selection frame (compact - both input and output)
-frame .nb.file_tab.main.file_selection -bg $frame_color -relief solid -bd 1
-grid .nb.file_tab.main.file_selection -row 1 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
-
-label .nb.file_tab.main.file_selection.label -text "FILE SELECTION" -font {Arial 10 bold} -bg $frame_color
-grid .nb.file_tab.main.file_selection.label -row 0 -column 0 -sticky w -padx 8 -pady 8
-
-# Input file row
-frame .nb.file_tab.main.file_selection.input_frame -bg $frame_color
-grid .nb.file_tab.main.file_selection.input_frame -row 1 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
-grid columnconfigure .nb.file_tab.main.file_selection.input_frame 0 -weight 1
-
-label .nb.file_tab.main.file_selection.input_frame.label -text "Input File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
-grid .nb.file_tab.main.file_selection.input_frame.label -row 0 -column 0 -sticky e -padx 5
-
-entry .nb.file_tab.main.file_selection.input_frame.path -width 40 -font {Arial 9} \
-    -bg white -state readonly
-grid .nb.file_tab.main.file_selection.input_frame.path -row 0 -column 1 -sticky "ew" -padx 5
-
-button .nb.file_tab.main.file_selection.input_frame.browse -text "Browse" \
-    -command selectInputFile -bg $button_color -fg white -font {Arial 9 bold} \
-    -width 10
-grid .nb.file_tab.main.file_selection.input_frame.browse -row 0 -column 2 -sticky "e" -padx 5
-
-# Output file row
-frame .nb.file_tab.main.file_selection.output_frame -bg $frame_color
-grid .nb.file_tab.main.file_selection.output_frame -row 2 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
-grid columnconfigure .nb.file_tab.main.file_selection.output_frame 0 -weight 1
-
-label .nb.file_tab.main.file_selection.output_frame.label -text "Output File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
-grid .nb.file_tab.main.file_selection.output_frame.label -row 0 -column 0 -sticky e -padx 5
-
-entry .nb.file_tab.main.file_selection.output_frame.path -width 40 -font {Arial 9} \
-    -bg white
-grid .nb.file_tab.main.file_selection.output_frame.path -row 0 -column 1 -sticky "ew" -padx 5
-
-button .nb.file_tab.main.file_selection.output_frame.browse -text "Browse" \
-    -command selectOutputFile -bg $button_color -fg white -font {Arial 9 bold} \
-    -width 10
-grid .nb.file_tab.main.file_selection.output_frame.browse -row 0 -column 2 -sticky "e" -padx 5
-
-# Keys frame (Files)
-frame .nb.file_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
-grid .nb.file_tab.main.keys_frame -row 2 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
-
-# Create Key label (Files)
-label .nb.file_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -width 8 -anchor e
-grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 8
-
-# Create key input box (Files)
-entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
-grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 3
-grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
-
-# Create IV label (Files)
-label .nb.file_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -width 8 -anchor e
-grid .nb.file_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
-
-# Create IV input box (Files)
-entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
-grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 8
-
-# Action buttons frame (Files)
-frame .nb.file_tab.main.action_frame -bg $bg_color
-grid .nb.file_tab.main.action_frame -row 3 -column 0 -columnspan 3 -sticky "e" -padx 8 -pady 15
-
-# Buttons for file processing
-button .nb.file_tab.main.action_frame.encryptButton -text "Encrypt File" \
-    -command {encryptFile} -bg "#28a745" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
-pack .nb.file_tab.main.action_frame.encryptButton -side left -padx 8
-
-button .nb.file_tab.main.action_frame.decryptButton -text "Decrypt File" \
-    -command {decryptFile} -bg "#6c757d" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
-pack .nb.file_tab.main.action_frame.decryptButton -side left -padx 8
-
-# Status frame (Files)
-frame .nb.file_tab.main.status_frame -bg $frame_color -relief solid -bd 1
-grid .nb.file_tab.main.status_frame -row 6 -column 0 -columnspan 3 -sticky "nsew" -padx 8 -pady 5
-grid rowconfigure .nb.file_tab.main.status_frame 1 -weight 1
-grid columnconfigure .nb.file_tab.main.status_frame 0 -weight 1
-
-label .nb.file_tab.main.status_frame.label -text "STATUS" -font {Arial 10 bold} -bg $frame_color
-grid .nb.file_tab.main.status_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 5
-
-# Status area
-text .nb.file_tab.main.status_frame.text -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
-grid .nb.file_tab.main.status_frame.text -row 1 -column 0 -sticky "nsew" -padx 8 -pady 5
 
 # ========== ECDH TAB ==========
 frame .nb.ecdh_tab -bg $bg_color
@@ -3131,7 +2759,7 @@ pack .nb.ecdh_tab.main.algo_frame.content -fill x -padx 8 -pady 3
 set ::algorithmComboData {"ec" "anssi" "koblitz" "nums" "kg" "tom" "sm2" "gost2012" "x25519" "x448"}
 label .nb.ecdh_tab.main.algo_frame.content.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.ecdh_tab.main.algo_frame.content.algorithmCombo -values $::algorithmComboData -state readonly -width 12
-.nb.ecdh_tab.main.algo_frame.content.algorithmCombo set "ec"
+.nb.ecdh_tab.main.algo_frame.content.algorithmCombo set "x25519"
 
 # Create Bits ComboBox
 set ::bitsComboData {"256" "384" "512"}
@@ -3151,6 +2779,12 @@ label .nb.ecdh_tab.main.algo_frame.content.outputKeySizeLabel -text "Out Size:" 
 ttk::combobox .nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo -values $::outputKeySizeComboData -state readonly -width 8
 .nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo set "32"
 
+# Create Iter ComboBox
+set ::iterComboData {"4096" "8192" "16384" "32768" "65536"}
+label .nb.ecdh_tab.main.algo_frame.content.iterLabel -text "Scrypt Iter:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.ecdh_tab.main.algo_frame.content.iterCombo -values $::iterComboData -width 8
+.nb.ecdh_tab.main.algo_frame.content.iterCombo set "16384"
+
 # Grid for algorithm settings
 grid .nb.ecdh_tab.main.algo_frame.content.algorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.algo_frame.content.algorithmCombo -row 0 -column 1 -sticky w -padx 3 -pady 3
@@ -3160,6 +2794,8 @@ grid .nb.ecdh_tab.main.algo_frame.content.paramsetLabel -row 1 -column 0 -sticky
 grid .nb.ecdh_tab.main.algo_frame.content.paramsetCombo -row 1 -column 1 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.algo_frame.content.outputKeySizeLabel -row 1 -column 2 -sticky w -padx 3 -pady 3
 grid .nb.ecdh_tab.main.algo_frame.content.outputKeySizeCombo -row 1 -column 3 -sticky w -padx 3 -pady 3
+grid .nb.ecdh_tab.main.algo_frame.content.iterLabel -row 0 -column 4 -sticky w -padx 3 -pady 3
+grid .nb.ecdh_tab.main.algo_frame.content.iterCombo -row 0 -column 5 -sticky w -padx 3 -pady 3
 
 # Frame for key management
 frame .nb.ecdh_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
@@ -3180,11 +2816,11 @@ pack .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame -side right -anchor e -
 # Cipher combobox (after passphrase box)
 ttk::combobox .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
     -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
-    -width 8 -state readonly
+    -width 12 -state readonly
 .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
 # Passphrase entry (box)
-entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 15 -font {"DejaVu Sans Mono" 9} -show "*"
+entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 16 -font {"DejaVu Sans Mono" 9} -show "*"
 
 # Passphrase label
 label .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
@@ -3341,6 +2977,10 @@ button .nb.ecdh_tab.main.output_frame.buttons.hkdfButton -text "HKDF" -command e
     -bg "#fd7e14" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.hkdfButton -side left -padx 3
 
+button .nb.ecdh_tab.main.output_frame.buttons.scryptButton -text "Scrypt" -command executeECDHSCRYPT \
+    -bg "#fd7e14" -fg white -font {Arial 9 bold} -padx 12
+pack .nb.ecdh_tab.main.output_frame.buttons.scryptButton -side left -padx 3
+
 button .nb.ecdh_tab.main.output_frame.buttons.copyButton -text "Copy" -command {
     set full_text [.nb.ecdh_tab.main.output_frame.textframe.outputArea get 1.0 end]
     set lines [split [string trim $full_text] "\n"]
@@ -3363,6 +3003,419 @@ button .nb.ecdh_tab.main.output_frame.buttons.clearButton -text "Clear" -command
     .nb.ecdh_tab.main.output_frame.textframe.outputArea delete 1.0 end
 } -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 12
 pack .nb.ecdh_tab.main.output_frame.buttons.clearButton -side left -padx 3
+
+
+# ========== TEXT TAB (ORIGINAL LAYOUT) ==========
+frame .nb.text_tab -bg $bg_color
+.nb add .nb.text_tab -text " Encrypt Text "
+
+# Main frame for content (Text)
+frame .nb.text_tab.main -bg $bg_color
+pack .nb.text_tab.main -fill both -expand yes
+
+# Grid configuration for expansion (Text)
+grid columnconfigure .nb.text_tab.main 0 -weight 1
+grid rowconfigure .nb.text_tab.main {1 2} -weight 1
+
+# Algorithm configuration frame (Text)
+frame .nb.text_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
+grid .nb.text_tab.main.algo_frame -row 0 -column 0 -columnspan 6 -sticky "ew" -padx 8 -pady 5
+
+# ALGORITHM SETTINGS title
+label .nb.text_tab.main.algo_frame.title -text "ALGORITHM SETTINGS" \
+    -font {Arial 10 bold} -bg $frame_color -fg $accent_color
+pack .nb.text_tab.main.algo_frame.title -anchor w -padx 8 -pady 5
+
+# Row 1: Algorithm and Mode (Text)
+frame .nb.text_tab.main.algo_frame.row1 -bg $frame_color
+pack .nb.text_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
+
+label .nb.text_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -width 18 -state readonly
+.nb.text_tab.main.algo_frame.row1.algorithmCombo set "aes"
+
+label .nb.text_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
+    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
+    -width 18 -state readonly
+.nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
+
+# NEW: Add combobox for Encoding
+label .nb.text_tab.main.algo_frame.row1.encodingLabel -text "Encoding:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.text_tab.main.algo_frame.row1.encodingCombo \
+    -values {"base32" "base64" "base85"} \
+    -width 10 -state readonly
+.nb.text_tab.main.algo_frame.row1.encodingCombo set "base64"
+
+pack .nb.text_tab.main.algo_frame.row1.algorithmLabel .nb.text_tab.main.algo_frame.row1.algorithmCombo \
+     .nb.text_tab.main.algo_frame.row1.modeLabel .nb.text_tab.main.algo_frame.row1.modeCombo \
+     .nb.text_tab.main.algo_frame.row1.encodingLabel .nb.text_tab.main.algo_frame.row1.encodingCombo \
+     -side left -padx 5
+
+# Row 2: KDF settings (Text)
+frame .nb.text_tab.main.algo_frame.row2 -bg $frame_color
+pack .nb.text_tab.main.algo_frame.row2 -fill x -padx 8 -pady 3
+
+checkbutton .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KDF" \
+    -variable ::useKDFAlgorithm -font {Arial 9} -bg $frame_color \
+    -command updateKeyEntryDisplay
+
+label .nb.text_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.text_tab.main.algo_frame.row2.saltBox -width 16 -font {Arial 9}
+
+label .nb.text_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.text_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValue
+set ::iterValue 10000
+
+set hashAlgorithms {
+    bash224 bash256 bash384 bash512
+    belt
+    blake2b256 blake2b512
+    blake2s256
+    blake3
+    bmw224 bmw256 bmw384 bmw512
+    cubehash256 cubehash512
+    echo224 echo256 echo384 echo512
+    esch256 esch384
+    fugue224 fugue256 fugue384 fugue512
+    fugue512
+    gost94
+    groestl224 groestl256 groestl384 groestl512
+    hamsi224 hamsi256 hamsi384 hamsi512
+    has160
+    jh224 jh256 jh384 jh512
+    keccak256 keccak512
+    kupyna256 kupyna384 kupyna512
+    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
+    luffa224 luffa256 luffa384 luffa512
+    md4 md5
+    md6-224 md6-256 md6-384 md6-512
+    radiogatun32 radiogatun64
+    ripemd128 ripemd160 ripemd256 ripemd320
+    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
+    sha512-256
+    shake128 shake256
+    shavite224 shavite256 shavite384 shavite512
+    simd224 simd256 simd384 simd512
+    siphash64 siphash
+    skein256 skein512
+    sm3
+    streebog256 streebog512
+    tiger tiger2
+    whirlpool
+    xoodyak
+}
+ttk::combobox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo -values $hashAlgorithms -width 12 -state readonly
+.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo set "sha3-256"
+
+pack .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.text_tab.main.algo_frame.row2.saltLabel .nb.text_tab.main.algo_frame.row2.saltBox \
+     .nb.text_tab.main.algo_frame.row2.iterLabel .nb.text_tab.main.algo_frame.row2.iterBox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo \
+     -side left -padx 3
+
+# Plaintext frame (shorter) - MODIFICADO para permitir expansão
+frame .nb.text_tab.main.input_frame -bg $frame_color -relief solid -bd 1
+grid .nb.text_tab.main.input_frame -row 1 -column 0 -columnspan 6 -sticky "nsew" -padx 8 -pady 5
+grid rowconfigure .nb.text_tab.main.input_frame 1 -weight 1  ;# Linha do text widget com peso 1
+grid columnconfigure .nb.text_tab.main.input_frame 0 -weight 1
+
+label .nb.text_tab.main.input_frame.label -text "INPUT DATA" -font {Arial 10 bold} -bg $frame_color
+grid .nb.text_tab.main.input_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
+
+# Create plaintext text box with scrollbar (shorter) - MODIFICADO para expansão
+frame .nb.text_tab.main.input_frame.textframe -bg $frame_color
+grid .nb.text_tab.main.input_frame.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 8 -pady 3
+grid rowconfigure .nb.text_tab.main.input_frame.textframe 0 -weight 1  ;# Text widget com peso 1
+grid columnconfigure .nb.text_tab.main.input_frame.textframe 0 -weight 1
+
+text .nb.text_tab.main.input_frame.textframe.text -width 60 -height 5 -wrap word \
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+scrollbar .nb.text_tab.main.input_frame.textframe.scroll -command {.nb.text_tab.main.input_frame.textframe.text yview}
+.nb.text_tab.main.input_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.input_frame.textframe.scroll set}
+grid .nb.text_tab.main.input_frame.textframe.text -row 0 -column 0 -sticky "nsew"
+grid .nb.text_tab.main.input_frame.textframe.scroll -row 0 -column 1 -sticky "ns"
+
+# Ciphertext frame (shorter) - MODIFICADO para permitir expansão
+frame .nb.text_tab.main.output_frame -bg $frame_color -relief solid -bd 1
+grid .nb.text_tab.main.output_frame -row 2 -column 0 -columnspan 6 -sticky "nsew" -padx 8 -pady 5
+grid rowconfigure .nb.text_tab.main.output_frame 1 -weight 1  ;# Linha do text widget com peso 1
+grid columnconfigure .nb.text_tab.main.output_frame 0 -weight 1
+
+frame .nb.text_tab.main.input_frame.buttons -bg $frame_color
+grid .nb.text_tab.main.input_frame.buttons -row 2 -column 0 -sticky "ew" -padx 8 -pady 3
+button .nb.text_tab.main.input_frame.buttons.copy -text "Copy" -command {
+    clipboard clear; clipboard append [.nb.text_tab.main.input_frame.textframe.text get 1.0 end]
+
+} -bg "#6c757d" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.input_frame.buttons.copy -side left -padx 3
+button .nb.text_tab.main.input_frame.buttons.paste -text "Paste" -command {
+    .nb.text_tab.main.input_frame.textframe.text delete 1.0 end
+    .nb.text_tab.main.input_frame.textframe.text insert 1.0 [clipboard get]
+} -bg "#6c757d" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.input_frame.buttons.paste -side left -padx 3
+button .nb.text_tab.main.input_frame.buttons.clear -text "Clear" -command {
+    .nb.text_tab.main.input_frame.textframe.text delete 1.0 end
+} -bg "#dc3545" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.input_frame.buttons.clear -side left -padx 3
+
+label .nb.text_tab.main.output_frame.label -text "OUTPUT" -font {Arial 10 bold} -bg $frame_color
+grid .nb.text_tab.main.output_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 3
+
+# Create ciphertext text box with scrollbar (shorter) - MODIFICADO para expansão
+frame .nb.text_tab.main.output_frame.textframe -bg $frame_color
+grid .nb.text_tab.main.output_frame.textframe -row 1 -column 0 -columnspan 5 -sticky "nsew" -padx 8 -pady 3
+grid rowconfigure .nb.text_tab.main.output_frame.textframe 0 -weight 1  ;# Text widget com peso 1
+grid columnconfigure .nb.text_tab.main.output_frame.textframe 0 -weight 1
+
+text .nb.text_tab.main.output_frame.textframe.text -width 60 -height 5 -wrap word \
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+scrollbar .nb.text_tab.main.output_frame.textframe.scroll -command {.nb.text_tab.main.output_frame.textframe.text yview}
+.nb.text_tab.main.output_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.output_frame.textframe.scroll set}
+grid .nb.text_tab.main.output_frame.textframe.text -row 0 -column 0 -sticky "nsew"
+grid .nb.text_tab.main.output_frame.textframe.scroll -row 0 -column 1 -sticky "ns"
+
+# Buttons for ciphertext
+frame .nb.text_tab.main.output_frame.buttons -bg $frame_color
+grid .nb.text_tab.main.output_frame.buttons -row 2 -column 0 -sticky "ew" -padx 8 -pady 3
+
+button .nb.text_tab.main.output_frame.buttons.copy -text "Copy" -command {
+    clipboard clear; clipboard append [.nb.text_tab.main.output_frame.textframe.text get 1.0 end]
+} -bg "#6c757d" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.output_frame.buttons.copy -side left -padx 3
+
+button .nb.text_tab.main.output_frame.buttons.clear -text "Clear" -command {
+    .nb.text_tab.main.output_frame.textframe.text delete 1.0 end
+} -bg "#dc3545" -fg white -font {Arial 9 bold}
+pack .nb.text_tab.main.output_frame.buttons.clear -side left -padx 3
+
+# Keys frame (more compact)
+frame .nb.text_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
+grid .nb.text_tab.main.keys_frame -row 3 -column 0 -columnspan 6 -sticky "ew" -padx 8 -pady 5
+
+# Create Key label
+label .nb.text_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e
+grid .nb.text_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 3
+
+# Create key input box
+entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
+grid .nb.text_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
+grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
+
+# Create IV label
+label .nb.text_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e
+grid .nb.text_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
+
+# Create IV input box
+entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
+grid .nb.text_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
+
+# Action buttons frame
+frame .nb.text_tab.main.action_frame -bg $bg_color
+grid .nb.text_tab.main.action_frame -row 4 -column 0 -columnspan 6 -sticky "e" -padx 8 -pady 8
+
+# Create Encrypt button
+button .nb.text_tab.main.action_frame.encryptButton -text "Encrypt" \
+    -command {encrypt} -bg "#28a745" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -bd 1
+pack .nb.text_tab.main.action_frame.encryptButton -side left -padx 8
+
+# Create Decrypt button
+button .nb.text_tab.main.action_frame.decryptButton -text "Decrypt" \
+    -command {decrypt} -bg "#6c757d" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -bd 1
+pack .nb.text_tab.main.action_frame.decryptButton -side left -padx 8
+
+# ========== FILES TAB ==========
+frame .nb.file_tab -bg $bg_color
+.nb add .nb.file_tab -text " Encrypt Files "
+
+# Main frame for content (Files)
+frame .nb.file_tab.main -bg $bg_color
+pack .nb.file_tab.main -fill both -expand yes
+
+# Grid configuration for expansion (Files)
+grid columnconfigure .nb.file_tab.main 0 -weight 1
+grid rowconfigure .nb.file_tab.main 6 -weight 1
+
+# Algorithm configuration frame (Files)
+frame .nb.file_tab.main.algo_frame -bg $frame_color -relief solid -bd 1
+grid .nb.file_tab.main.algo_frame -row 0 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
+
+# ALGORITHM SETTINGS title
+label .nb.file_tab.main.algo_frame.title -text "ALGORITHM SETTINGS" \
+    -font {Arial 10 bold} -bg $frame_color -fg $accent_color
+pack .nb.file_tab.main.algo_frame.title -anchor w -padx 8 -pady 5
+
+# Row 1: Algorithm and Mode (Files)
+frame .nb.file_tab.main.algo_frame.row1 -bg $frame_color
+pack .nb.file_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
+
+label .nb.file_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -width 18 -state readonly
+.nb.file_tab.main.algo_frame.row1.algorithmCombo set "aes"
+
+label .nb.file_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.file_tab.main.algo_frame.row1.modeCombo \
+    -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
+    -width 18 -state readonly
+.nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
+
+pack .nb.file_tab.main.algo_frame.row1.algorithmLabel .nb.file_tab.main.algo_frame.row1.algorithmCombo \
+     .nb.file_tab.main.algo_frame.row1.modeLabel .nb.file_tab.main.algo_frame.row1.modeCombo -side left -padx 5
+
+# Row 2: KDF settings (Files)
+frame .nb.file_tab.main.algo_frame.row2 -bg $frame_color
+pack .nb.file_tab.main.algo_frame.row2 -fill x -padx 8 -pady 3
+
+checkbutton .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KDF" \
+    -variable ::useKDFAlgorithmFiles -font {Arial 9} -bg $frame_color \
+    -command updateKeyEntryDisplayFiles
+
+label .nb.file_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.file_tab.main.algo_frame.row2.saltBox -width 16 -font {Arial 9}
+
+label .nb.file_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.file_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValueFiles
+set ::iterValueFiles 10000
+
+set hashAlgorithms {
+    bash224 bash256 bash384 bash512
+    belt
+    blake2b256 blake2b512
+    blake2s256
+    blake3
+    bmw224 bmw256 bmw384 bmw512
+    cubehash256 cubehash512
+    echo224 echo256 echo384 echo512
+    esch256 esch384
+    fugue224 fugue256 fugue384 fugue512
+    fugue512
+    gost94
+    groestl224 groestl256 groestl384 groestl512
+    hamsi224 hamsi256 hamsi384 hamsi512
+    has160
+    jh224 jh256 jh384 jh512
+    keccak256 keccak512
+    kupyna256 kupyna384 kupyna512
+    lsh224 lsh256 lsh384 lsh512 lsh512-224 lsh512-256
+    luffa224 luffa256 luffa384 luffa512
+    md4 md5
+    md6-224 md6-256 md6-384 md6-512
+    radiogatun32 radiogatun64
+    ripemd128 ripemd160 ripemd256 ripemd320
+    sha1 sha224 sha256 sha384 sha512 sha3-224 sha3-256 sha3-384 sha3-512
+    sha512-256
+    shake128 shake256
+    shavite224 shavite256 shavite384 shavite512
+    simd224 simd256 simd384 simd512
+    siphash64 siphash
+    skein256 skein512
+    sm3
+    streebog256 streebog512
+    tiger tiger2
+    whirlpool
+    xoodyak
+}
+ttk::combobox .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo -values $hashAlgorithms -width 12 -state readonly
+.nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo set "sha3-256"
+
+pack .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.file_tab.main.algo_frame.row2.saltLabel .nb.file_tab.main.algo_frame.row2.saltBox \
+     .nb.file_tab.main.algo_frame.row2.iterLabel .nb.file_tab.main.algo_frame.row2.iterBox .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo \
+     -side left -padx 3
+
+# File selection frame (compact - both input and output)
+frame .nb.file_tab.main.file_selection -bg $frame_color -relief solid -bd 1
+grid .nb.file_tab.main.file_selection -row 1 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
+
+label .nb.file_tab.main.file_selection.label -text "FILE SELECTION" -font {Arial 10 bold} -bg $frame_color
+grid .nb.file_tab.main.file_selection.label -row 0 -column 0 -sticky w -padx 8 -pady 8
+
+# Input file row
+frame .nb.file_tab.main.file_selection.input_frame -bg $frame_color
+grid .nb.file_tab.main.file_selection.input_frame -row 1 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
+grid columnconfigure .nb.file_tab.main.file_selection.input_frame 0 -weight 1
+
+label .nb.file_tab.main.file_selection.input_frame.label -text "Input File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
+grid .nb.file_tab.main.file_selection.input_frame.label -row 0 -column 0 -sticky e -padx 5
+
+entry .nb.file_tab.main.file_selection.input_frame.path -width 40 -font {Arial 9} \
+    -bg white -state readonly
+grid .nb.file_tab.main.file_selection.input_frame.path -row 0 -column 1 -sticky "ew" -padx 5
+
+button .nb.file_tab.main.file_selection.input_frame.browse -text "Browse" \
+    -command selectInputFile -bg $button_color -fg white -font {Arial 9 bold} \
+    -width 10
+grid .nb.file_tab.main.file_selection.input_frame.browse -row 0 -column 2 -sticky "e" -padx 5
+
+# Output file row
+frame .nb.file_tab.main.file_selection.output_frame -bg $frame_color
+grid .nb.file_tab.main.file_selection.output_frame -row 2 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
+grid columnconfigure .nb.file_tab.main.file_selection.output_frame 0 -weight 1
+
+label .nb.file_tab.main.file_selection.output_frame.label -text "Output File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
+grid .nb.file_tab.main.file_selection.output_frame.label -row 0 -column 0 -sticky e -padx 5
+
+entry .nb.file_tab.main.file_selection.output_frame.path -width 40 -font {Arial 9} \
+    -bg white
+grid .nb.file_tab.main.file_selection.output_frame.path -row 0 -column 1 -sticky "ew" -padx 5
+
+button .nb.file_tab.main.file_selection.output_frame.browse -text "Save as" \
+    -command selectOutputFile -bg $button_color -fg white -font {Arial 9 bold} \
+    -width 10
+grid .nb.file_tab.main.file_selection.output_frame.browse -row 0 -column 2 -sticky "e" -padx 5
+
+# Keys frame (Files)
+frame .nb.file_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
+grid .nb.file_tab.main.keys_frame -row 2 -column 0 -columnspan 3 -sticky "ew" -padx 8 -pady 5
+
+# Create Key label (Files)
+label .nb.file_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e
+grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 8
+
+# Create key input box (Files)
+entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
+grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 3
+grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
+
+# Create IV label (Files)
+label .nb.file_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e
+grid .nb.file_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
+
+# Create IV input box (Files)
+entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
+grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 8
+
+# Action buttons frame (Files)
+frame .nb.file_tab.main.action_frame -bg $bg_color
+grid .nb.file_tab.main.action_frame -row 3 -column 0 -columnspan 3 -sticky "e" -padx 8 -pady 15
+
+# Buttons for file processing
+button .nb.file_tab.main.action_frame.encryptButton -text "Encrypt File" \
+    -command {encryptFile} -bg "#28a745" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -bd 1
+pack .nb.file_tab.main.action_frame.encryptButton -side left -padx 8
+
+button .nb.file_tab.main.action_frame.decryptButton -text "Decrypt File" \
+    -command {decryptFile} -bg "#6c757d" -fg white -font {Arial 10 bold} \
+    -padx 15 -pady 6 -bd 1
+pack .nb.file_tab.main.action_frame.decryptButton -side left -padx 8
+
+# Status frame (Files)
+frame .nb.file_tab.main.status_frame -bg $frame_color -relief solid -bd 1
+grid .nb.file_tab.main.status_frame -row 6 -column 0 -columnspan 3 -sticky "nsew" -padx 8 -pady 5
+grid rowconfigure .nb.file_tab.main.status_frame 1 -weight 1
+grid columnconfigure .nb.file_tab.main.status_frame 0 -weight 1
+
+label .nb.file_tab.main.status_frame.label -text "STATUS" -font {Arial 10 bold} -bg $frame_color
+grid .nb.file_tab.main.status_frame.label -row 0 -column 0 -sticky w -padx 8 -pady 5
+
+# Status area
+text .nb.file_tab.main.status_frame.text -width 60 -height 5 -wrap word \
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
+grid .nb.file_tab.main.status_frame.text -row 1 -column 0 -sticky "nsew" -padx 8 -pady 5
 
 # ========== MAC TEXT TAB ==========
 frame .nb.mac_tab -bg $bg_color
@@ -3524,13 +3577,13 @@ grid columnconfigure .nb.mac_tab.main.keys_frame.content 1 -weight 1
 
 # Input data frame - SAME STRUCTURE AS OUTPUT
 frame .nb.mac_tab.main.input_frame -bg $frame_color -relief solid -bd 1
-pack .nb.mac_tab.main.input_frame -fill x -padx 8 -pady 5
+pack .nb.mac_tab.main.input_frame -fill both -expand true -padx 8 -pady 5
 
 label .nb.mac_tab.main.input_frame.title -text "INPUT DATA" -font {Arial 10 bold} -bg $frame_color
 pack .nb.mac_tab.main.input_frame.title -anchor w -padx 8 -pady 3
 
 frame .nb.mac_tab.main.input_frame.content -bg $frame_color
-pack .nb.mac_tab.main.input_frame.content -fill x -padx 8 -pady 3
+pack .nb.mac_tab.main.input_frame.content -fill both -expand true -padx 8 -pady 3
 
 # Input type
 label .nb.mac_tab.main.input_frame.content.inputTypeLabel -text "Input Type:" -font {Arial 9 bold} -bg $frame_color
@@ -3575,16 +3628,31 @@ grid columnconfigure .nb.mac_tab.main.input_frame.content.textframe 0 -weight 1
 grid columnconfigure .nb.mac_tab.main.input_frame.content 3 -weight 1
 grid rowconfigure .nb.mac_tab.main.input_frame.content 1 -weight 1
 
+# Buttons for input text
+frame .nb.mac_tab.main.input_frame.content.textframe.utility_buttons -bg $frame_color
+grid .nb.mac_tab.main.input_frame.content.textframe.utility_buttons -row 1 -column 0 -columnspan 2 -sticky w -pady 2 -padx 2
+
+button .nb.mac_tab.main.input_frame.content.textframe.utility_buttons.pasteButton -text "Paste" -command {
+    .nb.mac_tab.main.input_frame.content.textframe.inputText insert end [clipboard get]
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
+pack .nb.mac_tab.main.input_frame.content.textframe.utility_buttons.pasteButton -side left -padx 2
+
+button .nb.mac_tab.main.input_frame.content.textframe.utility_buttons.clearButton -text "Clear" -command {
+    .nb.mac_tab.main.input_frame.content.textframe.inputText delete 1.0 end
+} -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 8
+pack .nb.mac_tab.main.input_frame.content.textframe.utility_buttons.clearButton -side left -padx 2
+
+
 # Frame for output
 frame .nb.mac_tab.main.output_frame -bg $frame_color -relief solid -bd 1
-pack .nb.mac_tab.main.output_frame -fill both -expand true -padx 8 -pady 5
+pack .nb.mac_tab.main.output_frame -fill both -expand false -padx 8 -pady 5
 
 label .nb.mac_tab.main.output_frame.title -text "MAC RESULT" -font {Arial 10 bold} -bg $frame_color
 pack .nb.mac_tab.main.output_frame.title -anchor w -padx 8 -pady 3
 
 # Create Result text area with scrollbar
 frame .nb.mac_tab.main.output_frame.textframe -bg $frame_color
-pack .nb.mac_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
+pack .nb.mac_tab.main.output_frame.textframe -fill both -expand false -padx 8 -pady 3
 
 text .nb.mac_tab.main.output_frame.textframe.resultBox -width 60 -height 3 -wrap word \
     -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
@@ -3824,13 +3892,13 @@ pack .nb.digest_tab.main.action_frame.main_buttons -side right
 # Digest button (main button - green) - LEFT inside main frame
 button .nb.digest_tab.main.action_frame.main_buttons.digestButton -text "Compute" \
     -command calculateDigests -bg "#28a745" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
+    -padx 15 -pady 6 -bd 1
 pack .nb.digest_tab.main.action_frame.main_buttons.digestButton -side left -padx 5
 
 # Check button (main button - gray) - RIGHT of Calculate
 button .nb.digest_tab.main.action_frame.main_buttons.checkButton -text "Check" \
     -command verifyDigests -bg "#6c757d" -fg white -font {Arial 10 bold} \
-    -padx 15 -pady 6 -relief raised -bd 2
+    -padx 15 -pady 6 -bd 1
 pack .nb.digest_tab.main.action_frame.main_buttons.checkButton -side left -padx 5
 
 # ===== DIGEST FUNCTIONS =====
@@ -4529,7 +4597,7 @@ proc verifyDigests {} {
 # Footer
 frame .footer -bg $accent_color -height 25
 pack .footer -fill x
-label .footer.text -text "ALBANESE Research Lab \u00a9 2025 | Secure Cryptographic Operations" \
+label .footer.text -text "ALBANESE Research Lab \u00a9 2026 | Secure Cryptographic Operations" \
     -bg $accent_color -fg "#bdc3c7" -font {Arial 8}
 pack .footer.text -pady 3
 
