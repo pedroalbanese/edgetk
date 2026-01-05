@@ -29,6 +29,8 @@ set useKDFAlgorithm 0
 set useKDFAlgorithmFiles 0
 set iterValue 10000
 set iterValueFiles 10000
+set aadText ""
+set aadFiles ""
 
 # ===== SHARED FUNCTIONS =====
 
@@ -1128,11 +1130,11 @@ proc updateTextUI {} {
         .nb.text_tab.main.algo_frame.row2.saltBox configure -background "white"
         
         .nb.text_tab.main.algo_frame.row2.iterLabel configure -state normal
-        .nb.text_tab.main.algo_frame.row2.iterBox configure -state normal
-        .nb.text_tab.main.algo_frame.row2.iterBox configure -background "white"
+        .nb.text_tab.main.algo_frame.row2.iterCombo configure -state normal
+        .nb.text_tab.main.algo_frame.row2.iterCombo configure -background "white"
         
-        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state normal
-        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "white"
+        .nb.text_tab.main.algo_frame.row2.scryptHashCombo configure -state normal
+        .nb.text_tab.main.algo_frame.row2.scryptHashCombo configure -background "white"
     } else {
         # KDF inactive: disable fields
         .nb.text_tab.main.algo_frame.row2.saltLabel configure -state disabled
@@ -1140,27 +1142,35 @@ proc updateTextUI {} {
         .nb.text_tab.main.algo_frame.row2.saltBox configure -background "#f0f0f0"
         
         .nb.text_tab.main.algo_frame.row2.iterLabel configure -state disabled
-        .nb.text_tab.main.algo_frame.row2.iterBox configure -state disabled
-        .nb.text_tab.main.algo_frame.row2.iterBox configure -background "#f0f0f0"
+        .nb.text_tab.main.algo_frame.row2.iterCombo configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.iterCombo configure -background "#f0f0f0"
         
-        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state disabled
-        .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "#f0f0f0"
+        .nb.text_tab.main.algo_frame.row2.scryptHashCombo configure -state disabled
+        .nb.text_tab.main.algo_frame.row2.scryptHashCombo configure -background "#f0f0f0"
     }
     
-    # 3. Control IV field
-    # Define AEAD modes that don't use IV
+    # 3. Control IV and AAD fields
+    # Define AEAD modes that don't use IV but need AAD
     set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
-
+    
     if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes && $algorithm ni $stream_ciphers} {
-        # AEAD ciphers or AEAD modes: disable IV
+        # AEAD ciphers or AEAD modes: disable IV, enable AAD
         .nb.text_tab.main.keys_frame.ivLabel configure -state disabled
         .nb.text_tab.main.keys_frame.ivBox configure -state disabled
         .nb.text_tab.main.keys_frame.ivBox configure -background "#f0f0f0"
+        
+        .nb.text_tab.main.keys_frame.aadLabel configure -state normal
+        .nb.text_tab.main.keys_frame.aadBox configure -state normal
+        .nb.text_tab.main.keys_frame.aadBox configure -background "white"
     } else {
-        # Other cases: enable IV
+        # Other cases: enable IV, disable AAD
         .nb.text_tab.main.keys_frame.ivLabel configure -state normal
         .nb.text_tab.main.keys_frame.ivBox configure -state normal
         .nb.text_tab.main.keys_frame.ivBox configure -background "white"
+        
+        .nb.text_tab.main.keys_frame.aadLabel configure -state disabled
+        .nb.text_tab.main.keys_frame.aadBox configure -state disabled
+        .nb.text_tab.main.keys_frame.aadBox configure -background "#f0f0f0"
     }
 }
 
@@ -1252,11 +1262,11 @@ proc updateFilesUI {} {
         .nb.file_tab.main.algo_frame.row2.saltBox configure -background "white"
         
         .nb.file_tab.main.algo_frame.row2.iterLabel configure -state normal
-        .nb.file_tab.main.algo_frame.row2.iterBox configure -state normal
-        .nb.file_tab.main.algo_frame.row2.iterBox configure -background "white"
+        .nb.file_tab.main.algo_frame.row2.iterCombo configure -state normal
+        .nb.file_tab.main.algo_frame.row2.iterCombo configure -background "white"
         
-        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state normal
-        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "white"
+        .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -state normal
+        .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -background "white"
     } else {
         # KDF inactive: disable fields
         .nb.file_tab.main.algo_frame.row2.saltLabel configure -state disabled
@@ -1264,27 +1274,35 @@ proc updateFilesUI {} {
         .nb.file_tab.main.algo_frame.row2.saltBox configure -background "#f0f0f0"
         
         .nb.file_tab.main.algo_frame.row2.iterLabel configure -state disabled
-        .nb.file_tab.main.algo_frame.row2.iterBox configure -state disabled
-        .nb.file_tab.main.algo_frame.row2.iterBox configure -background "white"
+        .nb.file_tab.main.algo_frame.row2.iterCombo configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.iterCombo configure -background "white"
         
-        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -state disabled
-        .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo configure -background "#f0f0f0"
+        .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -state disabled
+        .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -background "#f0f0f0"
     }
     
-    # 3. Control IV field
-    # Define AEAD modes that don't use IV
+    # 3. Control IV and AAD fields
+    # Define AEAD modes that don't use IV but need AAD
     set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
     
     if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes && $algorithm ni $stream_ciphers} {
-        # AEAD ciphers or AEAD modes: disable IV
+        # AEAD ciphers or AEAD modes: disable IV, enable AAD
         .nb.file_tab.main.keys_frame.ivLabel configure -state disabled
         .nb.file_tab.main.keys_frame.ivBox configure -state disabled
         .nb.file_tab.main.keys_frame.ivBox configure -background "#f0f0f0"
+        
+        .nb.file_tab.main.keys_frame.aadLabel configure -state normal
+        .nb.file_tab.main.keys_frame.aadBox configure -state normal
+        .nb.file_tab.main.keys_frame.aadBox configure -background "white"
     } else {
-        # Other cases: enable IV
+        # Other cases: enable IV, disable AAD
         .nb.file_tab.main.keys_frame.ivLabel configure -state normal
         .nb.file_tab.main.keys_frame.ivBox configure -state normal
         .nb.file_tab.main.keys_frame.ivBox configure -background "white"
+        
+        .nb.file_tab.main.keys_frame.aadLabel configure -state disabled
+        .nb.file_tab.main.keys_frame.aadBox configure -state disabled
+        .nb.file_tab.main.keys_frame.aadBox configure -background "#f0f0f0"
     }
 }
 
@@ -2133,16 +2151,17 @@ proc encrypt {} {
     set plaintext [.nb.text_tab.main.input_frame.textframe.text get 1.0 end]
     set key [.nb.text_tab.main.keys_frame.keyBox get]
     set iv [.nb.text_tab.main.keys_frame.ivBox get]
+    set aad [.nb.text_tab.main.keys_frame.aadBox get]
     set salt [.nb.text_tab.main.algo_frame.row2.saltBox get]
-    set iter [.nb.text_tab.main.algo_frame.row2.iterBox get]
+    set iter [.nb.text_tab.main.algo_frame.row2.iterCombo get]
     set algorithm [.nb.text_tab.main.algo_frame.row1.algorithmCombo get]
     set mode [.nb.text_tab.main.algo_frame.row1.modeCombo get]
     set encoding [.nb.text_tab.main.algo_frame.row1.encodingCombo get]
-    set pbkdf2Hash [.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo get]
+    set scryptHash [.nb.text_tab.main.algo_frame.row2.scryptHashCombo get]
 
     set kdfOptionAlgorithm ""
     if {$::useKDFAlgorithm == 1} {
-        set kdfOptionAlgorithm "pbkdf2"
+        set kdfOptionAlgorithm "scrypt"
     }
 
     set ivSize [calculateIVSize $algorithm $mode]
@@ -2160,12 +2179,12 @@ proc encrypt {} {
     if {[catch {
         # Execute encryption and encode with edgetk -baseNN enc
         if {$encoding eq "base64"} {
-            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base64 enc]
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $scryptHash -info $aad << $plaintext | edgetk -base64 enc]
         } elseif {$encoding eq "base32"} {
-            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base32 enc]
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $scryptHash -info $aad << $plaintext | edgetk -base32 enc]
         } else {
             # base85
-            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash << $plaintext | edgetk -base85 enc]
+            set encryptedMsg [exec edgetk -crypt enc -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $scryptHash -info $aad << $plaintext | edgetk -base85 enc]
         }
         .nb.text_tab.main.output_frame.textframe.text insert 1.0 $encryptedMsg
     } errorMsg]} {
@@ -2178,16 +2197,17 @@ proc decrypt {} {
     set ciphertext [.nb.text_tab.main.input_frame.textframe.text get 1.0 end]
     set key [.nb.text_tab.main.keys_frame.keyBox get]
     set iv [.nb.text_tab.main.keys_frame.ivBox get]
+    set aad [.nb.text_tab.main.keys_frame.aadBox get]
     set salt [.nb.text_tab.main.algo_frame.row2.saltBox get]
-    set iter [.nb.text_tab.main.algo_frame.row2.iterBox get]
+    set iter [.nb.text_tab.main.algo_frame.row2.iterCombo get]
     set algorithm [.nb.text_tab.main.algo_frame.row1.algorithmCombo get]
     set mode [.nb.text_tab.main.algo_frame.row1.modeCombo get]
     set encoding [.nb.text_tab.main.algo_frame.row1.encodingCombo get]
-    set pbkdf2Hash [.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo get]
+    set scryptHash [.nb.text_tab.main.algo_frame.row2.scryptHashCombo get]
 
     set kdfOptionAlgorithm ""
     if {$::useKDFAlgorithm == 1} {
-        set kdfOptionAlgorithm "pbkdf2"
+        set kdfOptionAlgorithm "scrypt"
     }
 
     set ivSize [calculateIVSize $algorithm $mode]
@@ -2205,12 +2225,12 @@ proc decrypt {} {
     if {[catch {
         # Decode with edgetk -baseNN dec before decrypting
         if {$encoding eq "base64"} {
-            set decryptedMsg [exec edgetk -base64 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+            set decryptedMsg [exec edgetk -base64 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $scryptHash -info $aad]
         } elseif {$encoding eq "base32"} {
-            set decryptedMsg [exec edgetk -base32 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+            set decryptedMsg [exec edgetk -base32 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $scryptHash -info $aad]
         } else {
             # base85
-            set decryptedMsg [exec edgetk -base85 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $pbkdf2Hash]
+            set decryptedMsg [exec edgetk -base85 dec << $ciphertext | edgetk -crypt dec -key $key -iv $iv -cipher $algorithm -mode $mode -kdf $kdfOptionAlgorithm -salt $salt -iter $iter -md $scryptHash -info $aad]
         }
         .nb.text_tab.main.output_frame.textframe.text insert 1.0 $decryptedMsg
     } errorMsg]} {
@@ -2241,15 +2261,16 @@ proc encryptFile {} {
     
     set key [.nb.file_tab.main.keys_frame.keyBox get]
     set iv [.nb.file_tab.main.keys_frame.ivBox get]
+    set aad [.nb.file_tab.main.keys_frame.aadBox get]
     set salt [.nb.file_tab.main.algo_frame.row2.saltBox get]
-    set iter [.nb.file_tab.main.algo_frame.row2.iterBox get]
+    set iter [.nb.file_tab.main.algo_frame.row2.iterCombo get]
     set algorithm [.nb.file_tab.main.algo_frame.row1.algorithmCombo get]
     set mode [.nb.file_tab.main.algo_frame.row1.modeCombo get]
-    set pbkdf2Hash [.nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo get]
+    set scryptHash [.nb.file_tab.main.algo_frame.row2.scryptHashCombo get]
 
     set kdfOptionAlgorithm ""
     if {$::useKDFAlgorithmFiles == 1} {
-        set kdfOptionAlgorithm "pbkdf2"
+        set kdfOptionAlgorithm "scrypt"
     }
 
     set ivSize [calculateIVSize $algorithm $mode]
@@ -2264,10 +2285,10 @@ proc encryptFile {} {
     update
     
     # Build edgetk command
-    set cmd "edgetk -crypt enc -key \"$key\" -iv \"$iv\" -cipher \"$algorithm\" -mode \"$mode\""
+    set cmd "edgetk -crypt enc -key \"$key\" -iv \"$iv\" -cipher \"$algorithm\" -mode \"$mode\" -info \"$aad\""
     
     if {$kdfOptionAlgorithm ne ""} {
-        append cmd " -kdf \"$kdfOptionAlgorithm\" -salt \"$salt\" -iter \"$iter\" -md \"$pbkdf2Hash\""
+        append cmd " -kdf \"$kdfOptionAlgorithm\" -salt \"$salt\" -iter \"$iter\" -md \"$scryptHash\""
     }
     
     # Add input file and redirect stdout to output file
@@ -2304,15 +2325,16 @@ proc decryptFile {} {
     
     set key [.nb.file_tab.main.keys_frame.keyBox get]
     set iv [.nb.file_tab.main.keys_frame.ivBox get]
+    set aad [.nb.file_tab.main.keys_frame.aadBox get]
     set salt [.nb.file_tab.main.algo_frame.row2.saltBox get]
-    set iter [.nb.file_tab.main.algo_frame.row2.iterBox get]
+    set iter [.nb.file_tab.main.algo_frame.row2.iterCombo get]
     set algorithm [.nb.file_tab.main.algo_frame.row1.algorithmCombo get]
     set mode [.nb.file_tab.main.algo_frame.row1.modeCombo get]
-    set pbkdf2Hash [.nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo get]
+    set scryptHash [.nb.file_tab.main.algo_frame.row2.scryptHashCombo get]
 
     set kdfOptionAlgorithm ""
     if {$::useKDFAlgorithmFiles == 1} {
-        set kdfOptionAlgorithm "pbkdf2"
+        set kdfOptionAlgorithm "scrypt"
     }
 
     set ivSize [calculateIVSize $algorithm $mode]
@@ -2327,10 +2349,10 @@ proc decryptFile {} {
     update
     
     # Build edgetk command
-    set cmd "edgetk -crypt dec -key \"$key\" -iv \"$iv\" -cipher \"$algorithm\" -mode \"$mode\""
+    set cmd "edgetk -crypt dec -key \"$key\" -iv \"$iv\" -cipher \"$algorithm\" -mode \"$mode\" -info \"$aad\""
     
     if {$kdfOptionAlgorithm ne ""} {
-        append cmd " -kdf \"$kdfOptionAlgorithm\" -salt \"$salt\" -iter \"$iter\" -md \"$pbkdf2Hash\""
+        append cmd " -kdf \"$kdfOptionAlgorithm\" -salt \"$salt\" -iter \"$iter\" -md \"$scryptHash\""
     }
     
     # Add input file and redirect stdout to output file
@@ -2495,7 +2517,7 @@ set ::hashAlgorithmComboData {
 }
 label .nb.signatures_tab.main.algo_frame.content.hashAlgorithmLabel -text "Digest:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo -values $::hashAlgorithmComboData -state readonly -width 12
-.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha3-256"
+.nb.signatures_tab.main.algo_frame.content.hashAlgorithmCombo set "sha256"
 
 # Create Curve ComboBox
 set ::curveComboData {
@@ -2921,7 +2943,7 @@ set ::hashAlgorithmComboData {
 }
 label .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmLabel -text "Hash:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo -values $::hashAlgorithmComboData -state readonly -width 15
-.nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo set "sha3-256"
+.nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo set "sha256"
 
 # Salt Input
 label .nb.ecdh_tab.main.kdf_frame.content.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
@@ -3065,9 +3087,11 @@ checkbutton .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KD
 label .nb.text_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.text_tab.main.algo_frame.row2.saltBox -width 16 -font {Arial 9}
 
+# Create Iter ComboBox
+set ::iterComboData {"4096" "8192" "16384" "32768" "65536"}
 label .nb.text_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.text_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValue
-set ::iterValue 10000
+ttk::combobox .nb.text_tab.main.algo_frame.row2.iterCombo -values $::iterComboData -width 8
+.nb.text_tab.main.algo_frame.row2.iterCombo set "16384"
 
 set hashAlgorithms {
     bash224 bash256 bash384 bash512
@@ -3107,11 +3131,11 @@ set hashAlgorithms {
     whirlpool
     xoodyak
 }
-ttk::combobox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo -values $hashAlgorithms -width 12 -state readonly
-.nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo set "sha3-256"
+ttk::combobox .nb.text_tab.main.algo_frame.row2.scryptHashCombo -values $hashAlgorithms -width 12 -state readonly
+.nb.text_tab.main.algo_frame.row2.scryptHashCombo set "sha256"
 
 pack .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.text_tab.main.algo_frame.row2.saltLabel .nb.text_tab.main.algo_frame.row2.saltBox \
-     .nb.text_tab.main.algo_frame.row2.iterLabel .nb.text_tab.main.algo_frame.row2.iterBox .nb.text_tab.main.algo_frame.row2.pbkdf2HashCombo \
+     .nb.text_tab.main.algo_frame.row2.iterLabel .nb.text_tab.main.algo_frame.row2.iterCombo .nb.text_tab.main.algo_frame.row2.scryptHashCombo \
      -side left -padx 3
 
 # Plaintext frame (shorter) - MODIFICADO para permitir expansão
@@ -3189,7 +3213,7 @@ button .nb.text_tab.main.output_frame.buttons.clear -text "Clear" -command {
 } -bg "#dc3545" -fg white -font {Arial 9 bold}
 pack .nb.text_tab.main.output_frame.buttons.clear -side left -padx 3
 
-# Keys frame (more compact)
+# Keys frame (more compact) - Text tab
 frame .nb.text_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
 grid .nb.text_tab.main.keys_frame -row 3 -column 0 -columnspan 6 -sticky "ew" -padx 8 -pady 5
 
@@ -3199,7 +3223,7 @@ grid .nb.text_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -p
 
 # Create key input box
 entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
-grid .nb.text_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
+grid .nb.text_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 5 -sticky "ew" -padx 5 -pady 3
 grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
 
 # Create IV label
@@ -3208,7 +3232,19 @@ grid .nb.text_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pa
 
 # Create IV input box
 entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
-grid .nb.text_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
+grid .nb.text_tab.main.keys_frame.ivBox -row 1 -column 1 -sticky "ew" -padx {5 0} -pady 3
+
+# Create AAD label
+label .nb.text_tab.main.keys_frame.aadLabel -text "AAD:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e -state disabled
+grid .nb.text_tab.main.keys_frame.aadLabel -row 1 -column 2 -sticky e -padx {0 5} -pady 3
+
+# Create AAD input box
+entry .nb.text_tab.main.keys_frame.aadBox -width 10 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
+grid .nb.text_tab.main.keys_frame.aadBox -row 1 -column 3 -columnspan 3 -sticky "ew" -padx 5 -pady 3
+
+# Configure column weights para distribuição igual
+grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
+grid columnconfigure .nb.text_tab.main.keys_frame 3 -weight 1
 
 # Action buttons frame
 frame .nb.text_tab.main.action_frame -bg $bg_color
@@ -3277,9 +3313,11 @@ checkbutton .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KD
 label .nb.file_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
 entry .nb.file_tab.main.algo_frame.row2.saltBox -width 16 -font {Arial 9}
 
+# Create Iter ComboBox
+set ::iterComboData {"4096" "8192" "16384" "32768" "65536"}
 label .nb.file_tab.main.algo_frame.row2.iterLabel -text "Iter:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.file_tab.main.algo_frame.row2.iterBox -width 6 -font {Arial 9} -textvariable ::iterValueFiles
-set ::iterValueFiles 10000
+ttk::combobox .nb.file_tab.main.algo_frame.row2.iterCombo -values $::iterComboData -width 8
+.nb.file_tab.main.algo_frame.row2.iterCombo set "16384"
 
 set hashAlgorithms {
     bash224 bash256 bash384 bash512
@@ -3319,11 +3357,11 @@ set hashAlgorithms {
     whirlpool
     xoodyak
 }
-ttk::combobox .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo -values $hashAlgorithms -width 12 -state readonly
-.nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo set "sha3-256"
+ttk::combobox .nb.file_tab.main.algo_frame.row2.scryptHashCombo -values $hashAlgorithms -width 12 -state readonly
+.nb.file_tab.main.algo_frame.row2.scryptHashCombo set "sha256"
 
 pack .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox .nb.file_tab.main.algo_frame.row2.saltLabel .nb.file_tab.main.algo_frame.row2.saltBox \
-     .nb.file_tab.main.algo_frame.row2.iterLabel .nb.file_tab.main.algo_frame.row2.iterBox .nb.file_tab.main.algo_frame.row2.pbkdf2HashCombo \
+     .nb.file_tab.main.algo_frame.row2.iterLabel .nb.file_tab.main.algo_frame.row2.iterCombo .nb.file_tab.main.algo_frame.row2.scryptHashCombo \
      -side left -padx 3
 
 # File selection frame (compact - both input and output)
@@ -3377,7 +3415,7 @@ grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -p
 
 # Create key input box (Files)
 entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
-grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 3
+grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
 grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
 
 # Create IV label (Files)
@@ -3386,7 +3424,19 @@ grid .nb.file_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pa
 
 # Create IV input box (Files)
 entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
-grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -columnspan 2 -sticky "ew" -padx 5 -pady 8
+grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -sticky "ew" -padx {5 0} -pady 8
+
+# Create AAD label (Files)
+label .nb.file_tab.main.keys_frame.aadLabel -text "AAD:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e -state disabled
+grid .nb.file_tab.main.keys_frame.aadLabel -row 1 -column 2 -sticky e -padx {0 5} -pady 3
+
+# Create AAD input box (Files)
+entry .nb.file_tab.main.keys_frame.aadBox -width 10 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
+grid .nb.file_tab.main.keys_frame.aadBox -row 1 -column 3 -columnspan 2 -sticky "ew" -padx 5 -pady 8
+
+# Configure column weights
+grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
+grid columnconfigure .nb.file_tab.main.keys_frame 3 -weight 1
 
 # Action buttons frame (Files)
 frame .nb.file_tab.main.action_frame -bg $bg_color
@@ -3482,7 +3532,7 @@ set hmacHashes {
 }
 label .nb.mac_tab.main.algo_frame.content.hashLabel -text "Hash:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.mac_tab.main.algo_frame.content.hmacHashCombo -values $hmacHashes -state readonly -width 12
-.nb.mac_tab.main.algo_frame.content.hmacHashCombo set "sha3-256"
+.nb.mac_tab.main.algo_frame.content.hmacHashCombo set "sha256"
 
 # Create Cipher ComboBox for CMAC/PMAC/VMAC
 set cmacCiphers {
@@ -3751,7 +3801,7 @@ set ::digestHashComboData {
 
 label .nb.digest_tab.main.algo_frame.content.hashLabel -text "Hash Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.digest_tab.main.algo_frame.content.hashCombo -values $::digestHashComboData -state readonly -width 20
-.nb.digest_tab.main.algo_frame.content.hashCombo set "sha3-256"
+.nb.digest_tab.main.algo_frame.content.hashCombo set "sha256"
 
 # Recursive checkbox
 checkbutton .nb.digest_tab.main.algo_frame.content.recursiveCheck -text "Recursive" \
