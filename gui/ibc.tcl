@@ -756,7 +756,7 @@ proc encryptIBE {} {
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end $result
             } else {
                 # Output to file
-                set result [exec edgetk -pkey encrypt -algorithm bls12381 -scheme fo -key $master_public_path -id $user_id -hid $hid $input_file | edgetk -base64 enc > $output_file 2>@1]
+                set result [exec edgetk -pkey encrypt -algorithm bls12381 -scheme fo -key $master_public_path -id $user_id -hid $hid $input_file > $output_file 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "File encrypted successfully!\n"
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Output: $output_file\n"
             }
@@ -806,40 +806,23 @@ proc decryptIBE {} {
             return
         }
 
-        # Arquivo temporário para base64 decode
-        set temp_input [file tempfile]
-        set fd [open $temp_input w]
-        puts -nonewline $fd $input_text
-        close $fd
-
-        # Arquivo temporário para binário decodificado
-        set temp_dec [file tempfile]
-
         if {[catch {
-            # Base64 decode
-            exec edgetk -base64 dec $temp_input > $temp_dec 2>@1
-            file delete $temp_input
-
             if {$output_type eq "Text"} {
                 # Decrypt para variável
-                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec 2>@1]
+                set decrypted [exec edgetk -base64 dec << $input_text | edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end $decrypted
             } else {
                 # Decrypt para arquivo de saída
                 set output_file [.nb.encryption_tab.main.output_frame.content.outputFile get]
                 if {$output_file eq ""} {
-                    file delete $temp_dec
                     .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error: Please specify an output file!\n"
                     return
                 }
-                exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec > $output_file 2>@1
+                exec edgetk -base64 dec << $input_text | edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase > $output_file 2>@1
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "File decrypted successfully!\nOutput: $output_file\n"
             }
 
-            file delete $temp_dec
         } err]} {
-            file delete $temp_input
-            file delete $temp_dec
             .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error decrypting text:\n$err\n"
             return
         }
@@ -854,31 +837,22 @@ proc decryptIBE {} {
 
         set output_file [.nb.encryption_tab.main.output_frame.content.outputFile get]
 
-        # Arquivo temporário para base64 decode
-        set temp_dec [file tempfile]
-
         if {[catch {
-            # Base64 decode
-            exec edgetk -base64 dec $input_file > $temp_dec 2>@1
-
             if {$output_type eq "Text"} {
                 # Decrypt para variável e mostrar na área de texto
-                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec 2>@1]
+                set decrypted [exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $input_file 2>@1]
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end $decrypted
             } else {
                 # Decrypt para arquivo de saída
                 if {$output_file eq ""} {
-                    file delete $temp_dec
                     .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error: Please specify an output file!\n"
                     return
                 }
-                exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $temp_dec > $output_file 2>@1
+                exec edgetk -pkey decrypt -algorithm bls12381 -scheme fo -key $user_key_path -pass $passphrase $input_file > $output_file 2>@1
                 .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "File decrypted successfully!\nOutput: $output_file\n"
             }
 
-            file delete $temp_dec
         } err]} {
-            file delete $temp_dec
             .nb.encryption_tab.main.output_frame.content.textframe.outputText insert end "Error decrypting file:\n$err\n"
             return
         }
@@ -1181,251 +1155,6 @@ if {$tcl_platform(platform) ne "windows"} {
         -background [list selected $accent_color !selected $frame_color] \
         -foreground [list selected white !selected $accent_color]
 }
-
-# ========== KEY GENERATION TAB ==========
-frame .nb.keys_tab -bg $bg_color
-.nb add .nb.keys_tab -text " Key Management "
-
-# Main frame for content
-frame .nb.keys_tab.main -bg $bg_color
-pack .nb.keys_tab.main -fill both -expand yes -padx 6 -pady 3
-
-# Master key frame
-frame .nb.keys_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
-pack .nb.keys_tab.main.keys_frame -fill x -padx 6 -pady 3
-
-# Title frame with passphrase on the left and cipher on the right
-frame .nb.keys_tab.main.keys_frame.title_frame -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame -fill x -padx 6 -pady 2
-
-# Main title
-label .nb.keys_tab.main.keys_frame.title_frame.title -text "MASTER KEY GENERATION" \
-    -font {Arial 10 bold} -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.title -side left -anchor w
-
-# Frame for widgets on the right
-frame .nb.keys_tab.main.keys_frame.title_frame.right_frame -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame -side right -anchor e
-
-# Passphrase label
-label .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -side left -padx {0 3}
-
-# Passphrase entry
-entry .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -width 16 \
-    -font {"DejaVu Sans Mono" 9} -show "*"
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -side left -padx {0 10}
-
-# Cipher label
-label .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -side left -padx {0 3}
-
-# Cipher combo (far right)
-ttk::combobox .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo \
-    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
-    -width 10 -state readonly
-.nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo set "aes"
-pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo -side left
-
-# Content frame below the title
-frame .nb.keys_tab.main.keys_frame.content -bg $frame_color
-pack .nb.keys_tab.main.keys_frame.content -fill x -padx 6 -pady 2
-
-
-# Master key file
-label .nb.keys_tab.main.keys_frame.content.masterKeyLabel -text "Master Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.keys_frame.content.masterKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
-button .nb.keys_tab.main.keys_frame.content.openMasterButton -text "Open" -command {
-    openFileDialog .nb.keys_tab.main.keys_frame.content.masterKeyInput
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
-
-grid .nb.keys_tab.main.keys_frame.content.masterKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 2  ;# Reduzido pady
-grid .nb.keys_tab.main.keys_frame.content.masterKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 2
-grid .nb.keys_tab.main.keys_frame.content.openMasterButton -row 0 -column 2 -sticky w -padx 3 -pady 2
-
-# Master public key file
-label .nb.keys_tab.main.keys_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.keys_frame.content.masterPublicInput -width 40 -font {"DejaVu Sans Mono" 9}
-.nb.keys_tab.main.keys_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
-
-grid .nb.keys_tab.main.keys_frame.content.masterPublicLabel -row 1 -column 0 -sticky w -padx 3 -pady 2
-grid .nb.keys_tab.main.keys_frame.content.masterPublicInput -row 1 -column 1 -sticky ew -padx 3 -pady 2
-
-# Generate master key button
-button .nb.keys_tab.main.keys_frame.content.generateMasterButton -text "Generate Master Key Pair" -command generateMasterKey \
-    -bg "#28a745" -fg white -font {Arial 10 bold} -pady 2  ;# Reduzido pady
-grid .nb.keys_tab.main.keys_frame.content.generateMasterButton -row 2 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 5  ;# Reduzido pady
-
-grid columnconfigure .nb.keys_tab.main.keys_frame.content 1 -weight 1
-
-# User key frame
-frame .nb.keys_tab.main.user_frame -bg $frame_color -relief solid -bd 1
-pack .nb.keys_tab.main.user_frame -fill x -padx 6 -pady 3
-
-# Title frame with passphrase on the left and cipher on the right
-frame .nb.keys_tab.main.user_frame.title_frame -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame -fill x -padx 6 -pady 2
-
-# Main title
-label .nb.keys_tab.main.user_frame.title_frame.title -text "USER KEY DERIVATION" \
-    -font {Arial 10 bold} -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.title -side left -anchor w
-
-# Frame for widgets on the right
-frame .nb.keys_tab.main.user_frame.title_frame.right_frame -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame -side right -anchor e
-
-# Passphrase label
-label .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -side left -padx {0 3}
-
-# Passphrase entry
-entry .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -width 16 \
-    -font {"DejaVu Sans Mono" 9} -show "*"
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -side left -padx {0 10}
-
-# Cipher label
-label .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -side left -padx {0 3}
-
-# Cipher combo (far right)
-ttk::combobox .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo \
-    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
-    -width 10 -state readonly
-.nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo set "aes"
-pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo -side left
-
-# Content frame below the title
-frame .nb.keys_tab.main.user_frame.content -bg $frame_color
-pack .nb.keys_tab.main.user_frame.content -fill x -padx 6 -pady 2
-
-# User ID
-label .nb.keys_tab.main.user_frame.content.userIdLabel -text "User ID:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.user_frame.content.userIdEntry -width 30 -font {"DejaVu Sans Mono" 9}
-grid .nb.keys_tab.main.user_frame.content.userIdLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
-grid .nb.keys_tab.main.user_frame.content.userIdEntry -row 0 -column 1 -sticky ew -padx 3 -pady 2
-
-# HID - Adicionado na mesma linha
-label .nb.keys_tab.main.user_frame.content.hidLabel -text "HID:" -font {Arial 9 bold} -bg $frame_color
-ttk::combobox .nb.keys_tab.main.user_frame.content.hidCombo -values [generateHIDValues] -state readonly -width 5
-.nb.keys_tab.main.user_frame.content.hidCombo set "3"
-grid .nb.keys_tab.main.user_frame.content.hidLabel -row 0 -column 2 -sticky w -padx {10 3} -pady 2
-grid .nb.keys_tab.main.user_frame.content.hidCombo -row 0 -column 3 -sticky w -padx 3 -pady 2
-
-# User key file
-label .nb.keys_tab.main.user_frame.content.userKeyLabel -text "User Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.user_frame.content.userKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
-
-button .nb.keys_tab.main.user_frame.content.openUserButton -text "Save" -command {
-    set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
-    if {$file_path ne ""} {
-        .nb.keys_tab.main.user_frame.content.userKeyInput delete 0 end
-        .nb.keys_tab.main.user_frame.content.userKeyInput insert 0 $file_path
-    }
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
-
-grid .nb.keys_tab.main.user_frame.content.userKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 2
-grid .nb.keys_tab.main.user_frame.content.userKeyInput -row 1 -column 1 -columnspan 2 -sticky ew -padx 3 -pady 2
-grid .nb.keys_tab.main.user_frame.content.openUserButton -row 1 -column 3 -sticky e -padx 3 -pady 2
-
-# Generate user key button
-button .nb.keys_tab.main.user_frame.content.generateUserButton -text "Generate User Key" -command generateUserKey \
-    -bg "#6c757d" -fg white -font {Arial 10 bold} -pady 2
-grid .nb.keys_tab.main.user_frame.content.generateUserButton -row 2 -column 0 -columnspan 4 -sticky ew -padx 3 -pady 5
-
-grid columnconfigure .nb.keys_tab.main.user_frame.content 1 -weight 1
-
-# Parse key frame
-frame .nb.keys_tab.main.parse_frame -bg $frame_color -relief solid -bd 1
-pack .nb.keys_tab.main.parse_frame -fill x -padx 6 -pady 3  ;# Reduzido padding
-
-# Title frame with passphrase aligned to the right
-frame .nb.keys_tab.main.parse_frame.title_frame -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.title_frame -fill x -padx 6 -pady 2
-
-# Main title
-label .nb.keys_tab.main.parse_frame.title_frame.title -text "KEY PARSING" \
-    -font {Arial 10 bold} -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.title_frame.title -side left -anchor w
-
-# Frame to hold passphrase aligned to the right, filling horizontal space
-frame .nb.keys_tab.main.parse_frame.title_frame.right_frame -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.title_frame.right_frame -side right -fill x
-
-# Passphrase entry (far right)
-entry .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -width 16 \
-    -font {"DejaVu Sans Mono" 9} -show "*"
-pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -side right -padx {0 0}
-
-# Passphrase label (left of entry)
-label .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
-    -font {Arial 9 bold} -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -side right -padx {3 5}
-
-# Content frame below
-frame .nb.keys_tab.main.parse_frame.content -bg $frame_color
-pack .nb.keys_tab.main.parse_frame.content -fill x -padx 6 -pady 2
-
-
-# Key file to parse
-label .nb.keys_tab.main.parse_frame.content.keyLabel -text "Key File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.keys_tab.main.parse_frame.content.keyInput -width 40 -font {"DejaVu Sans Mono" 9}
-button .nb.keys_tab.main.parse_frame.content.openKeyButton -text "Open" -command {
-    openFileDialog .nb.keys_tab.main.parse_frame.content.keyInput
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
-
-grid .nb.keys_tab.main.parse_frame.content.keyLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
-grid .nb.keys_tab.main.parse_frame.content.keyInput -row 0 -column 1 -sticky ew -padx 3 -pady 2
-grid .nb.keys_tab.main.parse_frame.content.openKeyButton -row 0 -column 2 -sticky w -padx 3 -pady 2
-
-# Parse button
-button .nb.keys_tab.main.parse_frame.content.parseButton -text "Parse Key File" -command parseKeyFile \
-    -bg "#fd7e14" -fg white -font {Arial 10 bold} -pady 2
-grid .nb.keys_tab.main.parse_frame.content.parseButton -row 1 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 5
-
-grid columnconfigure .nb.keys_tab.main.parse_frame.content 1 -weight 1
-
-# Output frame (reduced height)
-frame .nb.keys_tab.main.output_frame -bg $frame_color -relief solid -bd 1
-pack .nb.keys_tab.main.output_frame -fill both -expand true -padx 6 -pady 3  ;# Reduzido padding
-
-label .nb.keys_tab.main.output_frame.title -text "OUTPUT" -font {Arial 10 bold} -bg $frame_color
-pack .nb.keys_tab.main.output_frame.title -anchor w -padx 6 -pady 2
-
-# Create output text area (reduced height)
-frame .nb.keys_tab.main.output_frame.textframe -bg $frame_color
-pack .nb.keys_tab.main.output_frame.textframe -fill both -expand true -padx 6 -pady 2
-
-text .nb.keys_tab.main.output_frame.textframe.outputArea -width 70 -height 6 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
-scrollbar .nb.keys_tab.main.output_frame.textframe.yscroll -orient vertical \
-    -command {.nb.keys_tab.main.output_frame.textframe.outputArea yview}
-.nb.keys_tab.main.output_frame.textframe.outputArea configure \
-    -yscrollcommand {.nb.keys_tab.main.output_frame.textframe.yscroll set}
-
-grid .nb.keys_tab.main.output_frame.textframe.outputArea -row 0 -column 0 -sticky "nsew"
-grid .nb.keys_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -sticky "ns"
-
-grid rowconfigure .nb.keys_tab.main.output_frame.textframe 0 -weight 1
-grid columnconfigure .nb.keys_tab.main.output_frame.textframe 0 -weight 1
-
-# Utility buttons
-frame .nb.keys_tab.main.output_frame.utility_buttons -bg $frame_color
-pack .nb.keys_tab.main.output_frame.utility_buttons -fill x -padx 6 -pady 2
-
-button .nb.keys_tab.main.output_frame.utility_buttons.copyButton -text "Copy" -command {
-    copyText [.nb.keys_tab.main.output_frame.textframe.outputArea get 1.0 end]
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.keys_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
-
-button .nb.keys_tab.main.output_frame.utility_buttons.clearButton -text "Clear" -command {
-    .nb.keys_tab.main.output_frame.textframe.outputArea delete 1.0 end
-} -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.keys_tab.main.output_frame.utility_buttons.clearButton -side left -padx 2
 
 # ================= SIGNATURES TAB =================
 frame .nb.signatures_tab -bg $bg_color
@@ -1845,12 +1574,6 @@ button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.copyB
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
 pack .nb.encryption_tab.main.output_frame.content.textframe.button_frame.copyButton -side left -padx 2
 
-# Paste button (para área de saída)
-button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.pasteButton -text "Paste" -command {
-    .nb.encryption_tab.main.output_frame.content.textframe.outputText insert insert [clipboard get]
-} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
-pack .nb.encryption_tab.main.output_frame.content.textframe.button_frame.pasteButton -side left -padx 2
-
 # Clear button (para área de saída)
 button .nb.encryption_tab.main.output_frame.content.textframe.button_frame.clearButton -text "Clear" -command {
     .nb.encryption_tab.main.output_frame.content.textframe.outputText delete 1.0 end
@@ -1872,6 +1595,251 @@ pack .nb.encryption_tab.main.action_frame.decryptButton -side right -padx 5
 button .nb.encryption_tab.main.action_frame.encryptButton -text "Encrypt" -command encryptIBE \
     -bg "#6c757d" -fg white -font {Arial 10 bold} -padx 20 -pady 2
 pack .nb.encryption_tab.main.action_frame.encryptButton -side right -padx 5
+
+# ========== KEY GENERATION TAB ==========
+frame .nb.keys_tab -bg $bg_color
+.nb add .nb.keys_tab -text " Key Management "
+
+# Main frame for content
+frame .nb.keys_tab.main -bg $bg_color
+pack .nb.keys_tab.main -fill both -expand yes -padx 6 -pady 3
+
+# Master key frame
+frame .nb.keys_tab.main.keys_frame -bg $frame_color -relief solid -bd 1
+pack .nb.keys_tab.main.keys_frame -fill x -padx 6 -pady 3
+
+# Title frame with passphrase on the left and cipher on the right
+frame .nb.keys_tab.main.keys_frame.title_frame -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame -fill x -padx 6 -pady 2
+
+# Main title
+label .nb.keys_tab.main.keys_frame.title_frame.title -text "MASTER KEY" \
+    -font {Arial 10 bold} -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame.title -side left -anchor w
+
+# Frame for widgets on the right
+frame .nb.keys_tab.main.keys_frame.title_frame.right_frame -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame -side right -anchor e
+
+# Passphrase label
+label .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passLabel -side left -padx {0 3}
+
+# Passphrase entry
+entry .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.passEntry -side left -padx {0 10}
+
+# Cipher label
+label .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherLabel -side left -padx {0 3}
+
+# Cipher combo (far right)
+ttk::combobox .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo \
+    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
+    -width 10 -state readonly
+.nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo set "aes"
+pack .nb.keys_tab.main.keys_frame.title_frame.right_frame.cipherCombo -side left
+
+# Content frame below the title
+frame .nb.keys_tab.main.keys_frame.content -bg $frame_color
+pack .nb.keys_tab.main.keys_frame.content -fill x -padx 6 -pady 2
+
+
+# Master key file
+label .nb.keys_tab.main.keys_frame.content.masterKeyLabel -text "Master Key:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.keys_tab.main.keys_frame.content.masterKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
+button .nb.keys_tab.main.keys_frame.content.openMasterButton -text "Open" -command {
+    openFileDialog .nb.keys_tab.main.keys_frame.content.masterKeyInput
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.keys_tab.main.keys_frame.content.masterKeyLabel -row 0 -column 0 -sticky w -padx 3 -pady 2  ;# Reduzido pady
+grid .nb.keys_tab.main.keys_frame.content.masterKeyInput -row 0 -column 1 -sticky ew -padx 3 -pady 2
+grid .nb.keys_tab.main.keys_frame.content.openMasterButton -row 0 -column 2 -sticky w -padx 3 -pady 2
+
+# Master public key file
+label .nb.keys_tab.main.keys_frame.content.masterPublicLabel -text "Master Public:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.keys_tab.main.keys_frame.content.masterPublicInput -width 40 -font {"DejaVu Sans Mono" 9}
+.nb.keys_tab.main.keys_frame.content.masterPublicInput configure -state disabled -disabledbackground "#f0f0f0"
+
+grid .nb.keys_tab.main.keys_frame.content.masterPublicLabel -row 1 -column 0 -sticky w -padx 3 -pady 2
+grid .nb.keys_tab.main.keys_frame.content.masterPublicInput -row 1 -column 1 -sticky ew -padx 3 -pady 2
+
+# Generate master key button
+button .nb.keys_tab.main.keys_frame.content.generateMasterButton -text "Generate Master Key Pair" -command generateMasterKey \
+    -bg "#28a745" -fg white -font {Arial 10 bold} -pady 2  ;# Reduzido pady
+grid .nb.keys_tab.main.keys_frame.content.generateMasterButton -row 2 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 5  ;# Reduzido pady
+
+grid columnconfigure .nb.keys_tab.main.keys_frame.content 1 -weight 1
+
+# User key frame
+frame .nb.keys_tab.main.user_frame -bg $frame_color -relief solid -bd 1
+pack .nb.keys_tab.main.user_frame -fill x -padx 6 -pady 3
+
+# Title frame with passphrase on the left and cipher on the right
+frame .nb.keys_tab.main.user_frame.title_frame -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame -fill x -padx 6 -pady 2
+
+# Main title
+label .nb.keys_tab.main.user_frame.title_frame.title -text "USER KEY DERIVATION" \
+    -font {Arial 10 bold} -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame.title -side left -anchor w
+
+# Frame for widgets on the right
+frame .nb.keys_tab.main.user_frame.title_frame.right_frame -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame -side right -anchor e
+
+# Passphrase label
+label .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passLabel -side left -padx {0 3}
+
+# Passphrase entry
+entry .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.passEntry -side left -padx {0 10}
+
+# Cipher label
+label .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -text "Cipher:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherLabel -side left -padx {0 3}
+
+# Cipher combo (far right)
+ttk::combobox .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo \
+    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
+    -width 10 -state readonly
+.nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo set "aes"
+pack .nb.keys_tab.main.user_frame.title_frame.right_frame.cipherCombo -side left
+
+# Content frame below the title
+frame .nb.keys_tab.main.user_frame.content -bg $frame_color
+pack .nb.keys_tab.main.user_frame.content -fill x -padx 6 -pady 2
+
+# User ID
+label .nb.keys_tab.main.user_frame.content.userIdLabel -text "User ID:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.keys_tab.main.user_frame.content.userIdEntry -width 30 -font {"DejaVu Sans Mono" 9}
+grid .nb.keys_tab.main.user_frame.content.userIdLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
+grid .nb.keys_tab.main.user_frame.content.userIdEntry -row 0 -column 1 -sticky ew -padx 3 -pady 2
+
+# HID - Adicionado na mesma linha
+label .nb.keys_tab.main.user_frame.content.hidLabel -text "HID:" -font {Arial 9 bold} -bg $frame_color
+ttk::combobox .nb.keys_tab.main.user_frame.content.hidCombo -values [generateHIDValues] -state readonly -width 5
+.nb.keys_tab.main.user_frame.content.hidCombo set "3"
+grid .nb.keys_tab.main.user_frame.content.hidLabel -row 0 -column 2 -sticky w -padx {10 3} -pady 2
+grid .nb.keys_tab.main.user_frame.content.hidCombo -row 0 -column 3 -sticky w -padx 3 -pady 2
+
+# User key file
+label .nb.keys_tab.main.user_frame.content.userKeyLabel -text "User Key:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.keys_tab.main.user_frame.content.userKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
+
+button .nb.keys_tab.main.user_frame.content.openUserButton -text "Save" -command {
+    set file_path [tk_getSaveFile -defaultextension ".pem" -filetypes {{"PEM files" ".pem"} {"All files" "*"}}]
+    if {$file_path ne ""} {
+        .nb.keys_tab.main.user_frame.content.userKeyInput delete 0 end
+        .nb.keys_tab.main.user_frame.content.userKeyInput insert 0 $file_path
+    }
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.keys_tab.main.user_frame.content.userKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 2
+grid .nb.keys_tab.main.user_frame.content.userKeyInput -row 1 -column 1 -columnspan 2 -sticky ew -padx 3 -pady 2
+grid .nb.keys_tab.main.user_frame.content.openUserButton -row 1 -column 3 -sticky e -padx 3 -pady 2
+
+# Generate user key button
+button .nb.keys_tab.main.user_frame.content.generateUserButton -text "Generate User Key" -command generateUserKey \
+    -bg "#6c757d" -fg white -font {Arial 10 bold} -pady 2
+grid .nb.keys_tab.main.user_frame.content.generateUserButton -row 2 -column 0 -columnspan 4 -sticky ew -padx 3 -pady 5
+
+grid columnconfigure .nb.keys_tab.main.user_frame.content 1 -weight 1
+
+# Parse key frame
+frame .nb.keys_tab.main.parse_frame -bg $frame_color -relief solid -bd 1
+pack .nb.keys_tab.main.parse_frame -fill x -padx 6 -pady 3  ;# Reduzido padding
+
+# Title frame with passphrase aligned to the right
+frame .nb.keys_tab.main.parse_frame.title_frame -bg $frame_color
+pack .nb.keys_tab.main.parse_frame.title_frame -fill x -padx 6 -pady 2
+
+# Main title
+label .nb.keys_tab.main.parse_frame.title_frame.title -text "KEY PARSING" \
+    -font {Arial 10 bold} -bg $frame_color
+pack .nb.keys_tab.main.parse_frame.title_frame.title -side left -anchor w
+
+# Frame to hold passphrase aligned to the right, filling horizontal space
+frame .nb.keys_tab.main.parse_frame.title_frame.right_frame -bg $frame_color
+pack .nb.keys_tab.main.parse_frame.title_frame.right_frame -side right -fill x
+
+# Passphrase entry (far right)
+entry .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -width 16 \
+    -font {"DejaVu Sans Mono" 9} -show "*"
+pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passEntry -side right -padx {0 0}
+
+# Passphrase label (left of entry)
+label .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -text "Passphrase:" \
+    -font {Arial 9 bold} -bg $frame_color
+pack .nb.keys_tab.main.parse_frame.title_frame.right_frame.passLabel -side right -padx {3 5}
+
+# Content frame below
+frame .nb.keys_tab.main.parse_frame.content -bg $frame_color
+pack .nb.keys_tab.main.parse_frame.content -fill x -padx 6 -pady 2
+
+
+# Key file to parse
+label .nb.keys_tab.main.parse_frame.content.keyLabel -text "Key File:" -font {Arial 9 bold} -bg $frame_color
+entry .nb.keys_tab.main.parse_frame.content.keyInput -width 40 -font {"DejaVu Sans Mono" 9}
+button .nb.keys_tab.main.parse_frame.content.openKeyButton -text "Open" -command {
+    openFileDialog .nb.keys_tab.main.parse_frame.content.keyInput
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
+
+grid .nb.keys_tab.main.parse_frame.content.keyLabel -row 0 -column 0 -sticky w -padx 3 -pady 2
+grid .nb.keys_tab.main.parse_frame.content.keyInput -row 0 -column 1 -sticky ew -padx 3 -pady 2
+grid .nb.keys_tab.main.parse_frame.content.openKeyButton -row 0 -column 2 -sticky w -padx 3 -pady 2
+
+# Parse button
+button .nb.keys_tab.main.parse_frame.content.parseButton -text "Parse Key File" -command parseKeyFile \
+    -bg "#fd7e14" -fg white -font {Arial 10 bold} -pady 2
+grid .nb.keys_tab.main.parse_frame.content.parseButton -row 1 -column 0 -columnspan 3 -sticky ew -padx 3 -pady 5
+
+grid columnconfigure .nb.keys_tab.main.parse_frame.content 1 -weight 1
+
+# Output frame (reduced height)
+frame .nb.keys_tab.main.output_frame -bg $frame_color -relief solid -bd 1
+pack .nb.keys_tab.main.output_frame -fill both -expand true -padx 6 -pady 3  ;# Reduzido padding
+
+label .nb.keys_tab.main.output_frame.title -text "OUTPUT" -font {Arial 10 bold} -bg $frame_color
+pack .nb.keys_tab.main.output_frame.title -anchor w -padx 6 -pady 2
+
+# Create output text area (reduced height)
+frame .nb.keys_tab.main.output_frame.textframe -bg $frame_color
+pack .nb.keys_tab.main.output_frame.textframe -fill both -expand true -padx 6 -pady 2
+
+text .nb.keys_tab.main.output_frame.textframe.outputArea -width 70 -height 6 -wrap word \
+    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+scrollbar .nb.keys_tab.main.output_frame.textframe.yscroll -orient vertical \
+    -command {.nb.keys_tab.main.output_frame.textframe.outputArea yview}
+.nb.keys_tab.main.output_frame.textframe.outputArea configure \
+    -yscrollcommand {.nb.keys_tab.main.output_frame.textframe.yscroll set}
+
+grid .nb.keys_tab.main.output_frame.textframe.outputArea -row 0 -column 0 -sticky "nsew"
+grid .nb.keys_tab.main.output_frame.textframe.yscroll -row 0 -column 1 -sticky "ns"
+
+grid rowconfigure .nb.keys_tab.main.output_frame.textframe 0 -weight 1
+grid columnconfigure .nb.keys_tab.main.output_frame.textframe 0 -weight 1
+
+# Utility buttons
+frame .nb.keys_tab.main.output_frame.utility_buttons -bg $frame_color
+pack .nb.keys_tab.main.output_frame.utility_buttons -fill x -padx 6 -pady 2
+
+button .nb.keys_tab.main.output_frame.utility_buttons.copyButton -text "Copy" -command {
+    copyText [.nb.keys_tab.main.output_frame.textframe.outputArea get 1.0 end]
+} -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.keys_tab.main.output_frame.utility_buttons.copyButton -side left -padx 2
+
+button .nb.keys_tab.main.output_frame.utility_buttons.clearButton -text "Clear" -command {
+    .nb.keys_tab.main.output_frame.textframe.outputArea delete 1.0 end
+} -bg "#dc3545" -fg white -font {Arial 9 bold} -padx 10
+pack .nb.keys_tab.main.output_frame.utility_buttons.clearButton -side left -padx 2
 
 # ========== THRESHOLD IBE TAB ==========
 frame .nb.threshold_tab -bg $bg_color
