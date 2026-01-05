@@ -248,7 +248,7 @@ var (
 	iport          = flag.String("ipport", "", "Local Port/remote's side Public IP:Port.")
 	isca           = flag.Bool("isca", false, "The requested CSR is for a Certificate Authority (CA).")
 	iter           = flag.Int("iter", 1, "Iter. (for Password-based key derivation function)")
-	kdf            = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt|argon2|lyra2re2]")
+	kdf            = flag.String("kdf", "", "Key derivation function. [pbkdf2|hkdf|scrypt|lyra2re2]")
 	key            = flag.String("key", "", "Asymmetric key, symmetric key or HMAC key, depending on operation.")
 	length         = flag.Int("bits", 0, "Key length. (for keypair generation and symmetric encryption)")
 	mac            = flag.String("mac", "", "Compute Hash/Cipher-based message authentication code.")
@@ -376,7 +376,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.16  20 Dec 2025")
+		fmt.Println("EDGE Toolkit v1.5.17  01 Jan 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -441,8 +441,8 @@ Block Ciphers:
   crypton           khazad            rc5               twofish
 
 Key Derivation Functions:
-  hkdf              pbkdf2            scrypt            gost
-  argon2            blake3            lyra2re/2         help
+  hkdf              pbkdf2            lyra2re           gost
+  blake3            scrypt            lyra2re2          help
 
 Password Hash Functions:
   argon2            bcrypt            lyra2re/2         makwa
@@ -524,13 +524,10 @@ Methods:
   edgetk -kdf <method> [-bits N] [-md <hash>] [-key <secret>] [-salt <salt>]
 
 Methods: 
-  hkdf, pbkdf2, scrypt, argon2, lyra2re, lyra2re2, gost (streebog)
+  hkdf, pbkdf2, scrypt, lyra2re, lyra2re2, gost (streebog)
 
  HKDF:
   edgetk -kdf hkdf [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
-
- Argon2:
-  edgetk -kdf argon2 [-bits N] [-salt "SALT"] [-iter N] [-key "PASSPHRASE"]
 
  GOST:
   edgetk -kdf streebog [-bits N] [-salt "SALT"] [-info "AAD"] [-key "IKM"]
@@ -1914,7 +1911,7 @@ Subcommands:
 		*iter = 4096
 	}
 
-	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "BLAKE3" || strings.ToUpper(*kdf) == "LYRA2RE" || strings.ToUpper(*kdf) == "LYRA2RE2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
+	if (strings.ToUpper(*md) == "ARGON2" || strings.ToUpper(*kdf) == "SCRYPT" || strings.ToUpper(*kdf) == "PBKDF2" || strings.ToUpper(*kdf) == "HKDF" || strings.ToUpper(*kdf) == "BLAKE3" || strings.ToUpper(*kdf) == "LYRA2RE" || strings.ToUpper(*kdf) == "LYRA2RE2" || strings.ToUpper(*kdf) == "STREEBOG256" || strings.ToUpper(*kdf) == "STREEBOG" || strings.ToUpper(*kdf) == "GOST") && *length == 0 {
 		*length = 256
 	}
 
@@ -1948,16 +1945,6 @@ Subcommands:
 		if *crypt == "" {
 			fmt.Println(*key)
 			os.Exit(0)
-		}
-	}
-
-	if *kdf == "argon2" {
-		hash := argon2.IDKey([]byte(*key), []byte(*salt), uint32(*iter), 64*1024, 4, uint32(*length/8))
-		*key = hex.EncodeToString(hash)
-
-		if *crypt == "" {
-			fmt.Println(*key)
-			return
 		}
 	}
 
@@ -4655,8 +4642,8 @@ Subcommands:
 		password := []byte(*key)
 		salt := []byte(*salt)
 
-		time := uint32(*iter)
-		memory := uint32(64 * 1024)
+		time := uint32(2)
+		memory := uint32(*iter * 64 * 1024)
 		threads := uint8(1)
 		keyLen := uint32(*length / 8)
 
@@ -6126,6 +6113,107 @@ Subcommands:
 			log.Fatal(err)
 		}
 		fmt.Printf("%x\n", hash[:*length/8])
+	}
+
+	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" || *pkey == "combine-threshold" || *pkey == "keygen-threshold" || *pkey == "setup-threshold" {
+
+		if *pkey == "combine-threshold" || *pkey == "keygen-threshold" || *pkey == "setup-threshold" {
+			*alg = "BLS12381"
+		}
+
+		if data, err := ioutil.ReadFile(*key); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "SLH-DSA") {
+					*alg = "SLH-DSA"
+				} else if strings.Contains(block.Type, "LMS") {
+					*alg = "LMS"
+				} else if strings.Contains(block.Type, "ML-KEM") {
+					*alg = "ML-KEM"
+				} else if strings.Contains(block.Type, "ML-DSA") {
+					*alg = "ML-DSA"
+				} else if strings.Contains(block.Type, "BN256I") {
+					*alg = "BN256I"
+				} else if strings.Contains(block.Type, "BN256") {
+					*alg = "BN256"
+				} else if strings.Contains(block.Type, "BN256SIGN") {
+					*alg = "BN256SIGN"
+				} else if strings.Contains(block.Type, "BN256ENCRYPT") {
+					*alg = "BN256ENCRYPT"
+				} else if strings.Contains(block.Type, "BLS12381I") {
+					*alg = "BLS12381I"
+				} else if strings.Contains(block.Type, "BLS12381SIGN") {
+					*alg = "BLS12381SIGN"
+				} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
+					*alg = "BLS12381ENCRYPT"
+				} else if strings.Contains(block.Type, "BLS12381") {
+					*alg = "BLS12381"
+				} else if strings.Contains(block.Type, "SCHNORR") {
+					*alg = "SCHNORR"
+				} else if strings.Contains(block.Type, "ELGAMAL") {
+					*alg = "ELGAMAL"
+				} else if strings.Contains(block.Type, "MATRIX") {
+					*alg = "MATRIX"
+				}
+			}
+		}
+
+		if data, err := ioutil.ReadFile(*crl); err == nil {
+			if block, _ := pem.Decode(data); block != nil {
+				if strings.Contains(block.Type, "SLH-DSA") {
+					*alg = "SLH-DSA"
+				} else if strings.Contains(block.Type, "LMS") {
+					*alg = "LMS"
+				} else if strings.Contains(block.Type, "ML-DSA") {
+					*alg = "ML-DSA"
+				} else if strings.Contains(block.Type, "BN256I") {
+					*alg = "BN256I"
+				} else if strings.Contains(block.Type, "BN256") {
+					*alg = "BN256"
+				} else if strings.Contains(block.Type, "BN256SIGN") {
+					*alg = "BN256SIGN"
+				} else if strings.Contains(block.Type, "BN256ENCRYPT") {
+					*alg = "BN256ENCRYPT"
+				} else if strings.Contains(block.Type, "BLS12381I") {
+					*alg = "BLS12381I"
+				} else if strings.Contains(block.Type, "BLS12381SIGN") {
+					*alg = "BLS12381SIGN"
+				} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
+					*alg = "BLS12381ENCRYPT"
+				} else if strings.Contains(block.Type, "BLS12381") {
+					*alg = "BLS12381"
+				}
+			}
+		}
+
+		if *pkey != "certgen" && *pkey != "req" {
+			if data, err := ioutil.ReadFile(*cert); err == nil {
+				if block, _ := pem.Decode(data); block != nil {
+					if strings.Contains(block.Type, "SLH-DSA") {
+						*alg = "SLH-DSA"
+					} else if strings.Contains(block.Type, "LMS") {
+						*alg = "LMS"
+					} else if strings.Contains(block.Type, "ML-DSA") {
+						*alg = "ML-DSA"
+					} else if strings.Contains(block.Type, "BN256I") {
+						*alg = "BN256I"
+					} else if strings.Contains(block.Type, "BN256") {
+						*alg = "BN256"
+					} else if strings.Contains(block.Type, "BN256SIGN") {
+						*alg = "BN256SIGN"
+					} else if strings.Contains(block.Type, "BN256ENCRYPT") {
+						*alg = "BN256ENCRYPT"
+					} else if strings.Contains(block.Type, "BLS12381I") {
+						*alg = "BLS12381I"
+					} else if strings.Contains(block.Type, "BLS12381SIGN") {
+						*alg = "BLS12381SIGN"
+					} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
+						*alg = "BLS12381ENCRYPT"
+					} else if strings.Contains(block.Type, "BLS12381") {
+						*alg = "BLS12381"
+					}
+				}
+			}
+		}
 	}
 
 	if strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA" && (*pkey == "sign" || *pkey == "verify" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt") {
@@ -9877,107 +9965,6 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "randomart" || *pkey == "text" || *pkey == "fingerprint" || *pkey == "certgen" || *pkey == "req" || *pkey == "x509" || *pkey == "crl" || *pkey == "sign" || *pkey == "aggregate" || *pkey == "verify-aggregate" || *pkey == "proof" || *pkey == "verify-proof" || *pkey == "derive" || *pkey == "encrypt" || *pkey == "decrypt" || *pkey == "verify" || *pkey == "check" || *pkey == "validate" || *pkey == "wrapkey" || *pkey == "unwrapkey" || *tcpip == "server" || *tcpip == "client" || *pkey == "combine-threshold" || *pkey == "keygen-threshold" || *pkey == "setup-threshold" {
-
-		if *pkey == "combine-threshold" || *pkey == "keygen-threshold" || *pkey == "setup-threshold" {
-			*alg = "BLS12381"
-		}
-
-		if data, err := ioutil.ReadFile(*key); err == nil {
-			if block, _ := pem.Decode(data); block != nil {
-				if strings.Contains(block.Type, "SLH-DSA") {
-					*alg = "SLH-DSA"
-				} else if strings.Contains(block.Type, "LMS") {
-					*alg = "LMS"
-				} else if strings.Contains(block.Type, "ML-KEM") {
-					*alg = "ML-KEM"
-				} else if strings.Contains(block.Type, "ML-DSA") {
-					*alg = "ML-DSA"
-				} else if strings.Contains(block.Type, "BN256I") {
-					*alg = "BN256I"
-				} else if strings.Contains(block.Type, "BN256") {
-					*alg = "BN256"
-				} else if strings.Contains(block.Type, "BN256SIGN") {
-					*alg = "BN256SIGN"
-				} else if strings.Contains(block.Type, "BN256ENCRYPT") {
-					*alg = "BN256ENCRYPT"
-				} else if strings.Contains(block.Type, "BLS12381I") {
-					*alg = "BLS12381I"
-				} else if strings.Contains(block.Type, "BLS12381SIGN") {
-					*alg = "BLS12381SIGN"
-				} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
-					*alg = "BLS12381ENCRYPT"
-				} else if strings.Contains(block.Type, "BLS12381") {
-					*alg = "BLS12381"
-				} else if strings.Contains(block.Type, "SCHNORR") {
-					*alg = "SCHNORR"
-				} else if strings.Contains(block.Type, "ELGAMAL") {
-					*alg = "ELGAMAL"
-				} else if strings.Contains(block.Type, "MATRIX") {
-					*alg = "MATRIX"
-				}
-			}
-		}
-
-		if data, err := ioutil.ReadFile(*crl); err == nil {
-			if block, _ := pem.Decode(data); block != nil {
-				if strings.Contains(block.Type, "SLH-DSA") {
-					*alg = "SLH-DSA"
-				} else if strings.Contains(block.Type, "LMS") {
-					*alg = "LMS"
-				} else if strings.Contains(block.Type, "ML-DSA") {
-					*alg = "ML-DSA"
-				} else if strings.Contains(block.Type, "BN256I") {
-					*alg = "BN256I"
-				} else if strings.Contains(block.Type, "BN256") {
-					*alg = "BN256"
-				} else if strings.Contains(block.Type, "BN256SIGN") {
-					*alg = "BN256SIGN"
-				} else if strings.Contains(block.Type, "BN256ENCRYPT") {
-					*alg = "BN256ENCRYPT"
-				} else if strings.Contains(block.Type, "BLS12381I") {
-					*alg = "BLS12381I"
-				} else if strings.Contains(block.Type, "BLS12381SIGN") {
-					*alg = "BLS12381SIGN"
-				} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
-					*alg = "BLS12381ENCRYPT"
-				} else if strings.Contains(block.Type, "BLS12381") {
-					*alg = "BLS12381"
-				}
-			}
-		}
-
-		if *pkey != "certgen" && *pkey != "req" {
-			if data, err := ioutil.ReadFile(*cert); err == nil {
-				if block, _ := pem.Decode(data); block != nil {
-					if strings.Contains(block.Type, "SLH-DSA") {
-						*alg = "SLH-DSA"
-					} else if strings.Contains(block.Type, "LMS") {
-						*alg = "LMS"
-					} else if strings.Contains(block.Type, "ML-DSA") {
-						*alg = "ML-DSA"
-					} else if strings.Contains(block.Type, "BN256I") {
-						*alg = "BN256I"
-					} else if strings.Contains(block.Type, "BN256") {
-						*alg = "BN256"
-					} else if strings.Contains(block.Type, "BN256SIGN") {
-						*alg = "BN256SIGN"
-					} else if strings.Contains(block.Type, "BN256ENCRYPT") {
-						*alg = "BN256ENCRYPT"
-					} else if strings.Contains(block.Type, "BLS12381I") {
-						*alg = "BLS12381I"
-					} else if strings.Contains(block.Type, "BLS12381SIGN") {
-						*alg = "BLS12381SIGN"
-					} else if strings.Contains(block.Type, "BLS12381ENCRYPT") {
-						*alg = "BLS12381ENCRYPT"
-					} else if strings.Contains(block.Type, "BLS12381") {
-						*alg = "BLS12381"
-					}
-				}
-			}
-		}
-	}
-
 	if *pkey == "derive" && strings.ToUpper(*alg) != "GOST2012" && strings.ToUpper(*alg) != "BN256" && strings.ToUpper(*alg) != "BN256I" && strings.ToUpper(*alg) != "BLS12381" && strings.ToUpper(*alg) != "BLS12381I" {
 
 		var privateKey *ecdh.PrivateKey
@@ -13111,7 +13098,7 @@ Subcommands:
 				log.Fatalf("Failed to sign message: %v", err)
 			}
 
-			fmt.Printf("SchnorrGL(%s)= %x\n", inputdesc, sigBytes)
+			fmt.Printf("GL(%s)= %x\n", inputdesc, sigBytes)
 			return
 		} else if *pkey == "verify" && *key != "" {
 			mc := matrixcrypto.New()
