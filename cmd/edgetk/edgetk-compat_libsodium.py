@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 EDGE Crypto Toolbox - Android Version (standard libraries + pysodium)
-Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519, Hashsum, HMAC
+Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519, Hashsum, HMAC, HKDF
 """
 
 import argparse
@@ -24,6 +24,281 @@ except ImportError:
     print("⚠ pysodium not found. Some features limited.")
     print("Install with: pip install pysodium")
     PYSODIUM_AVAILABLE = False
+
+# =========================
+# HKDF FUNCTIONS (RFC 5869)
+# =========================
+
+def hkdf_extract(salt, ikm, hash_algo='sha256'):
+    """
+    HKDF-Extract(salt, IKM) -> PRK
+    
+    Args:
+        salt: Optional salt value (bytes or None)
+        ikm: Input keying material (bytes)
+        hash_algo: Hash algorithm to use (default: sha256)
+    
+    Returns:
+        Pseudo-random key (PRK) as bytes
+    """
+    if salt is None:
+        # If no salt provided, use hash_len zeros
+        hash_len = hashlib.new(hash_algo).digest_size
+        salt = b'\x00' * hash_len
+    
+    if isinstance(salt, str):
+        salt = salt.encode('utf-8')
+    if isinstance(ikm, str):
+        ikm = ikm.encode('utf-8')
+    
+    # PRK = HMAC-Hash(salt, IKM)
+    return hmac_lib.new(salt, ikm, digestmod=hash_algo).digest()
+
+def hkdf_expand(prk, info, length, hash_algo='sha256'):
+    """
+    HKDF-Expand(PRK, info, L) -> OKM
+    
+    Args:
+        prk: Pseudo-random key (bytes from extract step)
+        info: Optional context and application specific info (bytes)
+        length: Length of output keying material in bytes
+        hash_algo: Hash algorithm to use
+    
+    Returns:
+        Output keying material (OKM) as bytes
+    """
+    if isinstance(prk, str):
+        prk = prk.encode('utf-8')
+    if info is None:
+        info = b''
+    elif isinstance(info, str):
+        info = info.encode('utf-8')
+    
+    hash_len = hashlib.new(hash_algo).digest_size
+    if length > 255 * hash_len:
+        raise ValueError(f"Length {length} too large for {hash_algo}")
+    
+    n = (length + hash_len - 1) // hash_len  # ceil(length / hash_len)
+    t = b''
+    okm = b''
+    
+    for i in range(1, n + 1):
+        # T(i) = HMAC-Hash(PRK, T(i-1) | info | i)
+        t = hmac_lib.new(prk, t + info + bytes([i]), digestmod=hash_algo).digest()
+        okm += t
+    
+    return okm[:length]
+
+def hkdf(salt, ikm, info=None, length=32, hash_algo='sha256'):
+    """
+    HKDF(salt, IKM, info, L) -> OKM
+    
+    Full HKDF implementation following RFC 5869
+    
+    Args:
+        salt: Optional salt value (string or None)
+        ikm: Input keying material (string)
+        info: Optional context and application specific info (string)
+        length: Desired output length in bytes
+        hash_algo: Hash algorithm to use
+    
+    Returns:
+        Output keying material as bytes
+    """
+    prk = hkdf_extract(salt, ikm, hash_algo)
+    return hkdf_expand(prk, info, length, hash_algo)
+
+def hkdf_calc(salt=None, ikm=None, info=None, length=32, hash_algo='sha256'):
+    """
+    Calculate HKDF from command line
+    
+    Args:
+        salt: Salt value (string, default: none/zeros)
+        ikm: Input keying material (string)
+        info: Optional info (string)
+        length: Output length in bytes
+        hash_algo: Hash algorithm to use
+    """
+    # Get salt
+    if salt is None:
+        salt_input = getpass.getpass("Salt (string, empty for none): ").strip()
+        salt = salt_input if salt_input else None
+    else:
+        salt = salt
+    
+    # Get IKM
+    if ikm is None:
+        ikm = getpass.getpass("Input Key Material (string): ").strip()
+    else:
+        ikm = ikm
+    
+    # Get info
+    if info is None:
+        info_input = input("Info (string, empty for none): ").strip()
+        info = info_input if info_input else None
+    else:
+        info = info
+    
+    # Calculate HKDF
+    try:
+        okm = hkdf(salt, ikm, info, length, hash_algo)
+        
+        print(f"\nHKDF-{hash_algo} Results:")
+        print("-" * 60)
+        print(f"Salt: '{salt}'" if salt else "Salt: None (zeros)")
+        print(f"IKM: '{ikm}'")
+        print(f"Info: '{info}'" if info else "Info: None")
+        print(f"Length: {length} bytes")
+        print(f"\nOutput Key Material (OKM):")
+        print(f"  Hex: {okm.hex()}")
+        print(f"  Base64: {base64.b64encode(okm).decode()}")
+        
+        # Show in 32-byte chunks for readability
+        if length > 32:
+            print(f"\nChunks:")
+            for i in range(0, len(okm), 32):
+                chunk = okm[i:i+32]
+                print(f"  [{i:3d}-{i+len(chunk)-1:3d}]: {chunk.hex()}")
+        
+        return okm
+        
+    except Exception as e:
+        print(f"✖ HKDF calculation failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+def hkdf_derive(salt=None, ikm=None, info=None, length=32, hash_algo='sha256'):
+    """
+    Derive key using HKDF with different input methods
+    """
+    # Get salt
+    if salt is None:
+        salt_input = input("Salt (string, enter for none): ").strip()
+        salt = salt_input if salt_input else None
+    else:
+        salt = salt
+    
+    # Get IKM
+    if ikm is None:
+        print("Input Key Material (IKM) - choose source:")
+        print("  1. Enter as text")
+        print("  2. Read from file")
+        choice = input("Choice [1]: ").strip() or "1"
+        
+        if choice == "1":
+            ikm = getpass.getpass("IKM text: ")
+        elif choice == "2":
+            file_path = input("File path: ")
+            with open(file_path, 'r', encoding='utf-8') as f:
+                ikm = f.read()
+        else:
+            print("✖ Invalid choice", file=sys.stderr)
+            sys.exit(1)
+    
+    # Get info
+    if info is None:
+        info_input = input("Info (string, enter for none): ").strip()
+        info = info_input if info_input else None
+    else:
+        info = info
+    
+    # Get length
+    if length is None:
+        try:
+            length = int(input(f"Output length in bytes [32]: ").strip() or "32")
+        except:
+            length = 32
+    
+    # Calculate HKDF
+    okm = hkdf(salt, ikm, info, length, hash_algo)
+    
+    print(f"\n✅ HKDF-{hash_algo} derived {length} bytes")
+    print(f"\nOutput Key Material:")
+    print(f"Hex: {okm.hex()}")
+    
+    # Ask if user wants to save to file
+    save = input("\nSave to file? (y/N): ").strip().lower()
+    if save == 'y':
+        filename = input("Filename: ").strip()
+        try:
+            with open(filename, 'wb') as f:
+                f.write(okm)
+            print(f"✅ Saved to {filename}")
+        except Exception as e:
+            print(f"✖ Error saving file: {e}", file=sys.stderr)
+    
+    return okm
+
+def hkdf_compare():
+    """
+    Re-derive HKDF and compare with expected value
+    """
+    print("HKDF Comparison")
+    print("Enter parameters to re-derive and compare:")
+    
+    # Get parameters
+    salt_input = input("Salt (string, enter for none): ").strip()
+    salt = salt_input if salt_input else None
+    
+    ikm = getpass.getpass("IKM (string): ").strip()
+    
+    info_input = input("Info (string, enter for none): ").strip()
+    info = info_input if info_input else None
+    
+    length_input = input("Output length in bytes [32]: ").strip() or "32"
+    length = int(length_input)
+    
+    hash_algo = input("Hash algorithm [sha256]: ").strip() or "sha256"
+    
+    expected_hex = input("Expected output (hex): ").strip()
+    expected = bytes.fromhex(expected_hex)
+    
+    # Re-derive
+    okm = hkdf(salt, ikm, info, length, hash_algo)
+    
+    print(f"\nComparison:")
+    print(f"  Expected: {expected.hex()}")
+    print(f"  Actual:   {okm.hex()}")
+    
+    if okm == expected:
+        print("\n✅ HKDF outputs match!")
+        return True
+    else:
+        print("\n❌ HKDF outputs DO NOT match!")
+        return False
+
+def list_hkdf_algorithms():
+    """List all available algorithms for HKDF"""
+    print("Available algorithms for HKDF:")
+    print("-" * 60)
+    
+    # Algorithms suitable for HKDF (must have HMAC support)
+    hkdf_algs = [
+        ('sha256', '256-bit (Recommended)', 32),
+        ('sha384', '384-bit', 48),
+        ('sha512', '512-bit (Strong)', 64),
+        ('sha3_256', '256-bit SHA-3', 32),
+        ('sha3_384', '384-bit SHA-3', 48),
+        ('sha3_512', '512-bit SHA-3', 64),
+        ('blake2b', 'Up to 512-bit', 64),
+        ('blake2s', 'Up to 256-bit', 32),
+        ('sha224', '224-bit', 28),
+        ('sha1', '160-bit (WEAK)', 20),
+    ]
+    
+    print("Algorithm       Security        Hash Length")
+    print("-" * 60)
+    
+    for alg, security, hash_len in hkdf_algs:
+        if alg in hashlib.algorithms_available:
+            print(f"  {alg:12} {security:20} {hash_len:3} bytes")
+    
+    print("\nSecurity recommendations:")
+    print("  • Use SHA-256 or SHA-512 for general purposes")
+    print("  • Use SHA-3 family for post-quantum security")
+    print("  • Minimum recommended output: 32 bytes (256 bits)")
+    print("  • Salt should be random or pseudo-random")
+    print("  • Info can be used for key separation")
+    print("  • Default: sha256")
 
 # =========================
 # CRYPTOGRAPHY FUNCTIONS WITH STANDARD LIBRARIES
@@ -296,7 +571,7 @@ def parse_pem_public_key(pem_data):
     return public_key
 
 # =========================
-# RECURSIVE HASH FUNCTION 
+# 2. RECURSIVE HASH FUNCTION 
 # =========================
 
 def calculate_file_hash(file_path, hash_algo='sha256'):
@@ -371,9 +646,12 @@ def calculate_file_hash(file_path, hash_algo='sha256'):
                 hash_func.update(chunk)
         
         # Handle variable-length outputs
-        if hash_algo in ['shake_128', 'shake_256']:
+        if hash_algo in ['shake_128']:
             # SHAKE algorithms need output length specified
             return hash_func.hexdigest(32)  # 32 bytes = 256 bits
+        if hash_algo in ['shake_256']:
+            # SHAKE algorithms need output length specified
+            return hash_func.hexdigest(64)  # 64 bytes = 256 bits
         else:
             return hash_func.hexdigest()
             
@@ -782,13 +1060,6 @@ def argon2_verify_password(hash_str=None, password=None):
     except Exception as e:
         print(f"✖ Verification error: {e}")
 
-
-# =========================
-# 2. HASHSUM (recursive like second code)
-# =========================
-
-# Functions already defined above
-
 # =========================
 # 3. HMAC (standard Python)
 # =========================
@@ -965,7 +1236,6 @@ def list_hmac_algorithms():
         ('sha256', '128-bit (Recommended)'),
         ('sha384', '192-bit'),
         ('sha512', '256-bit (Strong)'),
-        ('sha3_224', '112-bit SHA-3'),
         ('sha3_256', '128-bit SHA-3'),
         ('sha3_384', '192-bit SHA-3'),
         ('sha3_512', '256-bit SHA-3'),
@@ -1251,15 +1521,10 @@ if PYSODIUM_AVAILABLE:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="EDGE Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC)",
+        description="EDGE Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC, HKDF)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples (basic features always available):
-  # Argon2 password hash
-  python %(prog)s argon2 hash
-  python %(prog)s argon2 hash --password "mypassword"
-  python %(prog)s argon2 verify --hash "$HASH" --password "mypassword"
-  
   # File hashes
   python %(prog)s hashsum calc "*.txt"
   python %(prog)s hashsum calc "*.py" -r -a sha256 -o hashes.txt
@@ -1269,30 +1534,34 @@ Examples (basic features always available):
   
   # HMAC
   python %(prog)s hmac calc --key "mykey" --data "message"
+  python %(prog)s hmac calc --key "mykey" --file "secret.txt"
   python %(prog)s hmac verify --hmac "abc123" --key "mykey" --data "message"
   python %(prog)s hmac list
   
-  # Scrypt KDF
-  python %(prog)s scrypt derive
-  python %(prog)s scrypt compare
+  # Scrypt key derivation
+  python %(prog)s scrypt derive --secret "IKM" --salt "salt" [--iter 16384] [--keylen 32] 
+  python %(prog)s scrypt compare --secret "IKM" --salt "salt" --derived DERIVED_HEX
+  
+  # HKDF key derivation (RFC 5869)
+  python %(prog)s hkdf calc --salt "salt" --ikm "input" --info "context" --length 32
+  python %(prog)s hkdf derive  # Interactive mode
+  python %(prog)s hkdf compare  # Verify derivation
+  python %(prog)s hkdf list     # List algorithms
   
 Advanced features (require pysodium):
-  # Argon2 password hashing
+  # Argon2 password hash
   python %(prog)s argon2 hash
-  python %(prog)s argon2 verify --hash "$HASH"
+  python %(prog)s argon2 hash --password "mypassword"
+  python %(prog)s argon2 verify --hash '$HASH' --password "mypassword"
   
   # ChaCha20 encryption
-  python %(prog)s chacha20 encrypt --key $(openssl rand -hex 32) --infile secret.txt
-  cat encrypted.bin | python %(prog)s chacha20 decrypt --key $(openssl rand -hex 32)
+  python %(prog)s chacha20 encrypt --key $KEY --infile secret.txt
+  cat encrypted.bin | python %(prog)s chacha20 decrypt --key $KEY
   
   # Ed25519 signatures
   python %(prog)s ed25519 gen --priv private.pem --pub public.pem
   python %(prog)s ed25519 sign --priv private.pem --msg message.txt
   python %(prog)s ed25519 verify --pub public.pem --msg message.txt --sig SIGNATURE_HEX
-  
-  # Scrypt key derivation
-  python %(prog)s scrypt derive
-  python %(prog)s scrypt compare --derived DERIVED_HEX
   
   # X25519 key exchange
   python %(prog)s x25519 gen --priv alice_priv.pem --pub alice_pub.pem
@@ -1377,6 +1646,30 @@ Advanced features (require pysodium):
     sc_c.add_argument("--salt", help="Salt as string")
     sc_c.add_argument("--derived", help="Derived key (hex)")
     sc_c.add_argument("--iter", type=int, default=16384, help="Scrypt N parameter")
+
+    # ======================
+    # HKDF
+    # ======================
+    hk = sub.add_parser("hkdf", help="HKDF key derivation (RFC 5869)")
+    hksub = hk.add_subparsers(dest="cmd", required=True)
+    
+    hk_calc = hksub.add_parser("calc", help="Calculate HKDF")
+    hk_calc.add_argument("--salt", help="Salt (string)")
+    hk_calc.add_argument("--ikm", help="Input Key Material (string)")
+    hk_calc.add_argument("--info", help="Context info (string)")
+    hk_calc.add_argument("--length", type=int, default=32, help="Output length in bytes")
+    hk_calc.add_argument("--algo", default="sha256", help="Hash algorithm")
+    
+    hk_derive = hksub.add_parser("derive", help="Derive key with HKDF (interactive)")
+    hk_derive.add_argument("--salt", help="Salt (string)")
+    hk_derive.add_argument("--ikm", help="Input Key Material (string)")
+    hk_derive.add_argument("--info", help="Context info (string)")
+    hk_derive.add_argument("--length", type=int, default=32, help="Output length in bytes")
+    hk_derive.add_argument("--algo", default="sha256", help="Hash algorithm")
+    
+    hk_compare = hksub.add_parser("compare", help="Compare HKDF output")
+    
+    hk_list = hksub.add_parser("list", help="List HKDF algorithms")
 
     # ======================
     # Advanced features (only if pysodium available)
@@ -1480,6 +1773,16 @@ Advanced features (require pysodium):
             scrypt_derive(args.secret, args.salt, args.iter, args.keylen)
         elif args.cmd == "compare":
             scrypt_compare(args.secret, args.salt, args.derived, args.iter)
+    
+    elif args.tool == "hkdf":
+        if args.cmd == "calc":
+            hkdf_calc(args.salt, args.ikm, args.info, args.length, args.algo)
+        elif args.cmd == "derive":
+            hkdf_derive(args.salt, args.ikm, args.info, args.length, args.algo)
+        elif args.cmd == "compare":
+            hkdf_compare()
+        elif args.cmd == "list":
+            list_hkdf_algorithms()
     
     # Dispatcher for advanced features (if available)
     elif PYSODIUM_AVAILABLE:
