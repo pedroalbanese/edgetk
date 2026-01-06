@@ -3061,14 +3061,14 @@ ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
 label .nb.text_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.modeCombo \
     -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
-    -width 18 -state readonly
+    -width 10 -state readonly
 .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
 
 # NEW: Add combobox for Encoding
 label .nb.text_tab.main.algo_frame.row1.encodingLabel -text "Encoding:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.encodingCombo \
     -values {"base32" "base64" "base85"} \
-    -width 10 -state readonly
+    -width 11 -state readonly
 .nb.text_tab.main.algo_frame.row1.encodingCombo set "base64"
 
 pack .nb.text_tab.main.algo_frame.row1.algorithmLabel .nb.text_tab.main.algo_frame.row1.algorithmCombo \
@@ -3085,7 +3085,7 @@ checkbutton .nb.text_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KD
     -command updateKeyEntryDisplay
 
 label .nb.text_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.text_tab.main.algo_frame.row2.saltBox -width 16 -font {Arial 9}
+entry .nb.text_tab.main.algo_frame.row2.saltBox -width 32 -font {Arial 9}
 
 # Create Iter ComboBox
 set ::iterComboData {"4096" "8192" "16384" "32768" "65536"}
@@ -3296,7 +3296,7 @@ ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
 label .nb.file_tab.main.algo_frame.row1.modeLabel -text "Mode:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.modeCombo \
     -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "lettersoup" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"} \
-    -width 18 -state readonly
+    -width 10 -state readonly
 .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
 
 pack .nb.file_tab.main.algo_frame.row1.algorithmLabel .nb.file_tab.main.algo_frame.row1.algorithmCombo \
@@ -3311,7 +3311,7 @@ checkbutton .nb.file_tab.main.algo_frame.row2.kdfAlgorithmCheckbox -text "Use KD
     -command updateKeyEntryDisplayFiles
 
 label .nb.file_tab.main.algo_frame.row2.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.file_tab.main.algo_frame.row2.saltBox -width 16 -font {Arial 9}
+entry .nb.file_tab.main.algo_frame.row2.saltBox -width 32 -font {Arial 9}
 
 # Create Iter ComboBox
 set ::iterComboData {"4096" "8192" "16384" "32768" "65536"}
@@ -3379,7 +3379,7 @@ grid columnconfigure .nb.file_tab.main.file_selection.input_frame 0 -weight 1
 label .nb.file_tab.main.file_selection.input_frame.label -text "Input File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
 grid .nb.file_tab.main.file_selection.input_frame.label -row 0 -column 0 -sticky e -padx 5
 
-entry .nb.file_tab.main.file_selection.input_frame.path -width 40 -font {Arial 9} \
+entry .nb.file_tab.main.file_selection.input_frame.path -width 80 -font {Arial 9} \
     -bg white -state readonly
 grid .nb.file_tab.main.file_selection.input_frame.path -row 0 -column 1 -sticky "ew" -padx 5
 
@@ -3396,7 +3396,7 @@ grid columnconfigure .nb.file_tab.main.file_selection.output_frame 0 -weight 1
 label .nb.file_tab.main.file_selection.output_frame.label -text "Output File:" -font {Arial 9 bold} -bg $frame_color -width 12 -anchor e
 grid .nb.file_tab.main.file_selection.output_frame.label -row 0 -column 0 -sticky e -padx 5
 
-entry .nb.file_tab.main.file_selection.output_frame.path -width 40 -font {Arial 9} \
+entry .nb.file_tab.main.file_selection.output_frame.path -width 80 -font {Arial 9} \
     -bg white
 grid .nb.file_tab.main.file_selection.output_frame.path -row 0 -column 1 -sticky "ew" -padx 5
 
@@ -3411,12 +3411,11 @@ grid .nb.file_tab.main.keys_frame -row 2 -column 0 -columnspan 3 -sticky "ew" -p
 
 # Create Key label (Files)
 label .nb.file_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e
-grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 8
+grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 3 
 
 # Create key input box (Files)
 entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
 grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
-grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
 
 # Create IV label (Files)
 label .nb.file_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e
@@ -3424,7 +3423,7 @@ grid .nb.file_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pa
 
 # Create IV input box (Files)
 entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
-grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -sticky "ew" -padx {5 0} -pady 8
+grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -sticky "ew" -padx {5 0} -pady 3 
 
 # Create AAD label (Files)
 label .nb.file_tab.main.keys_frame.aadLabel -text "AAD:" -font {Arial 9 bold} -bg $frame_color -width 8 -anchor e -state disabled
@@ -3432,7 +3431,7 @@ grid .nb.file_tab.main.keys_frame.aadLabel -row 1 -column 2 -sticky e -padx {0 5
 
 # Create AAD input box (Files)
 entry .nb.file_tab.main.keys_frame.aadBox -width 10 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
-grid .nb.file_tab.main.keys_frame.aadBox -row 1 -column 3 -columnspan 2 -sticky "ew" -padx 5 -pady 8
+grid .nb.file_tab.main.keys_frame.aadBox -row 1 -column 3 -columnspan 2 -sticky "ew" -padx 5 -pady 3  
 
 # Configure column weights
 grid columnconfigure .nb.file_tab.main.keys_frame 1 -weight 1
