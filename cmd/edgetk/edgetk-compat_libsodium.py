@@ -2872,7 +2872,7 @@ Advanced features (require pysodium):
     
     if args.tool == "ed521":
         if args.cmd == "gen":
-            ed521_generate_keys(args.priv, args.pub, args.cipher)
+            ed521_generate(args.priv, args.pub)
         elif args.cmd == "sign":
             ed521_sign_file(args.priv, args.msg)
         elif args.cmd == "verify":
