@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 EDGE Crypto Toolbox - Integrated Cryptographic Tools
-Contains: Argon2, ChaCha20-Poly1305, Ed25519, Scrypt, X25519, Hashsum, HMAC, AES-GCM, SM4-GCM, Camellia-GCM, HKDF
+Contains: Argon2, ChaCha20-Poly1305, Ed25519, Ed521, Scrypt, X25519, Hashsum, HMAC, AES-GCM, SM4-GCM, Camellia-GCM, HKDF
 """
 
 import argparse
@@ -16,6 +16,9 @@ import json
 from pathlib import Path
 import time
 import hmac as hmac_lib
+import struct
+from typing import Tuple, Optional
+from hashlib import shake_256
 
 try:
     import blake3
@@ -553,6 +556,966 @@ def load_encrypted_private_key(priv_path, password):
     return priv_obj
 
 # =========================
+# ED521 IMPLEMENTATION
+# =========================
+
+import struct
+from hashlib import shake_256
+from typing import Tuple, Optional
+
+# Parâmetros da curva E-521 (exatamente como no código Go)
+P = int("6864797660130609714981900799081393217269435300143305409394463459185543183397656052122559640661454554977296311391480858037121987999716643812574028291115057151")
+N = int("1716199415032652428745475199770348304317358825035826352348615864796385795849413675475876651663657849636693659065234142604319282948702542317993421293670108523")
+D = int("-376014")
+Gx = int("1571054894184995387535939749894317568645297350402905821437625181152304994381188529632591196067604100772673927915114267193389905003276673749012051148356041324")
+Gy = int("12")
+H = 4
+BIT_SIZE = 521
+ED521_BYTE_LEN = (BIT_SIZE + 7) // 8  # 66 bytes
+
+# OID para Ed521 (1.3.6.1.4.1.44588.2.1 - OID privado da EDGE)
+# Tradução: iso.org.dod.internet.private.enterprise.edge.algorithms.ed521
+ED521_OID = b'\x06\x0a\x2b\x06\x01\x04\x01\x83\xa6\x7a\x02\x01'
+
+# Funções auxiliares de conversão
+def bytes_to_little_int(b: bytes) -> int:
+    """Converte bytes little-endian para int (como no Go)"""
+    reversed_bytes = bytes(reversed(b))
+    return int.from_bytes(reversed_bytes, 'big')
+
+def little_int_to_bytes(n: int, length: int) -> bytes:
+    """Converte int para bytes little-endian (como no Go)"""
+    bytes_be = n.to_bytes((n.bit_length() + 7) // 8 or 1, 'big')
+    if len(bytes_be) < length:
+        bytes_be = bytes([0] * (length - len(bytes_be))) + bytes_be
+    reversed_bytes = bytes(reversed(bytes_be))
+    return reversed_bytes[:length]
+
+# Funções de ponto
+def ed521_is_on_curve(x: int, y: int) -> bool:
+    return (x*x + y*y) % P == (1 + D*x*x*y*y) % P
+
+def ed521_add_points(x1: int, y1: int, x2: int, y2: int) -> Tuple[int, int]:
+    if x1 == 0 and y1 == 1:  # Ponto neutro em Edwards: (0, 1)
+        return x2, y2
+    if x2 == 0 and y2 == 1:  # Ponto neutro em Edwards: (0, 1)
+        return x1, y1
+
+    x1y2 = (x1 * y2) % P
+    y1x2 = (y1 * x2) % P
+    numerator_x = (x1y2 + y1x2) % P
+
+    y1y2 = (y1 * y2) % P
+    x1x2 = (x1 * x2) % P
+    numerator_y = (y1y2 - x1x2) % P
+
+    dx1x2y1y2 = (D * x1x2 * y1y2) % P
+
+    denominator_x = (1 + dx1x2y1y2) % P
+    denominator_y = (1 - dx1x2y1y2) % P
+
+    inv_den_x = pow(denominator_x, -1, P)
+    inv_den_y = pow(denominator_y, -1, P)
+
+    x3 = (numerator_x * inv_den_x) % P
+    y3 = (numerator_y * inv_den_y) % P
+    return x3, y3
+
+def ed521_double_point(x: int, y: int) -> Tuple[int, int]:
+    return ed521_add_points(x, y, x, y)
+
+def ed521_scalar_mult(x: int, y: int, k_bytes: bytes) -> Tuple[int, int]:
+    """Multiplica ponto por escalar (k em bytes little-endian)"""
+    scalar = bytes_to_little_int(k_bytes) % N
+    
+    result_x, result_y = 0, 1  # Ponto neutro
+    temp_x, temp_y = x, y
+    
+    while scalar > 0:
+        if scalar & 1:
+            result_x, result_y = ed521_add_points(result_x, result_y, temp_x, temp_y)
+        temp_x, temp_y = ed521_double_point(temp_x, temp_y)
+        scalar >>= 1
+    
+    return result_x, result_y
+
+def ed521_scalar_base_mult(k_bytes: bytes) -> Tuple[int, int]:
+    return ed521_scalar_mult(Gx, Gy, k_bytes)
+
+# Compressão/Descompressão
+def ed521_compress_point(x: int, y: int) -> bytes:
+    """Comprime ponto conforme RFC 8032"""
+    y_bytes = little_int_to_bytes(y, ED521_BYTE_LEN)
+    
+    # Pega o bit menos significativo de x (little-endian)
+    x_bytes = little_int_to_bytes(x, ED521_BYTE_LEN)
+    sign_bit = x_bytes[0] & 1
+    
+    # Armazena o bit de sinal no MSB do último byte (little-endian)
+    compressed = bytearray(y_bytes)
+    compressed[-1] |= (sign_bit << 7)
+    
+    return bytes(compressed)
+
+def ed521_decompress_point(data: bytes) -> Tuple[Optional[int], Optional[int]]:
+    """Descomprime ponto conforme RFC 8032"""
+    if len(data) != ED521_BYTE_LEN:
+        return None, None
+    
+    # Extrai bit de sinal do MSB do último byte
+    sign_bit = (data[-1] >> 7) & 1
+    
+    # Limpa o bit de sinal dos dados de y
+    y_bytes = bytearray(data)
+    y_bytes[-1] &= 0x7F
+    y = bytes_to_little_int(y_bytes)
+    
+    # Resolve para x usando a equação da curva de Edwards:
+    # x² + y² = 1 + d*x²*y²  =>  x² = (1 - y²) / (1 - d*y²)
+    y2 = (y * y) % P
+    
+    numerator = (1 - y2) % P
+    denominator = (1 - D * y2) % P
+    
+    try:
+        inv_den = pow(denominator, -1, P)
+    except ValueError:
+        return None, None
+    
+    x2 = (numerator * inv_den) % P
+    
+    # Calcula raiz quadrada mod p (p ≡ 1 mod 4)
+    x = pow(x2, (P + 1)//4, P)
+    
+    # Escolhe x correto baseado no bit de sinal
+    x_bytes = little_int_to_bytes(x, ED521_BYTE_LEN)
+    if (x_bytes[0] & 1) != sign_bit:
+        x = (-x) % P
+    
+    return x, y
+
+# Funções de hash
+def ed521_dom5(phflag: int, context: bytes) -> bytes:
+    """Implementa dom5 conforme especificação"""
+    if len(context) > 255:
+        raise ValueError("context too long for dom5")
+    
+    dom = b"SigEd521" + bytes([phflag, len(context)]) + context
+    return dom
+
+def ed521_hash(phflag: int, context: bytes, x: bytes) -> bytes:
+    """H(x) = SHAKE256(dom5(phflag,context)||x, 132)"""
+    dom = ed521_dom5(phflag, context)
+    
+    h = shake_256()
+    h.update(dom)
+    h.update(x)
+    
+    return h.digest(132)  # 132 bytes como especificado
+
+# Geração de chaves
+def ed521_generate_private_key() -> int:
+    """Gera chave privada aleatória em little-endian"""
+    while True:
+        priv_bytes = os.urandom(ED521_BYTE_LEN)
+        a = bytes_to_little_int(priv_bytes)
+        if a < N:
+            return a
+
+def ed521_get_public_key(priv: int) -> Tuple[int, int]:
+    """Calcula chave pública A = a * G"""
+    priv_bytes = little_int_to_bytes(priv, ED521_BYTE_LEN)
+    return ed521_scalar_base_mult(priv_bytes)
+
+# Assinatura
+def ed521_sign(private_key: int, message: bytes) -> bytes:
+    """Cria assinatura PureEdDSA conforme especificação"""
+    byte_len = ED521_BYTE_LEN
+    
+    # 1. Hash prefix "dom" + priv.D bytes
+    prefix = ed521_hash(0x00, b'', little_int_to_bytes(private_key, byte_len))
+    
+    # 2. Calculate r = SHAKE256(prefix || message) mod N
+    r_bytes = ed521_hash(0x00, b'', prefix + message)
+    r = bytes_to_little_int(r_bytes[:byte_len]) % N
+    
+    # 3. Compute R = r*G and compress
+    Rx, Ry = ed521_scalar_base_mult(little_int_to_bytes(r, byte_len))
+    R_compressed = ed521_compress_point(Rx, Ry)
+    
+    # 4. Get public key and compress
+    Ax, Ay = ed521_get_public_key(private_key)
+    A_compressed = ed521_compress_point(Ax, Ay)
+    
+    # 5. Compute h = SHAKE256(dom || R || A || message) mod N
+    hram_input = R_compressed + A_compressed + message
+    hram_hash = ed521_hash(0x00, b'', hram_input)
+    h = bytes_to_little_int(hram_hash[:byte_len]) % N
+    
+    # 6. s = (r + h * a) mod N
+    s = (r + h * private_key) % N
+    
+    # 7. Signature = R_compressed || s_bytes
+    s_bytes = little_int_to_bytes(s, byte_len)
+    signature = R_compressed + s_bytes
+    
+    return signature
+
+# Verificação
+def ed521_verify(pub_x: int, pub_y: int, message: bytes, signature: bytes) -> bool:
+    """Verifica assinatura PureEdDSA conforme especificação"""
+    byte_len = ED521_BYTE_LEN
+    
+    if len(signature) != 2 * byte_len:
+        return False
+    
+    R_compressed = signature[:byte_len]
+    s_bytes = signature[byte_len:]
+    
+    # Verifica R
+    Rx, Ry = ed521_decompress_point(R_compressed)
+    if Rx is None or Ry is None:
+        return False
+    
+    # Verifica s
+    s = bytes_to_little_int(s_bytes)
+    if s >= N:
+        return False
+    
+    # Compress public key A
+    A_compressed = ed521_compress_point(pub_x, pub_y)
+    
+    # Compute h = SHAKE256(dom || R || A || message) mod N
+    hram_input = R_compressed + A_compressed + message
+    hram_hash = ed521_hash(0x00, b'', hram_input)
+    h = bytes_to_little_int(hram_hash[:byte_len]) % N
+    
+    # Compute s*G
+    sGx, sGy = ed521_scalar_base_mult(little_int_to_bytes(s, byte_len))
+    
+    # Compute h*A
+    hAx, hAy = ed521_scalar_mult(pub_x, pub_y, little_int_to_bytes(h, byte_len))
+    
+    # Compute R + h*A
+    rhaX, rhaY = ed521_add_points(Rx, Ry, hAx, hAy)
+    
+    # Constant time comparison
+    return sGx == rhaX and sGy == rhaY
+
+# =========================
+# PKCS8 e PEM FUNCTIONS para Ed521
+# =========================
+
+def ed521_private_to_pem_pkcs8(private_key_int: int, password: str = None, cipher_name: str = "aes256") -> str:
+    """
+    Convert Ed521 private key to PEM PKCS8 format (exact format from original code)
+    
+    Args:
+        private_key_int: Private key as integer
+        password: Optional password for encryption
+        cipher_name: Cipher to use if password is provided
+    
+    Returns:
+        PEM formatted string
+    """
+    # Convert private key to bytes (little-endian)
+    private_bytes = little_int_to_bytes(private_key_int, ED521_BYTE_LEN)
+
+    # OID 1.3.6.1.4.1.44588.2.1 (CONTEXT-SPECIFIC [4], PRIMITIVE format)
+    encoded_oid = bytes([
+        0x2b, 0x06, 0x01, 0x04, 0x01, 0x82, 0xdc, 0x2c, 0x02, 0x01
+    ])
+    oid_der = b'\x06\x0a' + encoded_oid
+    algorithm_id = b'\x30\x0e' + oid_der + b'\x05\x00'
+
+    version = b'\x02\x01\x00'
+
+    # CONTEXT-SPECIFIC [4], PRIMITIVE (tag 0x84)
+    priv_field = b'\x84' + bytes([len(private_bytes)]) + private_bytes
+
+    content = version + algorithm_id + priv_field
+    seq = b'\x30' + bytes([len(content)]) + content
+
+    if password:
+        # Encrypt the DER data
+        encrypted_data, headers, _ = encrypt_pem_block(seq, password, cipher_name)
+        
+        # Build encrypted PEM with BEGIN/END PRIVATE KEY
+        pem = "-----BEGIN E-521 PRIVATE KEY-----\n"
+        for k, v in headers.items():
+            pem += f"{k}: {v}\n"
+        pem += "\n"
+        
+        # Add base64 encoded encrypted data
+        b64_data = base64.b64encode(encrypted_data).decode()
+        for i in range(0, len(b64_data), 64):
+            pem += b64_data[i:i+64] + "\n"
+        
+        pem += "-----END E-521 PRIVATE KEY-----\n"
+        return pem
+    else:
+        # Unencrypted PEM
+        b64 = base64.b64encode(seq).decode()
+        lines = [b64[i:i+64] for i in range(0, len(b64), 64)]
+
+        return (
+            "-----BEGIN E-521 PRIVATE KEY-----\n"
+            + "\n".join(lines) +
+            "\n-----END E-521 PRIVATE KEY-----\n"
+        )
+
+def ed521_public_to_pem(public_key_x: int, public_key_y: int) -> str:
+    """
+    Convert Ed521 public key to PEM SPKI format
+    
+    Args:
+        public_key_x: X coordinate of public key
+        public_key_y: Y coordinate of public key
+    
+    Returns:
+        PEM formatted string
+    """
+    # Compress public key
+    compressed_pub = ed521_compress_point(public_key_x, public_key_y)
+    
+    # Ed521 OID
+    ed521_oid = b'\x06\x0a\x2b\x06\x01\x04\x01\x83\xa6\x7a\x02\x01'
+    
+    # AlgorithmIdentifier SEQUENCE
+    alg_id = b'\x30\x0e' + ed521_oid + b'\x05\x00'  # SEQUENCE + OID + NULL
+    
+    # BIT STRING with compressed public key
+    bit_string_data = b'\x00' + compressed_pub  # 0 unused bits + data
+    bit_string_len = len(bit_string_data)
+    
+    # BIT STRING tag
+    if bit_string_len < 128:
+        bit_string = b'\x03' + bytes([bit_string_len]) + bit_string_data
+    else:
+        len_bytes = bit_string_len.to_bytes((bit_string_len.bit_length() + 7) // 8, 'big')
+        bit_string = b'\x03' + bytes([0x80 | len(len_bytes)]) + len_bytes + bit_string_data
+    
+    # SubjectPublicKeyInfo SEQUENCE
+    content = alg_id + bit_string
+    content_len = len(content)
+    
+    # Outer SEQUENCE
+    if content_len < 128:
+        der_seq = b'\x30' + bytes([content_len]) + content
+    else:
+        len_bytes = content_len.to_bytes((content_len.bit_length() + 7) // 8, 'big')
+        der_seq = b'\x30' + bytes([0x80 | len(len_bytes)]) + len_bytes + content
+    
+    # Convert to PEM
+    b64_der = base64.b64encode(der_seq).decode()
+    pem = "-----BEGIN E-521 PUBLIC KEY-----\n"
+    for i in range(0, len(b64_der), 64):
+        pem += b64_der[i:i+64] + "\n"
+    pem += "-----END E-521 PUBLIC KEY-----\n"
+    
+    return pem
+
+def parse_ed521_pem_private_key(pem_data: str, password: str = None) -> int:
+    """
+    Parse Ed521 private key from PEM format
+    
+    Args:
+        pem_data: PEM formatted string
+        password: Password if key is encrypted
+    
+    Returns:
+        Private key as integer
+    """
+    # Remove headers/footers and whitespace
+    lines = pem_data.strip().split('\n')
+    
+    # Check if encrypted
+    is_encrypted = any('Proc-Type: 4,ENCRYPTED' in line for line in lines)
+    
+    if is_encrypted:
+        if not password:
+            password = getpass.getpass("Enter password to decrypt private key: ")
+        
+        # Parse encrypted PEM
+        headers = {}
+        data_lines = []
+        in_headers = False
+        in_data = False
+        
+        for line in lines:
+            if line.startswith('-----BEGIN'):
+                in_headers = True
+                continue
+            elif line.startswith('-----END'):
+                break
+            elif in_headers and ':' in line:
+                key, value = line.split(':', 1)
+                headers[key.strip()] = value.strip()
+            elif line == '' and in_headers:
+                in_headers = False
+                in_data = True
+            elif in_data:
+                data_lines.append(line.strip())
+        
+        b64_data = ''.join(data_lines)
+        
+        if 'DEK-Info' not in headers:
+            raise ValueError("Missing DEK-Info header in encrypted PEM")
+        
+        # Parse DEK-Info
+        dek_info = headers['DEK-Info']
+        cipher_display_name, iv_hex = dek_info.split(',')
+        
+        # Decode base64 data
+        encrypted_data = base64.b64decode(b64_data)
+        
+        # Decrypt
+        try:
+            der_data = decrypt_pem_block(encrypted_data, password, iv_hex, cipher_display_name)
+        except ValueError as e:
+            raise ValueError(f"Decryption failed: {e}")
+    else:
+        # Unencrypted - just get the base64 data
+        b64_data = ''.join([line.strip() for line in lines 
+                           if line and not line.startswith('-----')])
+        der_data = base64.b64decode(b64_data)
+    
+    # Parse DER to extract private key
+    try:
+        # Simple approach: look for 66-byte chunk
+        for i in range(len(der_data) - ED521_BYTE_LEN + 1):
+            chunk = der_data[i:i+ED521_BYTE_LEN]
+            # Convert to integer
+            key_int = bytes_to_little_int(chunk)
+            # Check if it's in valid range
+            if 0 < key_int < N:
+                return key_int
+        
+        # If not found, try ASN.1 parsing
+        idx = 0
+        
+        # Outer SEQUENCE
+        if der_data[idx] != 0x30:
+            raise ValueError("Expected SEQUENCE")
+        idx += 1
+        
+        # Skip length
+        seq_len = der_data[idx]
+        idx += 1
+        if seq_len & 0x80:
+            num_bytes = seq_len & 0x7F
+            idx += num_bytes
+        
+        # Skip version (INTEGER 0)
+        if der_data[idx:idx+3] != b'\x02\x01\x00':
+            raise ValueError("Expected version 0")
+        idx += 3
+        
+        # Skip AlgorithmIdentifier
+        if der_data[idx] != 0x30:
+            raise ValueError("Expected AlgorithmIdentifier")
+        idx += 1
+        
+        alg_len = der_data[idx]
+        idx += 1
+        idx += alg_len
+        
+        # Now at PrivateKey OCTET STRING
+        if der_data[idx] != 0x04:
+            raise ValueError("Expected OCTET STRING")
+        idx += 1
+        
+        octet_len = der_data[idx]
+        idx += 1
+        if octet_len & 0x80:
+            num_bytes = octet_len & 0x7F
+            octet_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
+            idx += num_bytes
+        
+        # Extract private key
+        priv_bytes = der_data[idx:idx+octet_len]
+        
+        if len(priv_bytes) != ED521_BYTE_LEN:
+            raise ValueError(f"Expected {ED521_BYTE_LEN} bytes, got {len(priv_bytes)}")
+        
+        return bytes_to_little_int(priv_bytes)
+        
+    except Exception as e:
+        raise ValueError(f"Failed to parse private key: {e}")
+
+def parse_ed521_pem_public_key(pem_data, debug=False):
+    """Parse Ed521 public key from PEM SPKI format (compatible with edgetk Go implementation)"""
+    # Remove headers/footers and whitespace
+    lines = pem_data.strip().split('\n')
+    b64_data = ''.join([line.strip() for line in lines if line and not line.startswith('-----')])
+    
+    # Decode Base64
+    der_data = base64.b64decode(b64_data)
+    
+    if debug:
+        print(f"DEBUG: Public key DER length: {len(der_data)} bytes")
+        print(f"DEBUG: Public key DER hex: {der_data.hex()}")
+    
+    try:
+        idx = 0
+        
+        # 1. Outer SEQUENCE (0x30)
+        if der_data[idx] != 0x30:
+            raise ValueError("Expected SEQUENCE (0x30)")
+        idx += 1
+        
+        if idx >= len(der_data):
+            raise ValueError("Unexpected end of data")
+        
+        seq_len = der_data[idx]
+        idx += 1
+        
+        # Handle long length
+        if seq_len & 0x80:
+            num_bytes = seq_len & 0x7F
+            if idx + num_bytes > len(der_data):
+                raise ValueError("Incomplete SEQUENCE length")
+            seq_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
+            idx += num_bytes
+        
+        # 2. AlgorithmIdentifier SEQUENCE (0x30)
+        if der_data[idx] != 0x30:
+            raise ValueError("Expected AlgorithmIdentifier SEQUENCE (0x30)")
+        idx += 1
+        
+        if idx >= len(der_data):
+            raise ValueError("Unexpected end of data")
+        
+        algo_len = der_data[idx]
+        idx += 1
+        
+        if algo_len & 0x80:
+            num_bytes = algo_len & 0x7F
+            if idx + num_bytes > len(der_data):
+                raise ValueError("Incomplete AlgorithmIdentifier length")
+            algo_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
+            idx += num_bytes
+        
+        algo_end = idx + algo_len
+        
+        # 3. OID (0x06)
+        if der_data[idx] != 0x06:
+            raise ValueError("Expected OID (0x06)")
+        idx += 1
+        
+        if idx >= len(der_data):
+            raise ValueError("Unexpected end of data")
+        
+        oid_len = der_data[idx]
+        idx += 1
+        
+        if oid_len & 0x80:
+            raise ValueError("Unexpected long form for OID length")
+        
+        if idx + oid_len > len(der_data):
+            raise ValueError("Incomplete OID")
+        
+        oid_bytes = der_data[idx:idx+oid_len]
+        idx += oid_len
+        
+        # Skip NULL parameters if present
+        if idx < algo_end and der_data[idx] == 0x05:
+            idx += 1
+            if idx >= len(der_data):
+                raise ValueError("Unexpected end of data")
+            null_len = der_data[idx]
+            idx += 1
+            if null_len != 0:
+                raise ValueError(f"Expected NULL (0x00), got length {null_len}")
+        
+        idx = algo_end  # Skip to end of AlgorithmIdentifier
+        
+        # 4. PublicKey BIT STRING (0x03)
+        if der_data[idx] != 0x03:
+            raise ValueError(f"Expected BIT STRING (0x03), got 0x{der_data[idx]:02x}")
+        idx += 1
+        
+        if idx >= len(der_data):
+            raise ValueError("Unexpected end of data")
+        
+        bitstring_len = der_data[idx]
+        idx += 1
+        
+        if bitstring_len & 0x80:
+            num_bytes = bitstring_len & 0x7F
+            if idx + num_bytes > len(der_data):
+                raise ValueError("Incomplete BIT STRING length")
+            bitstring_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
+            idx += num_bytes
+        
+        # Skip unused bits byte (should be 0)
+        if idx >= len(der_data):
+            raise ValueError("Unexpected end of data")
+        
+        unused_bits = der_data[idx]
+        idx += 1
+        
+        if unused_bits != 0:
+            if debug:
+                print(f"DEBUG: Warning: BIT STRING has {unused_bits} unused bits")
+        
+        # Read compressed public key (should be 66 bytes)
+        compressed_pub = der_data[idx:idx + bitstring_len - 1]  # -1 for unused bits byte
+        
+        if debug:
+            print(f"DEBUG: Compressed public key length: {len(compressed_pub)} bytes")
+            print(f"DEBUG: Compressed public key hex: {compressed_pub.hex()}")
+        
+        # Decompress to get x, y coordinates
+        pub_x, pub_y = ed521_decompress_point(compressed_pub)
+        
+        if pub_x is None or pub_y is None:
+            raise ValueError("Failed to decompress public key")
+        
+        return pub_x, pub_y
+        
+    except Exception as e:
+        if debug:
+            print(f"DEBUG: ASN.1 parsing failed: {e}")
+        
+        # Fallback: try to find 66-byte compressed key
+        if len(der_data) == ED521_BYTE_LEN:
+            pub_x, pub_y = ed521_decompress_point(der_data)
+            if pub_x is not None and pub_y is not None:
+                if debug:
+                    print("DEBUG: Found raw 66-byte compressed public key")
+                return pub_x, pub_y
+        
+        # Try to find compressed key in the data
+        for i in range(len(der_data) - ED521_BYTE_LEN + 1):
+            chunk = der_data[i:i+ED521_BYTE_LEN]
+            pub_x, pub_y = ed521_decompress_point(chunk)
+            if pub_x is not None and pub_y is not None:
+                if debug:
+                    print(f"DEBUG: Found compressed public key at offset {i}")
+                return pub_x, pub_y
+        
+        raise ValueError(f"Cannot parse Ed521 public key: {e}")
+
+# =========================
+# E-521 CLI FUNCTIONS
+# =========================
+
+def ed521_generate_keys(priv_path="ed521_private.pem", pub_path="ed521_public.pem", cipher_name="aes256"):
+    """Generate E-521 EdDSA key pair with optional encryption"""
+    if cipher_name.lower() == "list":
+        list_ciphers()
+    else:
+        # Generate private key
+        print("Generating E-521 keys (521-bit curve)...")
+        private_key = ed521_generate_private_key()
+        
+        # Generate public key
+        pub_x, pub_y = ed521_get_public_key(private_key)
+        print(f"Private key generated: {hex(private_key)[:34]}...")
+        print(f"Public key on curve: {ed521_is_on_curve(pub_x, pub_y)}")
+        
+        # Ask for password (optional)
+        password = getpass.getpass("Enter password to encrypt private key (press Enter for no encryption): ")
+        
+        # Save public key
+        public_pem = ed521_public_to_pem(pub_x, pub_y)
+        with open(pub_path, "w") as f:
+            f.write(public_pem)
+        print(f"✔ Public key saved to {pub_path}")
+        
+        # Save private key (encrypted or not)
+        private_pem = ed521_private_to_pem_pkcs8(private_key, password if password else None, cipher_name)
+        with open(priv_path, "w") as f:
+            f.write(private_pem)
+        
+        if password:
+            print(f"✔ Encrypted private key saved to {priv_path}")
+            print(f"  Cipher: {get_cipher_info(cipher_name)[0]}")
+        else:
+            print(f"✔ Unencrypted private key saved to {priv_path}")
+        
+        return private_key, pub_x, pub_y
+
+def ed521_sign_message(priv_path: str, msg_path: str):
+    """Sign message with E-521 EdDSA"""
+    # Read private key file
+    with open(priv_path, "r") as f:
+        pem_data = f.read()
+    
+    # Check if encrypted
+    is_encrypted = 'Proc-Type: 4,ENCRYPTED' in pem_data
+    
+    password = None
+    if is_encrypted:
+        password = getpass.getpass("Enter password to decrypt private key: ")
+    
+    # Parse private key
+    try:
+        private_key = parse_ed521_pem_private_key(pem_data, password)
+    except Exception as e:
+        print(f"✖ Error parsing private key: {e}")
+        sys.exit(1)
+    
+    # Read message
+    with open(msg_path, "rb") as f:
+        message = f.read()
+    
+    # Sign
+    signature = ed521_sign(private_key, message)
+    
+    # Output hex signature to stdout (like ed25519)
+    sig_hex = signature.hex()
+    print(sig_hex)
+    
+    return sig_hex
+
+def ed521_verify_signature(pub_path: str, msg_path: str, sig_hex: str):
+    """Verify E-521 EdDSA signature"""
+    # Read public key file
+    with open(pub_path, "r") as f:
+        pem_data = f.read()
+    
+    # Parse public key
+    try:
+        pub_x, pub_y = parse_ed521_pem_public_key(pem_data)
+    except Exception as e:
+        print(f"✖ Error parsing public key: {e}")
+        sys.exit(1)
+    
+    # Read message
+    with open(msg_path, "rb") as f:
+        message = f.read()
+    
+    # Convert signature from hex
+    try:
+        signature = bytes.fromhex(sig_hex)
+    except binascii.Error:
+        print("✖ Invalid signature hex")
+        sys.exit(1)
+    
+    # Verify
+    if ed521_verify(pub_x, pub_y, message, signature):
+        print("✔ Signature valid")
+        return True
+    else:
+        print("✖ Signature invalid")
+        return False
+
+def ed521_prove_knowledge(priv: int) -> bytes:
+    """
+    Generate non-interactive ZKP proof of private key knowledge
+    Based on the Go implementation
+    """
+    byte_len = ED521_BYTE_LEN
+    
+    # 1. Commitment R = r*G (generate random value r)
+    while True:
+        r_bytes = os.urandom(byte_len)
+        r = bytes_to_little_int(r_bytes)
+        if r < N:
+            break
+    
+    Rx, Ry = ed521_scalar_base_mult(little_int_to_bytes(r, byte_len))
+    R_comp = ed521_compress_point(Rx, Ry)
+    
+    # 2. Get public key A
+    Ax, Ay = ed521_get_public_key(priv)
+    A_comp = ed521_compress_point(Ax, Ay)
+    
+    # 3. Challenge c = H(R || A) using Fiat–Shamir
+    input_data = R_comp + A_comp
+    c_bytes = ed521_hash(0x00, b'', input_data)
+    c = bytes_to_little_int(c_bytes[:byte_len]) % N
+    
+    # 4. Response: s = r + c * a (mod N)
+    s = (r + c * priv) % N
+    
+    # 5. Final proof = R || s
+    s_bytes = little_int_to_bytes(s, byte_len)
+    proof = R_comp + s_bytes
+    
+    return proof
+
+def ed521_verify_knowledge(pub_x: int, pub_y: int, proof: bytes) -> bool:
+    """
+    Verify ZKP non-interactive proof
+    Based on the Go implementation
+    """
+    byte_len = ED521_BYTE_LEN
+    
+    if len(proof) != 2 * byte_len:
+        return False
+    
+    R_comp = proof[:byte_len]
+    s_bytes = proof[byte_len:]
+    
+    # 1. Decompress commitment R
+    Rx, Ry = ed521_decompress_point(R_comp)
+    if Rx is None or Ry is None:
+        return False
+    
+    s = bytes_to_little_int(s_bytes)
+    
+    # 2. Recalculate c = H(R || A)
+    A_comp = ed521_compress_point(pub_x, pub_y)
+    input_data = R_comp + A_comp
+    c_bytes = ed521_hash(0x00, b'', input_data)
+    c = bytes_to_little_int(c_bytes[:byte_len]) % N
+    
+    # 3. Verification: s*G == R + c*A
+    sGx, sGy = ed521_scalar_base_mult(little_int_to_bytes(s, byte_len))
+    cAx, cAy = ed521_scalar_mult(pub_x, pub_y, little_int_to_bytes(c, byte_len))
+    RpluscAx, RpluscAy = ed521_add_points(Rx, Ry, cAx, cAy)
+    
+    return sGx == RpluscAx and sGy == RpluscAy
+    
+def ed521_prove_command(priv_path: str):
+    """Generate ZKP proof of private key knowledge"""
+    # Read private key file
+    with open(priv_path, "r") as f:
+        pem_data = f.read()
+    
+    # Check if encrypted
+    is_encrypted = 'Proc-Type: 4,ENCRYPTED' in pem_data
+    
+    password = None
+    if is_encrypted:
+        password = getpass.getpass("Enter password to decrypt private key: ")
+    
+    # Parse private key
+    try:
+        private_key = parse_ed521_pem_private_key(pem_data, password)
+    except Exception as e:
+        print(f"✖ Error parsing private key: {e}")
+        sys.exit(1)
+    
+    # Generate proof
+    proof = ed521_prove_knowledge(private_key)
+    proof_hex = proof.hex()
+    
+    # CORREÇÃO: Exibir em hex em vez de salvar em bin
+    print(f"✔ Zero-knowledge proof generated")
+    print(f"\nProof (hex): {proof_hex}")
+    print(f"Proof length: {len(proof)} bytes ({(len(proof) * 8)} bits)")
+    
+    # Opcional: oferecer para salvar
+    save = input("\nSave proof to file? (y/N): ").strip().lower()
+    if save == 'y':
+        filename = input("Filename [ed521_proof.hex]: ").strip() or "ed521_proof.hex"
+        try:
+            with open(filename, "w") as f:
+                f.write(proof_hex)
+            print(f"✔ Proof saved to {filename}")
+        except Exception as e:
+            print(f"✖ Error saving proof: {e}")
+    
+    return proof_hex
+
+def ed521_verify_proof_command(pub_path: str, proof_hex: Optional[str] = None, proof_file: Optional[str] = None):
+    """Verify ZKP proof for E-521 public key"""
+    # Read public key file
+    with open(pub_path, "r") as f:
+        pem_data = f.read()
+    
+    # Parse public key
+    try:
+        pub_x, pub_y = parse_ed521_pem_public_key(pem_data)
+    except Exception as e:
+        print(f"✖ Error parsing public key: {e}")
+        sys.exit(1)
+    
+    # Read proof
+    if proof_file:
+        with open(proof_file, "r") as f:
+            proof_hex = f.read().strip()
+    
+    if not proof_hex:
+        # Solicitar prova do usuário
+        print("Enter the proof (hex):")
+        try:
+            lines = []
+            while True:
+                line = sys.stdin.readline()
+                if not line or line.strip() == "":
+                    break
+                lines.append(line.strip())
+            proof_hex = "".join(lines)
+        except KeyboardInterrupt:
+            print("\n✖ Input cancelled")
+            sys.exit(1)
+    
+    # Converter hex para bytes
+    try:
+        proof = bytes.fromhex(proof_hex)
+    except binascii.Error as e:
+        print(f"✖ Invalid hex: {e}")
+        sys.exit(1)
+    
+    # Verify proof
+    if ed521_verify_knowledge(pub_x, pub_y, proof):
+        print("\n✔ Zero-knowledge proof valid")
+        print("  The key holder proves knowledge of the private key")
+        return True
+    else:
+        print("\n✖ Zero-knowledge proof invalid")
+        print("  The key holder does NOT prove knowledge of the private key")
+        return False
+
+def ed521_test_command():
+    """Run complete E-521 implementation test"""
+    print("=== E-521 EdDSA Test Suite ===")
+    print()
+    
+    # Test 1: Key generation
+    print("1. Key generation test:")
+    priv_key = ed521_generate_private_key()
+    pub_x, pub_y = ed521_get_public_key(priv_key)
+    print(f"   Private key (first 16 bytes): {hex(priv_key)[:34]}...")
+    print(f"   Public key on curve: {ed521_is_on_curve(pub_x, pub_y)}")
+    
+    # Test 2: Compression/Decompression
+    print("\n2. Point compression test:")
+    compressed = ed521_compress_point(pub_x, pub_y)
+    decomp_x, decomp_y = ed521_decompress_point(compressed)
+    print(f"   Compression successful: {len(compressed)} bytes")
+    print(f"   Decompression correct: {decomp_x == pub_x and decomp_y == pub_y}")
+    
+    # Test 3: Signature and verification
+    print("\n3. Signature test:")
+    message = b"Test message for E-521 EdDSA"
+    signature = ed521_sign(priv_key, message)
+    valid = ed521_verify(pub_x, pub_y, message, signature)
+    print(f"   Signature created: {len(signature)} bytes")
+    print(f"   Signature valid: {valid}")
+    
+    # Test 4: Invalid signature
+    wrong_message = b"Wrong message"
+    wrong_valid = ed521_verify(pub_x, pub_y, wrong_message, signature)
+    print(f"   Wrong message rejected: {not wrong_valid}")
+    
+    # Test 5: ZKP proof
+    print("\n4. Zero-knowledge proof test:")
+    proof = ed521_prove_knowledge(priv_key)
+    proof_valid = ed521_verify_knowledge(pub_x, pub_y, proof)
+    print(f"   Proof generated: {len(proof)} bytes")
+    print(f"   Proof valid: {proof_valid}")
+    
+    # Test 6: PKCS#8 serialization
+    print("\n5. PKCS#8 serialization test:")
+    public_pem = ed521_public_to_pem(pub_x, pub_y)
+    private_pem = ed521_private_to_pem_pkcs8(priv_key)
+    
+    # Parse back
+    parsed_pub_x, parsed_pub_y = parse_ed521_pem_public_key(public_pem)
+    parsed_priv = parse_ed521_pem_private_key(private_pem)
+    
+    print(f"   Public key serialization correct: {parsed_pub_x == pub_x and parsed_pub_y == pub_y}")
+    print(f"   Private key serialization correct: {parsed_priv == priv_key}")
+    
+    print("\n=== All tests passed! ===")
+
+# =========================
 # 1. ARGON2 (Password Hashing)
 # =========================
 
@@ -636,7 +1599,7 @@ def chacha20_decrypt_file(key_hex, aad_str=None):
 # 3. EDDSA (Ed25519 Signatures)
 # =========================
 
-def eddsa_generate_keys(priv_path, pub_path, cipher_name="aes256"):
+def ed25519_generate_keys(priv_path, pub_path, cipher_name="aes256"):
     """Generate Ed25519 key pair with optional encryption"""
     signing_key = nacl.signing.SigningKey.generate()
     seed = signing_key._seed
@@ -709,7 +1672,7 @@ def eddsa_generate_keys(priv_path, pub_path, cipher_name="aes256"):
             f.write(priv_pem)
         print(f"✔ Unencrypted private key saved to {priv_path}")
 
-def eddsa_sign_message(priv_path, msg_path):
+def ed25519_sign_message(priv_path, msg_path):
     """Sign a message with Ed25519"""
     # Check if private key is encrypted
     with open(priv_path, "rb") as f:
@@ -754,7 +1717,7 @@ def eddsa_sign_message(priv_path, msg_path):
     # Output to stdout
     print(sig_hex)
 
-def eddsa_verify_signature(pub_path, msg_path, sig_hex):
+def ed25519_verify_signature(pub_path, msg_path, sig_hex):
     """Verify Ed25519 signature"""
     # Load public key
     with open(pub_path, "rb") as f:
@@ -1161,7 +2124,7 @@ def hashsum(pattern, recursive=False, hash_algo='sha256', output_file=None):
                 f.write(f"# Recursive: {recursive}\n")
                 f.write("#\n")
                 for file_path, file_hash in sorted(results.items()):
-                    # Adicionar asterisco antes do nome do arquivo como em outros hashers
+                    # Add asterisk before filename as in other hashers
                     f.write(f"{file_hash} *{file_path}\n")
             print(f"\n✔ Results saved to: {output_file}")
         except Exception as e:
@@ -1213,11 +2176,11 @@ def check_hashsum(hash_file, check_all=False):
         # Parse hash and filename
         parts = line.split()
         if len(parts) >= 2:
-            # Hash is first part, filename is the rest (pode ter asterisco)
+            # Hash is first part, filename is the rest (may have asterisk)
             file_hash = parts[0]
             file_path = ' '.join(parts[1:])
             
-            # Remover asterisco se presente
+            # Remove asterisk if present
             if file_path.startswith('*'):
                 file_path = file_path[1:]
             
@@ -1747,10 +2710,18 @@ def list_ciphers():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC, GCM, HKDF)",
+        description="EDGE Crypto Toolbox (Argon2, ChaCha20, Ed25519, Scrypt, X25519, Hashsum, HMAC, GCM, HKDF, E-521 EdDSA)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  # E-521 EdDSA (ICP-Brasil Standard)
+  python %(prog)s ed521 gen --priv ed521_priv.pem --pub ed521_pub.pem
+  python %(prog)s ed521 sign --priv ed521_priv.pem --msg document.txt
+  python %(prog)s ed521 verify --pub ed521_pub.pem --msg document.txt --sig SIGNATURE_HEX
+  python %(prog)s ed521 prove --priv ed521_priv.pem
+  python %(prog)s ed521 verify-proof --pub ed521_pub.pem --proof-file ed521_proof.bin
+  python %(prog)s ed521 test
+  
   # HKDF - calculate
   python %(prog)s hkdf calc --salt "my salt" --ikm "input key" --info "context" --length 32
   python %(prog)s hkdf derive  # interactive mode
@@ -1800,9 +2771,9 @@ Examples:
   cat encrypted.bin | python %(prog)s chacha20 decrypt --key $(openssl rand -hex 32)
   
   # Ed25519 signatures
-  python %(prog)s eddsa gen --priv private.pem --pub public.pem
-  python %(prog)s eddsa sign --priv private.pem --msg message.txt
-  python %(prog)s eddsa verify --pub public.pem --msg message.txt --sig SIGNATURE_HEX
+  python %(prog)s ed25519 gen --priv private.pem --pub public.pem
+  python %(prog)s ed25519 sign --priv private.pem --msg message.txt
+  python %(prog)s ed25519 verify --pub public.pem --msg message.txt --sig SIGNATURE_HEX
   
   # Scrypt key derivation
   python %(prog)s scrypt derive
@@ -1817,13 +2788,44 @@ Examples:
         """
     )
     
-    sub = parser.add_subparsers(dest="tool", title="Available tools")
+    sub = parser.add_subparsers(dest="tool", title="Available tools", required=True)
+
+    # ======================
+    # E-521 EdDSA
+    # ======================
+    ed521 = sub.add_parser("ed521", help="E-521 EdDSA signatures (ICP-Brasil Standard)")
+    ed521sub = ed521.add_subparsers(dest="cmd", required=True)
+
+    ed521_gen = ed521sub.add_parser("gen", help="Generate E-521 key pair")
+    ed521_gen.add_argument("--priv", default="ed521_private.pem", help="Private key output")
+    ed521_gen.add_argument("--pub", default="ed521_public.pem", help="Public key output")
+    ed521_gen.add_argument("--cipher", default="aes256", 
+                         help="Cipher algorithm (default: aes256). Use 'list' to see options")
+
+    ed521_sign = ed521sub.add_parser("sign", help="Sign a message with E-521")
+    ed521_sign.add_argument("--priv", required=True, help="Private key file")
+    ed521_sign.add_argument("--msg", required=True, help="Message file to sign")
+
+    ed521_ver = ed521sub.add_parser("verify", help="Verify E-521 signature")
+    ed521_ver.add_argument("--pub", required=True, help="Public key file")
+    ed521_ver.add_argument("--msg", required=True, help="Message file")
+    ed521_ver.add_argument("--sig", required=True, help="Signature in hex to verify")
+
+    ed521_prove = ed521sub.add_parser("prove", help="Generate ZKP proof of private key knowledge")
+    ed521_prove.add_argument("--priv", required=True, help="Private key file")
+
+    ed521_verify_proof = ed521sub.add_parser("verify-proof", help="Verify ZKP proof")
+    ed521_verify_proof.add_argument("--pub", required=True, help="Public key file")
+    ed521_verify_proof.add_argument("--proof", help="Proof in hex to verify")
+    ed521_verify_proof.add_argument("--proof-file", help="Proof file (takes precedence over --proof)")
+
+    ed521_test = ed521sub.add_parser("test", help="Run E-521 test suite")
 
     # ======================
     # Argon2
     # ======================
     arg = sub.add_parser("argon2", help="Argon2 password hashing")
-    argsub = arg.add_subparsers(dest="cmd")
+    argsub = arg.add_subparsers(dest="cmd", required=True)
 
     a_hash = argsub.add_parser("hash", help="Hash a password")
     a_hash.add_argument("--password", help="Password to hash (optional, otherwise prompted)")
@@ -1836,7 +2838,7 @@ Examples:
     # ChaCha20
     # ======================
     cha = sub.add_parser("chacha20", help="ChaCha20-Poly1305 encryption")
-    chasub = cha.add_subparsers(dest="cmd")
+    chasub = cha.add_subparsers(dest="cmd", required=True)
 
     c_enc = chasub.add_parser("encrypt", help="Encrypt a file")
     c_enc.add_argument("--key", required=True, help="32-byte key in hex")
@@ -1850,8 +2852,8 @@ Examples:
     # ======================
     # EdDSA
     # ======================
-    ed = sub.add_parser("eddsa", help="Ed25519 signatures")
-    edsub = ed.add_subparsers(dest="cmd")
+    ed = sub.add_parser("ed25519", help="Ed25519 signatures")
+    edsub = ed.add_subparsers(dest="cmd", required=True)
 
     ed_gen = edsub.add_parser("gen", help="Generate key pair")
     ed_gen.add_argument("--priv", default="private.pem", help="Private key output")
@@ -1872,7 +2874,7 @@ Examples:
     # Scrypt
     # ======================
     sc = sub.add_parser("scrypt", help="Scrypt key derivation")
-    scsub = sc.add_subparsers(dest="cmd")
+    scsub = sc.add_subparsers(dest="cmd", required=True)
 
     sc_d = scsub.add_parser("derive", help="Derive a key")
     sc_d.add_argument("--secret", help="Input secret")
@@ -1890,7 +2892,7 @@ Examples:
     # X25519
     # ======================
     x = sub.add_parser("x25519", help="X25519 key exchange")
-    xsub = x.add_subparsers(dest="cmd")
+    xsub = x.add_subparsers(dest="cmd", required=True)
 
     x_gen = xsub.add_parser("gen", help="Generate key pair")
     x_gen.add_argument("--priv", default="private.pem", help="Private key output")
@@ -1906,13 +2908,13 @@ Examples:
     # Hashsum
     # ======================
     hs = sub.add_parser("hashsum", help="Calculate and verify file hashes")
-    hssub = hs.add_subparsers(dest="cmd")
+    hssub = hs.add_subparsers(dest="cmd", required=True)
 
     hs_calc = hssub.add_parser("calc", help="Calculate hashes for files")
     hs_calc.add_argument("pattern", nargs='?', default="*", 
                         help="File pattern (e.g., '*.py', 'file.txt'). Default: '*' (all files)")
     
-    # Para capturar todos os argumentos restantes quando o shell expande
+    # To capture all remaining arguments when shell expands pattern
     hs_calc.add_argument("files", nargs='*', 
                         help="Files to process (when shell expands pattern)")
     
@@ -1933,7 +2935,7 @@ Examples:
     # HMAC
     # ======================
     hm = sub.add_parser("hmac", help="HMAC (Hash-based Message Authentication Code)")
-    hmsub = hm.add_subparsers(dest="cmd")
+    hmsub = hm.add_subparsers(dest="cmd", required=True)
 
     hm_calc = hmsub.add_parser("calc", help="Calculate HMAC")
     hm_calc.add_argument("--key", help="Secret key (optional, will prompt if not provided)")
@@ -1956,7 +2958,7 @@ Examples:
     # GCM (AEAD Encryption)
     # ======================
     gcm = sub.add_parser("gcm", help="GCM encryption (AES-GCM, SM4-GCM, Camellia-GCM)")
-    gcmsub = gcm.add_subparsers(dest="cmd")
+    gcmsub = gcm.add_subparsers(dest="cmd", required=True)
 
     gcm_enc = gcmsub.add_parser("encrypt", help="Encrypt a file with GCM")
     gcm_enc.add_argument("--algo", required=True, choices=['aes', 'sm4', 'camellia'],
@@ -2009,7 +3011,21 @@ Examples:
     # ======================
     # Dispatcher
     # ======================
-    if args.tool == "argon2":
+    if args.tool == "ed521":
+        if args.cmd == "gen":
+            ed521_generate_keys(args.priv, args.pub, args.cipher)
+        elif args.cmd == "sign":
+            ed521_sign_message(args.priv, args.msg)
+        elif args.cmd == "verify":
+            ed521_verify_signature(args.pub, args.msg, args.sig)
+        elif args.cmd == "prove":
+            ed521_prove_command(args.priv)
+        elif args.cmd == "verify-proof":
+            ed521_verify_proof_command(args.pub, args.proof, args.proof_file)
+        elif args.cmd == "test":
+            ed521_test_command()
+
+    elif args.tool == "argon2":
         if args.cmd == "hash":
             argon2_hash_password(args.password)
         elif args.cmd == "verify":
@@ -2021,16 +3037,16 @@ Examples:
         elif args.cmd == "decrypt":
             chacha20_decrypt_file(args.key, args.aad)
 
-    elif args.tool == "eddsa":
+    elif args.tool == "ed25519":
         if args.cmd == "gen":
             if args.cipher.lower() == "list":
                 list_ciphers()
             else:
-                eddsa_generate_keys(args.priv, args.pub, args.cipher)
+                ed25519_generate_keys(args.priv, args.pub, args.cipher)
         elif args.cmd == "sign":
-            eddsa_sign_message(args.priv, args.msg)
+            ed25519_sign_message(args.priv, args.msg)
         elif args.cmd == "verify":
-            eddsa_verify_signature(args.pub, args.msg, args.sig)
+            ed25519_verify_signature(args.pub, args.msg, args.sig)
 
     elif args.tool == "scrypt":
         if args.cmd == "derive":
@@ -2049,12 +3065,12 @@ Examples:
 
     elif args.tool == "hashsum":
         if args.cmd == "calc":
-            # Determinar se estamos processando um padrão ou arquivos específicos
+            # Determine if we're processing a pattern or specific files
             if args.files:
-                # Se temos arquivos específicos (shell expandiu o padrão)
+                # If we have specific files (shell expanded pattern)
                 _hashsum_list(args.files, args.recursive, args.algorithm, args.output)
             else:
-                # Usar padrão
+                # Use pattern
                 hashsum(args.pattern, args.recursive, args.algorithm, args.output)
         elif args.cmd == "check":
             check_hashsum(args.hash_file, args.all)
@@ -2095,8 +3111,8 @@ Examples:
 
 def _hashsum_list(file_list, recursive=False, hash_algo='sha256', output_file=None):
     """
-    Versão alternativa do hashsum que aceita uma lista de arquivos
-    em vez de um padrão (para lidar com expansão do shell)
+    Alternative version of hashsum that accepts a list of files
+    instead of a pattern (to handle shell expansion)
     """
     # Check algorithm availability (simplified check)
     if hash_algo == 'blake3' and not BLAKE3_AVAILABLE:
@@ -2124,7 +3140,7 @@ def _hashsum_list(file_list, recursive=False, hash_algo='sha256', output_file=No
                 errors += 1
                 print(f"✖ ERROR: Could not process {file_path}", file=sys.stderr)
         elif recursive and os.path.isdir(file_path):
-            # Se for diretório e recursivo estiver habilitado
+            # If it's a directory and recursive is enabled
             for root, dirs, files in os.walk(file_path):
                 for file in files:
                     full_path = os.path.join(root, file)
@@ -2151,7 +3167,7 @@ def _hashsum_list(file_list, recursive=False, hash_algo='sha256', output_file=No
                 f.write(f"# Recursive: {recursive}\n")
                 f.write("#\n")
                 for file_path, file_hash in sorted(results.items()):
-                    # Adicionar asterisco antes do nome do arquivo como em outros hashers
+                    # Add asterisk before filename as in other hashers
                     f.write(f"{file_hash} *{file_path}\n")
             print(f"\n✔ Results saved to: {output_file}")
         except Exception as e:
