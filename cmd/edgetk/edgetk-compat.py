@@ -864,56 +864,70 @@ def ed521_private_to_pem_pkcs8(private_key_int: int, password: str = None, ciphe
             "\n-----END E-521 PRIVATE KEY-----\n"
         )
 
-def ed521_public_to_pem(public_key_x: int, public_key_y: int) -> str:
+def ed521_public_to_pem(public_key_x, public_key_y):
     """
-    Convert Ed521 public key to PEM SPKI format
+    Convert Ed521 public key to EXACT edgetk-compatible format
     
-    Args:
-        public_key_x: X coordinate of public key
-        public_key_y: Y coordinate of public key
-    
-    Returns:
-        PEM formatted string
+    Corrections:
+    1. Same OID fix
+    2. Standard "PUBLIC KEY" headers
+    3. Correct BIT STRING format
     """
+    # CORRECT OID (same as private key)
+    encoded_oid = bytes([
+        0x2b, 0x06, 0x01, 0x04, 0x01, 0x82, 0xdc, 0x2c, 0x02, 0x01
+    ])
+    oid_der = b'\x06\x0a' + encoded_oid
+    
+    # AlgorithmIdentifier SEQUENCE
+    algorithm_id = b'\x30\x0e' + oid_der + b'\x05\x00'  # 0x0e = 14 bytes
+    
     # Compress public key
     compressed_pub = ed521_compress_point(public_key_x, public_key_y)
     
-    # Ed521 OID
-    ed521_oid = b'\x06\x0a\x2b\x06\x01\x04\x01\x83\xa6\x7a\x02\x01'
+    # BIT STRING with 0 unused bits
+    # Total BIT STRING length: 1 (unused bits) + 66 (key) = 67 bytes
+    # BIT STRING tag (0x03) + length + 0x00 + data
+    bit_string_data = b'\x00' + compressed_pub  # 0 unused bits
+    bit_string_len = len(bit_string_data)  # Should be 67
     
-    # AlgorithmIdentifier SEQUENCE
-    alg_id = b'\x30\x0e' + ed521_oid + b'\x05\x00'  # SEQUENCE + OID + NULL
-    
-    # BIT STRING with compressed public key
-    bit_string_data = b'\x00' + compressed_pub  # 0 unused bits + data
-    bit_string_len = len(bit_string_data)
-    
-    # BIT STRING tag
     if bit_string_len < 128:
-        bit_string = b'\x03' + bytes([bit_string_len]) + bit_string_data
+        bit_string_header = b'\x03' + bytes([bit_string_len])
     else:
         len_bytes = bit_string_len.to_bytes((bit_string_len.bit_length() + 7) // 8, 'big')
-        bit_string = b'\x03' + bytes([0x80 | len(len_bytes)]) + len_bytes + bit_string_data
+        bit_string_header = b'\x03' + bytes([0x80 | len(len_bytes)]) + len_bytes
+    
+    bit_string = bit_string_header + bit_string_data
     
     # SubjectPublicKeyInfo SEQUENCE
-    content = alg_id + bit_string
+    content = algorithm_id + bit_string
     content_len = len(content)
+    
+    print(f"DEBUG: Public key structure lengths:")
+    print(f"  AlgorithmIdentifier: {len(algorithm_id)} bytes")
+    print(f"  BitString: {len(bit_string)} bytes")
+    print(f"  Total content: {content_len} bytes")
     
     # Outer SEQUENCE
     if content_len < 128:
-        der_seq = b'\x30' + bytes([content_len]) + content
+        seq_len = bytes([content_len])
     else:
         len_bytes = content_len.to_bytes((content_len.bit_length() + 7) // 8, 'big')
-        der_seq = b'\x30' + bytes([0x80 | len(len_bytes)]) + len_bytes + content
+        seq_len = bytes([0x80 | len(len_bytes)]) + len_bytes
     
-    # Convert to PEM
-    b64_der = base64.b64encode(der_seq).decode()
-    pem = "-----BEGIN E-521 PUBLIC KEY-----\n"
-    for i in range(0, len(b64_der), 64):
-        pem += b64_der[i:i+64] + "\n"
-    pem += "-----END E-521 PUBLIC KEY-----\n"
+    subject_pub_key_info = b'\x30' + seq_len + content
     
-    return pem
+    print(f"DEBUG: Total DER length: {len(subject_pub_key_info)} bytes")
+    
+    # Convert to PEM with STANDARD headers
+    b64_key = base64.b64encode(subject_pub_key_info).decode('ascii')
+    lines = [b64_key[i:i+64] for i in range(0, len(b64_key), 64)]
+    
+    return (
+        "-----BEGIN E-521 PUBLIC KEY-----\n" +
+        "\n".join(lines) +
+        "\n-----END E-521 PUBLIC KEY-----\n"
+     )
 
 def parse_ed521_pem_private_key(pem_data: str, password: str = None) -> int:
     """
