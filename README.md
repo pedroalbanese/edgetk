@@ -203,40 +203,45 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
 </details>
 
-### EDGETk Architecture 
+
+<details><summary>EDGETk Architecture</summary>
 ```mermaid
-%% EDGETk Architecture
-graph TD
+%% EDGETk Architecture - Core on the left, Symmetric above Asymmetric
+graph LR
     A[EDGETk Core]
 
-    %% Intermediate subfields
-    A --> Sym[Symmetric]
-    A --> Asym[Asymmetric]
+    %% Subgraphs for vertical stacking
+    subgraph SymmetricModules[Symmetric]
+        direction TB
+        B[Key Derivation / Passwords]
+        C[MACs]
+        D[Hashing / Digest]
+        E[Transformations / Modes of Operation]
 
-    %% Symmetric modules
-    Sym --> B[Key Derivation / Passwords]
-    Sym --> C[MACs]
-    Sym --> D[Hashing / Digest]
-    Sym --> E[Transformations / Modes of Operation]
+        B --> B1[HKDF, PBKDF2, Argon2, Lyra2, Scrypt, Bcrypt, Makwa]
+        C --> C1[CMAC, PMAC, GMAC, VMAC, HMAC]
+        D --> D1[SHA-1/2/3, RIPEMD128/160/256, Whirlpool, Kupyna, Streebog, CubeHash, SipHash64/128]
+        E --> E1[AES, Camellia, SEED, SM4, HIGHT, Kalyna, Magma, HC-128, Rabbit, Trivium, PRESENT, CLEFIA, LEA, LSH]
+    end
 
-    %% Symmetric sub-modules / algorithms
-    B --> B1[HKDF, PBKDF2, Argon2, Lyra2, Scrypt, Bcrypt, Makwa]
-    C --> C1[CMAC, PMAC, GMAC, VMAC, HMAC]
-    D --> D1[SHA-1/2/3, RIPEMD128/160/256, Whirlpool, Kupyna, Streebog, CubeHash, SipHash64/128]
-    E --> E1[AES, Camellia, SEED, SM4, HIGHT, Kalyna, Magma, HC-128, Rabbit, Trivium, PRESENT, CLEFIA, LEA, LSH]
+    subgraph AsymmetricModules[Asymmetric]
+        direction TB
+        F[Key Agreement]
+        G[Digital Signatures]
+        H[Identity-Based Encryption / Signatures]
+        I[Secure Transport / TCP Server]
 
-    %% Asymmetric modules
-    Asym --> F[Key Agreement]
-    Asym --> G[Digital Signatures]
-    Asym --> H[Identity-Based Encryption / Signatures]
-    Asym --> I[Secure Transport / TCP Server]
+        F --> F1[ECDH, VKO, X25519, X448, ML-KEM]
+        G --> G1[RSA, ECDSA, EdDSA, GOST, SLH-DSA, ML-DSA]
+        H --> H1[Boneh-Franklin IBE, Barreto IBS, BLS, Bilinear Pairings]
+        I --> I1[TLS 1.3, TLCP, X509 CSRs, CRLs, Certificates]
+    end
 
-    %% Asymmetric sub-modules / algorithms
-    F --> F1[ECDH, VKO, X25519, X448, ML-KEM]
-    G --> G1[RSA, ECDSA, EdDSA, GOST, SLH-DSA, ML-DSA]
-    H --> H1[Boneh-Franklin IBE, Barreto IBS, BLS, Bilinear Pairings]
-    I --> I1[TLS 1.3, TLCP, X509 CSRs, CRLs, Certificates]
+    %% Connect Core to top-level Symmetric and Asymmetric
+    A --> SymmetricModules
+    A --> AsymmetricModules
 ```
+</details>
 
 ## Command-line Integrated Security Suite
 
