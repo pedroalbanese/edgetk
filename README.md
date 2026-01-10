@@ -203,7 +203,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
 </details>
 
-### EDGETk Architecture 
+#### EDGETk Architecture 
 ```mermaid
 %% EDGETk Architecture
 graph TD
