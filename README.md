@@ -203,10 +203,10 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
 </details>
 
-### EDGETk Architecture 
+#### EDGETk Architecture 
 ```mermaid
-%% EDGETk Architecture
-graph TD
+%% EDGETk Architecture - English version, vertical layout
+graph TB
     A[EDGETk Core]
 
     %% Intermediate subfields
