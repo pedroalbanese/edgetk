@@ -232,9 +232,9 @@ graph LR
         H[Identity-Based Encryption / Signatures]
         I[Secure Transport / TCP Server]
 
-        F --> F1[ECDH, VKO, X25519, X448, ML-KEM]
-        G --> G1[RSA, ECDSA, EdDSA, GOST, SLH-DSA, ML-DSA]
-        H --> H1[Boneh-Franklin IBE, Barreto IBS, BLS, Bilinear Pairings]
+        F --> F1[ECDH, VKO, X25519, X448, ML-KEM, EG, ECKA-EG]
+        G --> G1[RSA, ECDSA, EdDSA, GOST, SLH-DSA, ML-DSA, LMS, BLS]
+        H --> H1[Boneh-Franklin IBE, Barreto IBS, Bilinear Pairings]
         I --> I1[TLS 1.3, TLCP, X509 CSRs, CRLs, Certificates]
     end
 
