@@ -205,6 +205,7 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
 
 <details><summary>EDGETk Architecture</summary>
+    
 ```mermaid
 %% EDGETk Architecture - Core on the left, Symmetric above Asymmetric
 graph LR
@@ -241,6 +242,7 @@ graph LR
     A --> SymmetricModules
     A --> AsymmetricModules
 ```
+
 </details>
 
 ## Command-line Integrated Security Suite
