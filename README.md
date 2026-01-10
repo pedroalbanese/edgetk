@@ -203,8 +203,9 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
 </details>
 
+### EDGETk Architecture 
 ```mermaid
-%% EDGETk Architecture - English version with proper Symmetric/Asymmetric subfields
+%% EDGETk Architecture
 graph TD
     A[EDGETk Core]
 
