@@ -203,6 +203,40 @@ These algorithms reflect Europe's strong academic and institutional contribution
 
 </details>
 
+```mermaid
+%% EDGETk Architecture - English version with proper Symmetric/Asymmetric subfields
+graph TD
+    A[EDGETk Core]
+
+    %% Intermediate subfields
+    A --> Sym[Symmetric]
+    A --> Asym[Asymmetric]
+
+    %% Symmetric modules
+    Sym --> B[Key Derivation / Passwords]
+    Sym --> C[MACs]
+    Sym --> D[Hashing / Digest]
+    Sym --> E[Transformations / Modes of Operation]
+
+    %% Symmetric sub-modules / algorithms
+    B --> B1[HKDF, PBKDF2, Argon2, Lyra2, Scrypt, Bcrypt, Makwa]
+    C --> C1[CMAC, PMAC, GMAC, VMAC, HMAC]
+    D --> D1[SHA-1/2/3, RIPEMD128/160/256, Whirlpool, Kupyna, Streebog, CubeHash, SipHash64/128]
+    E --> E1[AES, Camellia, SEED, SM4, HIGHT, Kalyna, Magma, HC-128, Rabbit, Trivium, PRESENT, CLEFIA, LEA, LSH]
+
+    %% Asymmetric modules
+    Asym --> F[Key Agreement]
+    Asym --> G[Digital Signatures]
+    Asym --> H[Identity-Based Encryption / Signatures]
+    Asym --> I[Secure Transport / TCP Server]
+
+    %% Asymmetric sub-modules / algorithms
+    F --> F1[ECDH, VKO, X25519, X448, ML-KEM]
+    G --> G1[RSA, ECDSA, EdDSA, GOST, SLH-DSA, ML-DSA]
+    H --> H1[Boneh-Franklin IBE, Barreto IBS, BLS, Bilinear Pairings]
+    I --> I1[TLS 1.3, TLCP, X509 CSRs, CRLs, Certificates]
+```
+
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
@@ -1641,5 +1675,5 @@ Minimum Tcl/Tk version required: 8.5 or higher
 
 This project is licensed under the ISC License.
 
-#### Copyright (c) 2020-2025 Pedro F. Albanese - ALBANESE Research Lab.  
+#### Copyright (c) 2020-2026 Pedro F. Albanese - ALBANESE Research Lab.  
 Todos os direitos de propriedade intelectual sobre este software pertencem ao autor, Pedro F. Albanese. Vide Lei 9.610/98, Art. 7º, inciso XII.
