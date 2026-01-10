@@ -221,8 +221,8 @@ graph LR
 
         B --> B1[HKDF, PBKDF2, Argon2, Lyra2, Scrypt, Bcrypt, Makwa]
         C --> C1[CMAC, PMAC, GMAC, VMAC, HMAC]
-        D --> D1[SHA-1/2/3, RIPEMD128/160/256, Whirlpool, Kupyna, Streebog, CubeHash, SipHash64/128]
-        E --> E1[AES, Camellia, SEED, SM4, HIGHT, Kalyna, Magma, HC-128, Rabbit, Trivium, PRESENT, CLEFIA, LEA, LSH]
+        D --> D1[SHA-1/2/3, RIPEMD128/160/256/320, Whirlpool, Kupyna, Streebog, CubeHash, SipHash64/128]
+        E --> E1[AES, Camellia, SEED, SM4, HIGHT, Kalyna, Magma, HC-128, Rabbit, Trivium, PRESENT, CLEFIA, LEA]
     end
 
     subgraph AsymmetricModules[Asymmetric]
