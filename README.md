@@ -810,6 +810,48 @@ $M = C_2 - y \cdot C_1$
 This works because:
 
 $M = C_2 - y \cdot C_1 = r \cdot y \cdot G + M - y \cdot r \cdot G = M$  
+
+```mermaid
+flowchart TD
+    Start([Start]) --> Setup
+    
+    subgraph Setup[System Parameters]
+        SP1[Elliptic Curve E]
+        SP2[Generator Point G]
+        SP3[Order n]
+    end
+    
+    Setup --> KeyGen
+    
+    subgraph KeyGen[Key Generation - Alice]
+        KG1[Select random y]
+        KG1 --> KG2[Compute Y = y * G]
+        KG2 --> KG3[Public Key: Y]
+        KG1 --> KG4[Private Key: y]
+    end
+    
+    KeyGen --> Encrypt
+    
+    subgraph Encrypt[Encryption - Bob]
+        ENC1[Message M]
+        ENC2[Select random r]
+        ENC2 --> ENC3[C1 = r * G]
+        ENC2 --> ENC4[C2 = M + r * Y]
+        ENC3 --> ENC5[Ciphertext C1, C2]
+        ENC4 --> ENC5
+    end
+    
+    Encrypt --> Decrypt
+    
+    subgraph Decrypt[Decryption - Alice]
+        DEC1[Receive C1, C2]
+        DEC1 --> DEC2[Compute y * C1]
+        DEC2 --> DEC3[M = C2 - y * C1]
+        DEC3 --> DEC4[Recovered Message M]
+    end
+    
+    Decrypt --> End([End])
+``` 
 </details>
 
 ### GOST (GOvernment STandard of Russian Federation)
