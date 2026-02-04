@@ -808,7 +808,7 @@ def ed521_verify(pub_x: int, pub_y: int, message: bytes, signature: bytes) -> bo
 
 def ed521_private_to_pem_pkcs8(private_key_int: int, password: str = None, cipher_name: str = "aes256") -> str:
     """
-    Convert Ed521 private key to PEM PKCS8 format (exact format from original code)
+    Convert Ed521 private key to PEM PKCS8 format with OCTET STRING (0x04)
     
     Args:
         private_key_int: Private key as integer
@@ -818,26 +818,35 @@ def ed521_private_to_pem_pkcs8(private_key_int: int, password: str = None, ciphe
     Returns:
         PEM formatted string
     """
-    # Convert private key to bytes (little-endian)
-    private_bytes = little_int_to_bytes(private_key_int, ED521_BYTE_LEN)
+    # Convert private key to bytes (little-endian) - 66 bytes para Ed521
+    private_bytes = little_int_to_bytes(private_key_int, 66)
 
-    # OID 1.3.6.1.4.1.44588.2.1 (CONTEXT-SPECIFIC [4], PRIMITIVE format)
+    # ED521 OID: 1.3.6.1.4.1.44588.2.1
     encoded_oid = bytes([
         0x2b, 0x06, 0x01, 0x04, 0x01, 0x82, 0xdc, 0x2c, 0x02, 0x01
     ])
-    oid_der = b'\x06\x0a' + encoded_oid
-    algorithm_id = b'\x30\x0e' + oid_der + b'\x05\x00'
+    
+    # AlgorithmIdentifier: SEQUENCE { OID, NULL }
+    oid_der = b'\x06\x0a' + encoded_oid  # OID tag + length + value
+    algorithm_id = b'\x30\x0e' + oid_der + b'\x05\x00'  # SEQUENCE (14 bytes)
 
-    version = b'\x02\x01\x00'
+    version = b'\x02\x01\x00'  # INTEGER version = 0
 
-    # CONTEXT-SPECIFIC [4], PRIMITIVE (tag 0x84)
-    priv_field = b'\x84' + bytes([len(private_bytes)]) + private_bytes
+    # OCTET STRING (tag 0x04) length 66 (0x42)
+    priv_field = b'\x04\x42' + private_bytes  # OCTET STRING tag (0x04), length 66 (0x42)
 
     content = version + algorithm_id + priv_field
-    seq = b'\x30' + bytes([len(content)]) + content
-
+    content_length = len(content)
+    
+    # SEQUENCE with length
+    if content_length <= 127:
+        seq = b'\x30' + bytes([content_length]) + content
+    else:
+        # Long form length (usando 0x81 para 1 byte de comprimento)
+        seq = b'\x30\x81' + bytes([content_length]) + content
+    
     if password:
-        # Encrypt the DER data
+        # Encrypt the DER data usando a função existente
         encrypted_data, headers, _ = encrypt_pem_block(seq, password, cipher_name)
         
         # Build encrypted PEM with BEGIN/END PRIVATE KEY
