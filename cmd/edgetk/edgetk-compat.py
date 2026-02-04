@@ -929,133 +929,128 @@ def ed521_public_to_pem(public_key_x, public_key_y):
         "\n-----END E-521 PUBLIC KEY-----\n"
      )
 
-def parse_ed521_pem_private_key(pem_data: str, password: str = None) -> int:
-    """
-    Parse Ed521 private key from PEM format
-    
-    Args:
-        pem_data: PEM formatted string
-        password: Password if key is encrypted
-    
-    Returns:
-        Private key as integer
-    """
-    # Remove headers/footers and whitespace
+def parse_ed521_pem_private_key(pem_data, debug=False):
+    """Parse Ed521 private key from PEM PKCS8 format (compatible with edgetk Go implementation)"""
     lines = pem_data.strip().split('\n')
     
     # Check if encrypted
-    is_encrypted = any('Proc-Type: 4,ENCRYPTED' in line for line in lines)
+    is_encrypted = False
+    for line in lines:
+        if line.startswith("Proc-Type:") and "ENCRYPTED" in line:
+            is_encrypted = True
+            break
     
     if is_encrypted:
-        if not password:
-            password = getpass.getpass("Enter password to decrypt private key: ")
-        
-        # Parse encrypted PEM
-        headers = {}
-        data_lines = []
-        in_headers = False
-        in_data = False
-        
-        for line in lines:
-            if line.startswith('-----BEGIN'):
-                in_headers = True
-                continue
-            elif line.startswith('-----END'):
-                break
-            elif in_headers and ':' in line:
-                key, value = line.split(':', 1)
-                headers[key.strip()] = value.strip()
-            elif line == '' and in_headers:
-                in_headers = False
-                in_data = True
-            elif in_data:
-                data_lines.append(line.strip())
-        
-        b64_data = ''.join(data_lines)
-        
-        if 'DEK-Info' not in headers:
-            raise ValueError("Missing DEK-Info header in encrypted PEM")
-        
-        # Parse DEK-Info
-        dek_info = headers['DEK-Info']
-        cipher_display_name, iv_hex = dek_info.split(',')
-        
-        # Decode base64 data
-        encrypted_data = base64.b64decode(b64_data)
-        
-        # Decrypt
+        password = getpass.getpass("Enter password to decrypt private key: ")
         try:
-            der_data = decrypt_pem_block(encrypted_data, password, iv_hex, cipher_display_name)
+            der_data = decrypt_private_key_pem(pem_data, password)
         except ValueError as e:
-            raise ValueError(f"Decryption failed: {e}")
+            print(f"✖ Decryption failed: {e}", file=sys.stderr)
+            sys.exit(1)
     else:
-        # Unencrypted - just get the base64 data
-        b64_data = ''.join([line.strip() for line in lines 
-                           if line and not line.startswith('-----')])
+        b64_data = ''.join([line.strip() for line in lines if line and not line.startswith('-----')])
         der_data = base64.b64decode(b64_data)
     
-    # Parse DER to extract private key
+    if debug:
+        print(f"DEBUG: DER data length: {len(der_data)} bytes")
+        print(f"DEBUG: DER hex: {der_data.hex()}")
+    
     try:
-        # Simple approach: look for 66-byte chunk
-        for i in range(len(der_data) - ED521_BYTE_LEN + 1):
-            chunk = der_data[i:i+ED521_BYTE_LEN]
-            # Convert to integer
-            key_int = bytes_to_little_int(chunk)
-            # Check if it's in valid range
-            if 0 < key_int < N:
-                return key_int
-        
-        # If not found, try ASN.1 parsing
         idx = 0
         
-        # Outer SEQUENCE
+        # SEQUENCE
         if der_data[idx] != 0x30:
-            raise ValueError("Expected SEQUENCE")
+            raise ValueError("Expected SEQUENCE (0x30)")
         idx += 1
         
-        # Skip length
+        # Length
         seq_len = der_data[idx]
         idx += 1
-        if seq_len & 0x80:
+        if seq_len & 0x80:  # Long form
             num_bytes = seq_len & 0x7F
+            seq_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
             idx += num_bytes
         
-        # Skip version (INTEGER 0)
-        if der_data[idx:idx+3] != b'\x02\x01\x00':
-            raise ValueError("Expected version 0")
-        idx += 3
+        # Version (INTEGER 0)
+        if der_data[idx] != 0x02:
+            raise ValueError(f"Expected INTEGER (0x02), got 0x{der_data[idx]:02x}")
+        idx += 1
         
-        # Skip AlgorithmIdentifier
+        ver_len = der_data[idx]
+        idx += 1
+        version = int.from_bytes(der_data[idx:idx+ver_len], 'big')
+        if version != 0:
+            raise ValueError(f"Expected version 0, got {version}")
+        idx += ver_len
+        
+        # AlgorithmIdentifier (SEQUENCE)
         if der_data[idx] != 0x30:
-            raise ValueError("Expected AlgorithmIdentifier")
+            raise ValueError(f"Expected AlgorithmIdentifier SEQUENCE (0x30), got 0x{der_data[idx]:02x}")
         idx += 1
         
-        alg_len = der_data[idx]
+        algo_len = der_data[idx]
         idx += 1
-        idx += alg_len
-        
-        # Now at PrivateKey OCTET STRING
-        if der_data[idx] != 0x04:
-            raise ValueError("Expected OCTET STRING")
-        idx += 1
-        
-        octet_len = der_data[idx]
-        idx += 1
-        if octet_len & 0x80:
-            num_bytes = octet_len & 0x7F
-            octet_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
+        if algo_len & 0x80:  # Long form
+            num_bytes = algo_len & 0x7F
+            algo_len = int.from_bytes(der_data[idx:idx+num_bytes], 'big')
             idx += num_bytes
         
-        # Extract private key
-        priv_bytes = der_data[idx:idx+octet_len]
+        # Skip AlgorithmIdentifier content
+        idx += algo_len
         
-        if len(priv_bytes) != ED521_BYTE_LEN:
-            raise ValueError(f"Expected {ED521_BYTE_LEN} bytes, got {len(priv_bytes)}")
+        # PrivateKey (OCTET STRING)
+        if der_data[idx] != 0x04:
+            # Tentar formato antigo (tag 0x84) para compatibilidade
+            if der_data[idx] == 0x84:
+                idx += 1
+                priv_len = der_data[idx]
+                idx += 1
+                private_key_bytes = der_data[idx:idx+priv_len]
+                return bytes_to_little_int(private_key_bytes)
+            raise ValueError(f"Expected OCTET STRING (0x04), got 0x{der_data[idx]:02x}")
         
-        return bytes_to_little_int(priv_bytes)
+        idx += 1
+        priv_len = der_data[idx]
+        idx += 1
+        
+        # Handle long length
+        if priv_len == 0x81:
+            priv_len = der_data[idx]
+            idx += 1
+        elif priv_len == 0x82:
+            priv_len = (der_data[idx] << 8) | der_data[idx+1]
+            idx += 2
+        
+        private_key_bytes = der_data[idx:idx+priv_len]
+        
+        if debug:
+            print(f"DEBUG: Private key bytes length: {len(private_key_bytes)} bytes")
+            print(f"DEBUG: Private key hex: {private_key_bytes.hex()}")
+        
+        # Convert to integer (little-endian)
+        return bytes_to_little_int(private_key_bytes)
         
     except Exception as e:
-        raise ValueError(f"Failed to parse private key: {e}")
+        if debug:
+            print(f"DEBUG: ASN.1 parsing failed: {e}")
+        
+        # Fallback: procurar por 66 bytes no DER
+        if len(der_data) == 66:
+            key_int = bytes_to_little_int(der_data)
+            if 0 < key_int < N:
+                if debug:
+                    print("DEBUG: Whole data is a valid 66-byte key")
+                return key_int
+        
+        for i in range(len(der_data) - 66 + 1):
+            chunk = der_data[i:i+66]
+            key_int = bytes_to_little_int(chunk)
+            if 0 < key_int < N:
+                if debug:
+                    print(f"DEBUG: Found 66-byte key at offset {i}")
+                return key_int
+        
+        raise ValueError(f"Cannot parse Ed521 private key: {e}")
 
 def parse_ed521_pem_public_key(pem_data, debug=False):
     """Parse Ed521 public key from PEM SPKI format (compatible with edgetk Go implementation)"""
