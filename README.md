@@ -7,7 +7,7 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/pedroalbanese/edgetk)](https://github.com/pedroalbanese/edgetk/releases)
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.17155950-blue.svg)](https://doi.org/10.5281/zenodo.17155950)
 
-Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC|PMAC|GMAC|VMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), password-based key derivation function (PBKDF2|Argon2|Lyra2|Scrypt), password-hashing scheme (Bcrypt|Argon2|Lyra2|Makwa), shared key agreement (ECDH|VKO|X25519|X448|ML-KEM), digital signature (RSA|ECDSA|EdDSA|GOST|SLH-DSA|ML-DSA), X.509 CSRs, CRLs and Certificates, and TCP instant server with TLS 1.3 and TLCP encryption layers for small or embedded systems. 
+Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetric encryption, cipher-based message authentication code (CMAC|PMAC|GMAC|VMAC), recursive hash digest, hash-based message authentication code (HMAC), HMAC-based key derivation function (HKDF), password-based key derivation function (PBKDF2|Lyra2|Scrypt), password-hashing scheme (Bcrypt|Argon2|Lyra2|Makwa), shared key agreement (ECDH|VKO|X25519|X448|ML-KEM), digital signature (RSA|ECDSA|EdDSA|GOST|SLH-DSA|ML-DSA), X.509 CSRs, CRLs and Certificates, and TCP instant server with TLS 1.3 and TLCP encryption layers for small or embedded systems. 
 
 ***Fully OpenSSL/LibreSSL/GmSSL/Botan/libsodium/RHash/Mcrypt compliant***
 
