@@ -1055,7 +1055,7 @@ proc updateTextUI {} {
     }
     
     set stream_ciphers {
-        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 zuc128 zuc256 xoodyak
+        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 sosemanuk zuc128 zuc256 xoodyak
     }
     
     set aead_ciphers {
@@ -1190,7 +1190,7 @@ proc updateFilesUI {} {
     }
     
     set stream_ciphers {
-        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 zuc128 zuc256 xoodyak
+        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 sosemanuk zuc128 zuc256 xoodyak
     }
     
     set aead_ciphers {
@@ -2132,7 +2132,7 @@ proc calculateIVSize {algorithm mode} {
     switch $algorithm {
         "3des" - "blowfish" - "cast5" - "gost89" - "idea" - "magma" - "misty1" - "rc2" - "rc5" - "twine" - "present" { set ivSize 16 }
         "curupira" { set ivSize 24 }
-        "aes" - "serpent" - "aria" - "lea" - "anubis" - "twofish" - "sm4" - "camellia" - "kuznechik" - "seed" - "hc128" - "zuc128" { set ivSize 32 }
+        "aes" - "serpent" - "aria" - "lea" - "anubis" - "twofish" - "sm4" - "camellia" - "kuznechik" - "seed" - "sosemanuk" - "hc128" - "zuc128" { set ivSize 32 }
         "zuc256" { set ivSize 46 }
         "hc256" - "skein" - "threefish" - "kalyna256_256" - "shacal2" { set ivSize 64 }
         "kalyna512_512" - "threefish512" { set ivSize 128 }
@@ -3054,7 +3054,7 @@ pack .nb.text_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.text_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "sosemanuk" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
@@ -3289,7 +3289,7 @@ pack .nb.file_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.file_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "sosemanuk" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.file_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
