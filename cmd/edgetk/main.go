@@ -204,6 +204,7 @@ import (
 	"github.com/pedroalbanese/siv"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
+	"github.com/pedroalbanese/sosemanuk"
 	"github.com/pedroalbanese/spritz"
 	"github.com/pedroalbanese/threefish"
 	"github.com/pedroalbanese/tiger"
@@ -376,7 +377,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.17  01 Jan 2026")
+		fmt.Println("EDGE Toolkit v1.5.18  12 Feb 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -429,9 +430,9 @@ Modes of Operation:
 
 Block Ciphers:
   3des              curupira          kuznechik         rc6
-  aes (default)     e2                lea               safer+
-  anubis            gost89            loki97            seed
-  aria              hight             magenta           serpent
+  aes (default)     e2                lea               seed
+  anubis            gost89            loki97            serpent
+  aria              hight             magenta           sosemanuk
   belt              idea [obsolete]   magma             shacal2
   blowfish          kalyna128_128     mars              sm4
   camellia          kalyna128_256     misty1            threefish256
@@ -2117,6 +2118,53 @@ Subcommands:
 
 		out := spritz.Hash(msg, byte(*length/8))
 		fmt.Printf("%x\n", out)
+		os.Exit(0)
+	}
+
+	if *crypt != "" && *cph == "sosemanuk" {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 16 && len(key) != 32 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, _ = hex.DecodeString(*vector)
+		} else {
+			nonce = make([]byte, 16)
+			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+		}
+		ciph, _ := sosemanuk.New(key, nonce)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
 		os.Exit(0)
 	}
 
@@ -21651,9 +21699,15 @@ Subcommands:
 			fmt.Printf(string(privPEM))
 			d := privKey.D.Bytes()
 
+			hexD := hex.EncodeToString(d)
+
+			if len(hexD) < e521HexLen {
+				hexD = hexD + strings.Repeat("0", e521HexLen-len(hexD))
+			}
+
 			fmt.Printf("Private-Key: (%v-bit)\n", curve.Params().BitSize)
 			fmt.Printf("priv: \n")
-			splitz := SplitSubN(hex.EncodeToString(d), 2)
+			splitz := SplitSubN(hexD, 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
 			}
