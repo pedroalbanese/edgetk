@@ -343,8 +343,9 @@ graph LR
     | KCipher-2        | 128        |  128 | XOR Stream            |
     | Rabbit           | 128        |   64 | XOR Stream            |
     | RC4 [Obsolete]   | 40/128     |    - | XOR Stream            |
-    | Salsa20          | 256        | 64/192 | XOR Stream            |
+    | Salsa20          | 256        | 64/192 | XOR Stream           |
     | Skein512         | Any        |  Any | MAC + XOR Stream      |
+    | Sosemanuk        | 128/256    |  128 | XOR Stream            |
     | Spritz           | Any        |  Any | XOR Stream            |
     | Trivium          | 80         |   80 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
