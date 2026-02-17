@@ -168,6 +168,24 @@ Instrução Normativa ITI nº 22/2022 – Instituto Nacional de Tecnologia da In
 
 ---
 
+#### 🇸🇦 SNOW 2.0, Sosemanuk — Saudi Arabian national stream cipher standards  
+Defined by the **National Cybersecurity Authority (NCA)** under the **National Cryptographic Standards (NCS)** framework. Approved for protecting sensitive data within Saudi governmental and critical infrastructure systems.
+
+- **SNOW 2.0** — Stream cipher standardized under **ISO/IEC 18033-4**.  
+  - 128-bit key — **MODERATE** security level  
+  - 256-bit key — **ADVANCED** security level  
+
+- **Sosemanuk** — Stream cipher from the **eSTREAM project**.  
+  - 128-bit and 256-bit keys — **MODERATE** security level  
+  - Not approved for **ADVANCED** security level  
+
+**Operational requirements:**  
+- Initialization Vector (**IV**) must be at least **128 bits**.  
+- IVs must not be reused with the same key.  
+- Successful decryption alone does **not** guarantee authenticity (separate integrity protection required).
+
+---
+
 #### 🇩🇪 EC-GDSA, EC-SDSA, ECKA-EG, Brainpool — German national elliptic curve cryptographic standards  
 Standardized by the **BSI (Federal Office for Information Security)** in the technical guideline **BSI TR-03111**, these cryptographic algorithms and curve parameters are used for secure digital signatures, key exchange, and public key infrastructures in German governmental and high-security environments.
 
