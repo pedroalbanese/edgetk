@@ -180,7 +180,7 @@ Defined by the **National Cybersecurity Authority (NCA)** under the **National C
   - Not approved for **ADVANCED** security level
 
 **Source:**  
-https://nca.gov.sa/ncs_en.pdf
+https://nca.gov.sa/ncs_en.pdf  
 National Cryptographic Standards (NCS–1:2020)
 
 ---
