@@ -177,12 +177,7 @@ Defined by the **National Cybersecurity Authority (NCA)** under the **National C
 
 - **Sosemanuk** — Stream cipher from the **eSTREAM project**.  
   - 128-bit and 256-bit keys — **MODERATE** security level  
-  - Not approved for **ADVANCED** security level  
-
-**Operational requirements:**  
-- Initialization Vector (**IV**) must be at least **128 bits**.  
-- IVs must not be reused with the same key.  
-- Successful decryption alone does **not** guarantee authenticity (separate integrity protection required).
+  - Not approved for **ADVANCED** security level
 
 ---
 
@@ -364,6 +359,7 @@ graph LR
     | Salsa20          | 256        | 64/192 | XOR Stream           |
     | Skein512         | Any        |  Any | MAC + XOR Stream      |
     | Sosemanuk        | 128/256    |  128 | XOR Stream            |
+    | SNOW 2.0         | 128/256    |  128 | XOR Stream            |
     | Spritz           | Any        |  Any | XOR Stream            |
     | Trivium          | 80         |   80 | XOR Stream            |
     | ZUC-128 Zu Chongzhi | 128     |  128 | MAC + XOR Stream      |
