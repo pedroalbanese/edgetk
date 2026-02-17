@@ -179,6 +179,9 @@ Defined by the **National Cybersecurity Authority (NCA)** under the **National C
   - 128-bit and 256-bit keys — **MODERATE** security level  
   - Not approved for **ADVANCED** security level
 
+**Source:**  
+https://nca.gov.sa/ncs_en.pdf
+
 ---
 
 #### 🇩🇪 EC-GDSA, EC-SDSA, ECKA-EG, Brainpool — German national elliptic curve cryptographic standards  
