@@ -47,7 +47,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 33. IGE (Infinite Garble Extension) Mode of Operation for Block ciphers
 34. ISO/IEC 10118-3:2003 RIPEMD128/160/256 and Whirlpool (ESAT/COSIC)
 35. ISO/IEC 18033-3:2010 HIGHT, SEED, Camellia and MISTY1 Block ciphers
-36. ISO/IEC 18033-4:2011 SNOW 2.0 and KCipher-2 stream cipher (RFC 7008)
+36. ISO/IEC 18033-4:2011 SNOW 2.0 and KCipher-2 stream ciphers (RFC 7008)
 37. ISO/IEC 29192-3:2012 Trivium Stream cipher with 80-bit key
 38. ISO/IEC 18033-5:2015 IBE - Identity-based Encryption Mechanisms
 39. ISO/IEC 18033-5:2015/Amd.1:2021(E) SM9 Mechanism
