@@ -437,7 +437,7 @@ Block Ciphers:
   camellia          kalyna128_256     misty1            threefish256
   cast5             kalyna256_256     noekeon           threefish512
   cast256           kalyna256_512     present           threefish1024
-  clefia            kalyna512_512     rc2 [obsolete]    twine
+  clefia            kalyna512_512     rc5 [obsolete]    twine
   crypton           khazad            rc6               twofish
 
 Key Derivation Functions:
