@@ -376,7 +376,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.19  12 Feb 2026")
+		fmt.Println("EDGE Toolkit v1.5.19  18 Feb 2026")
 	}
 
 	if len(os.Args) < 2 {
