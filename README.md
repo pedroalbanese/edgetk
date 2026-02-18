@@ -262,6 +262,8 @@ graph LR
 
 </details>
 
+Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/)
+
 ## Command-line Integrated Security Suite
 
 ### Asymmetric
