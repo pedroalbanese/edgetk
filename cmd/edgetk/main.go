@@ -92,7 +92,6 @@ import (
 	"github.com/RyuaNerin/go-krypto/lsh256"
 	"github.com/RyuaNerin/go-krypto/lsh512"
 	"github.com/deatil/go-cryptobin/cipher/clefia"
-	"github.com/deatil/go-cryptobin/cipher/saferplus"
 	"github.com/emmansun/certinfo"
 	"github.com/emmansun/gmsm/sm2"
 	"github.com/emmansun/gmsm/sm3"
@@ -188,7 +187,6 @@ import (
 	"github.com/pedroalbanese/noekeon"
 	"github.com/pedroalbanese/ocb"
 	"github.com/pedroalbanese/ocb3"
-	"github.com/pedroalbanese/panama"
 	"github.com/pedroalbanese/pmac"
 	"github.com/pedroalbanese/present"
 	"github.com/pedroalbanese/rabbitio"
@@ -204,6 +202,7 @@ import (
 	"github.com/pedroalbanese/siv"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
+	"github.com/pedroalbanese/snow2"
 	"github.com/pedroalbanese/sosemanuk"
 	"github.com/pedroalbanese/spritz"
 	"github.com/pedroalbanese/threefish"
@@ -377,7 +376,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.18  12 Feb 2026")
+		fmt.Println("EDGE Toolkit v1.5.19  12 Feb 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -429,17 +428,17 @@ Modes of Operation:
   ocb1/3 (aead)     ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              curupira          kuznechik         rc6
-  aes (default)     e2                lea               seed
-  anubis            gost89            loki97            serpent
+  3des              curupira          kuznechik         seed
+  aes (default)     e2                lea               serpent
+  anubis            gost89            loki97            shacal2
   aria              hight             magenta           sosemanuk
-  belt              idea [obsolete]   magma             shacal2
+  belt              idea [obsolete]   magma             snow2
   blowfish          kalyna128_128     mars              sm4
   camellia          kalyna128_256     misty1            threefish256
   cast5             kalyna256_256     noekeon           threefish512
   cast256           kalyna256_512     present           threefish1024
   clefia            kalyna512_512     rc2 [obsolete]    twine
-  crypton           khazad            rc5               twofish
+  crypton           khazad            rc6               twofish
 
 Key Derivation Functions:
   hkdf              pbkdf2            lyra2re           gost
@@ -1824,10 +1823,6 @@ Subcommands:
 		*length = 128
 	}
 
-	if (*cph == "saferplus" || *cph == "safer+") && *pkey != "keygen" && (*length != 64 && *length != 128) && *crypt != "" {
-		*length = 128
-	}
-
 	if (*cph == "present" || *cph == "twine") && *pkey != "keygen" && (*length != 80 && *length != 128) && *crypt != "" {
 		*length = 128
 	}
@@ -2138,6 +2133,56 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
+			if len(key) < 16 || len(key) > 32 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		var nonce []byte
+		if *vector != "" {
+			nonce, _ = hex.DecodeString(*vector)
+			if len(nonce) != 16 {
+				log.Fatal("Invalid IV size.")
+			}
+		} else {
+			nonce = make([]byte, 16)
+			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
+		}
+		ciph, _ := sosemanuk.New(key, nonce)
+		buf := make([]byte, 64*1<<10)
+		var n int
+		for {
+			n, err = inputfile.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Fatal(err)
+			}
+			ciph.XORKeyStream(buf[:n], buf[:n])
+			if _, err := os.Stdout.Write(buf[:n]); err != nil {
+				log.Fatal(err)
+			}
+			if err == io.EOF {
+				break
+			}
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && *cph == "snow2" {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, 32)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
 			if len(key) != 16 && len(key) != 32 {
 				log.Fatal("Invalid key size.")
 			}
@@ -2145,11 +2190,14 @@ Subcommands:
 		var nonce []byte
 		if *vector != "" {
 			nonce, _ = hex.DecodeString(*vector)
+			if len(nonce) != 16 {
+				log.Fatal("Invalid IV size.")
+			}
 		} else {
 			nonce = make([]byte, 16)
 			fmt.Fprintf(os.Stderr, "IV= %x\n", nonce)
 		}
-		ciph, _ := sosemanuk.New(key, nonce)
+		ciph, _ := snow2.NewCipher(key, nonce)
 		buf := make([]byte, 64*1<<10)
 		var n int
 		for {
@@ -2227,46 +2275,6 @@ Subcommands:
 		if err != io.EOF {
 			log.Fatalf("error reading")
 		}
-	}
-
-	if *crypt != "" && *cph == "panama" {
-		var keyHex string
-		keyHex = *key
-		var key []byte
-		var err error
-		if keyHex == "" {
-			key = make([]byte, 32)
-			_, err = io.ReadFull(rand.Reader, key)
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
-		} else {
-			key, err = hex.DecodeString(keyHex)
-			if err != nil {
-				log.Fatal(err)
-			}
-			if len(key) != 32 {
-				log.Fatal("Invalid key size.")
-			}
-		}
-		ciph, _ := panama.NewCipher(key)
-		buf := make([]byte, 64*1<<10)
-		var n int
-		for {
-			n, err = inputfile.Read(buf)
-			if err != nil && err != io.EOF {
-				log.Fatal(err)
-			}
-			ciph.XORKeyStream(buf[:n], buf[:n])
-			if _, err := os.Stdout.Write(buf[:n]); err != nil {
-				log.Fatal(err)
-			}
-			if err == io.EOF {
-				break
-			}
-		}
-		os.Exit(0)
 	}
 
 	if *crypt != "" && *cph == "rabbit" {
@@ -3481,7 +3489,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "shacal2" || *cph == "belt" || *cph == "safer+" || *cph == "saferplus") && (strings.ToUpper(*mode) == "SIV") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "des" || *cph == "3des" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "shacal2" || *cph == "belt") && (strings.ToUpper(*mode) == "SIV") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -3881,15 +3889,6 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-		case "saferplus", "safer+":
-			ciph, err = saferplus.NewCipher(blockKey)
-			if err != nil {
-				log.Fatal(err)
-			}
-			macBlock, err = saferplus.NewCipher(macKey)
-			if err != nil {
-				log.Fatal(err)
-			}
 		case "belt":
 			ciph, err = belt.NewCipher(blockKey)
 			if err != nil {
@@ -3944,7 +3943,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "crypton" || *cph == "e2" || *cph == "saferplus" || *cph == "safer+" || *cph == "belt") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
+	if *crypt != "" && (*cph == "aes" || *cph == "anubis" || *cph == "aria" || *cph == "lea" || *cph == "seed" || *cph == "lea" || *cph == "sm4" || *cph == "camellia" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "magma" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "crypton" || *cph == "e2" || *cph == "belt") && (strings.ToUpper(*mode) == "GCM" || strings.ToUpper(*mode) == "MGM" || strings.ToUpper(*mode) == "OCB" || strings.ToUpper(*mode) == "OCB1" || strings.ToUpper(*mode) == "OCB3" || strings.ToUpper(*mode) == "EAX" || strings.ToUpper(*mode) == "CCM") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -4047,9 +4046,6 @@ Subcommands:
 		case "e2":
 			ciph, err = e2.NewCipher(key)
 			n = 16
-		case "saferplus", "safer+":
-			ciph, err = saferplus.NewCipher(key)
-			n = 8
 		case "belt":
 			ciph, err = belt.NewCipher(key)
 			n = 16
@@ -4285,9 +4281,6 @@ Subcommands:
 		case "shacal2":
 			ciph, err = shacal2.NewCipher(key)
 			n = 32
-		case "saferplus", "safer+":
-			ciph, err = saferplus.NewCipher(key)
-			n = 8
 		case "belt":
 			ciph, err = belt.NewCipher(key)
 			n = 16
@@ -4356,7 +4349,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "shacal2" || *cph == "saferplus" || *cph == "safer+" || *cph == "belt") {
+	if *crypt != "" && (*cph == "aes" || *cph == "aria" || *cph == "lea" || *cph == "camellia" || *cph == "magma" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "gost89" || *cph == "twofish" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "threefish" || *cph == "threefish256" || *cph == "threefish512" || *cph == "threefish1024" || *cph == "mars" || *cph == "noekeon" || *cph == "loki97" || *cph == "cast256" || *cph == "cast6" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "kalyna512_512" || *cph == "crypton" || *cph == "e2" || *cph == "shacal2" || *cph == "belt") {
 		var keyHex string
 		keyHex = *key
 		var err error
@@ -4474,9 +4467,6 @@ Subcommands:
 		case "shacal2":
 			ciph, err = shacal2.NewCipher(key)
 			iv = make([]byte, 32)
-		case "saferplus", "safer+":
-			ciph, err = saferplus.NewCipher(key)
-			iv = make([]byte, 8)
 		case "belt":
 			ciph, err = belt.NewCipher(key)
 			iv = make([]byte, 16)
@@ -5525,8 +5515,6 @@ Subcommands:
 			c, err = present.NewCipher([]byte(*key))
 		case "twine":
 			c, err = twine.NewCipher([]byte(*key))
-		case "saferplus", "safer+":
-			c, err = saferplus.NewCipher([]byte(*key))
 		case "belt":
 			c, err = belt.NewCipher([]byte(*key))
 		default:
@@ -5679,8 +5667,6 @@ Subcommands:
 			c, err = twine.NewCipher([]byte(*key))
 		case "shacal2":
 			c, err = shacal2.NewCipher([]byte(*key))
-		case "saferplus", "safer+":
-			c, err = saferplus.NewCipher([]byte(*key))
 		case "belt":
 			c, err = belt.NewCipher([]byte(*key))
 		default:
@@ -5770,8 +5756,6 @@ Subcommands:
 			c, err = e2.NewCipher(key)
 		case "crypton":
 			c, err = crypton1.NewCipher(key)
-		case "saferplus", "safer+":
-			c, err = saferplus.NewCipher(key)
 		case "belt":
 			c, err = belt.NewCipher(key)
 		default:
@@ -5921,9 +5905,6 @@ Subcommands:
 		case "crypton":
 			c, err = crypton1.NewCipher(key)
 			n = 16
-		case "saferplus", "safer+":
-			c, err = saferplus.NewCipher(key)
-			n = 8
 		case "belt":
 			c, err = belt.NewCipher(key)
 			n = 16
@@ -6094,8 +6075,6 @@ Subcommands:
 			c, err = curupira1.NewCipher([]byte(*key))
 		case "shacal2":
 			c, err = shacal2.NewCipher([]byte(*key))
-		case "saferplus", "safer+":
-			c, err = saferplus.NewCipher([]byte(*key))
 		case "belt":
 			c, err = belt.NewCipher([]byte(*key))
 		default:
@@ -26624,7 +26603,7 @@ func PKCS7Padding(ciphertext []byte) []byte {
 	var padding int
 	if *cph == "aes" || *cph == "aria" || *cph == "grasshopper" || *cph == "kuznechik" || *cph == "camellia" || *cph == "twofish" || *cph == "lea" || *cph == "seed" || *cph == "sm4" || *cph == "anubis" || *cph == "serpent" || *cph == "rc6" || *cph == "magenta" || *cph == "crypton" || *cph == "noekeon" || *cph == "loki97" || *cph == "mars" || *cph == "e2" || *cph == "clefia" || *cph == "kalyna128_128" || *cph == "kalyna128_256" || *cph == "cast256" || *cph == "cast6" || *cph == "belt" {
 		padding = 16 - len(ciphertext)%16
-	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "saferplus" || *cph == "safer+" {
+	} else if *cph == "blowfish" || *cph == "cast5" || *cph == "des" || *cph == "3des" || *cph == "magma" || *cph == "gost89" || *cph == "idea" || *cph == "rc2" || *cph == "rc5" || *cph == "hight" || *cph == "misty1" || *cph == "khazad" || *cph == "present" || *cph == "twine" {
 		padding = 8 - len(ciphertext)%8
 	} else if *cph == "threefish" || *cph == "threefish256" || *cph == "kalyna256_256" || *cph == "kalyna256_512" || *cph == "shacal2" {
 		padding = 32 - len(ciphertext)%32
