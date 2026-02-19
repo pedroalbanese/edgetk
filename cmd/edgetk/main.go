@@ -417,10 +417,10 @@ Subjacent Elliptic Curves:
   sect571k1         numsp256t1        sm2p256v1         bign512v1
 
 Stream Ciphers:
-  ascon (aead)      grain128a         rabbit            spritz
-  chacha20          hc128             rc4 [obsolete]    trivium
-  chacha20poly1305  hc256             salsa20           zuc128/eea128
-  grain (aead)      kcipher2          skein             zuc256/eea256
+  ascon (aead)      hc128             spritz            snow2
+  chacha20          hc256             salsa20           trivium
+  chacha20poly1305  kcipher2          skein             zuc128/eea128
+  grain (aead)      rabbit            sosemanuk         zuc256/eea256
 
 Modes of Operation:
   eax (aead)        siv (aead)        cbc               ecb
@@ -428,17 +428,17 @@ Modes of Operation:
   ocb1/3 (aead)     ccm (aead)        ctr (default)     ofb
 
 Block Ciphers:
-  3des              curupira          kuznechik         seed
-  aes (default)     e2                lea               serpent
-  anubis            gost89            loki97            shacal2
-  aria              hight             magenta           sosemanuk
-  belt              idea [obsolete]   magma             snow2
-  blowfish          kalyna128_128     mars              sm4
-  camellia          kalyna128_256     misty1            threefish256
-  cast5             kalyna256_256     noekeon           threefish512
-  cast256           kalyna256_512     present           threefish1024
-  clefia            kalyna512_512     rc5 [obsolete]    twine
-  crypton           khazad            rc6               twofish
+  3des              curupira          khazad            rc5
+  aes (default)     des [obsolete]    kuznechik         rc6
+  anubis            e2                lea               seed
+  aria              gost89            loki97            serpent
+  belt              hight             magenta           shacal2
+  blowfish          idea [obsolete]   magma             sm4
+  camellia          kalyna128_128     mars              threefish256
+  cast5             kalyna128_256     misty1            threefish512
+  cast256           kalyna256_256     noekeon           threefish1024
+  clefia            kalyna256_512     present           twine
+  crypton           kalyna512_512     rc2 [obsolete]    twofish
 
 Key Derivation Functions:
   hkdf              pbkdf2            lyra2re           gost
