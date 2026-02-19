@@ -17,7 +17,7 @@ The EDGETk toolkit includes over 140 widely recognized cryptographic algorithms.
   The TLS 1.3 and TLCP implementations have been tested in real-world scenarios and communicate successfully with compliant clients and servers, further reinforcing protocol-level correctness.
 
 - **Production-Ready Algorithms:**  
-Algorithms including RSA, AES-GCM, ChaCha20-Poly1305, Scrypt, Argon2, ECDSA/ECDH with NIST curves, X25519/Ed25519, SHA2/SHA3, BLAKE2, Twofish, TLS 1.3, and X.509 library have been rigorously tested and independently verified against standardized test vectors and reference implementations. These algorithms are considered ready for production use, providing a high level of confidence in their correctness and reliability.
+Algorithms including BLS12-381, RSA, AES-GCM, ChaCha20-Poly1305, Scrypt, Argon2, ECDSA/ECDH with NIST curves, X25519/Ed25519, SHA2/SHA3, BLAKE2, Twofish, TLS 1.3, and X.509 library have been rigorously tested and independently verified against standardized test vectors and reference implementations. These algorithms are considered ready for production use, providing a high level of confidence in their correctness and reliability.
 
 While independent auditing remains an important future milestone, the high degree of compatibility, adherence to international standards, and deterministic behavior across platforms provide strong practical evidence of correctness and reliability in EDGETk's cryptographic implementations.
 
