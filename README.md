@@ -62,7 +62,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 48. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 49. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
 50. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
-51. PiLBA 2008: Curupira2 96-bit block cipher with 96/144/192-bit keys
+51. PiLBA 2008: The Curupira-2 Block Cipher for Constrained Platforms
 52. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
 53. RFC 1423: Privacy Enhancement for Internet Electronic Mail
 54. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
