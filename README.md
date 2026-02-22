@@ -418,7 +418,8 @@ Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/)
 
     |      Cipher    | Block Size |  Key Size    |    Modes    |
     |:--------------|:----:|:----:|:---------------------:|
-    | Curupira      |   96 |  96/144/192 |EAX, LETTERSOUP, CTR, IGE|
+    | Curupira1     |   96 |  96/144/192 |EAX, LETTERSOUP, CTR, IGE|
+    | Curupira2     |   96 |  96/144/192 |EAX, LETTERSOUP, CTR, IGE|
 
 - **64-bit block ciphers:**
 
