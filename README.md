@@ -62,21 +62,22 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 48. NIST SP800-186 X25519 Diffie-Hellman (OpenSSL compliant)
 49. NIST SP800-38D GCM AEAD mode for 128-bit block ciphers (RFC 5288)
 50. NIST SP800-232 Ascon-Based Lightweight Cryptography Standard
-51. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
-52. RFC 1423: Privacy Enhancement for Internet Electronic Mail
-53. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
-54. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
-55. RFC 2612: The CAST-256 Encryption Algorithm
-56. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
-57. RFC 4009: The SEED Encryption Algorithm (KISA)
-58. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
-59. RFC 4493: Cipher-based Message Authentication Code (CMAC)
-60. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
-61. RFC 4543: Galois Message Authentication Code (GMAC)
-62. RFC 4764: EAX Authenticated-Encryption Mode of Operation
-63. RFC 4648: Base16, Base32, and Base64 Data Encodings
-64. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
-65. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
+51. PiLBA 2008: Curupira2 96-bit block cipher with 96/144/192-bit keys
+52. PKC 2003: Cha-Cheon Identity-Based Signature (IBS)
+53. RFC 1423: Privacy Enhancement for Internet Electronic Mail
+54. RFC 2104: HMAC - Keyed-Hashing for Message Authentication
+55. RFC 2144: CAST-128 64-bit Block cipher with 128-bit key
+56. RFC 2612: The CAST-256 Encryption Algorithm
+57. RFC 3610: Counter with CBC-MAC Mode of Operation (CCM Mode)
+58. RFC 4009: The SEED Encryption Algorithm (KISA)
+59. RFC 4253: Serpent 128-bit Block cipher with 128/192/256-bit keys
+60. RFC 4493: Cipher-based Message Authentication Code (CMAC)
+61. RFC 4503: Rabbit Stream Cipher Algorithm with 128-bit key
+62. RFC 4543: Galois Message Authentication Code (GMAC)
+63. RFC 4764: EAX Authenticated-Encryption Mode of Operation
+64. RFC 4648: Base16, Base32, and Base64 Data Encodings
+65. RFC 5246: Transport Layer Security (TLS) Protocol Version 1.2
+66. RFC 5280: Internet X.509 PKI Certificate Revocation List (CRL)
 50. RFC 5297: Synthetic Initialization Vector (SIV Mode)
 51. RFC 5639: Elliptic Curve Cryptography (ECC) Brainpool Standard Curves
 53. RFC 5869: HMAC-based Key Derivation Function (HKDF)
@@ -94,7 +95,7 @@ Multi-purpose cross-platform hybrid cryptography tool for symmetric and asymmetr
 65. RFC 9058: MGM AEAD mode for 64 and 128 bit ciphers (E. Griboedova)
 66. RFC 9367: GOST Cipher Suites for Transport Layer Security (TLS 1.3)
 13. SAC 2002: Hess Efficient Identity Based Signature (IBS)
-66. SBRC 2007: Curupira 96-bit block cipher with 96/144/192-bit keys
+66. SBRC 2007: Curupira1 96-bit block cipher with 96/144/192-bit keys
 67. STB 34.101.31-2011 Belarusian standard (Bel-T) block cipher
 68. STB 34.101.45-2013 Belarusian BignV1 public key algorithhm
 69. STB 34.101.77-2020 Belarusian standard BASH hash function
