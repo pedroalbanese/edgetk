@@ -132,6 +132,7 @@ import (
 	"github.com/pedroalbanese/cubehash"
 	"github.com/pedroalbanese/cubehash256"
 	"github.com/pedroalbanese/curupira1"
+	"github.com/pedroalbanese/curupira2"
 	"github.com/pedroalbanese/curve448/ed448"
 	"github.com/pedroalbanese/curve448/x448"
 	"github.com/pedroalbanese/e2"
@@ -202,6 +203,7 @@ import (
 	"github.com/pedroalbanese/siv"
 	"github.com/pedroalbanese/skein"
 	skeincipher "github.com/pedroalbanese/skein-1"
+	"github.com/pedroalbanese/smaz"
 	"github.com/pedroalbanese/snow2"
 	"github.com/pedroalbanese/sosemanuk"
 	"github.com/pedroalbanese/spritz"
@@ -238,6 +240,7 @@ var (
 	b64            = flag.String("base64", "", "Encode binary string to Base64 format and vice-versa. [enc|dec]")
 	b32            = flag.String("base32", "", "Encode binary string to Base32 format and vice-versa. [enc|dec]")
 	zz             = flag.String("zlib", "", "Compress string with zlib algorithm and vice-versa. [enc|dec]")
+	smazz          = flag.String("smaz", "", "Compress short strings with smaz algorithm and vice-versa. [enc|dec]")
 	days           = flag.Int("days", 0, "Defines the validity of the certificate from the date of creation.")
 	factorPStr     = flag.String("factorp", "", "Makwa private Factor P. (for Makwa Password-hashing Scheme)")
 	factorQStr     = flag.String("factorq", "", "Makwa private Factor Q. (for Makwa Password-hashing Scheme)")
@@ -376,7 +379,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.19  18 Feb 2026")
+		fmt.Println("EDGE Toolkit v1.5.20  22 Feb 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -429,7 +432,7 @@ Modes of Operation:
 
 Block Ciphers:
   3des              curupira          khazad            rc5
-  aes (default)     des [obsolete]    kuznechik         rc6
+  aes (default)     curupira2         kuznechik         rc6
   anubis            e2                lea               seed
   aria              gost89            loki97            serpent
   belt              hight             magenta           shacal2
@@ -1673,6 +1676,33 @@ Subcommands:
 		}
 	}
 
+	if *smazz == "enc" || *smazz == "dec" {
+		var inputData []byte
+
+		data, err := ioutil.ReadAll(inputfile)
+		if err != nil {
+			fmt.Println("Error reading the file:", err)
+			os.Exit(1)
+		}
+		inputData = data
+
+		if *smazz == "enc" {
+			compressed, err := compressInput(inputData)
+			if err != nil {
+				fmt.Println("Compression error:", err)
+				os.Exit(1)
+			}
+			os.Stdout.Write(compressed)
+		} else {
+			decompressed, err := decompressInput(inputData)
+			if err != nil {
+				fmt.Println("Decompression error:", err)
+				os.Exit(1)
+			}
+			os.Stdout.Write(decompressed)
+		}
+	}
+
 	if *xx == "enc" {
 		mw := xxencode.NewMultiWriter(os.Stdout)
 		defer mw.Close()
@@ -1827,7 +1857,7 @@ Subcommands:
 		*length = 128
 	}
 
-	if (*cph == "curupira") && *pkey != "keygen" && (*length != 96 && *length != 144 && *length != 192) && *crypt != "" {
+	if (*cph == "curupira" || *cph == "curupira2") && *pkey != "keygen" && (*length != 96 && *length != 144 && *length != 192) && *crypt != "" {
 		*length = 96
 	}
 
@@ -2576,8 +2606,11 @@ Subcommands:
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		buf := bytes.NewBuffer(nil)
-		io.Copy(buf, inputfile)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
 		msg := buf.Bytes()
 
 		if *crypt == "enc" {
@@ -3260,6 +3293,84 @@ Subcommands:
 		}
 	}
 
+	if *crypt != "" && (*cph == "curupira2" && strings.ToUpper(*mode) == "LETTERSOUP") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 12 && len(key) != 18 && len(key) != 24 {
+				log.Fatal("Invalid key size. Key must be either 96, 144, or 192 bits for Curupira.")
+			}
+		}
+
+		buf := bytes.NewBuffer(nil)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
+		msg := buf.Bytes()
+
+		aad := []byte(*info)
+
+		cipher, err := curupira2.NewCipher(key)
+		if err != nil {
+			log.Fatal("Error creating Curupira cipher instance:", err)
+		}
+
+		aead := curupira2.NewLetterSoup(cipher)
+
+		if *crypt == "enc" {
+			nonce := make([]byte, 12)
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			aead.SetIV(nonce)
+
+			ciphertext := make([]byte, len(msg))
+			aead.Encrypt(ciphertext, msg)
+			aead.Update(aad)
+			tag := aead.GetTag(nil, 96)
+
+			output := append(nonce, tag...)
+			output = append(output, ciphertext...)
+			os.Stdout.Write(output)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, tag, msg := msg[:12], msg[12:24], msg[24:]
+
+			aead.SetIV(nonce)
+
+			decrypted := make([]byte, len(msg))
+			aead.Decrypt(decrypted, msg)
+
+			ciphertext := make([]byte, len(decrypted))
+			aead.Encrypt(ciphertext, decrypted)
+			aead.Update(aad)
+			tagEnc := aead.GetTag(nil, 96)
+
+			if len(tag) == len(tagEnc) && subtle.ConstantTimeCompare(tag, tagEnc) == 1 {
+				os.Stdout.Write(decrypted)
+				os.Exit(0)
+			} else {
+				log.Fatal("Error: authentication verification failed!")
+			}
+		}
+	}
+
 	if *crypt != "" && (*cph == "curupira") && (strings.ToUpper(*mode) == "EAX") {
 		var keyHex string
 		keyHex = *key
@@ -3282,6 +3393,72 @@ Subcommands:
 			}
 		}
 		ciph, err := curupira1.NewCipher(key)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var aead cipher.AEAD
+		aead, err = eax.NewEAXWithNonceAndTagSize(ciph, 12, 12)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		buf := bytes.NewBuffer(nil)
+		io.Copy(buf, inputfile)
+		msg := buf.Bytes()
+
+		if *crypt == "enc" {
+			nonce := make([]byte, aead.NonceSize(), aead.NonceSize()+len(msg)+aead.Overhead())
+
+			if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+				log.Fatal(err)
+			}
+			nonce[0] &= 0x7F
+
+			out := aead.Seal(nonce, nonce, msg, []byte(*info))
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+
+		if *crypt == "dec" {
+			nonce, msg := msg[:aead.NonceSize()], msg[aead.NonceSize():]
+
+			out, err := aead.Open(nil, nonce, msg, []byte(*info))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("%s", out)
+
+			os.Exit(0)
+		}
+		os.Exit(0)
+	}
+
+	if *crypt != "" && (*cph == "curupira2") && (strings.ToUpper(*mode) == "EAX") {
+		var keyHex string
+		keyHex = *key
+		var key []byte
+		var err error
+		if keyHex == "" {
+			key = make([]byte, *length/8)
+			_, err = io.ReadFull(rand.Reader, key)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprintln(os.Stderr, "Key=", hex.EncodeToString(key))
+		} else {
+			key, err = hex.DecodeString(keyHex)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if len(key) != 24 && len(key) != 18 && len(key) != 12 {
+				log.Fatal("Invalid key size.")
+			}
+		}
+		ciph, err := curupira2.NewCipher(key)
 
 		if err != nil {
 			log.Fatal(err)
@@ -4080,7 +4257,9 @@ Subcommands:
 		}
 
 		buf := bytes.NewBuffer(nil)
-		io.Copy(buf, inputfile)
+		var data io.Reader
+		data = inputfile
+		io.Copy(buf, data)
 		msg := buf.Bytes()
 
 		if *crypt == "enc" {
@@ -4277,6 +4456,9 @@ Subcommands:
 			n = 16
 		case "curupira":
 			ciph, err = curupira1.NewCipher(key)
+			n = 12
+		case "curupira2":
+			ciph, err = curupira2.NewCipher(key)
 			n = 12
 		case "shacal2":
 			ciph, err = shacal2.NewCipher(key)
@@ -4525,7 +4707,7 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "curupira") {
+	if *crypt != "" && (*cph == "blowfish" || *cph == "idea" || *cph == "cast5" || *cph == "rc2" || *cph == "rc5" || *cph == "sm4" || *cph == "des" || *cph == "3des" || *cph == "seed" || *cph == "hight" || *cph == "misty1" || *cph == "anubis" || *cph == "khazad" || *cph == "present" || *cph == "twine" || *cph == "curupira" || *cph == "curupira2") {
 		var keyHex string
 		keyHex = *key
 		var key []byte
@@ -4600,6 +4782,9 @@ Subcommands:
 			iv = make([]byte, 8)
 		case "curupira":
 			ciph, err = curupira1.NewCipher(key)
+			iv = make([]byte, 12)
+		case "curupira2":
+			ciph, err = curupira2.NewCipher(key)
 			iv = make([]byte, 12)
 		default:
 			log.Fatalf("Cipher type %s not recognized", *cph)
@@ -6073,6 +6258,8 @@ Subcommands:
 			c, err = twine.NewCipher([]byte(*key))
 		case "curupira":
 			c, err = curupira1.NewCipher([]byte(*key))
+		case "curupira2":
+			c, err = curupira2.NewCipher([]byte(*key))
 		case "shacal2":
 			c, err = shacal2.NewCipher([]byte(*key))
 		case "belt":
@@ -10353,8 +10540,6 @@ Subcommands:
 			*alg = "SM9SIGN"
 		} else if strings.Contains(s, "SLH-DSA") {
 			*alg = "SLH-DSA"
-		} else if strings.Contains(s, "LMS") {
-			*alg = "LMS"
 		} else if strings.Contains(s, "BN256I") {
 			*alg = "BN256I"
 		} else if strings.Contains(s, "BN256") {
@@ -10385,6 +10570,8 @@ Subcommands:
 			*alg = "ML-KEM"
 		} else if strings.Contains(s, "ML-DSA") {
 			*alg = "ML-DSA"
+		} else if strings.Contains(s, "LMS SECRET") || strings.Contains(s, "LMS PUBLIC") {
+			*alg = "LMS"
 		} else if strings.Contains(s, "NUMS") {
 			*alg = "NUMS"
 		} else if strings.Contains(s, "ANSSI") {
@@ -26611,7 +26798,7 @@ func PKCS7Padding(ciphertext []byte) []byte {
 		padding = 64 - len(ciphertext)%64
 	} else if *cph == "threefish1024" {
 		padding = 128 - len(ciphertext)%128
-	} else if *cph == "curupira" {
+	} else if *cph == "curupira" || *cph == "curupira2" {
 		padding = 12 - len(ciphertext)%12
 	}
 	padtext := bytes.Repeat([]byte{byte(padding)}, padding)
@@ -27441,6 +27628,9 @@ const (
 	PEMCipherCURUPIRA96
 	PEMCipherCURUPIRA144
 	PEMCipherCURUPIRA192
+	PEMCipherCURUPIRA2_96
+	PEMCipherCURUPIRA2_144
+	PEMCipherCURUPIRA2_192
 	PEMCipherBELT128
 	PEMCipherBELT192
 	PEMCipherBELT256
@@ -27779,6 +27969,24 @@ var rfc1423Algos = []rfc1423Algo{{
 	keySize:    24,
 	blockSize:  12,
 }, {
+	cipher:     PEMCipherCURUPIRA2_96,
+	name:       "CURUPIRA2-96-CBC",
+	cipherFunc: curupira2CipherFunc,
+	keySize:    12,
+	blockSize:  12,
+}, {
+	cipher:     PEMCipherCURUPIRA2_144,
+	name:       "CURUPIRA2-144-CBC",
+	cipherFunc: curupira2CipherFunc,
+	keySize:    18,
+	blockSize:  12,
+}, {
+	cipher:     PEMCipherCURUPIRA2_192,
+	name:       "CURUPIRA2-192-CBC",
+	cipherFunc: curupira2CipherFunc,
+	keySize:    24,
+	blockSize:  12,
+}, {
 	cipher:     PEMCipherBELT128,
 	name:       "BELT-128-CBC",
 	cipherFunc: belt.NewCipher,
@@ -27809,6 +28017,14 @@ func twofishCipherFunc(key []byte) (cipher.Block, error) {
 
 func curupiraCipherFunc(key []byte) (cipher.Block, error) {
 	ciph, err := curupira1.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+	return ciph, nil
+}
+
+func curupira2CipherFunc(key []byte) (cipher.Block, error) {
+	ciph, err := curupira2.NewCipher(key)
 	if err != nil {
 		return nil, err
 	}
@@ -28024,6 +28240,10 @@ func EncryptAndWriteBlock(cph string, block *pem.Block, pwd []byte, file *os.Fil
 		"curupira144":   PEMCipherCURUPIRA144,
 		"curupira192":   PEMCipherCURUPIRA192,
 		"curupira":      PEMCipherCURUPIRA192,
+		"curupira2-96":  PEMCipherCURUPIRA2_96,
+		"curupira2-144": PEMCipherCURUPIRA2_144,
+		"curupira2-192": PEMCipherCURUPIRA2_192,
+		"curupira2":     PEMCipherCURUPIRA2_192,
 		"belt128":       PEMCipherBELT128,
 		"belt192":       PEMCipherBELT192,
 		"belt256":       PEMCipherBELT256,
@@ -28159,6 +28379,12 @@ func EncryptBlockWithCipher(rand io.Reader, blockType string, blockBytes, passwo
 		cipher = PEMCipherCURUPIRA144
 	case "curupira192", "curupira":
 		cipher = PEMCipherCURUPIRA192
+	case "curupira2-96":
+		cipher = PEMCipherCURUPIRA2_96
+	case "curupira2-144":
+		cipher = PEMCipherCURUPIRA2_144
+	case "curupira2-192", "curupira2":
+		cipher = PEMCipherCURUPIRA2_192
 	case "belt128":
 		cipher = PEMCipherBELT128
 	case "belt192":
@@ -33533,6 +33759,22 @@ func decompressZlib(data []byte) ([]byte, error) {
 	}
 	defer r.Close()
 	return ioutil.ReadAll(r)
+}
+
+func compressInput(input []byte) ([]byte, error) {
+	compressed, err := smaz.Compress(input)
+	if err != nil {
+		return nil, fmt.Errorf("compression error: %w", err)
+	}
+	return compressed, nil
+}
+
+func decompressInput(input []byte) ([]byte, error) {
+	decompressed, err := smaz.Decompress(input)
+	if err != nil {
+		return nil, fmt.Errorf("decompression error: %w", err)
+	}
+	return decompressed, nil
 }
 
 func zeroByteSlice() []byte {
