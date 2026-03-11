@@ -897,8 +897,9 @@ Identity-Based Encryption (IBE) is a cryptographic scheme that enables users to 
     
 **Figure 1** 
 ```mermaid
-graph TD
-     subgraph IBEKeyManagementSystem["Key Management System"]
+graph LR
+    subgraph IBEKeyManagementSystem["Key Management System"]
+        direction TB
         PKG["Private Key Generator (PKG)"]
         RA["Registration Authority (RA)"]
         PPS["Public Parameter Server (PPS)"]
