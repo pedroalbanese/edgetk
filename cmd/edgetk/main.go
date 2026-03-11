@@ -10570,7 +10570,7 @@ Subcommands:
 			*alg = "ML-KEM"
 		} else if strings.Contains(s, "ML-DSA") {
 			*alg = "ML-DSA"
-		} else if strings.Contains(s, "LMS SECRET") || strings.Contains(s, "LMS PUBLIC") {
+		} else if strings.Contains(s, "LMS SECRET") || strings.Contains(s, "LMS PUBLIC") || strings.Contains(s, "LMS CERTIFICATE") || strings.Contains(s, "LMS CERTIFICATE REQUEST") {
 			*alg = "LMS"
 		} else if strings.Contains(s, "NUMS") {
 			*alg = "NUMS"
