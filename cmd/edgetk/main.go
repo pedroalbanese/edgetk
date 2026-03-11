@@ -1,6 +1,6 @@
 /*
    EDGE Toolkit -- Pure Go Command-line Unique Integrated Security Suite
-   Copyright (C) 2020-2025 Pedro F. Albanese <pedroalbanese@hotmail.com>
+   Copyright (C) 2020-2026 Pedro F. Albanese <pedroalbanese@hotmail.com>
 
    This program is free software: you can redistribute it and/or modify it
    under the terms of the ISC License.
@@ -379,7 +379,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.20  22 Feb 2026")
+		fmt.Println("EDGE Toolkit v1.5.20  10 Mar 2026")
 	}
 
 	if len(os.Args) < 2 {
