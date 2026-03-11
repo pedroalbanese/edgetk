@@ -900,9 +900,9 @@ Identity-Based Encryption (IBE) is a cryptographic scheme that enables users to 
 graph LR
     subgraph IBEKeyManagementSystem["Key Management System"]
         direction TB
-        PKG["Private Key Generator (PKG)"]
-        RA["Registration Authority (RA)"]
-        PPS["Public Parameter Server (PPS)"]
+        PKG["Private&nbsp;Key&nbsp;Generator&nbsp;(PKG)"]
+        RA["Registration&nbsp;Authority&nbsp;(RA)"]
+        PPS["Public&nbsp;Parameter&nbsp;Server&nbsp;(PPS)"]
         User["User/Client"]
     end
 
