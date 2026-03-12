@@ -219,6 +219,13 @@ Developed by researchers from **Belgium**, **Germany**, and **Austria**, these a
 
 These algorithms reflect Europe's strong academic and institutional contributions to international cryptographic standards.
 
+---
+
+#### 🌐 Other Notable Cryptographic Curves
+
+🇮🇳 **KG-256r1, KG-384r1** (Indian research) — Proposed by Kunal Abhishek and Dr. E. George Dharma Prakash Raj, 2021.
+🇪🇺 **Tom-256, Tom-384** (European research) — Benchmark curve referenced in IACR ePrint 2021/1183.
+
 </details>
 
 
