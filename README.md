@@ -226,6 +226,120 @@ These algorithms reflect Europe's strong academic and institutional contribution
 🇮🇳 **KG-256r1, KG-384r1** (Indian research) — Proposed by Kunal Abhishek and Dr. E. George Dharma Prakash Raj, 2021.  
 🇪🇺 **Tom-256, Tom-384** (European research) — Benchmark curve referenced in IACR ePrint 2021/1183.
 
+```mermaid
+graph LR
+    %% --- Root ---
+    Internet["🌐 Internet / Global Standards"]
+
+    %% --- Americas ---
+    subgraph Americas["Americas"]
+        NIST["🇺🇸 USA (NIST / IETF)"]
+        Brazil["🇧🇷 Brazil (ITI DOC-ICP-01.01)"]
+    end
+
+    %% --- Europe ---
+    subgraph Europe["Europe"]
+        EU["🇪🇺 European Union"]
+        Germany["🇩🇪 Germany"]
+        Bulgaria["🇧🇬 Bulgaria (KG Curves)"]
+        Belarus["🇧🇾 Belarus"]
+        Russia["🇷🇺 Russia (GOST)"]
+    end
+
+    %% --- Asia ---
+    subgraph Asia["Asia"]
+        Japan["🇯🇵 Japan (Industry)"]
+        Korea["🇰🇷 South Korea (KISA)"]
+        China["🇨🇳 China (SMx)"]
+        Saudi["🇸🇦 Saudi Arabia"]
+    end
+
+    %% --- Connect continents to Internet ---
+    Internet --> Americas
+    Internet --> Europe
+    Internet --> Asia
+
+    %% --- USA Algorithms ---
+    subgraph NIST_alg["USA Algorithms"]
+        AES["AES"]
+        SHA["SHA"]
+        BLS_BN["BLS/BN Curves"]
+    end
+    NIST --> NIST_alg
+
+    %% --- Brazil Algorithms ---
+    subgraph Brazil_alg["Brazil Algorithms"]
+        Ed521["Ed521"]
+    end
+    Brazil --> Brazil_alg
+
+    %% --- EU Algorithms ---
+    subgraph EU_alg["EU Algorithms"]
+        Whirlpool["Whirlpool"]
+        RIPEMD["RIPEMD"]
+        PRESENT["PRESENT"]
+        BLS_BN_EU["BLS/BN Curves"] 
+    end
+    EU --> EU_alg
+
+    %% --- Germany Algorithms ---
+    subgraph Germany_alg["Germany Algorithms"]
+        EC_GDSA["EC-GDSA"]
+        EC_SDSA["EC-SDSA"]
+        Brainpool["Brainpool Curves"]
+    end
+    Germany --> Germany_alg
+
+    %% --- Russia Algorithms ---
+    subgraph Russia_alg["Russia Algorithms"]
+        GOST["GOST"]
+        Kuznechik["Kuznechik"]
+        Streebog["Streebog"]
+    end
+    Russia --> Russia_alg
+
+    %% --- Belarus Algorithms ---
+    subgraph Belarus_alg["Belarus Algorithms"]
+        BignV1["BignV1"]
+        BelT["Bel-T"]
+        BASH["BASH"]
+    end
+    Belarus --> Belarus_alg
+
+    %% --- Japan Algorithms ---
+    subgraph Japan_alg["Japan Algorithms"]
+        Camellia["Camellia"]
+        KCipher2["KCipher-2"]
+    end
+    Japan --> Japan_alg
+
+    %% --- South Korea Algorithms ---
+    subgraph Korea_alg["South Korea Algorithms"]
+        ARIA["ARIA"]
+        SEED["SEED"]
+        LEA["LEA"]
+        LSH["LSH"]
+        KCDSA["KCDSA"]
+    end
+    Korea --> Korea_alg
+
+    %% --- China Algorithms ---
+    subgraph China_alg["China Algorithms"]
+        SM2["SM2"]
+        SM3["SM3"]
+        SM4["SM4"]
+        SM9["SM9"]
+        ZUC["ZUC"]
+    end
+    China --> China_alg
+
+    %% --- Saudi Arabia Algorithms ---
+    subgraph Saudi_alg["Saudi Arabia Algorithms"]
+        Snow2["SNOW 2.0"]
+        Sosemanuk["Sosemanuk"]
+    end
+    Saudi --> Saudi_alg
+```
 </details>
 
 
