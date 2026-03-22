@@ -260,10 +260,12 @@ graph LR
     Internet --> Asia
 
     %% --- USA Algorithms ---
-    subgraph NIST_alg["USA Algorithms"]
+    subgraph NIST_alg["USA Algorithms (Main Modern Standards)"]
         AES["AES"]
-        SHA["SHA"]
-        BLS_BN["BLS/BN Curves"]
+        SHA2["SHA-2"]
+        SHA3["SHA-3"]
+        X25519["X25519"]
+        Ed25519["Ed25519"]
     end
     NIST --> NIST_alg
 
