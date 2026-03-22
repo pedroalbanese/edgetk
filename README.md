@@ -235,15 +235,18 @@ graph LR
     subgraph Americas["Americas"]
         NIST["🇺🇸 USA (NIST / IETF)"]
         Brazil["🇧🇷 Brazil (ITI DOC-ICP-01.01)"]
+        Canada["🇨🇦 Canada"]
     end
 
     %% --- Europe ---
     subgraph Europe["Europe"]
         EU["🇪🇺 European Union"]
         Germany["🇩🇪 Germany"]
-        Bulgaria["🇧🇬 Bulgaria (KG Curves)"]
+        France["🇫🇷 France"]
+        Bulgaria["🇧🇬 Bulgaria"]
         Belarus["🇧🇾 Belarus"]
         Russia["🇷🇺 Russia (GOST)"]
+        Ukraine["🇺🇦 Ukraine"]
     end
 
     %% --- Asia ---
@@ -275,6 +278,13 @@ graph LR
     end
     Brazil --> Brazil_alg
 
+    %% --- Canada Algorithms ---
+    subgraph Canada_alg["Canada Algorithms"]
+        CAST5["CAST5"]
+        CAST256["CAST256"]
+    end
+    Canada --> Canada_alg
+
     %% --- EU Algorithms ---
     subgraph EU_alg["EU Algorithms"]
         Whirlpool["Whirlpool"]
@@ -291,6 +301,25 @@ graph LR
         Brainpool["Brainpool Curves"]
     end
     Germany --> Germany_alg
+
+    %% --- France Algorithms ---
+    subgraph France_alg["France Algorithms"]
+        ANSSI["ANSSI frp256v1"]
+    end
+    France --> France_alg
+
+    %% --- Bulgaria Algorithms ---
+    subgraph Bulgaria_alg["Bulgaria Algorithms"]
+        KG["KG Curves"]
+    end
+    Bulgaria --> Bulgaria_alg
+
+    %% --- Ukraine Algorithms ---
+    subgraph Ukraine_alg["Ukraine Algorithms"]
+        Kalyna["Kalyna"]
+        Kupyna["Kupyna"]
+    end
+    Ukraine --> Ukraine_alg
 
     %% --- Russia Algorithms ---
     subgraph Russia_alg["Russia Algorithms"]
