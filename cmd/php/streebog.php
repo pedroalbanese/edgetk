@@ -11,9 +11,16 @@ class Streebog {
     
     private $size;
     private $buf = '';
+    private $n = 0;
     private $h;
-    private $N;
-    private $Sigma;
+    private $chk;
+    private $tmp;
+    private $psBuf;
+    private $eMsgBuf;
+    private $eKBuf;
+    private $eXorBuf;
+    private $gBuf;
+    private $addBuf;
     
     private static $pi;
     private static $tau;
@@ -21,7 +28,7 @@ class Streebog {
     private static $A;
     private static $cache;
     
-    public function __construct($size = 32) {
+    public function __construct($size = 64) {
         if ($size !== 32 && $size !== 64) {
             throw new Exception("size must be either 32 or 64");
         }
@@ -65,7 +72,7 @@ class Streebog {
             0x07,0x0f,0x17,0x1f,0x27,0x2f,0x37,0x3f
         ];
         
-        // Constants C (12 x 64 bytes)
+         // Constants C (12 x 64 bytes)
         self::$C = [
             // C[0]
             "\x07\x45\xa6\xf2\x59\x65\x80\xdd\x23\x4d\x74\xcc\x36\x74\x76\x05" .
@@ -203,101 +210,127 @@ class Streebog {
     
     public function reset() {
         $this->buf = '';
-        $this->N = str_repeat("\x00", self::BLOCK_SIZE);
-        $this->Sigma = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->n = 0;
+        $this->h = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->chk = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->tmp = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->psBuf = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->eMsgBuf = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->eKBuf = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->eXorBuf = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->gBuf = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->addBuf = str_repeat("\x00", self::BLOCK_SIZE);
+        
         if ($this->size == 32) {
-            $this->h = str_repeat("\x01", self::BLOCK_SIZE);
-        } else {
-            $this->h = str_repeat("\x00", self::BLOCK_SIZE);
+            for ($i = 0; $i < self::BLOCK_SIZE; $i++) {
+                $this->h[$i] = "\x01";
+            }
         }
     }
     
     public function write($data) {
         $this->buf .= $data;
         while (strlen($this->buf) >= self::BLOCK_SIZE) {
-            $m = substr($this->buf, 0, self::BLOCK_SIZE);
-            $this->h = $this->g($this->N, $this->h, $m);
-            $this->N = $this->add512bit($this->N, $m);
-            $this->Sigma = $this->add512bit($this->Sigma, $m);
+            $this->tmp = substr($this->buf, 0, self::BLOCK_SIZE);
+            $this->h = $this->g($this->n, $this->h, $this->tmp);
+            $this->chk = $this->add512bit($this->chk, $this->tmp);
+            $this->n += self::BLOCK_SIZE * 8;
             $this->buf = substr($this->buf, self::BLOCK_SIZE);
         }
         return strlen($data);
     }
     
     public function sum($in = '') {
-        $len = strlen($this->buf);
-        $m = str_repeat("\x00", self::BLOCK_SIZE);
-        for ($i = 0; $i < $len; $i++) {
-            $m[$i] = $this->buf[$i];
-        }
-        $m[$len] = "\x01";
+        $buf = str_repeat("\x00", self::BLOCK_SIZE);
+        $hsh = str_repeat("\x00", self::BLOCK_SIZE);
         
-        $h = $this->g($this->N, $this->h, $m);
+        // Copiar o buffer restante
+        $buf = str_pad(substr($this->buf, 0, strlen($this->buf)), self::BLOCK_SIZE, "\x00");
+        $buf[strlen($this->buf)] = "\x01";
         
-        // Pack length as little-endian 64-bit
-        $lenBits = $len * 8;
+        // Calcular hash final
+        $hsh = $this->g($this->n, $this->h, $buf);
+        
+        // Adicionar comprimento
+        $lenBits = $this->n + strlen($this->buf) * 8;
         $lenBytes = str_repeat("\x00", self::BLOCK_SIZE);
         for ($i = 0; $i < 8; $i++) {
             $lenBytes[$i] = chr(($lenBits >> ($i * 8)) & 0xFF);
         }
-        $h = $this->g($this->zeroPad(), $h, $lenBytes);
+        $hsh = $this->g(0, $hsh, $lenBytes);
         
-        $h = $this->g($this->zeroPad(), $h, $this->add512bit($this->Sigma, $m));
+        // Finalizar com checksum
+        $hsh = $this->g(0, $hsh, $this->add512bit($this->chk, $buf));
         
         if ($this->size == 32) {
-            return $in . substr($h, self::BLOCK_SIZE / 2);
+            return $in . substr($hsh, self::BLOCK_SIZE / 2);
         }
-        return $in . $h;
+        return $in . $hsh;
     }
     
-    private function zeroPad() {
-        return str_repeat("\x00", self::BLOCK_SIZE);
-    }
-    
-    private function add512bit($x, $y) {
-        $result = '';
-        $carry = 0;
+    private function add512bit($chk, $data) {
+        $ss = 0;
         for ($i = 0; $i < self::BLOCK_SIZE; $i++) {
-            $sum = ord($x[$i]) + ord($y[$i]) + $carry;
-            $result .= chr($sum & 0xFF);
-            $carry = $sum >> 8;
+            $ss = ord($chk[$i]) + ord($data[$i]) + ($ss >> 8);
+            $this->addBuf[$i] = chr($ss & 0xFF);
         }
-        return $result;
+        return $this->addBuf;
     }
     
-    private function g($N, $h, $m) {
-        $out = $h;
-        for ($i = 0; $i < 8; $i++) {
-            $out[$i] = chr(ord($out[$i]) ^ ord($N[$i]));
+    private function g($n, $hsh, $data) {
+        // Copiar hsh para out
+        for ($i = 0; $i < self::BLOCK_SIZE; $i++) {
+            $this->gBuf[$i] = $hsh[$i];
         }
-        $out = $this->e($this->l($this->ps($out)), $m);
-        $out = $this->xor64($out, $h);
-        $out = $this->xor64($out, $m);
+        
+        // XOR com n (primeiros 8 bytes)
+        $this->gBuf[0] = chr(ord($this->gBuf[0]) ^ ($n & 0xFF));
+        $this->gBuf[1] = chr(ord($this->gBuf[1]) ^ (($n >> 8) & 0xFF));
+        $this->gBuf[2] = chr(ord($this->gBuf[2]) ^ (($n >> 16) & 0xFF));
+        $this->gBuf[3] = chr(ord($this->gBuf[3]) ^ (($n >> 24) & 0xFF));
+        $this->gBuf[4] = chr(ord($this->gBuf[4]) ^ (($n >> 32) & 0xFF));
+        $this->gBuf[5] = chr(ord($this->gBuf[5]) ^ (($n >> 40) & 0xFF));
+        $this->gBuf[6] = chr(ord($this->gBuf[6]) ^ (($n >> 48) & 0xFF));
+        $this->gBuf[7] = chr(ord($this->gBuf[7]) ^ (($n >> 56) & 0xFF));
+        
+        // E(K, M)
+        $out = $this->e($this->l($this->ps($this->gBuf)), $data);
+        
+        // XOR com hsh e data
+        for ($i = 0; $i < self::BLOCK_SIZE; $i++) {
+            $out[$i] = chr(ord($out[$i]) ^ ord($hsh[$i]) ^ ord($data[$i]));
+        }
+        
         return $out;
     }
     
-    private function e($K, $m) {
+    private function e($K, $msg) {
         for ($i = 0; $i < 12; $i++) {
-            $m = $this->l($this->ps($this->xor64($K, $m)));
-            $K = $this->l($this->ps($this->xor64($K, self::$C[$i])));
+            // msg = L(PS(K XOR msg))
+            for ($j = 0; $j < self::BLOCK_SIZE; $j++) {
+                $this->eXorBuf[$j] = chr(ord($K[$j]) ^ ord($msg[$j]));
+            }
+            $msg = $this->l($this->ps($this->eXorBuf));
+            
+            // K = L(PS(K XOR C[i]))
+            for ($j = 0; $j < self::BLOCK_SIZE; $j++) {
+                $this->eXorBuf[$j] = chr(ord($K[$j]) ^ ord(self::$C[$i][$j]));
+            }
+            $K = $this->l($this->ps($this->eXorBuf));
         }
-        return $this->xor64($K, $m);
-    }
-    
-    private function xor64($x, $y) {
-        $result = '';
+        
+        // return K XOR msg
         for ($i = 0; $i < self::BLOCK_SIZE; $i++) {
-            $result .= chr(ord($x[$i]) ^ ord($y[$i]));
+            $this->eXorBuf[$i] = chr(ord($K[$i]) ^ ord($msg[$i]));
         }
-        return $result;
+        return $this->eXorBuf;
     }
     
     private function ps($data) {
-        $result = str_repeat("\x00", self::BLOCK_SIZE);
         for ($i = 0; $i < self::BLOCK_SIZE; $i++) {
-            $result[self::$tau[$i]] = chr(self::$pi[ord($data[$i])]);
+            $this->psBuf[self::$tau[$i]] = chr(self::$pi[ord($data[$i])]);
         }
-        return $result;
+        return $this->psBuf;
     }
     
     private function l($data) {
