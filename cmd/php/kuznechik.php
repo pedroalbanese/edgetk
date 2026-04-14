@@ -2,7 +2,7 @@
 
 /**
  * GOST 34.12-2015 128-bit Кузнечик (Kuznechik) block cipher
- * PHP implementation with CTR and MGM modes
+ * PHP implementation with CTR and GCM modes
  */
 
 class Kuznechik {
@@ -88,28 +88,17 @@ class Kuznechik {
     private $enc_keys;
     private $dec_keys;
     
-    /**
-     * GF(2^8) multiplication
-     */
     private static function gf2_mul($x, $y) {
         $z = 0;
         while ($y != 0) {
-            if ($y & 1) {
-                $z ^= $x;
-            }
-            if ($x & 0x80) {
-                $x = ($x << 1) ^ 0xC3;
-            } else {
-                $x = $x << 1;
-            }
+            if ($y & 1) $z ^= $x;
+            if ($x & 0x80) $x = ($x << 1) ^ 0xC3;
+            else $x = $x << 1;
             $y >>= 1;
         }
         return $z & 0xFF;
     }
     
-    /**
-     * L transformation
-     */
     private static function L(array $block) {
         $block = array_values($block);
         for ($j = 0; $j < 16; $j++) {
@@ -123,9 +112,6 @@ class Kuznechik {
         return $block;
     }
     
-    /**
-     * Inverse L transformation
-     */
     private static function L_inv(array $block) {
         $block = array_values($block);
         for ($j = 0; $j < 16; $j++) {
@@ -139,13 +125,9 @@ class Kuznechik {
         return $block;
     }
     
-    /**
-     * Key stretching
-     */
     private static function stretchKey(array $key) {
         $x = array_slice($key, 0, 16);
         $y = array_slice($key, 16, 16);
-        
         $rkeys = [];
         $rkeys[0] = $x;
         $rkeys[1] = $y;
@@ -174,9 +156,6 @@ class Kuznechik {
         return $rkeys;
     }
     
-    /**
-     * Get decrypt round keys
-     */
     private static function getDecryptRoundKeys(array $rkeys) {
         $rkeys_L = [];
         for ($k = 1; $k < 10; $k++) {
@@ -186,9 +165,6 @@ class Kuznechik {
         return $rkeys_L;
     }
     
-    /**
-     * Encrypt with round keys
-     */
     private static function encryptK(array $rkeys, array $block) {
         $ct = array_values($block);
         
@@ -216,9 +192,6 @@ class Kuznechik {
         return $ct;
     }
     
-    /**
-     * Decrypt with round keys
-     */
     private static function decryptK(array $rkeys, array $block) {
         $pt = array_values($block);
         
@@ -265,13 +238,8 @@ class Kuznechik {
         return $pt;
     }
     
-    /**
-     * Initialize lookup tables
-     */
     private static function initCipher() {
-        if (self::$initialized) {
-            return;
-        }
+        if (self::$initialized) return;
         
         for ($i = 0; $i < 16; $i++) {
             for ($j = 0; $j < 256; $j++) {
@@ -295,9 +263,6 @@ class Kuznechik {
         self::$initialized = true;
     }
     
-    /**
-     * Constructor
-     */
     public function __construct($key) {
         if (strlen($key) !== 32) {
             throw new Exception("Kuznyechik cipher: invalid key size! Must be 32 bytes - got: " . strlen($key));
@@ -310,9 +275,6 @@ class Kuznechik {
         $this->dec_keys = self::getDecryptRoundKeys($this->enc_keys);
     }
     
-    /**
-     * Encrypt a single block
-     */
     public function encryptBlock($block) {
         if (strlen($block) < self::BLOCK_SIZE) {
             throw new Exception("Input length less than full block!");
@@ -323,9 +285,6 @@ class Kuznechik {
         return pack('C*', ...$result);
     }
     
-    /**
-     * Decrypt a single block
-     */
     public function decryptBlock($block) {
         if (strlen($block) < self::BLOCK_SIZE) {
             throw new Exception("Input length less than full block!");
@@ -352,260 +311,242 @@ class Kuznechik {
             $chunk = substr($data, $i, self::BLOCK_SIZE);
             $result .= $chunk ^ substr($keystream, 0, strlen($chunk));
             
-            // Increment counter
+            // Increment counter (big-endian)
             $counterArr = array_values(unpack('C*', $counter));
             for ($j = self::BLOCK_SIZE - 1; $j >= 0; $j--) {
                 $counterArr[$j]++;
-                if ($counterArr[$j] !== 0) {
-                    break;
-                }
+                if ($counterArr[$j] !== 0) break;
             }
             $counter = pack('C*', ...$counterArr);
         }
         
         return $result;
     }
+}
+
+/**
+ * Kuznechik GCM Mode Implementation
+ * Compatible with EDGE Toolkit
+ */
+class KuznechikGCM {
+    const BLOCK_SIZE = 16;
     
-    /**
-     * GF(2^128) multiplication for MGM mode
-     */
-    private static function gf128Mul($x, $y) {
-        $xArr = array_values(unpack('C*', $x));
-        $yArr = array_values(unpack('C*', $y));
-        
-        $x1 = self::bytesToUint64($xArr, 0);
-        $x0 = self::bytesToUint64($xArr, 8);
-        $y1 = self::bytesToUint64($yArr, 0);
-        $y0 = self::bytesToUint64($yArr, 8);
-        
-        $t = $y0;
-        $z0 = 0;
-        $z1 = 0;
-        
-        for ($i = 0; $i < 64; $i++) {
-            if ($t & 1) {
-                $z0 ^= $x0;
-                $z1 ^= $x1;
-            }
-            $t >>= 1;
-            $sign = ($x1 >> 63) & 1;
-            $x1 = ($x1 << 1) | ($x0 >> 63);
-            $x0 = ($x0 << 1) & 0xFFFFFFFFFFFFFFFF;
-            if ($sign) {
-                $x0 ^= 0x87;
-            }
+    private $cipher;
+    private $nonce;
+    private $tag_size;
+    private $_ghash_key;
+    
+    public function __construct($cipher, $nonce = null, $tag_size = 16) {
+        if ($tag_size < 12 || $tag_size > 16) {
+            throw new Exception("tag_size must be between 12 and 16 bytes");
         }
         
-        $t = $y1;
-        for ($i = 0; $i < 63; $i++) {
-            if ($t & 1) {
-                $z0 ^= $x0;
-                $z1 ^= $x1;
+        $this->cipher = $cipher;
+        $this->tag_size = $tag_size;
+        
+        if ($nonce === null) {
+            $this->nonce = random_bytes(12);
+        } else {
+            if (strlen($nonce) !== 12) {
+                throw new Exception("Nonce must be exactly 12 bytes for GCM");
             }
-            $t >>= 1;
-            $sign = ($x1 >> 63) & 1;
-            $x1 = ($x1 << 1) | ($x0 >> 63);
-            $x0 = ($x0 << 1) & 0xFFFFFFFFFFFFFFFF;
-            if ($sign) {
-                $x0 ^= 0x87;
-            }
+            $this->nonce = $nonce;
         }
         
-        if ($t & 1) {
-            $z0 ^= $x0;
-            $z1 ^= $x1;
-        }
-        
-        $result = '';
-        $result .= pack('J', $z1);  // Big-endian
-        $result .= pack('J', $z0);
-        return $result;
+        $this->_init_ghash();
     }
     
-    private static function bytesToUint64($bytes, $offset) {
-        $val = 0;
-        for ($i = 0; $i < 8; $i++) {
-            $val = ($val << 8) | $bytes[$offset + $i];
-        }
-        return $val;
+    private function _init_ghash() {
+        $zero_block = str_repeat("\x00", self::BLOCK_SIZE);
+        $this->_ghash_key = $this->cipher->encryptBlock($zero_block);
     }
     
-    /**
-     * Increment lower half of the block (for MGM)
-     */
-    private static function incrHalf(&$data) {
-        $len = 8;
-        for ($i = $len - 1; $i >= 0; $i--) {
-            $data[$i]++;
-            if ($data[$i] !== 0) {
-                break;
+    private function _ghash($data) {
+        if (strlen($data) === 0) {
+            return str_repeat("\x00", self::BLOCK_SIZE);
+        }
+        
+        if (strlen($data) % self::BLOCK_SIZE !== 0) {
+            $padding = self::BLOCK_SIZE - (strlen($data) % self::BLOCK_SIZE);
+            $data .= str_repeat("\x00", $padding);
+        }
+        
+        $H = $this->_bytes_to_int128($this->_ghash_key);
+        $result = gmp_init(0);
+        
+        $blocks = str_split($data, self::BLOCK_SIZE);
+        foreach ($blocks as $block) {
+            $block_int = $this->_bytes_to_int128($block);
+            $result = gmp_xor($result, $block_int);
+            $result = $this->_gmult($result, $H);
+        }
+        
+        return $this->_int128_to_bytes($result);
+    }
+    
+    private function _gmult($x, $y) {
+        $z = gmp_init(0);
+        $v = $y;
+        
+        for ($i = 127; $i >= 0; $i--) {
+            // Get i-th bit of x
+            $mask = gmp_pow(2, $i);
+            if (gmp_cmp(gmp_and($x, $mask), 0) > 0) {
+                $z = gmp_xor($z, $v);
             }
-        }
-    }
-    
-    /**
-     * XOR two strings
-     */
-    private static function xorBytes($dst, $src1, $src2) {
-        $len = strlen($src1);
-        for ($i = 0; $i < $len; $i++) {
-            $dst[$i] = $src1[$i] ^ $src2[$i];
-        }
-    }
-    
-    /**
-     * MGM AEAD mode - authentication
-     */
-    private function mgmAuth($text, $additionalData, $nonce, &$tag) {
-        $adLen = strlen($additionalData);
-        $textLen = strlen($text);
-        
-        $icn = substr($nonce, 0, self::BLOCK_SIZE);
-        $icnArr = array_values(unpack('C*', $icn));
-        $icnArr[0] |= 0x80;
-        $icn = pack('C*', ...$icnArr);
-        
-        $z = $icn;
-        $sum = str_repeat("\x00", self::BLOCK_SIZE);
-        $bufP = $this->encryptBlock($z);
-        
-        // Process additional data
-        $ad = $additionalData;
-        while (strlen($ad) >= self::BLOCK_SIZE) {
-            $bufC = $this->encryptBlock($bufP);
-            $sum = self::gf128Mul($bufC, substr($ad, 0, self::BLOCK_SIZE));
-            $bufPArr = array_values(unpack('C*', $bufP));
-            self::incrHalf($bufPArr);
-            $bufP = pack('C*', ...$bufPArr);
-            $ad = substr($ad, self::BLOCK_SIZE);
-        }
-        
-        if (strlen($ad) > 0) {
-            $padded = str_pad($ad, self::BLOCK_SIZE, "\x00");
-            $bufC = $this->encryptBlock($bufP);
-            $sum = self::gf128Mul($bufC, $padded);
-            $bufPArr = array_values(unpack('C*', $bufP));
-            self::incrHalf($bufPArr);
-            $bufP = pack('C*', ...$bufPArr);
-        }
-        
-        // Process ciphertext
-        $ct = $text;
-        while (strlen($ct) >= self::BLOCK_SIZE) {
-            $bufC = $this->encryptBlock($bufP);
-            $sum = self::gf128Mul($bufC, substr($ct, 0, self::BLOCK_SIZE));
-            $bufPArr = array_values(unpack('C*', $bufP));
-            self::incrHalf($bufPArr);
-            $bufP = pack('C*', ...$bufPArr);
-            $ct = substr($ct, self::BLOCK_SIZE);
-        }
-        
-        if (strlen($ct) > 0) {
-            $padded = str_pad($ct, self::BLOCK_SIZE, "\x00");
-            $bufC = $this->encryptBlock($bufP);
-            $sum = self::gf128Mul($bufC, $padded);
-            $bufPArr = array_values(unpack('C*', $bufP));
-            self::incrHalf($bufPArr);
-            $bufP = pack('C*', ...$bufPArr);
-        }
-        
-        // Finalize: H_{h+q+1} = E_K(Z_{h+q+1})
-        $bufP = $this->encryptBlock($bufP);
-        
-        // len(A) || len(C) in bits
-        $lenBlock = pack('J', $adLen * 8) . pack('J', $textLen * 8);
-        $sum = self::gf128Mul($lenBlock, $bufP);
-        
-        // E_K(sum)
-        $tag = $this->encryptBlock($sum);
-        $tag = substr($tag, 0, self::BLOCK_SIZE);
-    }
-    
-    /**
-     * MGM mode encryption (authenticated encryption)
-     */
-    public function mgmEncrypt($plaintext, $nonce, $additionalData, &$tag) {
-        if (strlen($nonce) !== self::BLOCK_SIZE) {
-            throw new Exception("Nonce must be exactly " . self::BLOCK_SIZE . " bytes");
-        }
-        
-        $icn = $nonce;
-        $icnArr = array_values(unpack('C*', $icn));
-        $icnArr[0] &= 0x7F;
-        $icn = pack('C*', ...$icnArr);
-        
-        $y = $icn;
-        $ciphertext = '';
-        
-        for ($i = 0; $i < strlen($plaintext); $i += self::BLOCK_SIZE) {
-            $ekY = $this->encryptBlock($y);
-            $chunk = substr($plaintext, $i, self::BLOCK_SIZE);
-            $cipherChunk = $chunk ^ substr($ekY, 0, strlen($chunk));
-            $ciphertext .= $cipherChunk;
             
-            // Increment lower half of Y
-            $yArr = array_values(unpack('C*', $y));
-            self::incrHalf($yArr);
-            $y = pack('C*', ...$yArr);
+            // Reduce v if LSB is set
+            $lsb = gmp_and($v, 1);
+            $v = gmp_div($v, 2); // shift right
+            
+            if (gmp_cmp($lsb, 0) > 0) {
+                $v = gmp_xor($v, gmp_init('0xE1000000000000000000000000000000', 16));
+            }
         }
         
-        $this->mgmAuth($ciphertext, $additionalData, $nonce, $tag);
-        return $ciphertext;
+        return $z;
     }
     
-    /**
-     * MGM mode decryption (authenticated decryption)
-     */
-    public function mgmDecrypt($ciphertext, $nonce, $additionalData, $tag) {
-        if (strlen($nonce) !== self::BLOCK_SIZE) {
-            throw new Exception("Nonce must be exactly " . self::BLOCK_SIZE . " bytes");
+    private function _bytes_to_int128($bytes) {
+        if (strlen($bytes) !== 16) {
+            throw new Exception("Input must be 16 bytes");
         }
         
-        // Verify tag first
-        $computedTag = '';
-        $this->mgmAuth($ciphertext, $additionalData, $nonce, $computedTag);
-        if (!hash_equals(substr($computedTag, 0, self::BLOCK_SIZE), substr($tag, 0, self::BLOCK_SIZE))) {
-            throw new Exception("Invalid authentication tag");
+        $hex = bin2hex($bytes);
+        return gmp_init('0x' . $hex, 16);
+    }
+    
+    private function _int128_to_bytes($int) {
+        $hex = gmp_strval($int, 16);
+        $hex = str_pad($hex, 32, '0', STR_PAD_LEFT);
+        return hex2bin($hex);
+    }
+    
+    private function _inc32($counter_block) {
+        $counter_int = unpack('N', substr($counter_block, 12, 4))[1];
+        $counter_int = ($counter_int + 1) & 0xFFFFFFFF;
+        return substr($counter_block, 0, 12) . pack('N', $counter_int);
+    }
+    
+    private function _compute_tag($ciphertext, $associated_data) {
+        $len_a = strlen($associated_data) * 8;
+        $len_c = strlen($ciphertext) * 8;
+        
+        // Pack as 64-bit big-endian integers
+        $len_block = pack('J', $len_a) . pack('J', $len_c);
+        
+        $auth_data = $associated_data;
+        if (strlen($auth_data) % self::BLOCK_SIZE !== 0) {
+            $padding = self::BLOCK_SIZE - (strlen($auth_data) % self::BLOCK_SIZE);
+            $auth_data .= str_repeat("\x00", $padding);
         }
         
-        $icn = $nonce;
-        $icnArr = array_values(unpack('C*', $icn));
-        $icnArr[0] &= 0x7F;
-        $icn = pack('C*', ...$icnArr);
+        $cipher_data = $ciphertext;
+        if (strlen($cipher_data) % self::BLOCK_SIZE !== 0) {
+            $padding = self::BLOCK_SIZE - (strlen($cipher_data) % self::BLOCK_SIZE);
+            $cipher_data .= str_repeat("\x00", $padding);
+        }
         
-        $y = $icn;
-        $plaintext = '';
+        $ghash_input = $auth_data . $cipher_data . $len_block;
+        $S = $this->_ghash($ghash_input);
         
-        for ($i = 0; $i < strlen($ciphertext); $i += self::BLOCK_SIZE) {
-            $ekY = $this->encryptBlock($y);
-            $chunk = substr($ciphertext, $i, self::BLOCK_SIZE);
-            $plaintext .= $chunk ^ substr($ekY, 0, strlen($chunk));
+        // J0 = nonce || 0x00000001 (for 12-byte nonce)
+        if (strlen($this->nonce) == 12) {
+            $J0 = $this->nonce . "\x00\x00\x00\x01";
+        } else {
+            throw new Exception("Nonce must be 12 bytes for GCM");
+        }
+        
+        $tag_full = $this->_gctr($J0, $S);
+        return substr($tag_full, 0, $this->tag_size);
+    }
+    
+    private function _gctr($icb, $X) {
+        if (strlen($X) === 0) {
+            return '';
+        }
+        
+        $n = (int)ceil(strlen($X) / self::BLOCK_SIZE);
+        $Y = '';
+        $cb = $icb;
+        
+        for ($i = 0; $i < $n; $i++) {
+            $encrypted_cb = $this->cipher->encryptBlock($cb);
             
-            $yArr = array_values(unpack('C*', $y));
-            self::incrHalf($yArr);
-            $y = pack('C*', ...$yArr);
+            if ($i == $n - 1) {
+                $block_size = strlen($X) % self::BLOCK_SIZE;
+                if ($block_size == 0) {
+                    $block_size = self::BLOCK_SIZE;
+                }
+            } else {
+                $block_size = self::BLOCK_SIZE;
+            }
+            
+            $block_start = $i * self::BLOCK_SIZE;
+            $X_block = substr($X, $block_start, $block_size);
+            
+            $Y_block = '';
+            for ($j = 0; $j < $block_size; $j++) {
+                $Y_block .= chr(ord($X_block[$j]) ^ ord($encrypted_cb[$j]));
+            }
+            
+            $Y .= $Y_block;
+            $cb = $this->_inc32($cb);
         }
+        
+        return $Y;
+    }
+    
+    public function encrypt($plaintext, $associated_data = '') {
+        // J0 = nonce || 0x00000001 (for 12-byte nonce)
+        if (strlen($this->nonce) == 12) {
+            $J0 = $this->nonce . "\x00\x00\x00\x01";
+        } else {
+            throw new Exception("Nonce must be 12 bytes for GCM");
+        }
+        
+        $cb = $this->_inc32($J0);
+        $ciphertext = $this->_gctr($cb, $plaintext);
+        $tag = $this->_compute_tag($ciphertext, $associated_data);
+        
+        return [$ciphertext, $tag];
+    }
+    
+    public function decrypt($ciphertext, $tag, $associated_data = '') {
+        $expected_tag = $this->_compute_tag($ciphertext, $associated_data);
+        
+        if (!$this->_constant_time_compare($tag, $expected_tag)) {
+            return null;
+        }
+        
+        // J0 = nonce || 0x00000001 (for 12-byte nonce)
+        if (strlen($this->nonce) == 12) {
+            $J0 = $this->nonce . "\x00\x00\x00\x01";
+        } else {
+            throw new Exception("Nonce must be 12 bytes for GCM");
+        }
+        
+        $cb = $this->_inc32($J0);
+        $plaintext = $this->_gctr($cb, $ciphertext);
         
         return $plaintext;
     }
+    
+    private function _constant_time_compare($a, $b) {
+        if (strlen($a) !== strlen($b)) {
+            return false;
+        }
+        
+        $result = 0;
+        for ($i = 0; $i < strlen($a); $i++) {
+            $result |= ord($a[$i]) ^ ord($b[$i]);
+        }
+        
+        return $result === 0;
+    }
+    
+    public function getNonce() {
+        return $this->nonce;
+    }
 }
-
-// Example usage:
-/*
-$key = str_repeat("\x00", 32);
-$cipher = new Kuznechik($key);
-
-// CTR mode
-$iv = str_repeat("\x00", 16);
-$plaintext = "Hello, World! This is a test message.";
-$ciphertext = $cipher->ctr($plaintext, $iv);
-$decrypted = $cipher->ctr($ciphertext, $iv);
-
-// MGM mode (AEAD)
-$nonce = str_repeat("\x00", 16);
-$additionalData = "header data";
-$tag = '';
-$ciphertext = $cipher->mgmEncrypt($plaintext, $nonce, $additionalData, $tag);
-$decrypted = $cipher->mgmDecrypt($ciphertext, $nonce, $additionalData, $tag);
-*/
 ?>
