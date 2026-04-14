@@ -379,7 +379,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.20  10 Mar 2026")
+		fmt.Println("EDGE Toolkit v1.5.21  14 Apr 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -21867,8 +21867,8 @@ Subcommands:
 
 			hexD := hex.EncodeToString(d)
 
-			if len(hexD) < e521HexLen {
-				hexD = hexD + strings.Repeat("0", e521HexLen-len(hexD))
+			if len(hexD) < 132 {
+				hexD = hexD + strings.Repeat("0", 132-len(hexD))
 			}
 
 			fmt.Printf("Private-Key: (%v-bit)\n", curve.Params().BitSize)
