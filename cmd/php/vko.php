@@ -84,6 +84,36 @@ function be($hex) {
 }
 
 // ===============================
+// Password handling
+// ===============================
+
+function get_password($prompt = "Enter password: ", $confirm = false) {
+    if (defined('STDIN')) {
+        echo $prompt;
+        system('stty -echo');
+        $password = trim(fgets(STDIN));
+        system('stty echo');
+        echo "\n";
+        
+        if ($confirm) {
+            echo "Confirm password: ";
+            system('stty -echo');
+            $confirm_password = trim(fgets(STDIN));
+            system('stty echo');
+            echo "\n";
+            
+            if ($password !== $confirm_password) {
+                throw new Exception("Passwords do not match");
+            }
+        }
+        
+        return $password;
+    } else {
+        return readline($prompt);
+    }
+}
+
+// ===============================
 // Structures
 // ===============================
 
@@ -391,6 +421,13 @@ class GostPEM
     }
     
     /**
+     * Check if private key PEM is encrypted
+     */
+    public static function isEncryptedPEM($pemData) {
+        return (strpos($pemData, "Proc-Type: 4,ENCRYPTED") !== false);
+    }
+    
+    /**
      * Parse private key PEM (supports encrypted and unencrypted)
      */
     public static function parsePrivatePEM($pemData, $password = null) {
@@ -463,6 +500,7 @@ class GostPEM
         $privateBytes = substr($der, $pos + 2, 64);
         $privateHexLe = bin2hex($privateBytes);
         
+        // Return as BIG ENDIAN for internal use
         return be($privateHexLe);
     }
     
@@ -530,6 +568,146 @@ function vko_edgetk($curve, $priv, $pub) {
 }
 
 // ===============================
+// Parse command (edgetk style)
+// ===============================
+
+function cmd_parse($args) {
+    $key_file = null;
+    $password = null;
+    
+    // Parse arguments - suporta tanto --key=FILE quanto --key FILE
+    for ($i = 0; $i < count($args); $i++) {
+        $arg = $args[$i];
+        
+        if (strpos($arg, '--key=') === 0) {
+            $key_file = substr($arg, 6);
+        } elseif ($arg === '--key' && isset($args[$i+1])) {
+            $key_file = $args[++$i];
+        } elseif (strpos($arg, '--password') === 0) {
+            // Suporta --password ou --password=senha
+            if (strpos($arg, '--password=') === 0) {
+                $password = substr($arg, 11);
+            } else {
+                $password = get_password("Enter password to decrypt private key: ");
+            }
+        }
+    }
+    
+    if (!$key_file) {
+        echo "ERROR: Key not specified (use --key FILE or --key=FILE)\n";
+        return 1;
+    }
+    
+    if (!file_exists($key_file)) {
+        echo "ERROR: Key file not found: $key_file\n";
+        return 1;
+    }
+    
+    $pem_data = file_get_contents($key_file);
+    if ($pem_data === false) {
+        echo "ERROR: Cannot read key file: $key_file\n";
+        return 1;
+    }
+    
+    // Determine key type
+    $is_private = (strpos($pem_data, "PRIVATE KEY") !== false);
+    $is_public = (strpos($pem_data, "PUBLIC KEY") !== false);
+    
+    if (!$is_private && !$is_public) {
+        echo "ERROR: Unknown key format\n";
+        return 1;
+    }
+    
+    // Check if encrypted
+    $is_encrypted = GostPEM::isEncryptedPEM($pem_data);
+    
+    // If encrypted and no password provided, prompt for password
+    if ($is_encrypted && $is_private && !$password) {
+        $password = get_password("Enter password to decrypt private key: ");
+    }
+    
+    try {
+        if ($is_private) {
+            // Parse private key - returns hex in BIG ENDIAN
+            $keyHexBe = GostPEM::parsePrivatePEM($pem_data, $password);
+            // For display, EdgeTK shows the raw LE bytes as hex (without conversion)
+            $keyHexLe = le($keyHexBe);
+            
+            // Re-generate the DECRYPTED PEM (without encryption headers)
+            $decryptedPEM = GostPEM::privateToPEM($keyHexBe, null);
+            
+            // Display the decrypted PEM
+            echo $decryptedPEM;
+            
+        } else {
+            $keyHexBe = GostPEM::parsePublicPEM($pem_data);
+            $keyHexLe = le($keyHexBe);
+            // For public keys, just show the original PEM
+            echo $pem_data;
+        }
+    } catch (Exception $e) {
+        echo "ERROR: Failed to parse key: " . $e->getMessage() . "\n";
+        if ($is_encrypted && strpos($e->getMessage(), "Password required") !== false) {
+            echo "Hint: Use --password to provide the password\n";
+        } elseif ($is_encrypted && strpos($e->getMessage(), "Decryption failed") !== false) {
+            echo "Hint: Wrong password?\n";
+        }
+        return 1;
+    }
+    
+    // Get public key in Raw() format (LE(X) || LE(Y)) for KeyID
+    if ($is_private) {
+        // Calculate public key from private
+        $curve = curveA();
+        $priv = hex2dec($keyHexBe);
+        $pubPoint = pubkey($curve, $priv);
+        
+        $xBe = str_pad(dec2hex($pubPoint->x), 128, "0", STR_PAD_LEFT);
+        $yBe = str_pad(dec2hex($pubPoint->y), 128, "0", STR_PAD_LEFT);
+        
+        $xLe = le($xBe);
+        $yLe = le($yBe);
+        
+        // Raw() format: LE(X) || LE(Y)
+        $rawPublic = hex2bin($xLe . $yLe);
+        
+        // Display private key
+        echo "Private key: " . strtoupper($keyHexLe) . "\n";
+        
+        // Display public key
+        echo "Public key: \n";
+        echo "   X:" . strtoupper($xBe) . "\n";
+        echo "   Y:" . strtoupper($yBe) . "\n";
+        
+    } else {
+        // Public key already in BE(X) || BE(Y)
+        $xBe = substr($keyHexBe, 0, 128);
+        $yBe = substr($keyHexBe, 128, 128);
+        
+        $xLe = le($xBe);
+        $yLe = le($yBe);
+        
+        // Raw() format: LE(X) || LE(Y)
+        $rawPublic = hex2bin($xLe . $yLe);
+        
+        echo "Public key:\n";
+        echo "   X:" . strtoupper($xBe) . "\n";
+        echo "   Y:" . strtoupper($yBe) . "\n";
+    }
+    
+    // Display curve info
+    echo "Curve: id-tc26-gost-3410-12-512-paramSetA\n";
+    
+    // Calculate KeyID using Streebog-256 of Raw() public key, truncated to 20 bytes
+    $keyIdFull = Streebog::hash256($rawPublic);
+    $keyId = substr(bin2hex($keyIdFull), 0, 40);
+    
+    echo "\nKeyID: " . $keyId . "\n";
+    
+    return 0;
+}
+
+// ===============================
 // CLI
 // ===============================
 
@@ -537,11 +715,18 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
     $options = [
         'keygen' => false,
         'derive' => false,
+        'parse' => false,
         'priv' => null,
         'pub' => null,
         'password' => null,
         'help' => false
     ];
+    
+    // First, check if command is 'parse' (which has different argument format)
+    if ($argc >= 2 && $argv[1] === 'parse') {
+        $parse_args = array_slice($argv, 2);
+        exit(cmd_parse($parse_args));
+    }
     
     for ($i = 1; $i < $argc; $i++) {
         switch ($argv[$i]) {
@@ -549,7 +734,13 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
             case 'derive': $options['derive'] = true; break;
             case '--priv': if (isset($argv[$i+1])) $options['priv'] = $argv[++$i]; break;
             case '--pub': if (isset($argv[$i+1])) $options['pub'] = $argv[++$i]; break;
-            case '--password': if (isset($argv[$i+1])) $options['password'] = $argv[++$i]; break;
+            case '--password': 
+                if (isset($argv[$i+1]) && $argv[$i+1][0] !== '-') {
+                    $options['password'] = $argv[++$i];
+                } else {
+                    $options['password'] = get_password("Enter password: ");
+                }
+                break;
             case '--help': case '-h': $options['help'] = true; break;
         }
     }
@@ -561,7 +752,8 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
         echo "Supports Kuznechik-CBC for encrypted keys\n\n";
         echo "Usage:\n";
         echo "  php " . basename($argv[0]) . " keygen --priv <file> --pub <file> [--password <pwd>]\n";
-        echo "  php " . basename($argv[0]) . " derive --priv <file> --pub <file> [--password <pwd>]\n\n";
+        echo "  php " . basename($argv[0]) . " derive --priv <file> --pub <file> [--password <pwd>]\n";
+        echo "  php " . basename($argv[0]) . " parse --key <file> [--password]\n\n";
         exit(0);
     }
     
@@ -604,7 +796,15 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
             $privPem = file_get_contents($options['priv']);
             $pubPem = file_get_contents($options['pub']);
             
-            $privHex = GostPEM::parsePrivatePEM($privPem, $options['password']);
+            // Check if private key is encrypted and no password provided
+            $isEncrypted = GostPEM::isEncryptedPEM($privPem);
+            $password = $options['password'];
+            
+            if ($isEncrypted && !$password) {
+                $password = get_password("Enter password to decrypt private key: ");
+            }
+            
+            $privHex = GostPEM::parsePrivatePEM($privPem, $password);
             $pubHex = GostPEM::parsePublicPEM($pubPem);
             
             $priv = hex2dec($privHex);
@@ -624,6 +824,11 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
         
     } catch (Exception $e) {
         fwrite(STDERR, "Error: " . $e->getMessage() . "\n");
+        if (strpos($e->getMessage(), "Password required") !== false) {
+            fwrite(STDERR, "Hint: Use --password to provide the password\n");
+        } elseif (strpos($e->getMessage(), "Decryption failed") !== false) {
+            fwrite(STDERR, "Hint: Wrong password?\n");
+        }
         exit(1);
     }
 }
