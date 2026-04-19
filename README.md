@@ -373,49 +373,9 @@ graph LR
 ```
 </details>
 
-
-<details><summary>EDGETk Architecture</summary>
-    
-```mermaid
-%% EDGETk Architecture - Core on the left, Symmetric above Asymmetric
-graph LR
-    A[EDGETk Core]
-
-    %% Subgraphs for vertical stacking
-    subgraph SymmetricModules[Symmetric]
-        direction TB
-        B[Key Derivation / Passwords]
-        C[MACs]
-        D[Hashing / Digest]
-        E[Transformations / Modes of Operation]
-
-        B --> B1[HKDF, PBKDF2, Argon2, Lyra2, Scrypt, Bcrypt, Makwa]
-        C --> C1[CMAC, PMAC, GMAC, VMAC, HMAC]
-        D --> D1[SHA-1/2/3, RIPEMD128/160/256/320, Whirlpool, Kupyna, Streebog, CubeHash, SipHash64/128]
-        E --> E1[AES, Camellia, SEED, SM4, HIGHT, Kalyna, Magma, HC-128, Rabbit, Trivium, PRESENT, CLEFIA, LEA]
-    end
-
-    subgraph AsymmetricModules[Asymmetric]
-        direction TB
-        F[Key Agreement]
-        G[Digital Signatures]
-        H[Identity-Based Encryption / Signatures]
-        I[Secure Transport / TCP Server]
-
-        F --> F1[ECDH, VKO, X25519, X448, ML-KEM, EG, ECKA-EG]
-        G --> G1[RSA, ECDSA, EdDSA, GOST, SLH-DSA, ML-DSA, LMS, BLS]
-        H --> H1[Boneh-Franklin IBE, Barreto IBS, Bilinear Pairings]
-        I --> I1[TLS 1.3, TLCP, X509 CSRs, CRLs, Certificates]
-    end
-
-    %% Connect Core to top-level Symmetric and Asymmetric
-    A --> SymmetricModules
-    A --> AsymmetricModules
-```
-
 </details>
 
-Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/)
+Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/) and the [Wiki](https://github.com/pedroalbanese/edgetk/wiki)
 
 ## Command-line Integrated Security Suite
 
