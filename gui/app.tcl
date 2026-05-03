@@ -522,7 +522,7 @@ proc updateAlgorithmUI {} {
     # List of 64-bit block ciphers
     set block64_ciphers {
         blowfish cast5 gost89 magma hight khazad idea misty1 present rc2 rc5
-        rc6 seed twine safer+
+        rc6 seed twine
     }
     
     # List of 128-bit block ciphers
@@ -548,6 +548,7 @@ proc updateAlgorithmUI {} {
         clefia
         crypton
         curupira
+        curupira2
         e2
         gost89
         hight
@@ -570,7 +571,6 @@ proc updateAlgorithmUI {} {
         rc2
         rc5
         rc6
-        safer+
         seed
         serpent
         shacal2
@@ -1048,14 +1048,14 @@ proc updateTextUI {} {
     # Define which algorithms are block, stream or AEAD
     set block_ciphers {
         3des aes anubis aria belt blowfish camellia cast5 cast256 clefia
-        crypton curupira e2 gost89 hight idea kalyna128_128 kalyna128_256
+        crypton curupira curupira2 e2 gost89 hight idea kalyna128_128 kalyna128_256
         kalyna256_256 kalyna512_512 khazad kuznechik lea loki97 magma
-        magenta mars misty1 noekeon present rc2 rc5 rc6 safer+ seed
+        magenta mars misty1 noekeon present rc2 rc5 rc6 seed
         serpent shacal2 sm4 threefish threefish512 threefish1024 twine twofish
     }
     
     set stream_ciphers {
-        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 sosemanuk zuc128 zuc256 xoodyak
+        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 sosemanuk snow2 zuc128 zuc256 xoodyak
     }
     
     set aead_ciphers {
@@ -1067,11 +1067,19 @@ proc updateTextUI {} {
         3des blowfish cast5 gost89 hight idea misty1 present rc2 rc5 twine
     }
     
+    # ============================================================
+    # NOVO: Se for cifra de fluxo, muda modo para CTR automaticamente
+    # ============================================================
+    if {$algorithm in $stream_ciphers} {
+        .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
+    }
+    
     # 1. Control Mode combo box
     if {$algorithm in $stream_ciphers} {
-        # Stream ciphers: disable mode
+        # Stream ciphers: disable mode (já que foi forçado para CTR)
         .nb.text_tab.main.algo_frame.row1.modeLabel configure -state disabled
         .nb.text_tab.main.algo_frame.row1.modeCombo configure -state disabled
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
     } elseif {$algorithm eq "xoodyak"} {
         # Xoodyak (permutation): fixed mode
         .nb.text_tab.main.algo_frame.row1.modeLabel configure -state disabled
@@ -1080,14 +1088,14 @@ proc updateTextUI {} {
         .nb.text_tab.main.algo_frame.row1.modeCombo set "siv"
     } elseif {$algorithm in $block64_ciphers} {
         # For 64-bit ciphers: conventional modes + eax, mgm, siv
+        .nb.text_tab.main.algo_frame.row1.modeLabel configure -state normal
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -state normal
+        .nb.text_tab.main.algo_frame.row1.modeCombo configure -background "white"
         .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
-            
+        
         # CORRECTION: Check if current mode is compatible with 64-bit ciphers
-        # AEAD modes that are NOT compatible with 64-bit ciphers
         set incompatible_modes {gcm ocb1 ocb3 ccm lettersoup}
-            
         if {$mode in $incompatible_modes} {
-            # If current mode is not compatible, change to "eax" (default for 64 bits)
             .nb.text_tab.main.algo_frame.row1.modeCombo set "eax"
         }
     } else {
@@ -1098,27 +1106,31 @@ proc updateTextUI {} {
         
         # Define available modes based on cipher
         if {$algorithm eq "curupira"} {
-            # For Curupira: only lettersoup and eax
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
             set incompatible_modes {gcm ocb1 ocb3 ccm mgm}
-            
             if {$mode in $incompatible_modes} {
-                # If current mode is not compatible, change to "eax" (default for 64 bits)
+                .nb.text_tab.main.algo_frame.row1.modeCombo set "lettersoup"
+            }
+        } elseif {$algorithm eq "curupira2"} {
+            .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+            set incompatible_modes {gcm ocb1 ocb3 ccm mgm}
+            if {$mode in $incompatible_modes} {
                 .nb.text_tab.main.algo_frame.row1.modeCombo set "lettersoup"
             }
         } elseif {$algorithm in $block64_ciphers} {
-            # For 64-bit ciphers: conventional modes + eax, mgm, siv
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+            set incompatible_modes {gcm ocb1 ocb3 ccm lettersoup}
+            if {$mode in $incompatible_modes} {
+                .nb.text_tab.main.algo_frame.row1.modeCombo set "eax"
+            }
         } elseif {$algorithm in {"kalyna256_256" "kalyna256_512" "kalyna512_512" "threefish" "threefish512" "shacal2"}} {
-            # For Kalyna, Threefish and Shacal: only conventional modes + eax and siv
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
         } else {
-            # For other ciphers: all modes except lettersoup
             .nb.text_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
         }
     }
     
-    if {$algorithm ne "curupira" && $mode eq "lettersoup"} {
+    if {$algorithm ne "curupira" && $algorithm ne "curupira2" && $mode eq "lettersoup"} {
         .nb.text_tab.main.algo_frame.row1.modeCombo set "ctr"
     }
     
@@ -1150,10 +1162,9 @@ proc updateTextUI {} {
     }
     
     # 3. Control IV and AAD fields
-    # Define AEAD modes that don't use IV but need AAD
     set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
     
-    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes && $algorithm ni $stream_ciphers} {
+    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || ($mode in $aead_modes && $algorithm ni $stream_ciphers)} {
         # AEAD ciphers or AEAD modes: disable IV, enable AAD
         .nb.text_tab.main.keys_frame.ivLabel configure -state disabled
         .nb.text_tab.main.keys_frame.ivBox configure -state disabled
@@ -1183,14 +1194,14 @@ proc updateFilesUI {} {
     # Define which algorithms are block, stream or AEAD
     set block_ciphers {
         3des aes anubis aria belt blowfish camellia cast5 cast256 clefia
-        crypton curupira e2 gost89 hight idea kalyna128_128 kalyna128_256
+        crypton curupira curupira2 e2 gost89 hight idea kalyna128_128 kalyna128_256
         kalyna256_256 kalyna512_512 khazad kuznechik lea loki97 magma
-        magenta mars misty1 noekeon present rc2 rc5 rc6 safer+ seed
+        magenta mars misty1 noekeon present rc2 rc5 rc6 seed
         serpent shacal2 sm4 threefish threefish512 threefish1024 twine twofish
     }
     
     set stream_ciphers {
-        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 sosemanuk zuc128 zuc256 xoodyak
+        chacha20 chacha20poly1305 ascon grain128a grain hc128 hc256 rc4 salsa20 sosemanuk snow2 zuc128 zuc256 xoodyak
     }
     
     set aead_ciphers {
@@ -1199,94 +1210,85 @@ proc updateFilesUI {} {
     
     # 64-bit ciphers (block size)
     set block64_ciphers {
-        3des blowfish cast5 curupira gost89 hight idea misty1 present rc2 rc5 twine
+        3des blowfish cast5 curupira curupira2 gost89 hight idea misty1 present rc2 rc5 twine
+    }
+    
+    # ============================================================
+    # NOVO: Se for cifra de fluxo, muda modo para CTR automaticamente
+    # ============================================================
+    if {$algorithm in $stream_ciphers} {
+        .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
     }
     
     # 1. Control Mode combo box
     if {$algorithm in $stream_ciphers} {
-        # Stream ciphers: disable mode
         .nb.file_tab.main.algo_frame.row1.modeLabel configure -state disabled
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -state disabled
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
     } elseif {$algorithm eq "xoodyak"} {
-        # Xoodyak (permutation): fixed mode
         .nb.file_tab.main.algo_frame.row1.modeLabel configure -state disabled
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -state disabled
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "#f0f0f0"
         .nb.file_tab.main.algo_frame.row1.modeCombo set "siv"
     } else {
-        # Block ciphers: enable mode
         .nb.file_tab.main.algo_frame.row1.modeLabel configure -state normal
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -state normal
         .nb.file_tab.main.algo_frame.row1.modeCombo configure -background "white"
         
-        # Define available modes based on cipher
         if {$algorithm eq "curupira"} {
-            # For Curupira: only lettersoup and eax
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
             set incompatible_modes {gcm ocb1 ocb3 ccm mgm}
             if {$mode in $incompatible_modes} {
-                # If current mode is not compatible, change to "eax" (default for 64 bits)
+                .nb.file_tab.main.algo_frame.row1.modeCombo set "lettersoup"
+            }
+        } elseif {$algorithm eq "curupira2"} {
+            .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"lettersoup" "eax" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
+            set incompatible_modes {gcm ocb1 ocb3 ccm mgm}
+            if {$mode in $incompatible_modes} {
                 .nb.file_tab.main.algo_frame.row1.modeCombo set "lettersoup"
             }
         } elseif {$algorithm in $block64_ciphers} {
-            # For 64-bit ciphers: conventional modes + eax, mgm, siv
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "mgm" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
-            
-            # CORRECTION: Check if current mode is compatible with 64-bit ciphers
-            # AEAD modes that are NOT compatible with 64-bit ciphers
             set incompatible_modes {gcm ocb1 ocb3 ccm lettersoup}
-            
             if {$mode in $incompatible_modes} {
-                # If current mode is not compatible, change to "eax" (default for 64 bits)
                 .nb.file_tab.main.algo_frame.row1.modeCombo set "eax"
             }
         } elseif {$algorithm in {"kalyna256_256" "kalyna256_512" "kalyna512_512" "threefish" "threefish512" "shacal2"}} {
-            # For Kalyna, Threefish and Shacal: only conventional modes + eax and siv
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
         } else {
-            # For other ciphers: all modes except lettersoup
             .nb.file_tab.main.algo_frame.row1.modeCombo configure -values {"eax" "siv" "gcm" "ocb1" "ocb3" "mgm" "ccm" "cbc" "cfb" "cfb8" "ctr" "ecb" "ige" "ofb"}
         }
     }
     
-    if {$algorithm ne "curupira" && $mode eq "lettersoup"} {
+    if {$algorithm ne "curupira" && $algorithm ne "curupira2" && $mode eq "lettersoup"} {
         .nb.file_tab.main.algo_frame.row1.modeCombo set "ctr"
     }
     
     # 2. Control KDF fields
     if {$useKDF} {
-        # KDF active: enable fields
         .nb.file_tab.main.algo_frame.row2.saltLabel configure -state normal
         .nb.file_tab.main.algo_frame.row2.saltBox configure -state normal
         .nb.file_tab.main.algo_frame.row2.saltBox configure -background "white"
-        
         .nb.file_tab.main.algo_frame.row2.iterLabel configure -state normal
         .nb.file_tab.main.algo_frame.row2.iterCombo configure -state normal
         .nb.file_tab.main.algo_frame.row2.iterCombo configure -background "white"
-        
         .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -state normal
         .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -background "white"
     } else {
-        # KDF inactive: disable fields
         .nb.file_tab.main.algo_frame.row2.saltLabel configure -state disabled
         .nb.file_tab.main.algo_frame.row2.saltBox configure -state disabled
         .nb.file_tab.main.algo_frame.row2.saltBox configure -background "#f0f0f0"
-        
         .nb.file_tab.main.algo_frame.row2.iterLabel configure -state disabled
         .nb.file_tab.main.algo_frame.row2.iterCombo configure -state disabled
-        .nb.file_tab.main.algo_frame.row2.iterCombo configure -background "white"
-        
+        .nb.file_tab.main.algo_frame.row2.iterCombo configure -background "#f0f0f0"
         .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -state disabled
         .nb.file_tab.main.algo_frame.row2.scryptHashCombo configure -background "#f0f0f0"
     }
     
     # 3. Control IV and AAD fields
-    # Define AEAD modes that don't use IV but need AAD
     set aead_modes {eax siv gcm ocb1 ocb3 mgm ccm lettersoup}
     
-    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || $mode in $aead_modes && $algorithm ni $stream_ciphers} {
-        # AEAD ciphers or AEAD modes: disable IV, enable AAD
+    if {$algorithm in $aead_ciphers || $algorithm eq "xoodyak" || ($mode in $aead_modes && $algorithm ni $stream_ciphers)} {
         .nb.file_tab.main.keys_frame.ivLabel configure -state disabled
         .nb.file_tab.main.keys_frame.ivBox configure -state disabled
         .nb.file_tab.main.keys_frame.ivBox configure -background "#f0f0f0"
@@ -1295,7 +1297,6 @@ proc updateFilesUI {} {
         .nb.file_tab.main.keys_frame.aadBox configure -state normal
         .nb.file_tab.main.keys_frame.aadBox configure -background "white"
     } else {
-        # Other cases: enable IV, disable AAD
         .nb.file_tab.main.keys_frame.ivLabel configure -state normal
         .nb.file_tab.main.keys_frame.ivBox configure -state normal
         .nb.file_tab.main.keys_frame.ivBox configure -background "white"
@@ -1414,14 +1415,14 @@ proc calculateMAC {} {
                 "rc2" -
                 "rc5" -
                 "rc6" -
-                "safer+" -
                 "sm4" -
                 "seed" -
                 "kalyna128_128" -
                 "twine" {
                     set keySize 16
                 }
-                "curupira" {
+                "curupira" -
+                "curupira2" {
                     set keySize 24
                 }
                 "aes" -
@@ -1499,14 +1500,14 @@ proc calculateMAC {} {
                 "rc2" -
                 "rc5" -
                 "rc6" -
-                "safer+" -
                 "sm4" -
                 "seed" -
                 "kalyna128_128" -
                 "twine" {
                     set keySize 16
                 }
-                "curupira" {
+                "curupira" -
+                "curupira2" {
                     set keySize 24
                 }
                 "aes" -
@@ -2131,8 +2132,8 @@ proc calculateIVSize {algorithm mode} {
     set ivSize 32
     switch $algorithm {
         "3des" - "blowfish" - "cast5" - "gost89" - "idea" - "magma" - "misty1" - "rc2" - "rc5" - "twine" - "present" { set ivSize 16 }
-        "curupira" { set ivSize 24 }
-        "aes" - "serpent" - "aria" - "lea" - "anubis" - "twofish" - "sm4" - "camellia" - "kuznechik" - "seed" - "sosemanuk" - "hc128" - "zuc128" { set ivSize 32 }
+        "curupira" - "curupira2" { set ivSize 24 }
+        "aes" - "serpent" - "aria" - "lea" - "anubis" - "twofish" - "sm4" - "camellia" - "kuznechik" - "seed" - "sosemanuk" - "snow2" - "hc128" - "zuc128" { set ivSize 32 }
         "zuc256" { set ivSize 46 }
         "hc256" - "skein" - "threefish" - "kalyna256_256" - "shacal2" { set ivSize 64 }
         "kalyna512_512" - "threefish512" { set ivSize 128 }
@@ -2584,7 +2585,7 @@ pack .nb.signatures_tab.main.keys_frame.title_frame.pass_frame -side right -anch
 
 # Cipher combobox (after passphrase box)
 ttk::combobox .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
-    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
+    -values {"aes" "anubis" "belt" "curupira" "curupira2" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
     -width 12 -state readonly
 .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
@@ -2837,7 +2838,7 @@ pack .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame -side right -anchor e -
 
 # Cipher combobox (after passphrase box)
 ttk::combobox .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
-    -values {"aes" "anubis" "belt" "curupira" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
+    -values {"aes" "anubis" "belt" "curupira" "curupira2" "kuznechik" "sm4" "serpent" "twofish" "camellia" "cast256" "mars" "noekeon" "crypton"} \
     -width 12 -state readonly
 .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
@@ -3054,7 +3055,7 @@ pack .nb.text_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.text_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.text_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "sosemanuk" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "curupira2" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "sosemanuk" "snow2" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.text_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
@@ -3289,7 +3290,7 @@ pack .nb.file_tab.main.algo_frame.row1 -fill x -padx 8 -pady 3
 
 label .nb.file_tab.main.algo_frame.row1.algorithmLabel -text "Algorithm:" -font {Arial 9 bold} -bg $frame_color
 ttk::combobox .nb.file_tab.main.algo_frame.row1.algorithmCombo \
-    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "sosemanuk" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
+    -values {"3des" "aes" "anubis" "aria" "ascon" "belt" "blowfish" "camellia" "cast5" "chacha20" "chacha20poly1305" "curupira" "curupira2" "gost89" "grain128a" "grain" "hc128" "hc256" "idea" "kalyna128_128" "kalyna128_256" "kalyna256_256" "kalyna512_512" "kcipher2" "kuznechik" "lea" "magma" "misty1" "present" "rc2" "rc4" "rc5" "salsa20" "seed" "serpent" "sosemanuk" "snow2" "shacal2" "skein" "sm4" "threefish" "threefish512" "twine" "twofish" "xoodyak" "zuc128" "zuc256"} \
     -width 18 -state readonly
 .nb.file_tab.main.algo_frame.row1.algorithmCombo set "aes"
 
@@ -3547,6 +3548,7 @@ set cmacCiphers {
     clefia
     crypton
     curupira
+    curupira2
     e2
     gost89
     hight
@@ -3569,7 +3571,6 @@ set cmacCiphers {
     rc2
     rc5
     rc6
-    safer+
     seed
     serpent
     shacal2
