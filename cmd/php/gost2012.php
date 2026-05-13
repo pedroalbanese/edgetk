@@ -818,7 +818,7 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
             $data = file_get_contents($options['data']);
             
             $valid = verify($curve, $pubX, $pubY, $data, $options['sig']);
-            echo $valid ? "Signature valid\n" : "Signature invalid\n";
+            echo $valid ? "Verified: true\n" : "Verified: false\n";
             exit($valid ? 0 : 1);
         }
         else {
