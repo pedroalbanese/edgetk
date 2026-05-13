@@ -130,7 +130,7 @@ function rfc1423_derive_key_md5($password, $salt, $key_size) {
 }
 
 // ===============================
-// Curva Weierstrass (paramSetA 256-bit)
+// Curva TwistedEdwards (paramSetA 256-bit)
 // Parâmetros do GoGOST: id-tc26-gost-3410-12-256-paramSetA
 // ===============================
 
@@ -203,7 +203,7 @@ class Curve {
 }
 
 // ===============================
-// Curva A 256-bit (paramSetA) - Weierstrass
+// Curva A 256-bit (paramSetA) - TwistedEdwards
 // Parâmetros do GoGOST: id-tc26-gost-3410-12-256-paramSetA
 // ===============================
 
