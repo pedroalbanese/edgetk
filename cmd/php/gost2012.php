@@ -3,7 +3,7 @@
 /**
  * GOST R 34.10-2012 256-bit - Key Agreement (VKO) and Digital Signature Tool
  * 100% Compatible with EdgeTK (GoGOST)
- * Curve: id-tc26-gost-3410-12-256-paramSetC
+ * Curve: id-tc26-gost-3410-12-256-paramSetA (TwistedEdwards)
  * Supports Kuznechik-CBC for encrypted private keys (RFC 1423)
  */
 
@@ -130,7 +130,8 @@ function rfc1423_derive_key_md5($password, $salt, $key_size) {
 }
 
 // ===============================
-// Curva (estrutura correta)
+// Curva Weierstrass (paramSetA 256-bit)
+// Parâmetros do GoGOST: id-tc26-gost-3410-12-256-paramSetA
 // ===============================
 
 class Curve {
@@ -202,17 +203,18 @@ class Curve {
 }
 
 // ===============================
-// Curva C 256-bit (paramSetC)
+// Curva A 256-bit (paramSetA) - Weierstrass
+// Parâmetros do GoGOST: id-tc26-gost-3410-12-256-paramSetA
 // ===============================
 
-function curveC() {
+function curveA() {
     return new Curve(
-        "8000000000000000000000000000000000000000000000000000000000000c99",
-        "8000000000000000000000000000000000000000000000000000000000000c96",
-        "3e1af419a269a5f866a7d3c25c3df80ae979259373ff2b182f49d4ce7e1bbc8b",
-        "01",
-        "3fa8124359f96680b83d1c3eb2c070e5c545c9858d03ecfb744bf8d717717efc",
-        "800000000000000000000000000000015f700cfff1a624e5e497161bcc8a198f"
+        "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFD97",
+        "C2173F1513981673AF4892C23035A27CE25E2013BF95AA33B22C656F277E7335",
+        "295F9BAE7428ED9CCC20E7C359A9D41A22FCCD9108E17BF7BA9337A6F8AE9513",
+        "91E38443A5E82C0D880923425712B2BB658B9196932E02C78B2582FE742DAA28",
+        "32879423AB1A0375895786C4BB46E9565FDE0B5344766740AF268ADB32322E5C",
+        "400000000000000000000000000000000FD8CDDFC87B6635C115AF556C360C67"
     );
 }
 
@@ -231,16 +233,24 @@ function hash_digest($data) {
 // ===============================
 
 function vko_derive($curve, $priv, $pubX, $pubY) {
+    // Calcula o ponto compartilhado: dA * QB
     list($sharedX, $sharedY) = $curve->exp($priv, $pubX, $pubY);
     
+    // Aplica o cofactor (4 para paramSetA)
+    $cofactor = "4";
+    list($sharedX, $sharedY) = $curve->exp($cofactor, $sharedX, $sharedY);
+    
+    // Serializa como LE(X) || LE(Y) (EdgeTK para paramSetA)
     $xBe = str_pad(dec2hex($sharedX), 64, "0", STR_PAD_LEFT);
     $yBe = str_pad(dec2hex($sharedY), 64, "0", STR_PAD_LEFT);
     
     $xLe = le($xBe);
     $yLe = le($yBe);
     
+    // EdgeTK: LE(X) || LE(Y)
     $keyMaterial = hex2bin($xLe . $yLe);
     
+    // Streebog-256
     return Streebog::hash256($keyMaterial);
 }
 
@@ -324,12 +334,13 @@ function verify($curve, $pubX, $pubY, $data, $signature_hex) {
 
 // ===============================
 // PKCS#8 PEM with Kuznechik-CBC support
+// OID correto para paramSetA: 1.2.643.7.1.2.1.1.1
 // ===============================
 
 class GostPEM
 {
     private static $oid_algorithm = "\x06\x08\x2a\x85\x03\x07\x01\x01\x01\x02";
-    private static $oid_paramset = "\x06\x09\x2a\x85\x03\x07\x01\x02\x01\x01\x03";
+    private static $oid_paramset = "\x06\x09\x2a\x85\x03\x07\x01\x02\x01\x01\x01";
     
     public static function privateToPEM($privateKeyHex, $password = null) {
         $privateKeyLe = le($privateKeyHex);
@@ -435,12 +446,11 @@ class GostPEM
         
         $publicKeyBin = hex2bin($xLe . $yLe);
         
-        // Estrutura DER exata do EdgeTK para 256-bit
         $der = "\x30\x5e" .
                "\x30\x17" .
-               "\x06\x08\x2a\x85\x03\x07\x01\x01\x01\x01" .
+               "\x06\x08\x2a\x85\x03\x07\x01\x01\x01\x02" .
                "\x30\x0b" .
-               "\x06\x09\x2a\x85\x03\x07\x01\x02\x01\x01\x03" .
+               "\x06\x09\x2a\x85\x03\x07\x01\x02\x01\x01\x01" .
                "\x03\x43\x00" .
                "\x04\x40" . $publicKeyBin;
         
@@ -630,7 +640,7 @@ function cmd_parse($args) {
         return 1;
     }
     
-    $curve = curveC();
+    $curve = curveA();
     
     if ($is_private) {
         $priv = hex2dec($keyHexBe);
@@ -650,7 +660,7 @@ function cmd_parse($args) {
         echo "   Y:" . strtoupper($yBe) . "\n";
     }
     
-    echo "Curve: id-tc26-gost-3410-12-256-paramSetC\n";
+    echo "Curve: id-tc26-gost-3410-12-256-paramSetA\n";
     
     if ($is_private) {
         list($pubX, $pubY) = $curve->exp(hex2dec($keyHexBe), $curve->Gx, $curve->Gy);
@@ -719,7 +729,7 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
     if ($options['help']) {
         echo "GOST R 34.10-2012 256-bit - Key Agreement and Digital Signature Tool\n";
         echo "100% Compatible with EdgeTK (GoGOST)\n";
-        echo "Curve: id-tc26-gost-3410-12-256-paramSetC\n";
+        echo "Curve: id-tc26-gost-3410-12-256-paramSetA\n";
         echo "Hash: Streebog-256\n";
         echo "Supports Kuznechik-CBC for encrypted keys\n\n";
         echo "Usage:\n";
@@ -732,27 +742,27 @@ if (PHP_SAPI === 'cli' && basename(__FILE__) === basename($argv[0])) {
     }
     
     try {
-        $curve = curveC();
+        $curve = curveA();
         
         if ($options['keygen']) {
             if (!$options['priv'] || !$options['pub']) die("Error: --priv and --pub required\n");
-    
+            
             $priv = random_scalar($curve->n);
             $privHex = str_pad(dec2hex($priv), 64, "0", STR_PAD_LEFT);
             list($pubX, $pubY) = $curve->exp($priv, $curve->Gx, $curve->Gy);
             $pubHex = str_pad(dec2hex($pubX), 64, "0", STR_PAD_LEFT) . 
                       str_pad(dec2hex($pubY), 64, "0", STR_PAD_LEFT);
-    
+            
             $pemPriv = GostPEM::privateToPEM($privHex, $options['password']);
             $pemPub = GostPEM::publicToPEM($pubHex);
-    
+            
             file_put_contents($options['priv'], $pemPriv);
             file_put_contents($options['pub'], $pemPub);
-    
+            
             fwrite(STDERR, "Private key saved to: " . $options['priv'] . "\n");
             fwrite(STDERR, "Public key saved to: " . $options['pub'] . "\n");
             if ($options['password']) {
-            fwrite(STDERR, "Encrypted with password\n");
+                fwrite(STDERR, "Encrypted with password\n");
             }
             exit(0);
         }
