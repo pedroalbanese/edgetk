@@ -1,7 +1,7 @@
 #!/usr/bin/wish
 ###############################################################################
 #   EDGE Crypto Suite -- Pure Tcl/Tk Graphical Cryptographic Toolkit          #
-#   Copyright (C) 2020-2025 Pedro F. Albanese <pedroalbanese@hotmail.com>     #
+#   Copyright (C) 2020-2026 Pedro F. Albanese <pedroalbanese@hotmail.com>     #
 #                                                                             #
 #   This program is free software: you can redistribute it and/or modify it   #
 #   under the terms of the ISC License.                                       #
@@ -2401,7 +2401,7 @@ option add *Combobox*font {Arial 9}
 
 # Text widget styling
 option add *Text*background $text_bg
-option add *Text*font {"DejaVu Sans Mono" 9}
+option add *Text*font {"Consolas" 9}
 option add *Text*relief solid
 option add *Text*bd 1
 
@@ -2590,7 +2590,7 @@ ttk::combobox .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCo
 .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
 # Passphrase entry (box)
-entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 16 -font {"DejaVu Sans Mono" 9} -show "*"
+entry .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 16 -font {"Consolas" 9} -show "*"
 
 # Passphrase label
 label .nb.signatures_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
@@ -2606,7 +2606,7 @@ pack .nb.signatures_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 
 # Private Key
 label .nb.signatures_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.privateKeyInput -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.signatures_tab.main.keys_frame.content.privateKeyInput -width 50 -font {"Consolas" 9}
 button .nb.signatures_tab.main.keys_frame.content.openPrivateButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.keys_frame.content.privateKeyInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -2617,7 +2617,7 @@ grid .nb.signatures_tab.main.keys_frame.content.openPrivateButton -row 0 -column
 
 # Public Key
 label .nb.signatures_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.keys_frame.content.publicKeyInput -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.signatures_tab.main.keys_frame.content.publicKeyInput -width 50 -font {"Consolas" 9}
 button .nb.signatures_tab.main.keys_frame.content.openPublicButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.keys_frame.content.publicKeyInput
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -2655,7 +2655,7 @@ bind .nb.signatures_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelect
 
 # File input
 label .nb.signatures_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.signatures_tab.main.input_frame.content.inputFile -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.signatures_tab.main.input_frame.content.inputFile -width 50 -font {"Consolas" 9}
 button .nb.signatures_tab.main.input_frame.content.openFileButton -text "Open" -command {
     openFileDialog .nb.signatures_tab.main.input_frame.content.inputFile
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -2672,7 +2672,7 @@ grid .nb.signatures_tab.main.input_frame.content.textframe -row 1 -column 0 -col
 
 # Text area for text input - 4 LINES, SAME STRUCTURE AS OUTPUT
 text .nb.signatures_tab.main.input_frame.content.textframe.inputText -width 70 -height 2 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.signatures_tab.main.input_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.signatures_tab.main.input_frame.content.textframe.inputText yview}
 .nb.signatures_tab.main.input_frame.content.textframe.inputText configure \
@@ -2702,7 +2702,7 @@ frame .nb.signatures_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.signatures_tab.main.output_frame.textframe -fill both -expand false -padx 8 -pady 3
 
 text .nb.signatures_tab.main.output_frame.textframe.outputArea -width 70 -height 4 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.signatures_tab.main.output_frame.textframe.yscroll -orient vertical \
     -command {.nb.signatures_tab.main.output_frame.textframe.outputArea yview}
 .nb.signatures_tab.main.output_frame.textframe.outputArea configure \
@@ -2843,7 +2843,7 @@ ttk::combobox .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo \
 .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.cipherCombo set "aes"
 
 # Passphrase entry (box)
-entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 16 -font {"DejaVu Sans Mono" 9} -show "*"
+entry .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passEntry -width 16 -font {"Consolas" 9} -show "*"
 
 # Passphrase label
 label .nb.ecdh_tab.main.keys_frame.title_frame.pass_frame.passLabel -text "Passphrase:" -font {Arial 9 bold} -bg $frame_color
@@ -2859,7 +2859,7 @@ pack .nb.ecdh_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 
 # Private Key
 label .nb.ecdh_tab.main.keys_frame.content.privateKeyLabel -text "Private Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
+entry .nb.ecdh_tab.main.keys_frame.content.privateKeyInput -width 40 -font {"Consolas" 9}
 button .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -text "Open" -command openPrivateKeyECDH \
     -bg "#6c757d" -fg white -font {Arial 9 bold}
 
@@ -2869,7 +2869,7 @@ grid .nb.ecdh_tab.main.keys_frame.content.openPrivateButton -row 0 -column 2 -st
 
 # Public Key
 label .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -text "Public Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 50 -font {"DejaVu Sans Mono" 9} \
+entry .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -width 50 -font {"Consolas" 9} \
     -bg "#f0f0f0" -state readonly -readonlybackground "#f0f0f0"
 
 grid .nb.ecdh_tab.main.keys_frame.content.publicKeyLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
@@ -2877,7 +2877,7 @@ grid .nb.ecdh_tab.main.keys_frame.content.publicKeyInput -row 1 -column 1 -stick
 
 # Peer Key
 label .nb.ecdh_tab.main.keys_frame.content.peerKeyLabel -text "Peer Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.keys_frame.content.peerKeyInput -width 40 -font {"DejaVu Sans Mono" 9}
+entry .nb.ecdh_tab.main.keys_frame.content.peerKeyInput -width 40 -font {"Consolas" 9}
 button .nb.ecdh_tab.main.keys_frame.content.openPeerKeyButton -text "Open" -command openPeerKey \
     -bg "#6c757d" -fg white -font {Arial 9 bold}
 
@@ -2948,11 +2948,11 @@ ttk::combobox .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmCombo -values $::
 
 # Salt Input
 label .nb.ecdh_tab.main.kdf_frame.content.saltLabel -text "Salt:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.kdf_frame.content.saltInput -width 25 -font {"DejaVu Sans Mono" 9}
+entry .nb.ecdh_tab.main.kdf_frame.content.saltInput -width 25 -font {"Consolas" 9}
 
 # NEW: Additional Info Input
 label .nb.ecdh_tab.main.kdf_frame.content.infoLabel -text "Additional Info:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.ecdh_tab.main.kdf_frame.content.infoInput -width 25 -font {"DejaVu Sans Mono" 9}
+entry .nb.ecdh_tab.main.kdf_frame.content.infoInput -width 25 -font {"Consolas" 9}
 
 # First row: Hash and Salt
 grid .nb.ecdh_tab.main.kdf_frame.content.hashAlgorithmLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
@@ -2978,7 +2978,7 @@ frame .nb.ecdh_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.ecdh_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
 text .nb.ecdh_tab.main.output_frame.textframe.outputArea -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.ecdh_tab.main.output_frame.textframe.scroll -command {.nb.ecdh_tab.main.output_frame.textframe.outputArea yview}
 .nb.ecdh_tab.main.output_frame.textframe.outputArea configure -yscrollcommand {.nb.ecdh_tab.main.output_frame.textframe.scroll set}
 
@@ -3155,7 +3155,7 @@ grid rowconfigure .nb.text_tab.main.input_frame.textframe 0 -weight 1  ;# Text w
 grid columnconfigure .nb.text_tab.main.input_frame.textframe 0 -weight 1
 
 text .nb.text_tab.main.input_frame.textframe.text -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.text_tab.main.input_frame.textframe.scroll -command {.nb.text_tab.main.input_frame.textframe.text yview}
 .nb.text_tab.main.input_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.input_frame.textframe.scroll set}
 grid .nb.text_tab.main.input_frame.textframe.text -row 0 -column 0 -sticky "nsew"
@@ -3194,7 +3194,7 @@ grid rowconfigure .nb.text_tab.main.output_frame.textframe 0 -weight 1  ;# Text 
 grid columnconfigure .nb.text_tab.main.output_frame.textframe 0 -weight 1
 
 text .nb.text_tab.main.output_frame.textframe.text -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.text_tab.main.output_frame.textframe.scroll -command {.nb.text_tab.main.output_frame.textframe.text yview}
 .nb.text_tab.main.output_frame.textframe.text configure -yscrollcommand {.nb.text_tab.main.output_frame.textframe.scroll set}
 grid .nb.text_tab.main.output_frame.textframe.text -row 0 -column 0 -sticky "nsew"
@@ -3223,7 +3223,7 @@ label .nb.text_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -b
 grid .nb.text_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 3
 
 # Create key input box
-entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
+entry .nb.text_tab.main.keys_frame.keyBox -width 50 -font {"Consolas" 9} -show ""
 grid .nb.text_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 5 -sticky "ew" -padx 5 -pady 3
 grid columnconfigure .nb.text_tab.main.keys_frame 1 -weight 1
 
@@ -3232,7 +3232,7 @@ label .nb.text_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -bg 
 grid .nb.text_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
 
 # Create IV input box
-entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.text_tab.main.keys_frame.ivBox -width 50 -font {"Consolas" 9}
 grid .nb.text_tab.main.keys_frame.ivBox -row 1 -column 1 -sticky "ew" -padx {5 0} -pady 3
 
 # Create AAD label
@@ -3240,7 +3240,7 @@ label .nb.text_tab.main.keys_frame.aadLabel -text "AAD:" -font {Arial 9 bold} -b
 grid .nb.text_tab.main.keys_frame.aadLabel -row 1 -column 2 -sticky e -padx {0 5} -pady 3
 
 # Create AAD input box
-entry .nb.text_tab.main.keys_frame.aadBox -width 10 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
+entry .nb.text_tab.main.keys_frame.aadBox -width 10 -font {"Consolas" 9} -state disabled -background "#f0f0f0"
 grid .nb.text_tab.main.keys_frame.aadBox -row 1 -column 3 -columnspan 3 -sticky "ew" -padx 5 -pady 3
 
 # Configure column weights para distribuição igual
@@ -3415,7 +3415,7 @@ label .nb.file_tab.main.keys_frame.keyLabel -text "Key:" -font {Arial 9 bold} -b
 grid .nb.file_tab.main.keys_frame.keyLabel -row 0 -column 0 -sticky e -padx 5 -pady 3 
 
 # Create key input box (Files)
-entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"DejaVu Sans Mono" 9} -show ""
+entry .nb.file_tab.main.keys_frame.keyBox -width 50 -font {"Consolas" 9} -show ""
 grid .nb.file_tab.main.keys_frame.keyBox -row 0 -column 1 -columnspan 4 -sticky "ew" -padx 5 -pady 3
 
 # Create IV label (Files)
@@ -3423,7 +3423,7 @@ label .nb.file_tab.main.keys_frame.ivLabel -text "IV:" -font {Arial 9 bold} -bg 
 grid .nb.file_tab.main.keys_frame.ivLabel -row 1 -column 0 -sticky e -padx 5 -pady 3
 
 # Create IV input box (Files)
-entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.file_tab.main.keys_frame.ivBox -width 50 -font {"Consolas" 9}
 grid .nb.file_tab.main.keys_frame.ivBox -row 1 -column 1 -sticky "ew" -padx {5 0} -pady 3 
 
 # Create AAD label (Files)
@@ -3431,7 +3431,7 @@ label .nb.file_tab.main.keys_frame.aadLabel -text "AAD:" -font {Arial 9 bold} -b
 grid .nb.file_tab.main.keys_frame.aadLabel -row 1 -column 2 -sticky e -padx {0 5} -pady 3
 
 # Create AAD input box (Files)
-entry .nb.file_tab.main.keys_frame.aadBox -width 10 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
+entry .nb.file_tab.main.keys_frame.aadBox -width 10 -font {"Consolas" 9} -state disabled -background "#f0f0f0"
 grid .nb.file_tab.main.keys_frame.aadBox -row 1 -column 3 -columnspan 2 -sticky "ew" -padx 5 -pady 3  
 
 # Configure column weights
@@ -3464,7 +3464,7 @@ grid .nb.file_tab.main.status_frame.label -row 0 -column 0 -sticky w -padx 8 -pa
 
 # Status area
 text .nb.file_tab.main.status_frame.text -width 60 -height 5 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1 -state disabled
 grid .nb.file_tab.main.status_frame.text -row 1 -column 0 -sticky "nsew" -padx 8 -pady 5
 
 # ========== MAC TEXT TAB ==========
@@ -3613,13 +3613,13 @@ pack .nb.mac_tab.main.keys_frame.content -fill x -padx 8 -pady 3
 
 # Key Entry
 label .nb.mac_tab.main.keys_frame.content.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_tab.main.keys_frame.content.keyEntry -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.mac_tab.main.keys_frame.content.keyEntry -width 50 -font {"Consolas" 9}
 grid .nb.mac_tab.main.keys_frame.content.keyLabel -row 0 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.mac_tab.main.keys_frame.content.keyEntry -row 0 -column 1 -sticky ew -padx 3 -pady 3
 
 # IV Entry
 label .nb.mac_tab.main.keys_frame.content.ivLabel -text "IV:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_tab.main.keys_frame.content.ivEntry -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.mac_tab.main.keys_frame.content.ivEntry -width 50 -font {"Consolas" 9}
 grid .nb.mac_tab.main.keys_frame.content.ivLabel -row 1 -column 0 -sticky w -padx 3 -pady 3
 grid .nb.mac_tab.main.keys_frame.content.ivEntry -row 1 -column 1 -sticky ew -padx 3 -pady 3
 
@@ -3646,7 +3646,7 @@ bind .nb.mac_tab.main.input_frame.content.inputTypeCombo <<ComboboxSelected>> se
 
 # File input
 label .nb.mac_tab.main.input_frame.content.fileLabel -text "File:" -font {Arial 9 bold} -bg $frame_color
-entry .nb.mac_tab.main.input_frame.content.inputFile -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.mac_tab.main.input_frame.content.inputFile -width 50 -font {"Consolas" 9}
 button .nb.mac_tab.main.input_frame.content.openFileButton -text "Open" -command {
     openFileDialog .nb.mac_tab.main.input_frame.content.inputFile
 } -bg "#6c757d" -fg white -font {Arial 9 bold} -padx 8
@@ -3663,7 +3663,7 @@ grid .nb.mac_tab.main.input_frame.content.textframe -row 1 -column 0 -columnspan
 
 # Text area for text input - 4 LINES, SAME STRUCTURE AS OUTPUT
 text .nb.mac_tab.main.input_frame.content.textframe.inputText -width 70 -height 6 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 scrollbar .nb.mac_tab.main.input_frame.content.textframe.yscroll -orient vertical \
     -command {.nb.mac_tab.main.input_frame.content.textframe.inputText yview}
 .nb.mac_tab.main.input_frame.content.textframe.inputText configure \
@@ -3705,7 +3705,7 @@ frame .nb.mac_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.mac_tab.main.output_frame.textframe -fill both -expand false -padx 8 -pady 3
 
 text .nb.mac_tab.main.output_frame.textframe.resultBox -width 60 -height 3 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1 -state disabled
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1 -state disabled
 scrollbar .nb.mac_tab.main.output_frame.textframe.resultScroll -command {.nb.mac_tab.main.output_frame.textframe.resultBox yview}
 .nb.mac_tab.main.output_frame.textframe.resultBox configure -yscrollcommand {.nb.mac_tab.main.output_frame.textframe.resultScroll set}
 
@@ -3811,7 +3811,7 @@ set ::recursiveFlag 0  ;# Default value: unchecked
 # Key entry frame (initially disabled)
 frame .nb.digest_tab.main.algo_frame.content.keyFrame -bg $frame_color
 label .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel -text "Key:" -font {Arial 9 bold} -bg $frame_color -state disabled
-entry .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -width 50 -font {"DejaVu Sans Mono" 9} -state disabled -background "#f0f0f0"
+entry .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -width 50 -font {"Consolas" 9} -state disabled -background "#f0f0f0"
 
 pack .nb.digest_tab.main.algo_frame.content.keyFrame.keyLabel .nb.digest_tab.main.algo_frame.content.keyFrame.keyEntry -side left -padx 3
 
@@ -3829,7 +3829,7 @@ pack .nb.digest_tab.main.file_frame.content -fill x -padx 8 -pady 3
 
 # Directory path
 label .nb.digest_tab.main.file_frame.content.dirLabel -text "Directory:" -font {Arial 9 bold} -bg $frame_color -width 10 -anchor e
-entry .nb.digest_tab.main.file_frame.content.dirEntry -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.digest_tab.main.file_frame.content.dirEntry -width 50 -font {"Consolas" 9}
 # Set default value as "." (current directory)
 .nb.digest_tab.main.file_frame.content.dirEntry insert 0 "."
 button .nb.digest_tab.main.file_frame.content.dirButton -text "Open" -command {
@@ -3846,7 +3846,7 @@ grid .nb.digest_tab.main.file_frame.content.dirButton -row 0 -column 2 -sticky w
 
 # File pattern/wildcard
 label .nb.digest_tab.main.file_frame.content.patternLabel -text "Pattern:" -font {Arial 9 bold} -bg $frame_color -width 10 -anchor e
-entry .nb.digest_tab.main.file_frame.content.patternEntry -width 50 -font {"DejaVu Sans Mono" 9}
+entry .nb.digest_tab.main.file_frame.content.patternEntry -width 50 -font {"Consolas" 9}
 .nb.digest_tab.main.file_frame.content.patternEntry insert 0 "*"
 
 grid .nb.digest_tab.main.file_frame.content.patternLabel -row 1 -column 0 -sticky e -padx 3 -pady 3
@@ -3873,10 +3873,10 @@ frame .nb.digest_tab.main.output_frame.textframe -bg $frame_color
 pack .nb.digest_tab.main.output_frame.textframe -fill both -expand true -padx 8 -pady 3
 
 text .nb.digest_tab.main.output_frame.textframe.outputArea -width 70 -height 15 -wrap word \
-    -font {"DejaVu Sans Mono" 9} -bg $text_bg -relief solid -bd 1
+    -font {"Consolas" 9} -bg $text_bg -relief solid -bd 1
 
 # Configure tags for formatting (must be done AFTER creating Text widget)
-.nb.digest_tab.main.output_frame.textframe.outputArea tag configure bold -font {"DejaVu Sans Mono" 9 bold}
+.nb.digest_tab.main.output_frame.textframe.outputArea tag configure bold -font {"Consolas" 9 bold}
 .nb.digest_tab.main.output_frame.textframe.outputArea tag configure error -foreground red
 .nb.digest_tab.main.output_frame.textframe.outputArea tag configure success -foreground "#28a745"
 .nb.digest_tab.main.output_frame.textframe.outputArea tag configure warning -foreground "#fd7e14"
@@ -4396,7 +4396,7 @@ proc verifyDigests {} {
     
     # Text area with white background for contrast
     text .debug_win.main.textframe.text -width 80 -height 25 -wrap word \
-        -font {"DejaVu Sans Mono" 9} -bg white -relief solid -bd 1
+        -font {"Consolas" 9} -bg white -relief solid -bd 1
     scrollbar .debug_win.main.textframe.scroll -command {.debug_win.main.textframe.text yview}
     .debug_win.main.textframe.text configure -yscrollcommand {.debug_win.main.textframe.scroll set}
     
