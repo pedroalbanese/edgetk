@@ -1225,7 +1225,7 @@ TLCP (Transport Layer Security Protocol, defined by the Chinese standard GB/T 38
 flowchart TB
     A[Applicant] -->|1. Generates key pair + CSR| B[CA]
     B -->|2. Generates signature certificate| C[Sign Certificate]
-    B -->|3. Generates key pair + CSR (template)| D[Encryption Certificate]
+    B -->|3. Generates key pair + CSR<br>using original as template| D[Encryption Certificate]
     B -->|4. Returns certificates + encryption private key| A
 ```
 
