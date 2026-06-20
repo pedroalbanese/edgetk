@@ -1221,11 +1221,13 @@ TLCP (Transport Layer Security Protocol, defined by the Chinese standard GB/T 38
 5. TLCP server is configured with both key pairs and certificates: one for signing and one for encryption.
 6. TLCP client connects using the TLCP protocol and selects either the ECDHE_SM4_CBC_SM3 or ECDHE_SM4_GCM_SM3 cipher suite.
 
+```mermaid
 flowchart TB
     A[Applicant] -->|1. Generates key pair + CSR| B[CA]
     B -->|2. Generates signature certificate| C[Sign Certificate]
     B -->|3. Generates key pair + CSR (template)| D[Encryption Certificate]
     B -->|4. Returns certificates + encryption private key| A
+```
 
 </details>
 
