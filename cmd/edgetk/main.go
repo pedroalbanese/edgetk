@@ -29015,6 +29015,7 @@ type ElGamalParams struct {
 	G *big.Int
 }
 
+// generateElGamalParams generates parameters for the ElGamal system
 func generateElGamalParams(pBits int) (*ElGamalParams, error) {
 	if pBits < 1024 {
 		return nil, errors.New("P must be at least 1024 bits for security")
@@ -29038,12 +29039,14 @@ func generateElGamalParams(pBits int) (*ElGamalParams, error) {
 
 	fmt.Fprintf(os.Stderr, "Generating ElGamal params (P: %d bits, Q: %d bits)...", pBits, qBits)
 
+	// Step 1: Generate prime Q
 	q, err := rand.Prime(rand.Reader, qBits)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate Q: %v", err)
 	}
 	fmt.Fprint(os.Stderr, " Q found!")
 
+	// Step 2: Try to find a prime P = r·Q + 1 with the required bit length
 	for attempt := 0; attempt < 20000; attempt++ {
 		rBits := pBits - qBits
 		r, err := rand.Int(rand.Reader, new(big.Int).Lsh(one, uint(rBits)))
@@ -29054,6 +29057,7 @@ func generateElGamalParams(pBits int) (*ElGamalParams, error) {
 		p := new(big.Int).Mul(r, q)
 		p.Add(p, one)
 
+		// Force p to have exactly pBits
 		if p.BitLen() < pBits {
 			p.SetBit(p, pBits-1, 1)
 		}
@@ -29061,8 +29065,10 @@ func generateElGamalParams(pBits int) (*ElGamalParams, error) {
 		if p.ProbablyPrime(5) {
 			fmt.Fprint(os.Stderr, " P found!")
 
+			// Step 3: Find generator g of order Q mod P
 			g, err := findGenerator(p, q)
 			if err != nil {
+				continue
 			}
 			fmt.Fprint(os.Stderr, " G found!")
 
@@ -29226,6 +29232,7 @@ func generateSchnorrParams(pBits int) (*SchnorrParams, error) {
 
 			g, err := findGenerator(p, q)
 			if err != nil {
+				continue
 			}
 			fmt.Fprint(os.Stderr, " G found!")
 
@@ -29252,6 +29259,13 @@ func findGenerator(p, q *big.Int) (*big.Int, error) {
 		2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
 		31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
 		73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
+		127, 131, 137, 139, 149, 151, 157, 163, 167, 173,
+		179, 181, 191, 193, 197, 199, 211, 223, 227, 229,
+		233, 239, 241, 251, 257, 263, 269, 271, 277, 281,
+		283, 293, 307, 311, 313, 317, 331, 337, 347, 349,
+		353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
+		419, 421, 431, 433, 439, 443, 449, 457, 461, 463,
+		467, 479, 487, 491, 499, 503, 509, 521, 523, 541,
 	}
 
 	for _, prime := range smallPrimes {
