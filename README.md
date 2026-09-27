@@ -395,6 +395,7 @@ Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/) and t
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
     | E-521               |     |     |     | O       |          |     |
+    | M-511               |     |     | O   |         |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
     | RSA                 |     |     |     | O       | O        | O   |
     | SM2                 | O   |     | O   | O       | O        | O   |
