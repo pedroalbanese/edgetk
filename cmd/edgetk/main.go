@@ -217,6 +217,7 @@ import (
 	"github.com/pedroalbanese/whirlpool"
 	"github.com/pedroalbanese/xoodoo/xoodyak"
 	"github.com/pedroalbanese/xxencode"
+	"github.com/pedroalbanese/m511"
 	"github.com/zeebo/blake3"
 
 	"github.com/trailofbits/lms-go/lms/common"
@@ -379,7 +380,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.21  14 Apr 2026")
+		fmt.Println("EDGE Toolkit v1.5.21  26 Sep 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -397,7 +398,7 @@ Public Key Subcommands:
 
 Public Key Algorithms:
   bign/dbign        eckcdsa           gost2012          sm2[ph]
-  bip0340           ecsdsa            ed521[ph]         sm9sign
+  bip0340           ecsdsa            ed521[ph]/m-511   sm9sign
   bls12381[i]       ed25519[ph]       ml-dsa/kem        sm9encrypt
   bn256[i]          ed448[ph]         lms               slh-dsa
   ecdsa/ecdh        elgamal           rsa (default)     x25519
@@ -833,7 +834,7 @@ Subcommands:
 		}
 	}
 
-	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
+	if (*pkey == "sign" || *pkey == "decrypt" || *pkey == "derive" || *pkey == "derive-scalar" || *pkey == "aggregate" || *pkey == "proof" || *pkey == "derivea" || *pkey == "unwrapkey" || *pkey == "deriveb" || *pkey == "certgen" || *pkey == "text" || *pkey == "modulus" || *tcpip == "server" || *tcpip == "client" || *pkey == "pkcs12" || *pkey == "req" || *pkey == "x509" || *pkey == "x25519" || *pkey == "x448" || *pkey == "m511" || *pkey == "m-511" || *pkey == "vko" || *pkey == "crl") && (*key != "" && strings.ToUpper(*alg) != "EGPHP" && strings.ToUpper(*alg) != "ELGAMALPHP") && *pwd == "" {
 		file, err := os.Open(*key)
 		if err != nil {
 			log.Fatal(err)
@@ -10179,6 +10180,160 @@ Subcommands:
 		os.Exit(0)
 	}
 
+	if *pkey == "keygen" && (strings.ToUpper(*alg) == "M511" || strings.ToUpper(*alg) == "M-511") {
+		var privateKey *m511.PrivateKey
+		var publicKey *m511.PublicKey
+
+		privateKey, publicKey, err = m511.GenerateKeyWithReader(rand.Reader)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		privateStream, err := privateKey.MarshalPKCS8PrivateKey()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		block := &pem.Block{
+			Type:  "M-511 PRIVATE KEY",
+			Bytes: privateStream,
+		}
+		file, err := os.Create(*priv)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if *pwd != "" {
+			err = EncryptAndWriteBlock(*cph, block, []byte(*pwd), file)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			err = pem.Encode(file, block)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
+		publicStream, err := publicKey.MarshalPKIXPublicKey()
+		if err != nil {
+			log.Fatal(err)
+		}
+		pubblock := &pem.Block{
+			Type:  "M-511 PUBLIC KEY",
+			Bytes: publicStream,
+		}
+		pubfile, err := os.Create(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = pem.Encode(pubfile, pubblock)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		absPrivPath, err := filepath.Abs(*priv)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for private key:", err)
+		}
+		absPubPath, err := filepath.Abs(*pub)
+		if err != nil {
+			log.Fatal("Failed to get absolute path for public key:", err)
+		}
+		println("Private key saved to:", absPrivPath)
+		println("Public key saved to:", absPubPath)
+
+		file, err = os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+		fingerprint := calculateFingerprint(buf)
+		print("Fingerprint: ")
+		println(fingerprint)
+		printKeyDetails(pubblock)
+		randomArt := randomart.FromString(string(buf))
+		println(randomArt)
+
+		os.Exit(0)
+	}
+	
+	if *pkey == "derive" && strings.ToUpper(*alg) == "M511" || (strings.ToUpper(*alg) == "M-511" || strings.ToUpper(*pkey) == "M-511" || strings.ToUpper(*pkey) == "M511") {
+		var privPEM []byte
+
+		// Lê a chave privada.
+		file, err := os.Open(*key)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err := file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf := make([]byte, info.Size())
+		file.Read(buf)
+
+		block, _ := pem.Decode(buf)
+		if block == nil {
+			log.Fatal("no valid private key found")
+		}
+
+		if IsEncryptedPEMBlock(block) {
+			privKeyBytes, err := DecryptPEMBlock(block, []byte(*pwd))
+			if err != nil {
+				log.Fatal(err)
+			}
+			privPEM = pem.EncodeToMemory(&pem.Block{Type: "M-511 PRIVATE KEY", Bytes: privKeyBytes})
+		} else {
+			privPEM = buf
+		}
+
+		privateKeyPemBlock, _ := pem.Decode(privPEM)
+		if privateKeyPemBlock == nil {
+			log.Fatal("failed to decode private key PEM")
+		}
+
+		privKey, err := m511.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Lê a chave pública do par.
+		file, err = os.Open(*pub)
+		if err != nil {
+			log.Fatal(err)
+		}
+		info, err = file.Stat()
+		if err != nil {
+			log.Fatal(err)
+		}
+		buf = make([]byte, info.Size())
+		file.Read(buf)
+
+		block, _ = pem.Decode(buf)
+		if block == nil {
+			log.Fatal("no valid public key found")
+		}
+
+		publicKey, err := m511.ParsePKIXPublicKey(block.Bytes)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// ECDH.
+		secret, err := privKey.ECDH(publicKey)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("%x\n", secret)
+		os.Exit(0)
+	}
+	
 	if *pkey == "derive" && strings.ToUpper(*alg) != "GOST2012" && strings.ToUpper(*alg) != "BN256" && strings.ToUpper(*alg) != "BN256I" && strings.ToUpper(*alg) != "BLS12381" && strings.ToUpper(*alg) != "BLS12381I" {
 
 		var privateKey *ecdh.PrivateKey
@@ -10582,6 +10737,8 @@ Subcommands:
 			*alg = "TOM"
 		} else if strings.Contains(s, "E-521") {
 			*alg = "E-521"
+		} else if strings.Contains(s, "M-511") {
+			*alg = "M-511"
 		} else if strings.Contains(s, "KG") {
 			*alg = "KG"
 		} else if strings.Contains(s, "BIGN") {
@@ -20151,6 +20308,10 @@ Subcommands:
 				return pub, err
 			},
 			func(b []byte) (interface{}, error) {
+				pub, err := m511.ParsePKIXPublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
 				pub, err := kg.ParsePKIXPublicKey(b)
 				return pub, err
 			},
@@ -20197,6 +20358,10 @@ Subcommands:
 			publicKey := publicInterface.(*e521.PublicKey)
 			curve := publicKey.Curve
 			fmt.Printf("E-521 (%v-bit)\n", curve.Params().BitSize)
+		case *m511.PublicKey:
+			publicKey := publicInterface.(*m511.PublicKey)
+			curve := publicKey.Curve
+			fmt.Printf("M-511 (%v-bit)\n", curve.Params().BitSize)
 		case *kg.PublicKey:
 			publicKey := publicInterface.(*kg.PublicKey)
 			curve := publicKey.Curve
@@ -20301,6 +20466,10 @@ Subcommands:
 				return pub, err
 			},
 			func(b []byte) (interface{}, error) {
+				pub, err := m511.ParsePKIXPublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
 				pub, err := kg.ParsePKIXPublicKey(b)
 				return pub, err
 			},
@@ -20345,6 +20514,8 @@ Subcommands:
 		case *tom.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		case *e521.PublicKey:
+			fingerprint = calculateFingerprint(buf)
+		case *m511.PublicKey:
 			fingerprint = calculateFingerprint(buf)
 		case *kg.PublicKey:
 			fingerprint = calculateFingerprint(buf)
@@ -20422,6 +20593,10 @@ Subcommands:
 				return pub, err
 			},
 			func(b []byte) (interface{}, error) {
+				pub, err := m511.ParsePKIXPublicKey(b)
+				return pub, err
+			},
+			func(b []byte) (interface{}, error) {
 				pub, err := kg.ParsePKIXPublicKey(b)
 				return pub, err
 			},
@@ -20468,6 +20643,8 @@ Subcommands:
 			*alg = "TOM"
 		case *e521.PublicKey:
 			*alg = "E-521"
+		case *m511.PublicKey:
+			*alg = "M-511"
 		case *kg.PublicKey:
 			*alg = "KG"
 		case *bign.PublicKey:
@@ -20509,6 +20686,11 @@ Subcommands:
 			os.Exit(0)
 		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "E-521") {
 			var publicKey = publicInterface.(*e521.PublicKey)
+			fmt.Printf("Public.X=%X\n", publicKey.X)
+			fmt.Printf("Public.Y=%X\n", publicKey.Y)
+			os.Exit(0)
+		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "M-511") {
+			var publicKey = publicInterface.(*m511.PublicKey)
 			fmt.Printf("Public.X=%X\n", publicKey.X)
 			fmt.Printf("Public.Y=%X\n", publicKey.Y)
 			os.Exit(0)
@@ -21146,6 +21328,28 @@ Subcommands:
 			fmt.Printf("Curve: %s\n", publicKey.Curve.Params().Name)
 		} else if strings.ToUpper(*alg) == "E-521" {
 			publicKey := publicInterface.(*e521.PublicKey)
+			curve := publicKey.Curve
+			derBytes, err := publicKey.MarshalPKCS8PublicKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+			block := &pem.Block{
+				Type:  "PUBLIC KEY",
+				Bytes: derBytes,
+			}
+			public := pem.EncodeToMemory(block)
+			fmt.Printf(string(public))
+
+			fmt.Printf("Public-Key: (%v-bit)\n", curve.Params().BitSize)
+			compressed := curve.CompressPoint(publicKey.X, publicKey.Y)
+
+			splitz := SplitSubN(hex.EncodeToString(compressed), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Curve.Params().Name)
+		} else if strings.ToUpper(*alg) == "M-511" {
+			publicKey := publicInterface.(*m511.PublicKey)
 			curve := publicKey.Curve
 			derBytes, err := publicKey.MarshalPKCS8PublicKey()
 			if err != nil {
@@ -21869,6 +22073,56 @@ Subcommands:
 
 			if len(hexD) < 132 {
 				hexD = hexD + strings.Repeat("0", 132-len(hexD))
+			}
+
+			fmt.Printf("Private-Key: (%v-bit)\n", curve.Params().BitSize)
+			fmt.Printf("priv: \n")
+			splitz := SplitSubN(hexD, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+
+			publicKey := pub
+			fmt.Printf("pub: \n")
+			compressed := curve.CompressPoint(publicKey.X, publicKey.Y)
+
+			splitz = SplitSubN(hex.EncodeToString(compressed), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				fmt.Printf("    %-10s\n", strings.ReplaceAll(chunk, " ", ":"))
+			}
+			var spki struct {
+				Algorithm        pkix.AlgorithmIdentifier
+				SubjectPublicKey asn1.BitString
+			}
+			_, err = asn1.Unmarshal(derBytes, &spki)
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Printf("Curve: %s\n", publicKey.Curve.Params().Name)
+			skid := sha3.Sum256(spki.SubjectPublicKey.Bytes)
+			fmt.Printf("\nKeyID: %x \n", skid[:20])
+		} else if strings.ToUpper(*alg) == "M-511" || strings.ToUpper(*alg) == "M511" {
+			var privKey, err = m511.ParsePrivateKey(privateKeyPemBlock.Bytes)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pub := privKey.GetPublic()
+			curve := pub.Curve
+			derBytes, err := pub.MarshalPKCS8PublicKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", pub.X)
+				fmt.Printf("Public.Y=%X\n", pub.Y)
+				os.Exit(0)
+			}
+			fmt.Printf(string(privPEM))
+			d := privKey.D.Bytes()
+
+			hexD := hex.EncodeToString(d)
+			if len(hexD) < 128 {
+				hexD = hexD + strings.Repeat("0", 128-len(hexD))
 			}
 
 			fmt.Printf("Private-Key: (%v-bit)\n", curve.Params().BitSize)
@@ -26981,6 +27235,10 @@ func printKeyDetails(block *pem.Block) {
 			return pub, err
 		},
 		func(b []byte) (interface{}, error) {
+			pub, err := m511.ParsePKIXPublicKey(b)
+			return pub, err
+		},
+		func(b []byte) (interface{}, error) {
 			pub, err := kg.ParsePKIXPublicKey(b)
 			return pub, err
 		},
@@ -27040,6 +27298,9 @@ func printKeyDetails(block *pem.Block) {
 	case *e521.PublicKey:
 		publicKey := publicInterface.(*e521.PublicKey)
 		fmt.Fprintf(os.Stderr, "E-521 (%v-bit)\n", publicKey.Curve.Params().BitSize)
+	case *m511.PublicKey:
+		publicKey := publicInterface.(*m511.PublicKey)
+		fmt.Fprintf(os.Stderr, "M-511 (%v-bit)\n", publicKey.Curve.Params().BitSize)
 	case *kg.PublicKey:
 		publicKey := publicInterface.(*kg.PublicKey)
 		fmt.Fprintf(os.Stderr, "KG (%v-bit)\n", publicKey.Curve.Params().BitSize)
@@ -33643,6 +33904,83 @@ func DecodeE521PublicKey(pemBytes []byte) (*e521.PublicKey, error) {
 	}
 
 	return e521.ParsePublicKey(block.Bytes)
+}
+
+func EncodeM511PrivateKey(privateKey *m511.PrivateKey) ([]byte, error) {
+	derBytes, err := privateKey.MarshalPKCS8PrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	block := &pem.Block{
+		Type:  "M-511 PRIVATE KEY",
+		Bytes: derBytes,
+	}
+
+	if pwd != nil && *pwd != "" {
+		encryptedBlock, err := EncryptBlockWithCipher(rand.Reader, block.Type, block.Bytes, []byte(*pwd), *cph)
+		if err != nil {
+			return nil, err
+		}
+		return pem.EncodeToMemory(encryptedBlock), nil
+	}
+
+	return pem.EncodeToMemory(block), nil
+}
+
+func EncodeM521PublicKey(publicKey *m511.PublicKey) ([]byte, error) {
+	derBytes, err := publicKey.MarshalPKCS8PublicKey()
+	if err != nil {
+		return nil, err
+	}
+
+	block := &pem.Block{
+		Type:  "M-511 PUBLIC KEY",
+		Bytes: derBytes,
+	}
+
+	return pem.EncodeToMemory(block), nil
+}
+
+func DecodeM521PrivateKey(pemBytes []byte) (*m511.PrivateKey, error) {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	if block.Type != "M-511 PRIVATE KEY" {
+		return nil, errors.New("invalid PEM block type for private key")
+	}
+
+	var keyBytes []byte
+	var err error
+
+	if IsEncryptedPEMBlock(block) {
+		if pwd == nil || *pwd == "" {
+			return nil, errors.New("password required to decrypt private key")
+		}
+		keyBytes, err = DecryptPEMBlock(block, []byte(*pwd))
+		if err != nil {
+			return nil, errors.New("failed to decrypt private key with provided password")
+		}
+	} else {
+		keyBytes = block.Bytes
+	}
+
+	return m511.ParsePrivateKey(keyBytes)
+}
+
+func DecodeM521PublicKey(pemBytes []byte) (*m511.PublicKey, error) {
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, errors.New("failed to decode PEM block")
+	}
+
+	if block.Type != "M-511 PUBLIC KEY" {
+		return nil, errors.New("invalid PEM block type for public key")
+	}
+
+	return m511.ParsePKIXPublicKey(block.Bytes)
 }
 
 func EncodeKGPrivateKey(privateKey *kg.PrivateKey) ([]byte, error) {
