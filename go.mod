@@ -84,7 +84,6 @@ require (
 	github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f
 	github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75
 	github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2
-	github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b
 	github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5
 	github.com/pedroalbanese/present v0.0.0-20240325185615-de3b5340e616
 	github.com/pedroalbanese/rabbitio v0.0.0-20230209212404-cffc97bafde8
@@ -122,7 +121,12 @@ require (
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
+	github.com/pedroalbanese/curupira2 v0.0.7
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
+	github.com/pedroalbanese/m511 v0.0.0-psi
+	github.com/pedroalbanese/smaz v0.0.0-alpha
+	github.com/pedroalbanese/snow2 v0.0.0-20260218161533-07cb78bac9fe
+	github.com/pedroalbanese/sosemanuk v0.0.0
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 )

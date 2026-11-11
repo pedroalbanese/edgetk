@@ -73,12 +73,12 @@ github.com/pedroalbanese/cubehash256 v0.0.0-20240403151932-00980243a56a h1:asiod
 github.com/pedroalbanese/cubehash256 v0.0.0-20240403151932-00980243a56a/go.mod h1:Z2BgPpFmhJNjGbN+Mn+w958d5AmribgkmBjUx8E1p1g=
 github.com/pedroalbanese/curupira1 v0.0.0-gama h1:PHGQGjgVn2ftBEJ07Az2a59X4a2hV+zgdvnXKXisdcE=
 github.com/pedroalbanese/curupira1 v0.0.0-gama/go.mod h1:gVwAY6kuZ75rbc23q1p9JEhJCW3ChiE/R58OMXFOCrw=
+github.com/pedroalbanese/curupira2 v0.0.7 h1:4/b01zgjqDm8PDAAhjJPPrth77WHGjPntink1GWYwA4=
+github.com/pedroalbanese/curupira2 v0.0.7/go.mod h1:sxvUJDXaXlOZ4h8zTrFkqTHWy42L4AVBE8h2rnRnPgE=
 github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1 h1:BuZSs4ADd9EQniS4TgiTvKbGODpVauR08A4Dl2PHsV8=
 github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1/go.mod h1:MjPWywlG0DzX9aN6H+axPhx/sVbkRrL1zPdUx+WM3K0=
 github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5 h1:FnMVMHfgzLncnoEynabLtFjcs/qyjWIk/Tfv73i71Wo=
 github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5/go.mod h1:Tr9cxhKAXoMqBPy3IJfkyKNNDpj7sBW1eShP7B5KsrQ=
-github.com/pedroalbanese/e521 v0.0.28 h1:iQQpTimx3YVvoFKy/DPukfSqj0V0dHD6YTJNiGuS8XM=
-github.com/pedroalbanese/e521 v0.0.28/go.mod h1:yVgnpFuuMFc86MqpZq3jGz+P45buIpDbL43/x4ux61Q=
 github.com/pedroalbanese/e521 v0.0.30 h1:LGnadPxE3L0F4nf3EH/NsxhSIz0QLTXTT3Z7CMcfxdc=
 github.com/pedroalbanese/e521 v0.0.30/go.mod h1:yVgnpFuuMFc86MqpZq3jGz+P45buIpDbL43/x4ux61Q=
 github.com/pedroalbanese/eac v0.0.0-20250428171516-10a5a5e733cd h1:TLkF+8dJM3wr/xiObfFFoSEaMJKmKK19+a+8ZQEjODU=
@@ -157,6 +157,8 @@ github.com/pedroalbanese/lyra2re v0.0.0-20240520232624-5764a75dde63 h1:+XEkoqqSw
 github.com/pedroalbanese/lyra2re v0.0.0-20240520232624-5764a75dde63/go.mod h1:bEuOFddm39XiU3VS0N/TBoh2xf87TTpfTyFdF2bsyqk=
 github.com/pedroalbanese/lyra2rev2 v0.0.0-20240608181906-fe968f886565 h1:KQMsPhBYq2xc6c7vt66FZKyhLn+kMDdb0RUOinCZPLE=
 github.com/pedroalbanese/lyra2rev2 v0.0.0-20240608181906-fe968f886565/go.mod h1:WzQCkJ6PKTEVXLB2crTSC5vlTzT8oWiokrv2ktSScGI=
+github.com/pedroalbanese/m511 v0.0.0-psi h1:1Zuq8U0xZfbdZIVTydsbjIIxnHBY7rLJ2X1mqAxoU58=
+github.com/pedroalbanese/m511 v0.0.0-psi/go.mod h1:MXrNHu5aDNbTrZCjdwnmH3ljWPsm1l+QeUJg4xu3bZQ=
 github.com/pedroalbanese/magenta v0.0.0-20241208214047-a79e5e9ef277 h1:aFEpvTY/438+a6hvI1yk3l+VamidGgKJ6BUENwbsM9Y=
 github.com/pedroalbanese/magenta v0.0.0-20241208214047-a79e5e9ef277/go.mod h1:ebf40cDfhkGdDrbzvYGLjAND6H4Z53TfVeRxSENbWrg=
 github.com/pedroalbanese/makwa-go v0.0.0-20240816162209-f803984910a2 h1:AyAUVVlkouW2SuTEb41FYda0fedppRFIzrH82s/o9n8=
@@ -173,8 +175,6 @@ github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75 h1:HebmTqQwgn/gC
 github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75/go.mod h1:dlllB0nX79F4Pfwaf5HOgrZ97nQE6ISo4lK2DHPZOlw=
 github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2 h1:7a6Pd91lxufXKJioCLW2tr9ZQqppKbVE0gXBYipUqw8=
 github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2/go.mod h1:IWXK6lfpkAL1e5YtIku4d+6cZNlxu7+NpABckKwaVC0=
-github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b h1:vYTR/DxOdzoaaT0SLkgAl8W07caWIauTY7DboGn036A=
-github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b/go.mod h1:yBu1efo/Rh/R8T/BEouh3QtLqXXioeI5MT8UZTUY5Uo=
 github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5 h1:aAP1McSRlLhwZLw/fq8yVlXQdYJFTD+ZYZa5x1Ef2cE=
 github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5/go.mod h1:gcomSeqoCX+TqezdqwWmawVM3fMYfkQzPQGvdD05oa0=
 github.com/pedroalbanese/present v0.0.0-20240325185615-de3b5340e616 h1:VW2Fk3abLMKk3OSgi7mwiOE1cOM3f0WIJZVqAQUBndQ=
@@ -205,6 +205,12 @@ github.com/pedroalbanese/skein v0.0.0-20230124182825-ffe5e4ff3827 h1:G/kNAvy3w24
 github.com/pedroalbanese/skein v0.0.0-20230124182825-ffe5e4ff3827/go.mod h1:J5wSYblFVORXYLHPm3JoIZfB8yd3VI7C2TIfLLddO/Y=
 github.com/pedroalbanese/skein-1 v0.0.0-20171112102903-d7f1022db390 h1:OTTGLPoKatDyEYGK0xzhoTdCdNK51yXB9dTwKobeV44=
 github.com/pedroalbanese/skein-1 v0.0.0-20171112102903-d7f1022db390/go.mod h1:xQQEatlQb9wuT6Wkhjheo7jz6ToP55zd8PB2pm+2mT0=
+github.com/pedroalbanese/smaz v0.0.0-alpha h1:IvrQwvCP6Uxo7uilo+N+y8/QiWQgSGimi6icEWsVp7I=
+github.com/pedroalbanese/smaz v0.0.0-alpha/go.mod h1:o/imcS0uWS8WpBw6eo3gVzVofIlvZ9gzi6q/Q2FryK8=
+github.com/pedroalbanese/snow2 v0.0.0-20260218161533-07cb78bac9fe h1:6RozW1rcnOVRFnGN94uAVjmuRE4xopjwvQBfUQ/luB8=
+github.com/pedroalbanese/snow2 v0.0.0-20260218161533-07cb78bac9fe/go.mod h1:7lS4mtZVVhgOA+zkuDH8BFNoxk6OOGfaRhA5PV28Omk=
+github.com/pedroalbanese/sosemanuk v0.0.0 h1:9C6r2X6TtRZaXsWNpSlMc+BCNm9mtWoJ0Tx8m5dFBpM=
+github.com/pedroalbanese/sosemanuk v0.0.0/go.mod h1:5qBVPYujUVj0XBRevPhg2/X0EvGGpUNrLtZc6eLyseE=
 github.com/pedroalbanese/spritz v0.0.0-20140823220804-e125bc694ec3 h1:5W1zZxV+ngctweXfDxZSKlL7QsXxu14BpQ5qkrtjgx8=
 github.com/pedroalbanese/spritz v0.0.0-20140823220804-e125bc694ec3/go.mod h1:JCWryqsBv4ENKm0gjitOXlt7kS++zEeMdNkMpvSvwXM=
 github.com/pedroalbanese/threefish v0.0.0-20230828205611-8dc287bb1622 h1:OCUTDZV5e4MBOem1u3do6HuIQj0dyJZhIGCR83d/2Fc=
