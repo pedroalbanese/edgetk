@@ -22461,7 +22461,10 @@ Subcommands:
 		file.Read(buf)
 		certPEM = buf
 		var certPemBlock, _ = pem.Decode([]byte(certPEM))
-		var certa, _ = smx509.ParseCertificate(certPemBlock.Bytes)
+		certa, err := smx509.ParseCertificate(certPemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse certificate:", err)
+		}
 
 		signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
 		if signature == "ECDSA-SHA256" || signature == "ECDSA-SHA384" || signature == "ECDSA-SHA512" {
@@ -22490,7 +22493,10 @@ Subcommands:
 			fmt.Printf("Public=%X\n", certaPublicKey)
 			os.Exit(0)
 		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "GOST2012") {
-			var certa, _ = gostx509.ParseCertificate(certPemBlock.Bytes)
+			certa, err := gostx509.ParseCertificate(certPemBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse GOST certificate:", err)
+			}
 			var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
 			fmt.Printf("Public.X=%X\n", certaPublicKey.X)
 			fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
@@ -22523,7 +22529,10 @@ Subcommands:
 			file.Read(buf)
 			certPEM = buf
 			var certPemBlock, _ = pem.Decode([]byte(certPEM))
-			var certa, _ = gostx509.ParseCertificate(certPemBlock.Bytes)
+			certa, err := gostx509.ParseCertificate(certPemBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse GOST certificate:", err)
+			}
 
 			if *pkey == "modulus" {
 				var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
@@ -22627,7 +22636,10 @@ Subcommands:
 		file.Read(buf)
 		certPEM = buf
 		var certPemBlock, _ = pem.Decode([]byte(certPEM))
-		var certa, _ = smx509.ParseCertificate(certPemBlock.Bytes)
+		certa, err := smx509.ParseCertificate(certPemBlock.Bytes)
+		if err != nil {
+			log.Fatal("Failed to parse certificate:", err)
+		}
 
 		pemData, err := ioutil.ReadFile(*cert)
 		if err != nil {
@@ -22715,7 +22727,10 @@ Subcommands:
 		} else if *alg == "ED25519" {
 			verifystatus = ed25519.Verify(publicKey.(ed25519.PublicKey), certa.RawTBSCertificate, certa.Signature)
 		} else if *alg == "GOST2012" {
-			var certa, _ = gostx509.ParseCertificate(certPemBlock.Bytes)
+			certa, err := gostx509.ParseCertificate(certPemBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse GOST certificate:", err)
+			}
 			signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
 			if signature == "GOST512" {
 				h = gost34112012512.New()
