@@ -81,7 +81,9 @@ import (
 	"time"
 	"unsafe"
 
-	"crypto/go.cypherpunks.su/gogost/v6/gost3410"
+	"gitverse.ru/uzer_007/gogost/v2/gost3410"
+	"gitverse.ru/uzer_007/gogost/v2/gosttls"
+	"gitverse.ru/uzer_007/gogost/v2/gostx509"
 	"gitee.com/Trisia/gotlcp/tlcp"
 	"github.com/RyuaNerin/elliptic2/nist"
 	"github.com/RyuaNerin/go-krypto/aria"
@@ -380,7 +382,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.21  26 Sep 2026")
+		fmt.Println("EDGE Toolkit v1.5.22  13 Nov 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -6569,50 +6571,6 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		public, err = DecodePublicKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		ciphertxt, err := public.EncryptAsn1([]byte(scanner), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", ciphertxt)
-		os.Exit(0)
-	}
-
-	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "ECDSA") {
-		var privatekey *ecdsa.PrivateKey
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		privatekey, err = DecodePrivateKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		str := string(scanner)
-		plaintxt, err := privatekey.DecryptAsn1([]byte(str))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", plaintxt)
-		os.Exit(0)
-	}
-
 	if *pkey == "keygen" && (strings.ToUpper(*alg) == "ECKCDSA") && ((*length == 224 || *length == 256 || *length == 384 || *length == 521 || *length == 283 || *length == 409 || *length == 571) || (*curveFlag == "secp224r1" || *curveFlag == "secp384r1" || *curveFlag == "secp521r1" || *curveFlag == "secp256r1" || *curveFlag == "sect283r1" || *curveFlag == "sect409r1" || *curveFlag == "sect571r1" || *curveFlag == "sect283k1" || *curveFlag == "sect409k1" || *curveFlag == "sect571k1")) {
 		privateKey, err := eckcdsa.GenerateKey(pubkeyCurve, rand.Reader)
 		if err != nil {
@@ -6852,50 +6810,6 @@ Subcommands:
 		randomArt := randomart.FromString(string(buf))
 		println(randomArt)
 
-		os.Exit(0)
-	}
-
-	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "ANSSI") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		public, err := DecodeANSSIPublicKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		ciphertxt, err := public.ToECDSA().EncryptAsn1([]byte(scanner), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", ciphertxt)
-		os.Exit(0)
-	}
-
-	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "ANSSI") {
-		var privatekey *frp256v1.PrivateKey
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		privatekey, err = DecodeANSSIPrivateKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		str := string(scanner)
-		plaintxt, err := privatekey.ToECDSAPrivateKey().DecryptAsn1([]byte(str))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", plaintxt)
 		os.Exit(0)
 	}
 
@@ -7324,60 +7238,6 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "KG") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		public, err := DecodeKGPublicKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		buf := bytes.NewBuffer(nil)
-		io.Copy(buf, inputfile)
-		scanner := string(buf.Bytes())
-
-		ecdsaPublic, err := public.ToECDSAPublic()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		ciphertxt, err := ecdsaPublic.EncryptAsn1([]byte(scanner), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", ciphertxt)
-		os.Exit(0)
-	}
-
-	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "KG") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		privatekey, err := DecodeKGPrivateKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		buf := bytes.NewBuffer(nil)
-		io.Copy(buf, inputfile)
-		scanner := string(buf.Bytes())
-
-		ecdsaPrivate, err := privatekey.ToECDSA()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		plaintxt, err := ecdsaPrivate.DecryptAsn1([]byte(scanner))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", plaintxt)
-		os.Exit(0)
-	}
-
 	if *pkey == "derive" && strings.ToUpper(*alg) == "BIP0340" {
 		var privatekey *bip0340.PrivateKey
 
@@ -7530,50 +7390,6 @@ Subcommands:
 		os.Exit(0)
 	}
 
-	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "KOBLITZ") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		public, err := DecodeKOBLITZPublicKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		ciphertxt, err := public.ToECDSA().EncryptAsn1([]byte(scanner), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", ciphertxt)
-		os.Exit(0)
-	}
-
-	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "KOBLITZ") {
-		var privatekey *secp256k1.PrivateKey
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		privatekey, err = DecodeKOBLITZPrivateKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		str := string(scanner)
-		plaintxt, err := privatekey.ToECDSAPrivateKey().DecryptAsn1([]byte(str))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", plaintxt)
-		os.Exit(0)
-	}
-
 	if *pkey == "sign" && (strings.ToUpper(*alg) == "KOBLITZ") {
 		var privatekey *secp256k1.PrivateKey
 		var h hash.Hash
@@ -7707,50 +7523,6 @@ Subcommands:
 		randomArt := randomart.FromString(string(buf))
 		println(randomArt)
 
-		os.Exit(0)
-	}
-
-	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "TOM") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		public, err := DecodeTomPublicKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		ciphertxt, err := public.ToECDSA().EncryptAsn1([]byte(scanner), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", ciphertxt)
-		os.Exit(0)
-	}
-
-	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "TOM") {
-		var privatekey *tom.PrivateKey
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		privatekey, err = DecodeTomPrivateKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		str := string(scanner)
-		plaintxt, err := privatekey.ToECDSAPrivateKey().DecryptAsn1([]byte(str))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", plaintxt)
 		os.Exit(0)
 	}
 
@@ -8071,50 +7843,6 @@ Subcommands:
 		randomArt := randomart.FromString(string(buf))
 		println(randomArt)
 
-		os.Exit(0)
-	}
-
-	if *pkey == "encrypt" && (strings.ToUpper(*alg) == "NUMS") {
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		public, err := DecodeNUMSPublicKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		ciphertxt, err := public.ToECDSA().EncryptAsn1([]byte(scanner), rand.Reader)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", ciphertxt)
-		os.Exit(0)
-	}
-
-	if *pkey == "decrypt" && (strings.ToUpper(*alg) == "NUMS") {
-		var privatekey *nums.PrivateKey
-		file, err := ioutil.ReadFile(*key)
-		if err != nil {
-			log.Fatal(err)
-		}
-		privatekey, err = DecodeNUMSPrivateKey(file)
-		if err != nil {
-			log.Fatal(err)
-		}
-		buf := bytes.NewBuffer(nil)
-		data := inputfile
-		io.Copy(buf, data)
-		scanner := string(buf.Bytes())
-		str := string(scanner)
-		plaintxt, err := privatekey.ToECDSAPrivateKey().DecryptAsn1([]byte(str))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%s", plaintxt)
 		os.Exit(0)
 	}
 
@@ -10425,7 +10153,7 @@ Subcommands:
 		}
 		gost341012256Pub := gost341012256Priv.Public()
 
-		privateStream, err := x509.MarshalPKCS8PrivateKey(gost341012256Priv)
+		privateStream, err := gostx509.MarshalPKCS8PrivateKey(gost341012256Priv)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -10448,7 +10176,7 @@ Subcommands:
 				log.Fatal(err)
 			}
 		}
-		publicStream, err := x509.MarshalPKIXPublicKey(gost341012256Pub)
+		publicStream, err := gostx509.MarshalPKIXPublicKey(gost341012256Pub)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -10522,7 +10250,7 @@ Subcommands:
 			privPEM = buf
 		}
 		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
-		var privKey, _ = x509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		var privKey, _ = gostx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
 		if err != nil {
 			log.Println(err)
 		}
@@ -10539,7 +10267,7 @@ Subcommands:
 		buf = make([]byte, info.Size())
 		file.Read(buf)
 		block, _ = pem.Decode(buf)
-		publicInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+		publicInterface, err := gostx509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -10590,7 +10318,7 @@ Subcommands:
 			privPEM = buf
 		}
 		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
-		var privKey, _ = x509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		var privKey, _ = gostx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
 		if err != nil {
 			log.Println(err)
 		}
@@ -10620,7 +10348,7 @@ Subcommands:
 		buf := make([]byte, info.Size())
 		file.Read(buf)
 		block, _ := pem.Decode(buf)
-		publicInterface, err := x509.ParsePKIXPublicKey(block.Bytes)
+		publicInterface, err := gostx509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -13025,6 +12753,7 @@ Subcommands:
 			parsers := []func([]byte) (interface{}, error){
 				func(b []byte) (interface{}, error) { return smx509.ParsePKCS8PrivateKey(b) },
 				func(b []byte) (interface{}, error) { return smx509.ParseECPrivateKey(b) },
+				func(b []byte) (interface{}, error) { return gostx509.ParsePKCS8PrivateKey(b) },
 				func(b []byte) (interface{}, error) { return x509.ParseECPrivateKey(b) },
 				func(b []byte) (interface{}, error) { return nums.ParsePrivateKey(b) },
 				func(b []byte) (interface{}, error) { return bign.ParsePrivateKey(b) },
@@ -13115,6 +12844,7 @@ Subcommands:
 
 			parsers := []func([]byte) (interface{}, error){
 				func(b []byte) (interface{}, error) { return smx509.ParsePKIXPublicKey(b) },
+				func(b []byte) (interface{}, error) { return gostx509.ParsePKIXPublicKey(b) },
 				func(b []byte) (interface{}, error) { return x509.ParsePKIXPublicKey(b) },
 				func(b []byte) (interface{}, error) { return nums.ParsePublicKey(b) },
 				func(b []byte) (interface{}, error) { return bign.ParsePublicKey(b) },
@@ -19471,12 +19201,12 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			priv, err = x509.ParsePKCS8PrivateKey(privKeyBytes)
+			priv, err = gostx509.ParsePKCS8PrivateKey(privKeyBytes)
 			if err != nil {
 				log.Fatal(err)
 			}
 		} else {
-			priv, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+			priv, err = gostx509.ParsePKCS8PrivateKey(block.Bytes)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -19485,7 +19215,7 @@ Subcommands:
 		gost341012256Priv := priv.(*gost3410.PrivateKey)
 		gost341012256Pub := gost341012256Priv.Public()
 
-		keyUsage := x509.KeyUsageDigitalSignature
+		keyUsage := gostx509.KeyUsageDigitalSignature
 
 		serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 160)
 		serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -19566,7 +19296,7 @@ Subcommands:
 		spki := hasher.Sum(nil)
 		spki = spki[:20]
 
-		template := x509.Certificate{
+		template := gostx509.Certificate{
 			SerialNumber: serialNumber,
 			Subject: pkix.Name{
 				CommonName:         name,
@@ -19587,7 +19317,7 @@ Subcommands:
 			NotAfter:  NotAfter,
 
 			KeyUsage:                    keyUsage,
-			ExtKeyUsage:                 []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+			ExtKeyUsage:                 []gostx509.ExtKeyUsage{gostx509.ExtKeyUsageClientAuth, gostx509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid:       true,
 			IsCA:                        true,
 			PermittedDNSDomainsCritical: true,
@@ -19595,9 +19325,9 @@ Subcommands:
 		}
 
 		template.IsCA = true
-		template.KeyUsage |= x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment | x509.KeyUsageDataEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageCRLSign
+		template.KeyUsage |= gostx509.KeyUsageContentCommitment | gostx509.KeyUsageKeyEncipherment | gostx509.KeyUsageDataEncipherment | gostx509.KeyUsageKeyAgreement | gostx509.KeyUsageCertSign | gostx509.KeyUsageCRLSign
 
-		derBytes, err := x509.CreateCertificate(
+		derBytes, err := gostx509.CreateCertificate(
 			rand.Reader,
 			&template, &template,
 			gost341012256Pub, &gost3410.PrivateKeyReverseDigest{Prv: gost341012256Priv},
@@ -19628,6 +19358,9 @@ Subcommands:
 
 		var block *pem.Block
 		block, _ = pem.Decode(buf)
+		if block == nil {
+			log.Fatal("no valid private key found")
+		}
 
 		var priva interface{}
 		var privKeyBytes []byte
@@ -19636,15 +19369,20 @@ Subcommands:
 			if err != nil {
 				log.Fatal(err)
 			}
-			priva, err = x509.ParsePKCS8PrivateKey(privKeyBytes)
+			priva, err = gostx509.ParsePKCS8PrivateKey(privKeyBytes)
 			if err != nil {
 				log.Fatal(err)
 			}
 		} else {
-			priva, err = x509.ParsePKCS8PrivateKey(block.Bytes)
+			priva, err = gostx509.ParsePKCS8PrivateKey(block.Bytes)
 			if err != nil {
 				log.Fatal(err)
 			}
+		}
+
+		privKey, ok := priva.(*gost3410.PrivateKey)
+		if !ok {
+			log.Fatal("chave privada não é GOST R 34.10-2012")
 		}
 
 		if *subj == "" {
@@ -19698,15 +19436,8 @@ Subcommands:
 			}
 		}
 
-		var sigalg x509.SignatureAlgorithm
-		if *length == 512 {
-			sigalg = x509.GOST512
-		} else {
-			sigalg = x509.GOST256
-		}
-
 		emailAddress := email
-		subj := pkix.Name{
+		subject := pkix.Name{
 			CommonName:         name,
 			SerialNumber:       number,
 			Country:            []string{country},
@@ -19717,18 +19448,140 @@ Subcommands:
 			StreetAddress:      []string{street},
 			PostalCode:         []string{postalcode},
 		}
-		rawSubj := subj.ToRDNSequence()
+		rawSubj := subject.ToRDNSequence()
 		rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
 			{Type: oidEmailAddress, Value: emailAddress},
 		})
+		asn1Subj, err := asn1.Marshal(rawSubj)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-		asn1Subj, _ := asn1.Marshal(rawSubj)
-		var template x509.CertificateRequest
+		pubKey := privKey.Public().(*gost3410.PublicKey)
 
-		template = x509.CertificateRequest{
-			RawSubject:         asn1Subj,
-			EmailAddresses:     []string{emailAddress},
-			SignatureAlgorithm: sigalg,
+		var curveOID, pubOID, sigOID asn1.ObjectIdentifier
+		var is512 bool
+		switch pubKey.C.Name {
+		case "id-tc26-gost-3410-2012-256-paramSetA":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 1}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 1}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			is512 = false
+		case "id-tc26-gost-3410-2012-256-paramSetB":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 2}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 1}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			is512 = false
+		case "id-tc26-gost-3410-2012-256-paramSetC":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 3}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 1}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			is512 = false
+		case "id-tc26-gost-3410-2012-256-paramSetD":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 4}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 1}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			is512 = false
+		case "id-tc26-gost-3410-2012-512-paramSetA":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 1}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 2}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+			is512 = true
+		case "id-tc26-gost-3410-2012-512-paramSetB":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 2}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 2}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+			is512 = true
+		case "id-tc26-gost-3410-2012-512-paramSetC":
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 3}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 2}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+			is512 = true
+		default:
+			curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 1}
+			pubOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 1}
+			sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			is512 = false
+		}
+
+		rawPub := pubKey.Raw()
+		octetPub, err := asn1.Marshal(asn1.RawValue{Class: 0, Tag: 4, IsCompound: false, Bytes: rawPub})
+		if err != nil {
+			log.Fatal(err)
+		}
+		curveOIDBytes, err := asn1.Marshal(curveOID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		spki := struct {
+			Algorithm pkix.AlgorithmIdentifier
+			PublicKey asn1.BitString
+		}{
+			Algorithm: pkix.AlgorithmIdentifier{
+				Algorithm:  pubOID,
+				Parameters: asn1.RawValue{FullBytes: curveOIDBytes},
+			},
+			PublicKey: asn1.BitString{Bytes: octetPub, BitLength: len(octetPub) * 8},
+		}
+		spkiDER, err := asn1.Marshal(spki)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		attrsDER, err := asn1.Marshal(asn1.RawValue{Class: 2, Tag: 0, IsCompound: true})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		cri := struct {
+			Version    int
+			Subject    asn1.RawValue
+			SPKI       asn1.RawValue
+			Attributes asn1.RawValue
+		}{
+			Version:    0,
+			Subject:    asn1.RawValue{FullBytes: asn1Subj},
+			SPKI:       asn1.RawValue{FullBytes: spkiDER},
+			Attributes: asn1.RawValue{FullBytes: attrsDER},
+		}
+		criDER, err := asn1.Marshal(cri)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		var hasher hash.Hash
+		if is512 {
+			hasher = gost34112012512.New()
+		} else {
+			hasher = gost34112012256.New()
+		}
+		hasher.Write(criDER)
+		digest := hasher.Sum(nil)
+		reverseBytes(digest)
+
+		signature, err := privKey.Sign(rand.Reader, digest, nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		sigOctet, err := asn1.Marshal(asn1.RawValue{Class: 0, Tag: 4, IsCompound: false, Bytes: signature})
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		csrOut := struct {
+			CRI       asn1.RawValue
+			SigAlg    pkix.AlgorithmIdentifier
+			Signature asn1.BitString
+		}{
+			CRI:       asn1.RawValue{FullBytes: criDER},
+			SigAlg:    pkix.AlgorithmIdentifier{Algorithm: sigOID},
+			Signature: asn1.BitString{Bytes: sigOctet, BitLength: len(sigOctet) * 8},
+		}
+		csrDER, err := asn1.Marshal(csrOut)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		var output *os.File
@@ -19742,8 +19595,7 @@ Subcommands:
 			defer file.Close()
 			output = file
 		}
-		csrBytes, _ := x509.CreateCertificateRequest(rand.Reader, &template, &gost3410.PrivateKeyReverseDigest{Prv: priva.(*gost3410.PrivateKey)})
-		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
+		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})
 		os.Exit(0)
 	}
 
@@ -19751,7 +19603,7 @@ Subcommands:
 		var certPEM []byte
 		var privPEM []byte
 
-		tls.GOSTInstall()
+		// ATENÇÃO: tls.GOSTInstall() foi removido — a v2 não requer patch no SDK.
 
 		file, err := os.Open(*key)
 		if err != nil {
@@ -19768,7 +19620,7 @@ Subcommands:
 		block, _ = pem.Decode(buf)
 
 		if block == nil {
-			errors.New("no valid private key found")
+			log.Fatal("no valid private key found")
 		}
 
 		var privKeyBytes []byte
@@ -19795,19 +19647,26 @@ Subcommands:
 		certPEM = buf
 
 		if *tcpip == "server" {
-			cert, err := tls.X509KeyPair(certPEM, privPEM)
+			// SUPOSIÇÃO: gosttls.X509KeyPair deve existir com assinatura análoga à do crypto/tls.
+			// Verifique no código-fonte da v2 se o nome é este.
+			cert, err := gosttls.X509KeyPair(certPEM, privPEM)
 			if err != nil {
 				log.Fatal(err)
 			}
-			cfg := tls.Config{Certificates: []tls.Certificate{cert}, ClientAuth: tls.RequireAnyClientCert, MinVersion: tls.VersionTLS13, MaxVersion: tls.VersionTLS13}
-			cfg.Rand = rand.Reader
+			cfg := gosttls.GOSTConfig(&gosttls.Config{
+				Certificates: []gosttls.Certificate{cert},
+				ClientAuth:   gosttls.RequireAnyClientCert,
+				MinVersion:   gosttls.VersionTLS13,
+				MaxVersion:   gosttls.VersionTLS13,
+			})
 
 			port := "8081"
 			if *iport != "" {
 				port = *iport
 			}
 
-			ln, err := tls.Listen("tcp", ":"+port, &cfg)
+			// SUPOSIÇÃO: gosttls.Listen existe e retorna net.Listener.
+			ln, err := gosttls.Listen("tcp", ":"+port, cfg)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -19820,7 +19679,11 @@ Subcommands:
 			}
 			defer ln.Close()
 
-			tlscon := conn.(*tls.Conn)
+			// gosttls.Conn deve implementar net.Conn, permitindo type assertion.
+			tlscon, ok := conn.(*gosttls.Conn)
+			if !ok {
+				log.Fatal("server: connection is not a gosttls.Conn")
+			}
 			err = tlscon.Handshake()
 			if err != nil {
 				log.Fatalf("server: handshake failed: %s", err)
@@ -19830,7 +19693,10 @@ Subcommands:
 			state := tlscon.ConnectionState()
 
 			for _, v := range state.PeerCertificates {
-				derBytes, err := x509.MarshalPKIXPublicKey(v.PublicKey)
+				// A v2 pode ter seu próprio marshaling de chave pública GOST.
+				// Se x509.MarshalPKIXPublicKey falhar com chaves GOST,
+				// use a função equivalente do pacote gost3410 ou gosttls.
+				derBytes, err := gostx509.MarshalPKIXPublicKey(v.PublicKey)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -19861,18 +19727,21 @@ Subcommands:
 		}
 
 		if *tcpip == "client" {
-			cert, err := tls.X509KeyPair(certPEM, privPEM)
+			cert, err := gosttls.X509KeyPair(certPEM, privPEM)
 			if err != nil {
 				log.Fatal(err)
 			}
-			cfg := tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true}
+			cfg := gosttls.GOSTConfig(&gosttls.Config{
+				Certificates:       []gosttls.Certificate{cert},
+				InsecureSkipVerify: true,
+			})
 
 			ipport := "127.0.0.1:8081"
 			if *iport != "" {
 				ipport = *iport
 			}
 
-			conn, err := tls.Dial("tcp", ipport, &cfg)
+			conn, err := gosttls.Dial("tcp", ipport, cfg)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -19881,9 +19750,6 @@ Subcommands:
 				fmt.Printf("Issuer: \n\t%s\n", cert.Issuer)
 				fmt.Printf("Subject: \n\t%s\n", cert.Subject)
 				fmt.Printf("Expiry: %s \n", cert.NotAfter.Format("Monday, 02-Jan-06 15:04:05 MST"))
-			}
-			if err != nil {
-				log.Fatal(err)
 			}
 			defer conn.Close()
 
@@ -20100,7 +19966,7 @@ Subcommands:
 			privPEM = buf
 		}
 		var privateKeyPemBlock, _ = pem.Decode([]byte(privPEM))
-		var privKey, _ = x509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
+		var privKey, _ = gostx509.ParsePKCS8PrivateKey(privateKeyPemBlock.Bytes)
 		if err != nil {
 			log.Println(err)
 		}
@@ -20257,6 +20123,9 @@ Subcommands:
 		parsers := []func([]byte) (interface{}, error){
 			func(b []byte) (interface{}, error) {
 				return smx509.ParsePKIXPublicKey(b)
+			},
+			func(b []byte) (interface{}, error) {
+				return gostx509.ParsePKIXPublicKey(b)
 			},
 			func(b []byte) (interface{}, error) {
 				return x509.ParsePKIXPublicKey(b)
@@ -22615,7 +22484,7 @@ Subcommands:
 			fmt.Printf("Public=%X\n", certaPublicKey)
 			os.Exit(0)
 		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "GOST2012") {
-			var certa, _ = x509.ParseCertificate(certPemBlock.Bytes)
+			var certa, _ = gostx509.ParseCertificate(certPemBlock.Bytes)
 			var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
 			fmt.Printf("Public.X=%X\n", certaPublicKey.X)
 			fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
@@ -22648,7 +22517,7 @@ Subcommands:
 			file.Read(buf)
 			certPEM = buf
 			var certPemBlock, _ = pem.Decode([]byte(certPEM))
-			var certa, _ = x509.ParseCertificate(certPemBlock.Bytes)
+			var certa, _ = gostx509.ParseCertificate(certPemBlock.Bytes)
 
 			if *pkey == "modulus" {
 				var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
@@ -22811,6 +22680,9 @@ Subcommands:
 		publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 		if err != nil {
 			publicKey, err = smx509.ParsePKIXPublicKey(block.Bytes)
+			if err != nil {
+				publicKey, err = gostx509.ParsePKIXPublicKey(block.Bytes)
+			}
 		}
 		if *alg == "EC" {
 			verifystatus = ecdsa.VerifyASN1(publicKey.(*ecdsa.PublicKey), hash_data, certa.Signature)
@@ -22837,7 +22709,7 @@ Subcommands:
 		} else if *alg == "ED25519" {
 			verifystatus = ed25519.Verify(publicKey.(ed25519.PublicKey), certa.RawTBSCertificate, certa.Signature)
 		} else if *alg == "GOST2012" {
-			var certa, _ = x509.ParseCertificate(certPemBlock.Bytes)
+			var certa, _ = gostx509.ParseCertificate(certPemBlock.Bytes)
 			signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
 			if signature == "GOST512" {
 				h = gost34112012512.New()
@@ -23360,26 +23232,207 @@ Subcommands:
 			log.Fatal("Failed to read certificate file:", err)
 		}
 
-		issuerKey, issuerCert, err := parsePrivateKeyAndCert(issuerKeyPEM, issuerCertPEM)
-		if err != nil {
-			log.Fatal("Failed to parse private key and certificate:", err)
-		}
-
-		revocationListTemplate := &x509.RevocationList{
-			RevokedCertificates: revokedCerts,
-			Number:              randomNumber,
-			ThisUpdate:          issuanceTime,
-			NextUpdate:          nextUpdateTime,
-		}
-
 		var crlBytes []byte
 		if strings.ToUpper(*alg) == "GOST2012" {
-			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, &gost3410.PrivateKeyReverseDigest{Prv: issuerKey.(*gost3410.PrivateKey)})
+			// --- Construção manual do CRL para GOST2012 ---
+			keyBlock, _ := pem.Decode(issuerKeyPEM)
+			if keyBlock == nil {
+				log.Fatal("Failed to decode private key PEM")
+			}
+			var keyBytes []byte
+			if IsEncryptedPEMBlock(keyBlock) {
+				keyBytes, err = DecryptPEMBlock(keyBlock, []byte(*pwd))
+				if err != nil {
+					log.Fatal("Failed to decrypt private key:", err)
+				}
+			} else {
+				keyBytes = keyBlock.Bytes
+			}
+			privInterface, err := gostx509.ParsePKCS8PrivateKey(keyBytes)
+			if err != nil {
+				log.Fatal("Failed to parse GOST private key:", err)
+			}
+			privKey, ok := privInterface.(*gost3410.PrivateKey)
+			if !ok {
+				log.Fatal("Private key is not GOST R 34.10-2012")
+			}
+
+			certBlock, _ := pem.Decode(issuerCertPEM)
+			if certBlock == nil {
+				log.Fatal("Failed to decode certificate PEM")
+			}
+			caCert, err := gostx509.ParseCertificate(certBlock.Bytes)
+			if err != nil {
+				log.Fatal("Failed to parse GOST certificate:", err)
+			}
+
+			// Determinar OIDs com base na curva
+			pubKey := privKey.Public().(*gost3410.PublicKey)
+			var curveOID, sigOID asn1.ObjectIdentifier
+			var is512 bool
+			switch pubKey.C.Name {
+			case "id-tc26-gost-3410-2012-256-paramSetA":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 1}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			case "id-tc26-gost-3410-2012-256-paramSetB":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 2}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			case "id-tc26-gost-3410-2012-256-paramSetC":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 3}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			case "id-tc26-gost-3410-2012-256-paramSetD":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 4}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}
+			case "id-tc26-gost-3410-2012-512-paramSetA":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 1}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+				is512 = true
+			case "id-tc26-gost-3410-2012-512-paramSetB":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 2}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+				is512 = true
+			case "id-tc26-gost-3410-2012-512-paramSetC":
+				curveOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 3}
+				sigOID = asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+				is512 = true
+			default:
+				log.Fatal("Unknown GOST curve:", pubKey.C.Name)
+			}
+			_ = curveOID
+
+			// Montar o TBSCertList
+			rawIssuer, err := asn1.Marshal(caCert.Subject.ToRDNSequence())
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			// Converter revokedCerts para a estrutura ASN.1 correta
+			type revokedCertASN struct {
+				SerialNumber   *big.Int
+				RevocationTime time.Time
+			}
+			var revokedASN []revokedCertASN
+			for _, rc := range revokedCerts {
+				revokedASN = append(revokedASN, revokedCertASN{
+					SerialNumber:   rc.SerialNumber,
+					RevocationTime: rc.RevocationTime.UTC(),
+				})
+			}
+
+			// --- Extensões do CRL ---
+			var extensions []pkix.Extension
+
+			// crlNumber (2.5.29.20) - obrigatório em CRL v2
+			crlNumberDER, err := asn1.Marshal(randomNumber)
+			if err != nil {
+				log.Fatal("Failed to marshal CRL number:", err)
+			}
+			extensions = append(extensions, pkix.Extension{
+				Id:    asn1.ObjectIdentifier{2, 5, 29, 20},
+				Value: crlNumberDER,
+			})
+
+			// authorityKeyIdentifier (2.5.29.35)
+			// Usa o SubjectKeyId do certificado da CA, se presente;
+			// caso contrário, calcula o SKI a partir da chave pública GOST.
+			var ski []byte
+			if len(caCert.SubjectKeyId) > 0 {
+				ski = caCert.SubjectKeyId
+			} else {
+				caPubKey := caCert.PublicKey.(*gost3410.PublicKey)
+				hasherSKI := gost34112012256.New()
+				hasherSKI.Write(caPubKey.Raw())
+				ski = hasherSKI.Sum(nil)[:20]
+			}
+
+			akiStruct := struct {
+				ID []byte `asn1:"optional,tag:0"`
+			}{
+				ID: ski,
+			}
+			akiDER, err := asn1.Marshal(akiStruct)
+			if err != nil {
+				log.Fatal("Failed to marshal AKI:", err)
+			}
+			extensions = append(extensions, pkix.Extension{
+				Id:    asn1.ObjectIdentifier{2, 5, 29, 35},
+				Value: akiDER,
+			})
+
+			tbs := struct {
+				Version             int              `asn1:"optional,default:0"`
+				Signature           pkix.AlgorithmIdentifier
+				Issuer              asn1.RawValue
+				ThisUpdate          time.Time
+				NextUpdate          time.Time        `asn1:"optional"`
+				RevokedCertificates []revokedCertASN `asn1:"optional"`
+				Extensions          []pkix.Extension `asn1:"optional,explicit,tag:0"`
+			}{
+				Version:             1, // v2 (PKIX off-by-one: 0=v1, 1=v2)
+				Signature:           pkix.AlgorithmIdentifier{Algorithm: sigOID},
+				Issuer:              asn1.RawValue{FullBytes: rawIssuer},
+				ThisUpdate:          issuanceTime,
+				NextUpdate:          nextUpdateTime,
+				RevokedCertificates: revokedASN,
+				Extensions:          extensions, 
+			}
+			tbsDER, err := asn1.Marshal(tbs)
+			if err != nil {
+				log.Fatal("Failed to marshal TBS:", err)
+			}
+
+			// Assinar o TBS
+			var hasher hash.Hash
+			if is512 {
+				hasher = gost34112012512.New()
+			} else {
+				hasher = gost34112012256.New()
+			}
+			hasher.Write(tbsDER)
+			digest := hasher.Sum(nil)
+			reverseBytes(digest)
+
+			signature, err := privKey.Sign(rand.Reader, digest, nil)
+			if err != nil {
+				log.Fatal("Failed to sign TBS:", err)
+			}
+
+			sigOctet, err := asn1.Marshal(asn1.RawValue{Class: 0, Tag: 4, IsCompound: false, Bytes: signature})
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			certList := struct {
+				TBS       asn1.RawValue
+				SigAlg    pkix.AlgorithmIdentifier
+				Signature asn1.BitString
+			}{
+				TBS:       asn1.RawValue{FullBytes: tbsDER},
+				SigAlg:    pkix.AlgorithmIdentifier{Algorithm: sigOID},
+				Signature: asn1.BitString{Bytes: sigOctet, BitLength: len(sigOctet) * 8},
+			}
+			crlBytes, err = asn1.Marshal(certList)
+			if err != nil {
+				log.Fatal("Failed to marshal CRL:", err)
+			}
 		} else {
+			// Caminho não-GOST: manter o código original
+			issuerKey, issuerCert, err := parsePrivateKeyAndCert(issuerKeyPEM, issuerCertPEM)
+			if err != nil {
+				log.Fatal("Failed to parse private key and certificate:", err)
+			}
+
+			revocationListTemplate := &x509.RevocationList{
+				RevokedCertificates: revokedCerts,
+				Number:              randomNumber,
+				ThisUpdate:          issuanceTime,
+				NextUpdate:          nextUpdateTime,
+			}
+
 			crlBytes, err = x509.CreateRevocationList(rand.Reader, revocationListTemplate, issuerCert, issuerKey)
-		}
-		if err != nil {
-			log.Fatal("Failed to create new CRL:", err)
+			if err != nil {
+				log.Fatal("Failed to create new CRL:", err)
+			}
 		}
 
 		pemBlock := &pem.Block{
@@ -23676,105 +23729,55 @@ Subcommands:
 		file.Read(buf)
 		certPEM = buf
 		var certPemBlock, _ = pem.Decode([]byte(certPEM))
-		var certa, _ = smx509.ParseCertificateRequest(certPemBlock.Bytes)
 
-		signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
-		if signature == "ECDSA-SHA256" || signature == "ECDSA-SHA384" || signature == "ECDSA-SHA512" {
-			*alg = "EC"
-		} else if signature == "99" {
-			*alg = "SM2"
-		} else if signature == "Ed25519" {
-			*alg = "ED25519"
-		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
-			*alg = "RSA"
-		} else if signature == "0" {
-			*alg = "GOST2012"
+		csr, err := ParseCertificateRequest(certPemBlock.Bytes)
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		if *pkey == "modulus" && strings.ToUpper(*alg) == "RSA" {
-			var certaPublicKey = certa.PublicKey.(*rsa.PublicKey)
-			fmt.Printf("Modulus=%X\n", certaPublicKey.N)
-			os.Exit(0)
-		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "EC" || strings.ToUpper(*alg) == "SM2") {
-			var certaPublicKey = certa.PublicKey.(*ecdsa.PublicKey)
-			fmt.Printf("Public.X=%X\n", certaPublicKey.X)
-			fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
-			os.Exit(0)
-		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "ED25519") {
-			var certaPublicKey = certa.PublicKey.(ed25519.PublicKey)
-			fmt.Printf("Public=%X\n", certaPublicKey)
-			os.Exit(0)
-		} else if *pkey == "modulus" && (strings.ToUpper(*alg) == "GOST2012") {
-			var certa, _ = x509.ParseCertificateRequest(certPemBlock.Bytes)
-			var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
-			fmt.Printf("Public.X=%X\n", certaPublicKey.X)
-			fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
-			os.Exit(0)
-		}
-
-		if *alg == "GOST2012" {
-			var certPEM []byte
-			file, err := os.Open(*cert)
-			if err != nil {
-				log.Fatal(err)
-			}
-			info, err := file.Stat()
-			if err != nil {
-				log.Fatal(err)
-			}
-			buf := make([]byte, info.Size())
-			file.Read(buf)
-			certPEM = buf
-			var certPemBlock, _ = pem.Decode([]byte(certPEM))
-
-			certa, _ := x509.ParseCertificateRequest(certPemBlock.Bytes)
-
-			if *pkey == "modulus" && (strings.ToUpper(*alg) == "GOST2012") {
-				var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
-				fmt.Printf("Public.X=%X\n", certaPublicKey.X)
-				fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
+		if pubKey, ok := csr.PublicKey.(*gost3410.PublicKey); ok {
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", pubKey.X)
+				fmt.Printf("Public.Y=%X\n", pubKey.Y)
 				os.Exit(0)
 			}
 
-			var certaPublicKey = certa.PublicKey.(*gost3410.PublicKey)
 			var buf2 bytes.Buffer
-			buf2.Grow(4096)
-
-			buf2.WriteString(fmt.Sprintf("Certificate:\n"))
+			buf2.WriteString("Certificate Request:\n")
 			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
-			printVersion(certa.Version, &buf2)
-			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Subject.CommonName))
-			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", certa.EmailAddresses))
-
-			buf2.WriteString(fmt.Sprintf("%8sCurve         : %s \n", "", certa.PublicKey.(*gost3410.PublicKey).C.Name))
-
+			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", csr.Subject.CommonName))
+			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", csr.EmailAddresses))
+			buf2.WriteString(fmt.Sprintf("%8sCurve         : %s \n", "", pubKey.C.Name))
 			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
-			printName(certa.Subject.Names, &buf2)
+			printName(csr.Subject.Names, &buf2)
 
-			x := certaPublicKey.X.Bytes()
-			c := []byte{}
-			c = append(c, x...)
+			x := pubKey.X.Bytes()
 			buf2.WriteString(fmt.Sprintf("%8sPub.X\n", ""))
-			splitz := SplitSubN(hex.EncodeToString(c), 2)
+			splitz := SplitSubN(hex.EncodeToString(x), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
 			}
-			y := certaPublicKey.Y.Bytes()
-			c = []byte{}
-			c = append(c, y...)
+
+			y := pubKey.Y.Bytes()
 			buf2.WriteString(fmt.Sprintf("%8sPub.Y\n", ""))
-			splitz = SplitSubN(hex.EncodeToString(c), 2)
+			splitz = SplitSubN(hex.EncodeToString(y), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
 			}
 
-			printSignature(certa.SignatureAlgorithm, certa.Signature, &buf2)
-			fmt.Print(buf2.String())
+			buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: GOST R 34.10-2012\n", ""))
+			buf2.WriteString(fmt.Sprintf("%4sSignature:\n", ""))
+			splitz = SplitSubN(hex.EncodeToString(csr.Signature), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				buf2.WriteString(fmt.Sprintf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":")))
+			}
 
+			fmt.Print(buf2.String())
 			os.Exit(0)
 		}
 
-		result, err := certinfo.CertificateRequestText(certa.ToX509())
+		// Caminho não-GOST: usar certinfo como antes
+		result, err := certinfo.CertificateRequestText(csrToStdlib(csr))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -26671,7 +26674,7 @@ func csrToCrt2() error {
 	if pemBlock == nil {
 		panic("pem.Decode failed")
 	}
-	caCRT, err := x509.ParseCertificate(pemBlock.Bytes)
+	caCRT, err := gostx509.ParseCertificate(pemBlock.Bytes)
 	if err != nil {
 		return err
 	}
@@ -26707,7 +26710,7 @@ func csrToCrt2() error {
 	if pemBlock == nil {
 		panic("pem.Decode failed")
 	}
-	clientCSR, err := x509.ParseCertificateRequest(pemBlock.Bytes)
+	clientCSR, err := ParseCertificateRequest(pemBlock.Bytes)
 	if err != nil {
 		return err
 	}
@@ -26751,7 +26754,7 @@ func csrToCrt2() error {
 		log.Fatalf("Failed to generate serial number: %v", err)
 	}
 
-	clientCRTTemplate := x509.Certificate{
+	clientCRTTemplate := gostx509.Certificate{
 		Signature:          clientCSR.Signature,
 		SignatureAlgorithm: clientCSR.SignatureAlgorithm,
 
@@ -26774,11 +26777,11 @@ func csrToCrt2() error {
 
 	var clientCRTRaw []byte
 
-	caPrivateKey, err := x509.ParsePKCS8PrivateKey(der)
+	caPrivateKey, err := gostx509.ParsePKCS8PrivateKey(der)
 	if err != nil {
 		return err
 	}
-	clientCRTRaw, err = x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT, clientCSR.PublicKey, &gost3410.PrivateKeyReverseDigest{Prv: caPrivateKey.(*gost3410.PrivateKey)})
+	clientCRTRaw, err = gostx509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT, clientCSR.PublicKey, &gost3410.PrivateKeyReverseDigest{Prv: caPrivateKey.(*gost3410.PrivateKey)})
 	if err != nil {
 		return err
 	}
@@ -27184,6 +27187,9 @@ func printKeyDetails(block *pem.Block) {
 	parsers := []func([]byte) (interface{}, error){
 		func(b []byte) (interface{}, error) {
 			return smx509.ParsePKIXPublicKey(b)
+		},
+		func(b []byte) (interface{}, error) {
+			return gostx509.ParsePKIXPublicKey(b)
 		},
 		func(b []byte) (interface{}, error) {
 			return x509.ParsePKIXPublicKey(b)
@@ -34058,6 +34064,253 @@ func DecodeKGPublicKey(pemBytes []byte) (*kg.PublicKey, error) {
 	}
 
 	return kg.ParsePKIXPublicKey(block.Bytes)
+}
+
+// CertificationRequest espelha x509.CertificateRequest com suporte a GOST.
+type CertificationRequest struct {
+	Raw                      []byte
+	RawTBSCertificateRequest []byte
+	RawSubjectPublicKeyInfo  []byte
+	RawSubject               []byte
+
+	Version            int
+	Signature          []byte
+	SignatureAlgorithm x509.SignatureAlgorithm
+
+	PublicKeyAlgorithm x509.PublicKeyAlgorithm
+	PublicKey          interface{}
+
+	Subject        pkix.Name
+	EmailAddresses []string
+}
+
+// ParseCertificateRequest parseia um CSR PKCS#10, com suporte a GOST R 34.10-2012.
+func ParseCertificateRequest(der []byte) (*CertificationRequest, error) {
+	// Estrutura externa do PKCS#10
+	var outer struct {
+		CRI       asn1.RawValue
+		SigAlg    pkix.AlgorithmIdentifier
+		Signature asn1.BitString
+	}
+	if _, err := asn1.Unmarshal(der, &outer); err != nil {
+		return nil, fmt.Errorf("asn1: %w", err)
+	}
+
+	csr := &CertificationRequest{
+		Raw:                      der,
+		RawTBSCertificateRequest: outer.CRI.FullBytes,
+		Signature:                outer.Signature.Bytes,
+	}
+
+	// Estrutura interna do CertificationRequestInfo
+	var cri struct {
+		Version    int
+		Subject    asn1.RawValue
+		SPKI       asn1.RawValue
+		Attributes asn1.RawValue `asn1:"optional,tag:0"`
+	}
+	if _, err := asn1.Unmarshal(outer.CRI.FullBytes, &cri); err != nil {
+		return nil, fmt.Errorf("asn1: %w", err)
+	}
+	csr.Version = cri.Version
+	csr.RawSubject = cri.Subject.FullBytes
+	csr.RawSubjectPublicKeyInfo = cri.SPKI.FullBytes
+
+	// Subject
+	var rdns pkix.RDNSequence
+	if _, err := asn1.Unmarshal(cri.Subject.FullBytes, &rdns); err != nil {
+		return nil, fmt.Errorf("asn1: %w", err)
+	}
+	var subject pkix.Name
+	subject.FillFromRDNSequence(&rdns)
+	csr.Subject = subject
+
+	// EmailAddresses (extrai do Subject)
+	for _, atv := range subject.ExtraNames {
+		if atv.Type.Equal(oidEmailAddress) {
+			if s, ok := atv.Value.(string); ok {
+				csr.EmailAddresses = append(csr.EmailAddresses, s)
+			}
+		}
+	}
+
+	// SubjectPublicKeyInfo
+	var spki struct {
+		Algorithm pkix.AlgorithmIdentifier
+		PublicKey asn1.BitString
+	}
+	if _, err := asn1.Unmarshal(cri.SPKI.FullBytes, &spki); err != nil {
+		return nil, fmt.Errorf("asn1: %w", err)
+	}
+
+	oidGOST256 := asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 1}
+	oidGOST512 := asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 1, 2}
+	isGOST := spki.Algorithm.Algorithm.Equal(oidGOST256) || spki.Algorithm.Algorithm.Equal(oidGOST512)
+
+	if isGOST {
+		csr.PublicKeyAlgorithm = x509.UnknownPublicKeyAlgorithm
+
+		pubKeyBytes := spki.PublicKey.Bytes
+		if len(pubKeyBytes) < 2 || pubKeyBytes[0] != 0x04 {
+			return nil, fmt.Errorf("formato de chave pública GOST inesperado")
+		}
+		rawKey := pubKeyBytes[2:]
+
+		var curve *gost3410.Curve
+		var paramOID asn1.ObjectIdentifier
+		if spki.Algorithm.Parameters.FullBytes != nil {
+			if _, err := asn1.Unmarshal(spki.Algorithm.Parameters.FullBytes, &paramOID); err != nil {
+				return nil, fmt.Errorf("asn1: %w", err)
+			}
+		}
+		switch {
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 1}):
+			curve = gost3410.CurveIdtc26gost341012256paramSetA()
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 2}):
+			curve = gost3410.CurveIdtc26gost341012256paramSetB()
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 3}):
+			curve = gost3410.CurveIdtc26gost341012256paramSetC()
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 1, 4}):
+			curve = gost3410.CurveIdtc26gost341012256paramSetD()
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 1}):
+			curve = gost3410.CurveIdtc26gost341012512paramSetA()
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 2}):
+			curve = gost3410.CurveIdtc26gost341012512paramSetB()
+		case paramOID.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 2, 1, 2, 3}):
+			curve = gost3410.CurveIdtc26gost341012512paramSetC()
+		default:
+			curve = gost3410.CurveIdtc26gost341012256paramSetA()
+		}
+
+		pubKey, err := gost3410.NewPublicKey(curve, rawKey)
+		if err != nil {
+			return nil, fmt.Errorf("gost3410: %w", err)
+		}
+		csr.PublicKey = pubKey
+
+		// Mapear OID de assinatura para x509.SignatureAlgorithm
+		switch {
+		case outer.SigAlg.Algorithm.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 2}):
+			csr.SignatureAlgorithm = x509.UnknownSignatureAlgorithm
+		case outer.SigAlg.Algorithm.Equal(asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}):
+			csr.SignatureAlgorithm = x509.UnknownSignatureAlgorithm
+		default:
+			csr.SignatureAlgorithm = x509.UnknownSignatureAlgorithm
+		}
+
+		return csr, nil
+	}
+
+	// Caminho não-GOST: delegar ao x509 padrão
+	std, err := x509.ParseCertificateRequest(der)
+	if err != nil {
+		return nil, err
+	}
+	csr.Version = std.Version
+	csr.Signature = std.Signature
+	csr.SignatureAlgorithm = std.SignatureAlgorithm
+	csr.PublicKeyAlgorithm = std.PublicKeyAlgorithm
+	csr.PublicKey = std.PublicKey
+	csr.Subject = std.Subject
+	csr.EmailAddresses = std.EmailAddresses
+	csr.Raw = std.Raw
+	csr.RawTBSCertificateRequest = std.RawTBSCertificateRequest
+	csr.RawSubjectPublicKeyInfo = std.RawSubjectPublicKeyInfo
+	csr.RawSubject = std.RawSubject
+
+	return csr, nil
+}
+
+func csrToStdlib(csr *CertificationRequest) *x509.CertificateRequest {
+	return &x509.CertificateRequest{
+		Raw:                      csr.Raw,
+		RawTBSCertificateRequest: csr.RawTBSCertificateRequest,
+		RawSubjectPublicKeyInfo:  csr.RawSubjectPublicKeyInfo,
+		RawSubject:               csr.RawSubject,
+		Version:                  csr.Version,
+		Signature:                csr.Signature,
+		SignatureAlgorithm:       csr.SignatureAlgorithm,
+		PublicKeyAlgorithm:       csr.PublicKeyAlgorithm,
+		PublicKey:                csr.PublicKey,
+		Subject:                  csr.Subject,
+		EmailAddresses:           csr.EmailAddresses,
+	}
+}
+
+func (csr *CertificationRequest) CheckSignature() error {
+	pub, ok := csr.PublicKey.(*gost3410.PublicKey)
+	if !ok {
+		return fmt.Errorf("chave pública não é GOST")
+	}
+
+	// A assinatura no PKCS#10 está embrulhada em OCTET STRING (04 40 + 64 bytes).
+	// O gost3410.VerifyDigest espera os 64 bytes crus.
+	sigBytes := csr.Signature
+	if len(sigBytes) < 2 || sigBytes[0] != 0x04 {
+		return fmt.Errorf("formato de assinatura GOST inesperado (esperado OCTET STRING)")
+	}
+	// Pular a tag 0x04 e o comprimento (0x40 para 64 bytes)
+	rawSig := sigBytes[2:]
+
+	var hasher hash.Hash
+	switch pub.C.Name {
+	case "id-tc26-gost-3410-2012-512-paramSetA", "id-tc26-gost-3410-2012-512-paramSetB", "id-tc26-gost-3410-2012-512-paramSetC":
+		hasher = gost34112012512.New()
+	default:
+		hasher = gost34112012256.New()
+	}
+	hasher.Write(csr.RawTBSCertificateRequest)
+	digest := hasher.Sum(nil)
+	reverseBytes(digest)
+
+	valid, err := pub.VerifyDigest(digest, rawSig)
+	if err != nil {
+		return err
+	}
+	if !valid {
+		return fmt.Errorf("assinatura do CSR inválida")
+	}
+	return nil
+}
+
+func parsePrivateKeyAndCertGOST(keyPEM, certPEM []byte) (crypto.Signer, *gostx509.Certificate, error) {
+	keyBlock, _ := pem.Decode(keyPEM)
+	if keyBlock == nil {
+		return nil, nil, fmt.Errorf("failed to decode private key PEM")
+	}
+
+	var keyBytes []byte
+	var err error
+	if IsEncryptedPEMBlock(keyBlock) {
+		keyBytes, err = DecryptPEMBlock(keyBlock, []byte(*pwd))
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to decrypt private key: %w", err)
+		}
+	} else {
+		keyBytes = keyBlock.Bytes
+	}
+
+	privInterface, err := gostx509.ParsePKCS8PrivateKey(keyBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse GOST private key: %w", err)
+	}
+
+	privKey, ok := privInterface.(*gost3410.PrivateKey)
+	if !ok {
+		return nil, nil, fmt.Errorf("chave privada não é GOST R 34.10-2012")
+	}
+
+	certBlock, _ := pem.Decode(certPEM)
+	if certBlock == nil {
+		return nil, nil, fmt.Errorf("failed to decode certificate PEM")
+	}
+
+	cert, err := gostx509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse GOST certificate: %w", err)
+	}
+
+	return &gost3410.PrivateKeyReverseDigest{Prv: privKey}, cert, nil
 }
 
 func isHexDump(input string) bool {
