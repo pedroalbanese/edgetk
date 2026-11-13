@@ -5,12 +5,16 @@ package main
 import (
 	"bytes"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/pem"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pedroalbanese/e521"
 )
 
 // The tests run the command itself: the test binary starts again with
@@ -84,14 +88,26 @@ func TestPkeyReportsCertificateParseError(t *testing.T) {
 	cut := readCertificate(t, itiV5).Bytes
 	truncated := writePEM(t, "truncated.crt", "CERTIFICATE", cut[:len(cut)/2])
 
+	// The v7 root with its three algorithm OIDs changed to 1.3.6.1.4.1.44588.2.2,
+	// which nothing implements: it is read as a certificate, and then no
+	// parser knows its key.
+	oid := []byte{0x06, 0x0a, 0x2b, 0x06, 0x01, 0x04, 0x01, 0x82, 0xdc, 0x2c, 0x02, 0x01}
+	other := append([]byte(nil), oid...)
+	other[len(other)-1] = 0x02
+	v7 := readCertificate(t, itiV7).Bytes
+	if bytes.Count(v7, oid) != 3 {
+		t.Fatalf("%s: %d Ed521 OIDs, want 3", itiV7, bytes.Count(v7, oid))
+	}
+	unknown := writePEM(t, "unknown.crt", "CERTIFICATE", bytes.ReplaceAll(v7, oid, other))
+
 	tests := []struct {
 		name string
 		args []string
 		want string
 	}{
-		{"text/ed521", []string{"-pkey", "text", "-cert", itiV7}, "Failed to parse GOST certificate:"},
-		{"modulus/ed521", []string{"-pkey", "modulus", "-cert", itiV7}, "Failed to parse GOST certificate:"},
-		{"check/ed521", []string{"-pkey", "check", "-cert", itiV7, "-key", itiV7}, "Failed to parse GOST certificate:"},
+		{"text/unknown", []string{"-pkey", "text", "-cert", unknown}, "Failed to parse GOST certificate:"},
+		{"modulus/unknown", []string{"-pkey", "modulus", "-cert", unknown}, "Failed to parse GOST certificate:"},
+		{"check/unknown", []string{"-pkey", "check", "-cert", unknown, "-key", unknown}, "Failed to parse GOST certificate:"},
 		{"text/truncated", []string{"-pkey", "text", "-cert", truncated}, "Failed to parse certificate:"},
 		{"modulus/truncated", []string{"-pkey", "modulus", "-cert", truncated}, "Failed to parse certificate:"},
 		{"check/truncated", []string{"-pkey", "check", "-cert", truncated, "-key", truncated}, "Failed to parse certificate:"},
@@ -150,5 +166,102 @@ func TestPkeyReadsRSACertificate(t *testing.T) {
 	out, status = edgetk(t, "-pkey", "check", "-cert", bad, "-key", pub)
 	if status != 1 || !strings.Contains(out, "Verified: false") {
 		t.Errorf("-pkey check with an altered signature: status %d\n%s", status, out)
+	}
+}
+
+// The ICP-Brasil v7 root is an Ed521 certificate: it is printed, and its
+// signature is checked with the Ed521 public key given in -key.
+func TestPkeyReadsEd521Certificate(t *testing.T) {
+	der := readCertificate(t, itiV7).Bytes
+	var certificate struct {
+		TBSCertificate struct {
+			Version      int `asn1:"optional,explicit,default:0,tag:0"`
+			SerialNumber asn1.RawValue
+			Signature    pkix.AlgorithmIdentifier
+			Issuer       asn1.RawValue
+			Validity     asn1.RawValue
+			Subject      asn1.RawValue
+			PublicKey    asn1.RawValue
+			Extensions   asn1.RawValue `asn1:"optional,explicit,tag:3"`
+		}
+		SignatureAlgorithm pkix.AlgorithmIdentifier
+		SignatureValue     asn1.BitString
+	}
+	if _, err := asn1.Unmarshal(der, &certificate); err != nil {
+		t.Fatal(err)
+	}
+	pub := writePEM(t, "v7-public.pem", "PUBLIC KEY", certificate.TBSCertificate.PublicKey.FullBytes)
+
+	out, _ := edgetk(t, "-pkey", "text", "-cert", itiV7)
+	for _, want := range []string{
+		"Curve         : E-521",
+		"Autoridade Certificadora Raiz Brasileira v7",
+		"Not After : Dec 28 12:00:35 2038 UTC",
+		"SubjectKeyId  : 75513119e1c71321873e415fa31be67bfdb0d9c8",
+		"Signature Algorithm: Ed521",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("-pkey text lacks %q:\n%s", want, out)
+		}
+	}
+
+	out, status := edgetk(t, "-pkey", "modulus", "-cert", itiV7)
+	if status != 0 || !strings.HasPrefix(out, "Public.X=23EDDDD643698636") || !strings.Contains(out, "\nPublic.Y=12CE0B0C0EEAC841") {
+		t.Errorf("-pkey modulus: status %d\n%s", status, out)
+	}
+
+	out, status = edgetk(t, "-pkey", "check", "-cert", itiV7, "-key", pub)
+	if status != 0 || !strings.Contains(out, "Verified: true") {
+		t.Errorf("-pkey check: status %d\n%s", status, out)
+	}
+
+	// The last octet of the signature altered: the check refuses it.
+	tampered := append([]byte(nil), der...)
+	tampered[len(tampered)-1] ^= 0x01
+	bad := writePEM(t, "v7-bad-signature.crt", "CERTIFICATE", tampered)
+	out, status = edgetk(t, "-pkey", "check", "-cert", bad, "-key", pub)
+	if status != 1 || !strings.Contains(out, "Verified: false") {
+		t.Errorf("-pkey check with an altered signature: status %d\n%s", status, out)
+	}
+
+	// One octet of the signed part altered (the last of the serial number).
+	serial := certificate.TBSCertificate.SerialNumber.FullBytes
+	at := bytes.Index(der, serial) + len(serial) - 1
+	tampered = append([]byte(nil), der...)
+	tampered[at] ^= 0x01
+	bad = writePEM(t, "v7-bad-serial.crt", "CERTIFICATE", tampered)
+	out, status = edgetk(t, "-pkey", "check", "-cert", bad, "-key", pub)
+	if status != 1 || !strings.Contains(out, "Verified: false") {
+		t.Errorf("-pkey check with an altered serial number: status %d\n%s", status, out)
+	}
+
+	// Another Ed521 key does not verify it.
+	priv, err := e521.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	spki, err := priv.GetPublic().MarshalPKCS8PublicKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stranger := writePEM(t, "stranger.pem", "PUBLIC KEY", spki)
+	out, status = edgetk(t, "-pkey", "check", "-cert", itiV7, "-key", stranger)
+	if status != 1 || !strings.Contains(out, "Verified: false") {
+		t.Errorf("-pkey check with another key: status %d\n%s", status, out)
+	}
+
+	// A key of another algorithm is refused with a message.
+	v5, err := x509.ParseCertificate(readCertificate(t, itiV5).Bytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	spki, err = x509.MarshalPKIXPublicKey(v5.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rsaKey := writePEM(t, "v5-public.pem", "PUBLIC KEY", spki)
+	out, status = edgetk(t, "-pkey", "check", "-cert", itiV7, "-key", rsaKey)
+	if status != 1 || !strings.Contains(out, "Public key is not E-521") || strings.Contains(out, "panic:") {
+		t.Errorf("-pkey check with an RSA key: status %d\n%s", status, out)
 	}
 }
