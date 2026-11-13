@@ -20286,6 +20286,9 @@ Subcommands:
 				return smx509.ParsePKIXPublicKey(b)
 			},
 			func(b []byte) (interface{}, error) {
+				return gostx509.ParsePKIXPublicKey(b)
+			},
+			func(b []byte) (interface{}, error) {
 				return x509.ParsePKIXPublicKey(b)
 			},
 			func(b []byte) (interface{}, error) {
@@ -20411,6 +20414,9 @@ Subcommands:
 		parsers := []func([]byte) (interface{}, error){
 			func(b []byte) (interface{}, error) {
 				return smx509.ParsePKIXPublicKey(b)
+			},
+			func(b []byte) (interface{}, error) {
+				return gostx509.ParsePKIXPublicKey(b)
 			},
 			func(b []byte) (interface{}, error) {
 				return x509.ParsePKIXPublicKey(b)
