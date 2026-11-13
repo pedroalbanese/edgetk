@@ -1,8 +1,6 @@
 module github.com/pedroalbanese/edgetk
 
-go 1.23.0
-
-toolchain go1.23.3
+go 1.27.1
 
 require (
 	gitee.com/Trisia/gotlcp v1.3.17
@@ -35,10 +33,10 @@ require (
 	github.com/pedroalbanese/crystals-go v0.0.0-20240315230756-81011b679705
 	github.com/pedroalbanese/cubehash v0.0.0
 	github.com/pedroalbanese/cubehash256 v0.0.0-20240403151932-00980243a56a
-	github.com/pedroalbanese/curupira1 v0.0.0-gama
+	github.com/pedroalbanese/curupira1 v0.0.5
 	github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
-	github.com/pedroalbanese/e521 v0.0.30
+	github.com/pedroalbanese/e521 v0.1.0
 	github.com/pedroalbanese/eac v0.0.0-20250428171516-10a5a5e733cd
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
@@ -84,6 +82,7 @@ require (
 	github.com/pedroalbanese/noekeon v0.0.0-20240325185408-f90c60f5190f
 	github.com/pedroalbanese/ocb v0.0.0-20230501153203-7d2a80fe6a75
 	github.com/pedroalbanese/ocb3 v0.0.0-20250818172449-cf949c2a64b2
+	github.com/pedroalbanese/panama v0.0.0-20240325185906-f9d6500cb56b
 	github.com/pedroalbanese/pmac v0.0.0-20240715205711-f4d312cbf6c5
 	github.com/pedroalbanese/present v0.0.0-20240325185615-de3b5340e616
 	github.com/pedroalbanese/rabbitio v0.0.0-20230209212404-cffc97bafde8
@@ -112,23 +111,27 @@ require (
 	github.com/pedroalbanese/xxencode v0.0.15
 	github.com/trailofbits/lms-go v0.0.0-20250218220503-d2f2806cebf9
 	github.com/zeebo/blake3 v0.2.3
-	golang.org/x/crypto v0.45.0
+	golang.org/x/crypto v0.58.0
 	golang.org/x/term v0.32.0
 )
 
 require (
 	github.com/codahale/makwa v0.0.0-20141227225204-3dbfaeed5fdb // indirect
+	github.com/go-crypt/x v0.4.16 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.12 // indirect
 	github.com/pedroalbanese/blake256 v0.0.0-20170713140427-6aca07c5447e // indirect
 	github.com/pedroalbanese/bmw256 v0.0.0-20240403151626-135f0d278f9f // indirect
-	github.com/pedroalbanese/curupira2 v0.0.7
+	github.com/pedroalbanese/curupira2 v0.0.7 // indirect
 	github.com/pedroalbanese/groestl-1 v0.0.0-20230125170437-46d496027e3d // indirect
-	github.com/pedroalbanese/m511 v0.0.0-psi
-	github.com/pedroalbanese/smaz v0.0.0-alpha
-	github.com/pedroalbanese/snow2 v0.0.0-20260218161533-07cb78bac9fe
-	github.com/pedroalbanese/sosemanuk v0.0.0
+	github.com/pedroalbanese/m511 v0.0.0-psi // indirect
+	github.com/pedroalbanese/smaz v0.0.0-alpha // indirect
+	github.com/pedroalbanese/snow v0.0.0-20260216235134-5bbc157a8684 // indirect
+	github.com/pedroalbanese/snow2 v0.0.0-20260217194013-b1efb030e56b // indirect
+	github.com/pedroalbanese/sosemanuk v0.0.0-20260211232824-175382c51a85 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	golang.org/x/sys v0.38.0 // indirect
+	gitverse.ru/uzer_007/gobase64 v1.2.0 // indirect
+	gitverse.ru/uzer_007/gogost/v2 v2.8.2 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 )
 
 replace golang.org/x/crypto => golang.org/x/crypto v0.38.0
