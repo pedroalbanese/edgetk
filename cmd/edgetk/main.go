@@ -22541,6 +22541,36 @@ Subcommands:
 				os.Exit(0)
 			}
 
+			// --- Extrair OID do SignatureAlgorithm diretamente do certificado bruto ---
+			// Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm, signatureValue }
+			// signatureAlgorithm é um AlgorithmIdentifier (SEQUENCE { algorithm OID, parameters OPTIONAL })
+			type certificateASN1 struct {
+				TBSCertificate     asn1.RawValue
+				SignatureAlgorithm asn1.RawValue
+				SignatureValue     asn1.BitString
+			}
+			var certASN1 certificateASN1
+			if _, err := asn1.Unmarshal(certPemBlock.Bytes, &certASN1); err != nil {
+				log.Fatal("Failed to unmarshal certificate ASN.1:", err)
+			}
+
+			type algorithmIdentifier struct {
+				Algorithm  asn1.ObjectIdentifier
+				Parameters asn1.RawValue `asn1:"optional"`
+			}
+			var sigAlg algorithmIdentifier
+			if _, err := asn1.Unmarshal(certASN1.SignatureAlgorithm.FullBytes, &sigAlg); err != nil {
+				log.Fatal("Failed to unmarshal signature algorithm:", err)
+			}
+
+			oidGost512 := asn1.ObjectIdentifier{1, 2, 643, 7, 1, 1, 3, 3}
+			var sigAlgName string
+			if sigAlg.Algorithm.Equal(oidGost512) {
+				sigAlgName = "GOST R 34.10-2012 (512 bit)"
+			} else {
+				sigAlgName = "GOST R 34.10-2012 (256 bit)"
+			}
+
 			var buf2 bytes.Buffer
 			buf2.Grow(4096)
 
@@ -22584,7 +22614,15 @@ Subcommands:
 			buf2.WriteString(fmt.Sprintf("%8sSubjectKeyId  : %x \n", "", certa.SubjectKeyId))
 			buf2.WriteString(fmt.Sprintf("%8sAuthorityKeyId: %x \n", "", certa.AuthorityKeyId))
 
-			printSignature(certa.SignatureAlgorithm, certa.Signature, &buf2)
+			// --- Exibição baseada em OID (substitui printSignature) ---
+			buf2.WriteString(fmt.Sprintf("%8sSignature Algorithm: %s\n", "", sigAlgName))
+			buf2.WriteString(fmt.Sprintf("%8sSignature Value:\n", ""))
+			sigHex := hex.EncodeToString(certa.Signature)
+			splitSig := SplitSubN(sigHex, 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitSig), "[]"), 45) {
+				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
+			}
+
 			fmt.Print(buf2.String())
 
 			ok := time.Now().Before(certa.NotAfter)
@@ -22732,7 +22770,7 @@ Subcommands:
 				log.Fatal("Failed to parse GOST certificate:", err)
 			}
 			signature := fmt.Sprintf("%s", certa.SignatureAlgorithm)
-			if signature == "GOST512" {
+			if signature == "1018" {
 				h = gost34112012512.New()
 			} else {
 				h = gost34112012256.New()
@@ -34173,7 +34211,7 @@ func ParseCertificateRequest(der []byte) (*CertificationRequest, error) {
 
 		pubKeyBytes := spki.PublicKey.Bytes
 		if len(pubKeyBytes) < 2 || pubKeyBytes[0] != 0x04 {
-			return nil, fmt.Errorf("formato de chave pública GOST inesperado")
+			return nil, fmt.Errorf("unexpected GOST public key format")
 		}
 		rawKey := pubKeyBytes[2:]
 
@@ -34261,16 +34299,16 @@ func csrToStdlib(csr *CertificationRequest) *x509.CertificateRequest {
 func (csr *CertificationRequest) CheckSignature() error {
 	pub, ok := csr.PublicKey.(*gost3410.PublicKey)
 	if !ok {
-		return fmt.Errorf("chave pública não é GOST")
+		return fmt.Errorf("public key is not GOST")
 	}
 
-	// A assinatura no PKCS#10 está embrulhada em OCTET STRING (04 40 + 64 bytes).
-	// O gost3410.VerifyDigest espera os 64 bytes crus.
+	// The signature in PKCS#10 is wrapped in an OCTET STRING (04 40 + 64 bytes).
+	// gost3410.VerifyDigest expects the raw 64 bytes.
 	sigBytes := csr.Signature
 	if len(sigBytes) < 2 || sigBytes[0] != 0x04 {
-		return fmt.Errorf("formato de assinatura GOST inesperado (esperado OCTET STRING)")
+		return fmt.Errorf("unexpected GOST signature format (expected OCTET STRING)")
 	}
-	// Pular a tag 0x04 e o comprimento (0x40 para 64 bytes)
+	// Skip the 0x04 tag and the length (0x40 for 64 bytes)
 	rawSig := sigBytes[2:]
 
 	var hasher hash.Hash
@@ -34289,7 +34327,7 @@ func (csr *CertificationRequest) CheckSignature() error {
 		return err
 	}
 	if !valid {
-		return fmt.Errorf("assinatura do CSR inválida")
+		return fmt.Errorf("invalid CSR signature")
 	}
 	return nil
 }
