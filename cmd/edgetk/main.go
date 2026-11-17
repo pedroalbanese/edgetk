@@ -22615,12 +22615,11 @@ Subcommands:
 			buf2.WriteString(fmt.Sprintf("%8sAuthorityKeyId: %x \n", "", certa.AuthorityKeyId))
 
 			// --- Exibição baseada em OID (substitui printSignature) ---
-			buf2.WriteString(fmt.Sprintf("%8sSignature Algorithm: %s\n", "", sigAlgName))
-			buf2.WriteString(fmt.Sprintf("%8sSignature Value:\n", ""))
+			buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "", sigAlgName))
 			sigHex := hex.EncodeToString(certa.Signature)
 			splitSig := SplitSubN(sigHex, 2)
-			for _, chunk := range split(strings.Trim(fmt.Sprint(splitSig), "[]"), 45) {
-				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitSig), "[]"), 54) {
+				buf2.WriteString(fmt.Sprintf("         %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
 			}
 
 			fmt.Print(buf2.String())
