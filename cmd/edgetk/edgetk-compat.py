@@ -556,49 +556,61 @@ def load_encrypted_private_key(priv_path, password):
     return priv_obj
 
 # =========================
-# ED521 IMPLEMENTATION
+# ED521 IMPLEMENTATION (Fiel ao e521.py)
 # =========================
 
 import struct
 from hashlib import shake_256
 from typing import Tuple, Optional
 
-# Parâmetros da curva E-521 (exatamente como no código Go)
+# Parâmetros da curva E-521 (idênticos ao Go)
 P = int("6864797660130609714981900799081393217269435300143305409394463459185543183397656052122559640661454554977296311391480858037121987999716643812574028291115057151")
 N = int("1716199415032652428745475199770348304317358825035826352348615864796385795849413675475876651663657849636693659065234142604319282948702542317993421293670108523")
-D = int("-376014")
+D_RAW = int("-376014")
+D = D_RAW % P
 Gx = int("1571054894184995387535939749894317568645297350402905821437625181152304994381188529632591196067604100772673927915114267193389905003276673749012051148356041324")
-Gy = int("12")
+Gy = 12
 H = 4
 BIT_SIZE = 521
 ED521_BYTE_LEN = (BIT_SIZE + 7) // 8  # 66 bytes
 
-# OID para Ed521 (1.3.6.1.4.1.44588.2.1 - OID privado da EDGE)
-# Tradução: iso.org.dod.internet.private.enterprise.edge.algorithms.ed521
+# OID para Ed521
 ED521_OID = b'\x06\x0a\x2b\x06\x01\x04\x01\x83\xa6\x7a\x02\x01'
 
 # Funções auxiliares de conversão
 def bytes_to_little_int(b: bytes) -> int:
-    """Converte bytes little-endian para int (como no Go)"""
-    reversed_bytes = bytes(reversed(b))
-    return int.from_bytes(reversed_bytes, 'big')
+    return int.from_bytes(bytes(reversed(b)), 'big')
 
 def little_int_to_bytes(n: int, length: int) -> bytes:
-    """Converte int para bytes little-endian (como no Go)"""
-    bytes_be = n.to_bytes((n.bit_length() + 7) // 8 or 1, 'big')
-    if len(bytes_be) < length:
-        bytes_be = bytes([0] * (length - len(bytes_be))) + bytes_be
-    reversed_bytes = bytes(reversed(bytes_be))
-    return reversed_bytes[:length]
+    if n < 0:
+        raise ValueError("negative not supported")
+    if n == 0:
+        return b'\x00' * length
+    n_bytes = (n.bit_length() + 7) // 8
+    if n_bytes > length:
+        raise ValueError(f"integer too large for {length} bytes")
+    be = n.to_bytes(n_bytes, 'big')
+    be = b'\x00' * (length - len(be)) + be
+    return bytes(reversed(be))
+
+def sqrt_mod_p(a: int, p: int) -> Optional[int]:
+    """Square root modulo p when p ≡ 7 (mod 8)."""
+    a %= p
+    if a == 0:
+        return 0
+    x = pow(a, (p + 1) // 4, p)
+    if (x * x) % p == a:
+        return x
+    return None
 
 # Funções de ponto
 def ed521_is_on_curve(x: int, y: int) -> bool:
-    return (x*x + y*y) % P == (1 + D*x*x*y*y) % P
+    return (x * x + y * y) % P == (1 + D * x * x * y * y) % P
 
 def ed521_add_points(x1: int, y1: int, x2: int, y2: int) -> Tuple[int, int]:
-    if x1 == 0 and y1 == 1:  # Ponto neutro em Edwards: (0, 1)
+    if x1 == 0 and y1 == 0:
         return x2, y2
-    if x2 == 0 and y2 == 1:  # Ponto neutro em Edwards: (0, 1)
+    if x2 == 0 and y2 == 0:
         return x1, y1
 
     x1y2 = (x1 * y2) % P
@@ -614,29 +626,25 @@ def ed521_add_points(x1: int, y1: int, x2: int, y2: int) -> Tuple[int, int]:
     denominator_x = (1 + dx1x2y1y2) % P
     denominator_y = (1 - dx1x2y1y2) % P
 
-    inv_den_x = pow(denominator_x, -1, P)
-    inv_den_y = pow(denominator_y, -1, P)
+    inv_x = pow(denominator_x, -1, P)
+    inv_y = pow(denominator_y, -1, P)
 
-    x3 = (numerator_x * inv_den_x) % P
-    y3 = (numerator_y * inv_den_y) % P
+    x3 = (numerator_x * inv_x) % P
+    y3 = (numerator_y * inv_y) % P
     return x3, y3
 
 def ed521_double_point(x: int, y: int) -> Tuple[int, int]:
     return ed521_add_points(x, y, x, y)
 
 def ed521_scalar_mult(x: int, y: int, k_bytes: bytes) -> Tuple[int, int]:
-    """Multiplica ponto por escalar (k em bytes little-endian)"""
     scalar = bytes_to_little_int(k_bytes) % N
-    
-    result_x, result_y = 0, 1  # Ponto neutro
+    result_x, result_y = 0, 1
     temp_x, temp_y = x, y
-    
     while scalar > 0:
         if scalar & 1:
             result_x, result_y = ed521_add_points(result_x, result_y, temp_x, temp_y)
         temp_x, temp_y = ed521_double_point(temp_x, temp_y)
         scalar >>= 1
-    
     return result_x, result_y
 
 def ed521_scalar_base_mult(k_bytes: bytes) -> Tuple[int, int]:
@@ -644,78 +652,54 @@ def ed521_scalar_base_mult(k_bytes: bytes) -> Tuple[int, int]:
 
 # Compressão/Descompressão
 def ed521_compress_point(x: int, y: int) -> bytes:
-    """Comprime ponto conforme RFC 8032"""
     y_bytes = little_int_to_bytes(y, ED521_BYTE_LEN)
-    
-    # Pega o bit menos significativo de x (little-endian)
     x_bytes = little_int_to_bytes(x, ED521_BYTE_LEN)
     sign_bit = x_bytes[0] & 1
-    
-    # Armazena o bit de sinal no MSB do último byte (little-endian)
-    compressed = bytearray(y_bytes)
-    compressed[-1] |= (sign_bit << 7)
-    
-    return bytes(compressed)
+    buf = bytearray(y_bytes)
+    buf[-1] |= (sign_bit << 7)
+    return bytes(buf)
 
 def ed521_decompress_point(data: bytes) -> Tuple[Optional[int], Optional[int]]:
-    """Descomprime ponto conforme RFC 8032"""
     if len(data) != ED521_BYTE_LEN:
         return None, None
-    
-    # Extrai bit de sinal do MSB do último byte
     sign_bit = (data[-1] >> 7) & 1
-    
-    # Limpa o bit de sinal dos dados de y
-    y_bytes = bytearray(data)
-    y_bytes[-1] &= 0x7F
-    y = bytes_to_little_int(y_bytes)
-    
-    # Resolve para x usando a equação da curva de Edwards:
-    # x² + y² = 1 + d*x²*y²  =>  x² = (1 - y²) / (1 - d*y²)
+    y_buf = bytearray(data)
+    y_buf[-1] &= 0x7F
+    y = bytes_to_little_int(bytes(y_buf))
+    if y >= P:
+        return None, None
     y2 = (y * y) % P
-    
     numerator = (1 - y2) % P
     denominator = (1 - D * y2) % P
-    
     try:
         inv_den = pow(denominator, -1, P)
     except ValueError:
         return None, None
-    
     x2 = (numerator * inv_den) % P
-    
-    # Calcula raiz quadrada mod p (p ≡ 1 mod 4)
-    x = pow(x2, (P + 1)//4, P)
-    
-    # Escolhe x correto baseado no bit de sinal
+    x = sqrt_mod_p(x2, P)
+    if x is None:
+        return None, None
+    if x == 0 and sign_bit == 1:
+        return None, None
     x_bytes = little_int_to_bytes(x, ED521_BYTE_LEN)
     if (x_bytes[0] & 1) != sign_bit:
         x = (-x) % P
-    
     return x, y
 
 # Funções de hash
 def ed521_dom5(phflag: int, context: bytes) -> bytes:
-    """Implementa dom5 conforme especificação"""
     if len(context) > 255:
         raise ValueError("context too long for dom5")
-    
-    dom = b"SigEd521" + bytes([phflag, len(context)]) + context
-    return dom
+    return b"SigEd521" + bytes([phflag, len(context)]) + context
 
 def ed521_hash(phflag: int, context: bytes, x: bytes) -> bytes:
-    """H(x) = SHAKE256(dom5(phflag,context)||x, 132)"""
-    dom = ed521_dom5(phflag, context)
-    
     h = shake_256()
-    h.update(dom)
+    h.update(ed521_dom5(phflag, context))
     h.update(x)
-    
-    return h.digest(132)  # 132 bytes como especificado
+    return h.digest(132)
 
 # Geração de chaves
 def ed521_generate_private_key() -> int:
-    """Gera chave privada aleatória em little-endian"""
     while True:
         priv_bytes = os.urandom(ED521_BYTE_LEN)
         a = bytes_to_little_int(priv_bytes)
@@ -723,84 +707,46 @@ def ed521_generate_private_key() -> int:
             return a
 
 def ed521_get_public_key(priv: int) -> Tuple[int, int]:
-    """Calcula chave pública A = a * G"""
-    priv_bytes = little_int_to_bytes(priv, ED521_BYTE_LEN)
-    return ed521_scalar_base_mult(priv_bytes)
+    return ed521_scalar_base_mult(little_int_to_bytes(priv, ED521_BYTE_LEN))
 
-# Assinatura
+# Assinatura (fiel ao e521.py)
 def ed521_sign(private_key: int, message: bytes) -> bytes:
-    """Cria assinatura PureEdDSA conforme especificação"""
-    byte_len = ED521_BYTE_LEN
-    
-    # 1. Hash prefix "dom" + priv.D bytes
-    prefix = ed521_hash(0x00, b'', little_int_to_bytes(private_key, byte_len))
-    
-    # 2. Calculate r = SHAKE256(prefix || message) mod N
+    # 1. prefix = SHAKE256(dom5 || D_le, 132)
+    prefix = ed521_hash(0x00, b'', little_int_to_bytes(private_key, ED521_BYTE_LEN))
+    # 2. r = SHAKE256(dom5 || prefix || message, 132) mod N
     r_bytes = ed521_hash(0x00, b'', prefix + message)
-    r = bytes_to_little_int(r_bytes[:byte_len]) % N
-    
-    # 3. Compute R = r*G and compress
-    Rx, Ry = ed521_scalar_base_mult(little_int_to_bytes(r, byte_len))
-    R_compressed = ed521_compress_point(Rx, Ry)
-    
-    # 4. Get public key and compress
-    Ax, Ay = ed521_get_public_key(private_key)
-    A_compressed = ed521_compress_point(Ax, Ay)
-    
-    # 5. Compute h = SHAKE256(dom || R || A || message) mod N
-    hram_input = R_compressed + A_compressed + message
-    hram_hash = ed521_hash(0x00, b'', hram_input)
-    h = bytes_to_little_int(hram_hash[:byte_len]) % N
-    
-    # 6. s = (r + h * a) mod N
-    s = (r + h * private_key) % N
-    
-    # 7. Signature = R_compressed || s_bytes
-    s_bytes = little_int_to_bytes(s, byte_len)
-    signature = R_compressed + s_bytes
-    
-    return signature
+    r = bytes_to_little_int(r_bytes) % N
+    # 3. R = r*G
+    Rx, Ry = ed521_scalar_base_mult(little_int_to_bytes(r, ED521_BYTE_LEN))
+    R_comp = ed521_compress_point(Rx, Ry)
+    # 4. A = D*G
+    Ax, Ay = ed521_scalar_base_mult(little_int_to_bytes(private_key, ED521_BYTE_LEN))
+    A_comp = ed521_compress_point(Ax, Ay)
+    # 5. h = SHAKE256(dom5 || R || A || message, 132) mod N
+    h_hash = ed521_hash(0x00, b'', R_comp + A_comp + message)
+    h = bytes_to_little_int(h_hash) % N
+    # 6. s = (h*D + r) mod N
+    s = (h * private_key + r) % N
+    return R_comp + little_int_to_bytes(s, ED521_BYTE_LEN)
 
-# Verificação
+# Verificação (fiel ao e521.py)
 def ed521_verify(pub_x: int, pub_y: int, message: bytes, signature: bytes) -> bool:
-    """Verifica assinatura PureEdDSA conforme especificação"""
-    byte_len = ED521_BYTE_LEN
-    
-    if len(signature) != 2 * byte_len:
+    if len(signature) != 2 * ED521_BYTE_LEN:
         return False
-    
-    R_compressed = signature[:byte_len]
-    s_bytes = signature[byte_len:]
-    
-    # Verifica R
-    Rx, Ry = ed521_decompress_point(R_compressed)
-    if Rx is None or Ry is None:
-        return False
-    
-    # Verifica s
-    s = bytes_to_little_int(s_bytes)
+    R_comp = signature[:ED521_BYTE_LEN]
+    s = bytes_to_little_int(signature[ED521_BYTE_LEN:])
     if s >= N:
         return False
-    
-    # Compress public key A
-    A_compressed = ed521_compress_point(pub_x, pub_y)
-    
-    # Compute h = SHAKE256(dom || R || A || message) mod N
-    hram_input = R_compressed + A_compressed + message
-    hram_hash = ed521_hash(0x00, b'', hram_input)
-    h = bytes_to_little_int(hram_hash[:byte_len]) % N
-    
-    # Compute s*G
-    sGx, sGy = ed521_scalar_base_mult(little_int_to_bytes(s, byte_len))
-    
-    # Compute h*A
-    hAx, hAy = ed521_scalar_mult(pub_x, pub_y, little_int_to_bytes(h, byte_len))
-    
-    # Compute R + h*A
-    rhaX, rhaY = ed521_add_points(Rx, Ry, hAx, hAy)
-    
-    # Constant time comparison
-    return sGx == rhaX and sGy == rhaY
+    Rx, Ry = ed521_decompress_point(R_comp)
+    if Rx is None or Ry is None:
+        return False
+    A_comp = ed521_compress_point(pub_x, pub_y)
+    h_hash = ed521_hash(0x00, b'', R_comp + A_comp + message)
+    h = bytes_to_little_int(h_hash) % N
+    sGx, sGy = ed521_scalar_base_mult(little_int_to_bytes(s, ED521_BYTE_LEN))
+    hAx, hAy = ed521_scalar_mult(pub_x, pub_y, little_int_to_bytes(h, ED521_BYTE_LEN))
+    rha_x, rha_y = ed521_add_points(Rx, Ry, hAx, hAy)
+    return sGx == rha_x and sGy == rha_y
 
 # =========================
 # PKCS8 e PEM FUNCTIONS para Ed521
