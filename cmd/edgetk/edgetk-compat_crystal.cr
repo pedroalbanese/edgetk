@@ -1031,29 +1031,36 @@ def get_public_key(private_key : BigInt) : Tuple(BigInt, BigInt)
 end
 
 # ====================================================================
-# EdDSA Signature
+# EdDSA Signature (fiel ao e521.py)
 # ====================================================================
 
 def sign(private_key : BigInt, message : Bytes) : Bytes
   byte_len = ED521::BYTE_LEN
   
+  # 1. prefix = SHAKE256(dom5 || D_le, 132)
   prefix = hash_e521(0x00_u8, Bytes.empty, little_int_to_bytes(private_key, byte_len))
   
+  # 2. r = SHAKE256(dom5 || prefix || message, 132) mod N
   r_bytes = hash_e521(0x00_u8, Bytes.empty, prefix + message)
-  r = bytes_to_little_int(r_bytes[0, byte_len]) % ED521::N
+  r = bytes_to_little_int(r_bytes) % ED521::N          # <-- SEM truncamento (132 bytes)
   
+  # 3. R = r*G
   rx, ry = ED521Curve.scalar_base_mult(little_int_to_bytes(r, byte_len))
   r_compressed = compress_point(rx, ry)
   
+  # 4. A = D*G
   pub_x, pub_y = get_public_key(private_key)
   a_compressed = compress_point(pub_x, pub_y)
   
+  # 5. h = SHAKE256(dom5 || R || A || message, 132) mod N
   hram_input = r_compressed + a_compressed + message
   hram_hash = hash_e521(0x00_u8, Bytes.empty, hram_input)
-  h = bytes_to_little_int(hram_hash[0, byte_len]) % ED521::N
+  h = bytes_to_little_int(hram_hash) % ED521::N        # <-- SEM truncamento (132 bytes)
   
-  s = (r + (h * private_key) % ED521::N) % ED521::N
+  # 6. s = (h*D + r) mod N
+  s = (h * private_key + r) % ED521::N
   
+  # 7. Signature = R_compressed || s_bytes
   s_bytes = little_int_to_bytes(s, byte_len)
   r_compressed + s_bytes
 end
@@ -1076,12 +1083,10 @@ def verify(public_x : BigInt, public_y : BigInt, message : Bytes, signature : By
   
   hram_input = r_compressed + a_compressed + message
   hram_hash = hash_e521(0x00_u8, Bytes.empty, hram_input)
-  h = bytes_to_little_int(hram_hash[0, byte_len]) % ED521::N
+  h = bytes_to_little_int(hram_hash) % ED521::N        # <-- SEM truncamento (132 bytes)
   
   sg_x, sg_y = ED521Curve.scalar_base_mult(little_int_to_bytes(s, byte_len))
-  
   ha_x, ha_y = ED521Curve.scalar_mult(public_x, public_y, little_int_to_bytes(h, byte_len))
-  
   rha_x, rha_y = ED521Curve.add(rx, ry, ha_x, ha_y)
   
   constant_time_eq(sg_x, rha_x) && constant_time_eq(sg_y, rha_y)
