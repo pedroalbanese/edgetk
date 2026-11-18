@@ -384,7 +384,7 @@ Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/) and t
 
     |  Algorithm          | 256 | 512 |ECDH |Signature|Encryption| PKI |
     |:--------------------|:---:|:---:|:---:|:-------:|:--------:|:---:|
-    | ECDSA               | O   | O   | O   | O       | O        | O   |
+    | ECDSA               | O   | O   | O   | O       |          | O   |
     | EC-GDSA             | O   | O   |     | O       |          |     |
     | EC-KCDSA            | O   | O   |     | O       |          |     |
     | EC-SDSA             | O   | O   | O   | O       |          |     |
