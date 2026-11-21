@@ -36,7 +36,7 @@ require (
 	github.com/pedroalbanese/curupira1 v0.0.5
 	github.com/pedroalbanese/curve448 v0.0.0-20240514173232-895b1c6c93a1
 	github.com/pedroalbanese/e2 v0.0.0-20240325185507-eef2e0916dc5
-	github.com/pedroalbanese/e521 v0.1.0
+	github.com/pedroalbanese/e521 v0.1.3
 	github.com/pedroalbanese/eac v0.0.0-20250428171516-10a5a5e733cd
 	github.com/pedroalbanese/eax v0.0.0-20240629182935-b915af1b69bb
 	github.com/pedroalbanese/ecb v0.0.0-20220918174126-1a696b93ae2b
