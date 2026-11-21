@@ -22523,6 +22523,17 @@ Subcommands:
 				log.Fatal(err)
 			}
 
+			// Popular EmailAddresses a partir do Subject (OID 1.2.840.113549.1.9.1)
+			if len(certa.EmailAddresses) == 0 {
+				for _, atv := range certa.Subject.Names {
+					if atv.Type.Equal(asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}) {
+						if s, ok := atv.Value.(string); ok && s != "" {
+							certa.EmailAddresses = append(certa.EmailAddresses, s)
+						}
+					}
+				}
+			}
+
 			if *pkey == "modulus" {
 				fmt.Printf("Public.X=%X\n", certaPublicKey.X)
 				fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
@@ -22614,8 +22625,6 @@ Subcommands:
 			}
 
 			// --- Extrair OID do SignatureAlgorithm diretamente do certificado bruto ---
-			// Certificate ::= SEQUENCE { tbsCertificate, signatureAlgorithm, signatureValue }
-			// signatureAlgorithm é um AlgorithmIdentifier (SEQUENCE { algorithm OID, parameters OPTIONAL })
 			type certificateASN1 struct {
 				TBSCertificate     asn1.RawValue
 				SignatureAlgorithm asn1.RawValue
@@ -22686,7 +22695,6 @@ Subcommands:
 			buf2.WriteString(fmt.Sprintf("%8sSubjectKeyId  : %x \n", "", certa.SubjectKeyId))
 			buf2.WriteString(fmt.Sprintf("%8sAuthorityKeyId: %x \n", "", certa.AuthorityKeyId))
 
-			// --- Exibição baseada em OID (substitui printSignature) ---
 			buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "", sigAlgName))
 			sigHex := hex.EncodeToString(certa.Signature)
 			splitSig := SplitSubN(sigHex, 2)
@@ -23093,6 +23101,17 @@ Subcommands:
 
 			subjectSeq := template.Subject.ToRDNSequence()
 
+			// Adicionar emailAddress ao Subject (OID 1.2.840.113549.1.9.1)
+			// Usa a variável global 'email' diretamente, que já foi preenchida no prompt
+			if email != "" {
+				subjectSeq = append(subjectSeq, pkix.RelativeDistinguishedNameSET{
+					pkix.AttributeTypeAndValue{
+						Type:  asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1},
+						Value: email,
+					},
+				})
+			}
+
 			pubInfo, err := ed521PublicKeyInfo(privKey.GetPublic())
 			if err != nil {
 				log.Fatalf("Failed to build public key info: %v", err)
@@ -23105,6 +23124,7 @@ Subcommands:
 
 			exts, err := buildEd521Extensions(
 				pubInfo,
+				nil, // autoassinado: AKI = SKI
 				isCA,
 				template.KeyUsage,
 				template.ExtKeyUsage,
@@ -26928,9 +26948,15 @@ func csrToCrt() error {
 		}
 
 		// 6. Extensões
+		//    SKI = SHA-1 da chave pública do TITULAR (vem do CSR)
+		//    AKI = SHA-1 da chave pública da CA
 		pubInfo := csrEd521.TBSCertificationRequest.SubjectPKInfo
+		caPubInfo := caCert.TBSCertificate.PublicKey
+		caSki := sha1.Sum(caPubInfo.PublicKey.Bytes)
+
 		exts, err := buildEd521Extensions(
-			pubInfo,
+			pubInfo,                                         // chave do titular → SKI
+			caSki[:],                                        // chave da CA → AKI
 			*isca,
 			x509.KeyUsageDigitalSignature,
 			[]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
@@ -26943,9 +26969,9 @@ func csrToCrt() error {
 		derBytes, err := CreateEd521CertificateFromCSR(
 			caPriv,
 			serialNumber,
-			csrEd521.TBSCertificationRequest.Subject,      // Subject = do CSR
-			caCert.TBSCertificate.Subject,                 // Issuer = Subject da CA
-			pubInfo,                                       // PublicKey = do CSR
+			csrEd521.TBSCertificationRequest.Subject, // Subject = do CSR
+			caCert.TBSCertificate.Subject,            // Issuer = Subject da CA
+			pubInfo,                                  // PublicKey = do CSR
 			time.Now(),
 			notAfter,
 			exts,
