@@ -249,8 +249,8 @@ Check the [Technical Guideline](http://albanese.atwebpages.com/directrix/) and t
     | BN256               | O   |     | O   | O       | O        | O   |
     | Curve25519          | O   |     | O   | O       |          | O   |
     | Curve448            |     |     | O   | O       |          |     |
-    | E-521               |     |     |     | O       |          | O   |
-    | M-511               |     |     | O   |         |          |     |
+    | E-521               |     | O   |     | O       |          | O   |
+    | M-511               |     | O   | O   |         |          |     |
     | GOST2012            | O   | O   | O   | O       |          | O   |
     | RSA                 |     |     |     | O       | O        | O   |
     | SM2                 | O   |     | O   | O       | O        | O   |
