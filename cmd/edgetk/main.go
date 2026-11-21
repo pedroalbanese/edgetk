@@ -24081,7 +24081,8 @@ Subcommands:
 			buf2.WriteString(fmt.Sprintf("%8sVersion       : %d \n", "", ed521CSR.TBSCertificationRequest.Version))
 			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
 			printName(attrs, &buf2)
-			buf2.WriteString(fmt.Sprintf("%8sPublic Key Algorithm: %v \n", "", ed521CSR.TBSCertificationRequest.SubjectPKInfo.Algorithm.Algorithm))
+			buf2.WriteString(fmt.Sprintf("%8sPublic Key Algorithm: %s \n", "",
+				getAlgorithmName(ed521CSR.TBSCertificationRequest.SubjectPKInfo.Algorithm.Algorithm.String())))
 
 			pub := ed521CSR.TBSCertificationRequest.SubjectPKInfo.PublicKey.Bytes
 			buf2.WriteString(fmt.Sprintf("%8sPub.Key\n", ""))
@@ -24090,7 +24091,8 @@ Subcommands:
 				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
 			}
 
-			buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: %v\n", "", ed521CSR.SignatureAlgorithm.Algorithm))
+			buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: %s\n", "",
+				getAlgorithmName(ed521CSR.SignatureAlgorithm.Algorithm.String())))
 			buf2.WriteString(fmt.Sprintf("%4sSignature:\n", ""))
 			splitz = SplitSubN(hex.EncodeToString(ed521CSR.SignatureValue.Bytes), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
