@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"math/bits"
 	"time"
 
 	"github.com/pedroalbanese/e521"
@@ -114,6 +115,23 @@ func ed521PublicKeyInfo(pub *e521.PublicKey) (publicKeyInfo, error) {
 	return spki, nil
 }
 
+// marshalEd521KeyUsage codifica o KeyUsage como o crypto/x509 do Go faz.
+// No DER o bit 0 (digitalSignature) é o mais significativo do primeiro octeto
+// (RFC 5280, 4.2.1.3), ao contrário da máscara x509.KeyUsage, e os bits zero
+// do fim não são escritos. A raiz ICP-Brasil v7 tem 03 02 01 06
+// (keyCertSign e cRLSign).
+func marshalEd521KeyUsage(keyUsage x509.KeyUsage) ([]byte, error) {
+	octets := []byte{bits.Reverse8(byte(keyUsage)), bits.Reverse8(byte(keyUsage >> 8))}
+	if octets[1] == 0 {
+		octets = octets[:1]
+	}
+	bitLength := len(octets) * 8
+	for bitLength > 0 && octets[(bitLength-1)/8]&(0x80>>uint((bitLength-1)%8)) == 0 {
+		bitLength--
+	}
+	return asn1.Marshal(asn1.BitString{Bytes: octets, BitLength: bitLength})
+}
+
 // buildEd521Extensions monta as extensões X.509 e retorna um RawValue com o
 // [3] EXPLICIT já construído, pronto para ser embutido no TBSCertificate.
 func buildEd521Extensions(
@@ -164,10 +182,7 @@ func buildEd521Extensions(
 	})
 
 	// KeyUsage (2.5.29.15) — crítica
-	var kuBits asn1.BitString
-	kuBits.Bytes = []byte{byte(keyUsage >> 8), byte(keyUsage)}
-	kuBits.BitLength = 16
-	kuDER, err := asn1.Marshal(kuBits)
+	kuDER, err := marshalEd521KeyUsage(keyUsage)
 	if err != nil {
 		return asn1.RawValue{}, err
 	}
