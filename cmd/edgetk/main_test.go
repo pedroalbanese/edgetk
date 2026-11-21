@@ -4,10 +4,13 @@ package main
 
 import (
 	"bytes"
+	"crypto/ed25519"
+	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"math/big"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -263,5 +266,121 @@ func TestPkeyReadsEd521Certificate(t *testing.T) {
 	out, status = edgetk(t, "-pkey", "check", "-cert", itiV7, "-key", rsaKey)
 	if status != 1 || !strings.Contains(out, "Public key is not E-521") || strings.Contains(out, "panic:") {
 		t.Errorf("-pkey check with an RSA key: status %d\n%s", status, out)
+	}
+}
+
+// keyUsageValue returns the value of the KeyUsage extension (2.5.29.15) of an
+// Ed521 certificate, as the octets inside its OCTET STRING.
+func keyUsageValue(t *testing.T, der []byte) []byte {
+	t.Helper()
+	cert, err := ParseEd521Certificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var extensions []pkix.Extension
+	if _, err := asn1.Unmarshal(cert.TBSCertificate.Extensions.Bytes, &extensions); err != nil {
+		t.Fatal(err)
+	}
+	for _, extension := range extensions {
+		if extension.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 15}) {
+			return extension.Value
+		}
+	}
+	t.Fatal("no KeyUsage extension")
+	return nil
+}
+
+// writtenKeyUsage returns the KeyUsage value that the extensions of a new
+// Ed521 certificate carry for the given usage.
+func writtenKeyUsage(t *testing.T, usage x509.KeyUsage) []byte {
+	t.Helper()
+	raw, err := buildEd521Extensions(publicKeyInfo{}, false, usage, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var extensions []pkix.Extension
+	if _, err := asn1.Unmarshal(raw.Bytes, &extensions); err != nil {
+		t.Fatal(err)
+	}
+	for _, extension := range extensions {
+		if extension.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 15}) {
+			return extension.Value
+		}
+	}
+	t.Fatal("no KeyUsage extension")
+	return nil
+}
+
+// The KeyUsage of an Ed521 certificate is written as RFC 5280, 4.2.1.3 numbers
+// its bits (bit 0 is the most significant bit of the first octet), as the real
+// ICP-Brasil v7 root has it and as crypto/x509 writes it.
+func TestEd521CertificateKeyUsage(t *testing.T) {
+	// The real root: keyCertSign and cRLSign.
+	root := keyUsageValue(t, readCertificate(t, itiV7).Bytes)
+	if !bytes.Equal(root, []byte{0x03, 0x02, 0x01, 0x06}) {
+		t.Fatalf("ICP-Brasil v7 KeyUsage: % X", root)
+	}
+	ours := writtenKeyUsage(t, x509.KeyUsageCertSign|x509.KeyUsageCRLSign)
+	if !bytes.Equal(ours, root) {
+		t.Errorf("keyCertSign and cRLSign: % X, the ICP-Brasil v7 root has % X", ours, root)
+	}
+
+	// The same octets as crypto/x509 writes, for one bit, several bits and a
+	// bit of the second octet.
+	_, signer, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, usage := range []x509.KeyUsage{
+		x509.KeyUsageDigitalSignature,
+		x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		x509.KeyUsageDigitalSignature | x509.KeyUsageContentCommitment | x509.KeyUsageKeyEncipherment |
+			x509.KeyUsageDataEncipherment | x509.KeyUsageKeyAgreement | x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
+		x509.KeyUsageDecipherOnly,
+		x509.KeyUsageDigitalSignature | x509.KeyUsageDecipherOnly,
+	} {
+		template := &x509.Certificate{SerialNumber: big.NewInt(1), KeyUsage: usage}
+		der, err := x509.CreateCertificate(rand.Reader, template, template, signer.Public(), signer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reference, err := x509.ParseCertificate(der)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var want []byte
+		for _, extension := range reference.Extensions {
+			if extension.Id.Equal(asn1.ObjectIdentifier{2, 5, 29, 15}) {
+				want = extension.Value
+			}
+		}
+		got := writtenKeyUsage(t, usage)
+		if !bytes.Equal(got, want) {
+			t.Errorf("KeyUsage %#x: % X, crypto/x509 writes % X", int(usage), got, want)
+		}
+	}
+
+	// The command: a certificate authority made by -pkey certgen -isca can
+	// sign certificates and revocation lists.
+	dir := t.TempDir()
+	private, public, authority := filepath.Join(dir, "private.pem"), filepath.Join(dir, "public.pem"), filepath.Join(dir, "ca.crt")
+	if out, status := edgetk(t, "-pkey", "keygen", "-algorithm", "ed521", "-prv", private, "-pub", public); status != 0 {
+		t.Fatalf("-pkey keygen: status %d\n%s", status, out)
+	}
+	if out, status := edgetk(t, "-pkey", "certgen", "-algorithm", "ed521", "-key", private, "-pub", public, "-cert", authority,
+		"-days", "1", "-subj", "/CN=Test/OU=/O=/ST=/L=/C=/emailAddress=", "-isca"); status != 0 {
+		t.Fatalf("-pkey certgen: status %d\n%s", status, out)
+	}
+	var usage asn1.BitString
+	if _, err := asn1.Unmarshal(keyUsageValue(t, readCertificate(t, authority).Bytes), &usage); err != nil {
+		t.Fatal(err)
+	}
+	if usage.At(5) != 1 || usage.At(6) != 1 {
+		t.Errorf("-pkey certgen -isca: keyCertSign %d, cRLSign %d in KeyUsage % X (%d bits)", usage.At(5), usage.At(6), usage.Bytes, usage.BitLength)
+	}
+	for bit := 9; bit < usage.BitLength; bit++ {
+		if usage.At(bit) != 0 {
+			t.Errorf("-pkey certgen -isca: KeyUsage sets bit %d, which RFC 5280 does not define", bit)
+		}
 	}
 }
