@@ -26929,8 +26929,9 @@ func csrToCrt() error {
 
 		// 6. Extensões
 		pubInfo := csrEd521.TBSCertificationRequest.SubjectPKInfo
-		exts, err := buildEd521Extensions(
+		exts, err := buildEd521ExtensionsIssuedBy(
 			pubInfo,
+			caCert.TBSCertificate.PublicKey, // AKI = chave da CA
 			*isca,
 			x509.KeyUsageDigitalSignature,
 			[]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},

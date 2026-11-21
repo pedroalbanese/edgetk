@@ -384,3 +384,85 @@ func TestEd521CertificateKeyUsage(t *testing.T) {
 		}
 	}
 }
+
+// ed521Extension returns the value of one extension of an Ed521 certificate,
+// as the octets inside its OCTET STRING.
+func ed521Extension(t *testing.T, der []byte, id asn1.ObjectIdentifier) []byte {
+	t.Helper()
+	cert, err := ParseEd521Certificate(der)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var extensions []pkix.Extension
+	if _, err := asn1.Unmarshal(cert.TBSCertificate.Extensions.Bytes, &extensions); err != nil {
+		t.Fatal(err)
+	}
+	for _, extension := range extensions {
+		if extension.Id.Equal(id) {
+			return extension.Value
+		}
+	}
+	t.Fatalf("no extension %v", id)
+	return nil
+}
+
+// ed521KeyIdentifiers returns the SubjectKeyIdentifier (2.5.29.14) and the
+// keyIdentifier of the AuthorityKeyIdentifier (2.5.29.35) of an Ed521
+// certificate.
+func ed521KeyIdentifiers(t *testing.T, der []byte) (subject, authority []byte) {
+	t.Helper()
+	if _, err := asn1.Unmarshal(ed521Extension(t, der, asn1.ObjectIdentifier{2, 5, 29, 14}), &subject); err != nil {
+		t.Fatalf("SubjectKeyIdentifier: %v", err)
+	}
+	var aki struct {
+		ID []byte `asn1:"optional,tag:0"`
+	}
+	if _, err := asn1.Unmarshal(ed521Extension(t, der, asn1.ObjectIdentifier{2, 5, 29, 35}), &aki); err != nil {
+		t.Fatalf("AuthorityKeyIdentifier: %v", err)
+	}
+	return subject, aki.ID
+}
+
+// The AuthorityKeyIdentifier of a certificate identifies the key that signed
+// it (RFC 5280, 4.2.1.1): in a certificate issued from a request it is the
+// SubjectKeyIdentifier of the CA's certificate, not the certificate's own. In
+// a self-signed certificate the two are equal, as in the real ICP-Brasil v7
+// root.
+func TestEd521IssuedCertificateAuthorityKeyIdentifier(t *testing.T) {
+	rootSubject, rootAuthority := ed521KeyIdentifiers(t, readCertificate(t, itiV7).Bytes)
+	if len(rootSubject) == 0 || !bytes.Equal(rootSubject, rootAuthority) {
+		t.Fatalf("ICP-Brasil v7: SubjectKeyIdentifier % X, AuthorityKeyIdentifier % X", rootSubject, rootAuthority)
+	}
+
+	dir := t.TempDir()
+	file := func(name string) string { return filepath.Join(dir, name) }
+	run := func(args ...string) {
+		t.Helper()
+		if out, exit := edgetk(t, args...); exit != 0 {
+			t.Fatalf("edgetk %s: exit %d\n%s", strings.Join(args, " "), exit, out)
+		}
+	}
+	run("-pkey", "keygen", "-algorithm", "ed521", "-prv", file("ca.pem"), "-pub", file("capub.pem"))
+	run("-pkey", "certgen", "-algorithm", "ed521", "-key", file("ca.pem"), "-pub", file("capub.pem"),
+		"-cert", file("ca.crt"), "-days", "30", "-subj", "/CN=Teste AC/OU=/O=/ST=/L=/C=BR/emailAddress=", "-isca")
+	run("-pkey", "keygen", "-algorithm", "ed521", "-prv", file("key.pem"), "-pub", file("pub.pem"))
+	run("-pkey", "req", "-algorithm", "ed521", "-key", file("key.pem"), "-pub", file("pub.pem"),
+		"-cert", file("cert.csr"), "-subj", "/CN=Teste/OU=/O=/ST=/L=/C=BR/emailAddress=")
+	run("-pkey", "x509", "-algorithm", "ed521", "-key", file("ca.pem"), "-root", file("ca.crt"),
+		"-cert", file("cert.csr"), "-days", "30", file("cert.crt"))
+
+	caSubject, caAuthority := ed521KeyIdentifiers(t, readCertificate(t, file("ca.crt")).Bytes)
+	if len(caSubject) == 0 || !bytes.Equal(caSubject, caAuthority) {
+		t.Errorf("self-signed CA: SubjectKeyIdentifier % X, AuthorityKeyIdentifier % X", caSubject, caAuthority)
+	}
+	subject, authority := ed521KeyIdentifiers(t, readCertificate(t, file("cert.crt")).Bytes)
+	if bytes.Equal(subject, caSubject) {
+		t.Fatalf("the issued certificate has the CA's SubjectKeyIdentifier % X", subject)
+	}
+	if !bytes.Equal(authority, caSubject) {
+		t.Errorf("issued certificate: AuthorityKeyIdentifier % X, the CA's SubjectKeyIdentifier is % X", authority, caSubject)
+	}
+	if bytes.Equal(authority, subject) {
+		t.Errorf("issued certificate: AuthorityKeyIdentifier % X is its own SubjectKeyIdentifier", authority)
+	}
+}
