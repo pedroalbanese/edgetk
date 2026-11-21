@@ -382,7 +382,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.22  13 Nov 2026")
+		fmt.Println("EDGE Toolkit v1.5.23  21 Nov 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -23084,6 +23084,57 @@ Subcommands:
 			}
 		}
 
+		// --- DESVIO PARA ED521 ---
+		if strings.ToUpper(*alg) == "ED521" {
+			privKey, err := DecodeE521PrivateKey(buf)
+			if err != nil {
+				log.Fatal("Failed to decode Ed521 private key:", err)
+			}
+
+			subjectSeq := template.Subject.ToRDNSequence()
+
+			pubInfo, err := ed521PublicKeyInfo(privKey.GetPublic())
+			if err != nil {
+				log.Fatalf("Failed to build public key info: %v", err)
+			}
+
+			isCA := template.IsCA
+			if *isca {
+				isCA = true
+			}
+
+			exts, err := buildEd521Extensions(
+				pubInfo,
+				isCA,
+				template.KeyUsage,
+				template.ExtKeyUsage,
+			)
+			if err != nil {
+				log.Fatalf("Failed to build extensions: %v", err)
+			}
+
+			derBytes, err := CreateEd521SelfSignedCertificate(
+				privKey,
+				serialNumber,
+				subjectSeq,
+				subjectSeq,
+				template.NotBefore,
+				template.NotAfter,
+				exts,
+			)
+			if err != nil {
+				log.Fatalf("Failed to create certificate: %v", err)
+			}
+
+			certfile, err := os.Create(*cert)
+			if err != nil {
+				log.Fatal(err)
+			}
+			pem.Encode(certfile, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+			os.Exit(0)
+		}
+
+		// --- CAMINHO PADRÃO (RSA, EC, Ed25519, SM2, etc.) ---
 		derBytes, err := smx509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
 		if err != nil {
 			log.Fatalf("Failed to create certificate: %v", err)
@@ -23113,6 +23164,9 @@ Subcommands:
 
 		var block *pem.Block
 		block, _ = pem.Decode(buf)
+		if block == nil {
+			log.Fatal("Failed to decode PEM block of private key")
+		}
 
 		if strings.ToUpper(*alg) == "ED25519" {
 			var priva interface{}
@@ -23190,6 +23244,24 @@ Subcommands:
 				}
 			}
 			keyBytes = privateKey
+		} else if strings.ToUpper(*alg) == "ED521" {
+			var privKey *e521.PrivateKey
+			if IsEncryptedPEMBlock(block) {
+				privKeyBytes, err := DecryptPEMBlock(block, []byte(*pwd))
+				if err != nil {
+					log.Fatal(err)
+				}
+				privKey, err = e521.ParsePrivateKey(privKeyBytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				privKey, err = e521.ParsePrivateKey(block.Bytes)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+			keyBytes = privKey
 		}
 
 		if *subj == "" {
@@ -23287,6 +23359,7 @@ Subcommands:
 				SignatureAlgorithm: x509.PureEd25519,
 			}
 		}
+
 		var output *os.File
 		if *cert == "" {
 			output = os.Stdout
@@ -23298,7 +23371,27 @@ Subcommands:
 			defer file.Close()
 			output = file
 		}
-		csrBytes, _ := smx509.CreateCertificateRequest(rand.Reader, &template, keyBytes)
+
+		// --- DESVIO PARA ED521 ---
+		if strings.ToUpper(*alg) == "ED521" {
+			privKey, ok := keyBytes.(*e521.PrivateKey)
+			if !ok {
+				log.Fatal("Failed to cast Ed521 private key")
+			}
+
+			csrDER, err := CreateEd521CSR(privKey, rawSubj)
+			if err != nil {
+				log.Fatalf("Failed to create CSR: %v", err)
+			}
+
+			pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrDER})
+			os.Exit(0)
+		}
+
+		csrBytes, err := smx509.CreateCertificateRequest(rand.Reader, &template, keyBytes)
+		if err != nil {
+			log.Fatalf("Failed to create CSR: %v", err)
+		}
 		pem.Encode(output, &pem.Block{Type: "CERTIFICATE REQUEST", Bytes: csrBytes})
 	}
 
@@ -23374,6 +23467,63 @@ Subcommands:
 		}
 
 		var crlBytes []byte
+		
+		// --- DESVIO PARA ED521 ---
+		if strings.ToUpper(*alg) == "ED521" {
+			caPriv, err := DecodeE521PrivateKey(issuerKeyPEM)
+			if err != nil {
+				log.Fatalf("Failed to decode Ed521 CA key: %v", err)
+			}
+
+			caBlock, _ := pem.Decode(issuerCertPEM)
+			if caBlock == nil {
+				log.Fatal("Failed to decode Ed521 CA cert PEM")
+			}
+			caCert, err := ParseEd521Certificate(caBlock.Bytes)
+			if err != nil {
+				log.Fatalf("Failed to parse Ed521 CA cert: %v", err)
+			}
+
+			// AKI = SHA-1 da chave pública da CA
+			pubInfo := caCert.TBSCertificate.PublicKey
+			aki := sha1.Sum(pubInfo.PublicKey.Bytes)
+
+			var revokedASN []pkixRevokedCertificate
+			for _, rc := range revokedCerts {
+				revokedASN = append(revokedASN, pkixRevokedCertificate{
+					SerialNumber:   rc.SerialNumber,
+					RevocationTime: rc.RevocationTime.UTC(),
+				})
+			}
+
+			crlDER, err := CreateEd521CRL(
+				caPriv,
+				caCert.TBSCertificate.Subject,
+				issuanceTime,
+				nextUpdateTime,
+				revokedASN,
+				randomNumber,
+				aki[:],
+			)
+			if err != nil {
+				log.Fatalf("Failed to create Ed521 CRL: %v", err)
+			}
+
+			var output *os.File
+			if flag.Arg(1) == "" {
+				output = os.Stdout
+			} else {
+				file, err := os.Create(flag.Arg(1))
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer file.Close()
+				output = file
+			}
+			pem.Encode(output, &pem.Block{Type: "X509 CRL", Bytes: crlDER})
+			os.Exit(0)
+		}
+		
 		if strings.ToUpper(*alg) == "GOST2012" {
 			// --- Construção manual do CRL para GOST2012 ---
 			keyBlock, _ := pem.Decode(issuerKeyPEM)
@@ -23768,6 +23918,41 @@ Subcommands:
 			log.Fatal("Failed to decode CRL PEM block")
 		}
 
+		// --- DESVIO PARA ED521 (detecção pelo OID da assinatura da CRL) ---
+		var testCRL certificateList
+		if _, err := asn1.Unmarshal(pemBlock.Bytes, &testCRL); err == nil &&
+			testCRL.SignatureAlgorithm.Algorithm.Equal(oidEd521) {
+
+			// Ler certificado da CA
+			issuerCertBytes, err := ioutil.ReadFile(*cert)
+			if err != nil {
+				log.Fatal("Failed to read issuer's certificate file:", err)
+			}
+			issuerCertBlock, _ := pem.Decode(issuerCertBytes)
+			if issuerCertBlock == nil {
+				log.Fatal("Failed to decode PEM block of issuer's certificate")
+			}
+			caCert, err := ParseEd521Certificate(issuerCertBlock.Bytes)
+			if err != nil {
+				log.Fatalf("Failed to parse Ed521 CA cert: %v", err)
+			}
+
+			// Verificar assinatura
+			valid, err := VerifyEd521CRLSignature(caCert, pemBlock.Bytes)
+			if err != nil {
+				log.Fatalf("Failed to verify Ed521 CRL: %v", err)
+			}
+
+			if valid {
+				fmt.Println("Verified: true")
+				os.Exit(0)
+			} else {
+				fmt.Println("Verified: false: signature mismatch")
+				os.Exit(1)
+			}
+		}
+
+		// --- FLUXO ORIGINAL ---
 		revocationList, err := x509.ParseDERCRL(pemBlock.Bytes)
 		if err != nil {
 			log.Fatal("Failed to parse CRL:", err)
@@ -23870,7 +24055,53 @@ Subcommands:
 		file.Read(buf)
 		certPEM = buf
 		var certPemBlock, _ = pem.Decode([]byte(certPEM))
+		if certPemBlock == nil {
+			log.Fatal("Failed to decode PEM block")
+		}
 
+		// --- TENTATIVA ED521 ---
+		var ed521CSR certificationRequest
+		if rest, err := asn1.Unmarshal(certPemBlock.Bytes, &ed521CSR); err == nil && len(rest) == 0 &&
+			ed521CSR.TBSCertificationRequest.SubjectPKInfo.Algorithm.Algorithm.Equal(oidEd521) {
+
+			// Achatar RDNSequence em []pkix.AttributeTypeAndValue para printName
+			var attrs []pkix.AttributeTypeAndValue
+			for _, rdn := range ed521CSR.TBSCertificationRequest.Subject {
+				attrs = append(attrs, rdn...)
+			}
+
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", ed521CSR.TBSCertificationRequest.SubjectPKInfo.PublicKey.Bytes)
+				os.Exit(0)
+			}
+
+			var buf2 bytes.Buffer
+			buf2.WriteString("Certificate Request:\n")
+			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
+			buf2.WriteString(fmt.Sprintf("%8sVersion       : %d \n", "", ed521CSR.TBSCertificationRequest.Version))
+			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
+			printName(attrs, &buf2)
+			buf2.WriteString(fmt.Sprintf("%8sPublic Key Algorithm: %v \n", "", ed521CSR.TBSCertificationRequest.SubjectPKInfo.Algorithm.Algorithm))
+
+			pub := ed521CSR.TBSCertificationRequest.SubjectPKInfo.PublicKey.Bytes
+			buf2.WriteString(fmt.Sprintf("%8sPub.Key\n", ""))
+			splitz := SplitSubN(hex.EncodeToString(pub), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
+			}
+
+			buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: %v\n", "", ed521CSR.SignatureAlgorithm.Algorithm))
+			buf2.WriteString(fmt.Sprintf("%4sSignature:\n", ""))
+			splitz = SplitSubN(hex.EncodeToString(ed521CSR.SignatureValue.Bytes), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				buf2.WriteString(fmt.Sprintf("        %-10s\n", strings.ReplaceAll(chunk, " ", ":")))
+			}
+
+			fmt.Print(buf2.String())
+			os.Exit(0)
+		}
+
+		// --- CAMINHO ORIGINAL (GOST / certinfo) ---
 		csr, err := ParseCertificateRequest(certPemBlock.Bytes)
 		if err != nil {
 			log.Fatal(err)
@@ -26613,6 +26844,133 @@ func PfxParse() error {
 }
 
 func csrToCrt() error {
+	// ============================================================
+	// DESVIO ED521 — trata todo o fluxo com as funções do x509.go
+	// ============================================================
+	if strings.ToUpper(*alg) == "ED521" {
+		// 1. Ler certificado da CA
+		caCertPEM, err := ioutil.ReadFile(*root)
+		if err != nil {
+			return err
+		}
+		caCertBlock, _ := pem.Decode(caCertPEM)
+		if caCertBlock == nil {
+			return fmt.Errorf("pem.Decode failed for CA cert")
+		}
+		caCert, err := ParseEd521Certificate(caCertBlock.Bytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse Ed521 CA cert: %w", err)
+		}
+
+		// 2. Ler chave privada da CA
+		caKeyPEM, err := ioutil.ReadFile(*key)
+		if err != nil {
+			return err
+		}
+		caKeyBlock, _ := pem.Decode(caKeyPEM)
+		if caKeyBlock == nil {
+			return fmt.Errorf("pem.Decode failed for CA key")
+		}
+		var caKeyDER []byte
+		if IsEncryptedPEMBlock(caKeyBlock) {
+			caKeyDER, err = DecryptPEMBlock(caKeyBlock, []byte(*pwd))
+			if err != nil {
+				return err
+			}
+		} else {
+			caKeyDER = caKeyBlock.Bytes
+		}
+		caPriv, err := e521.ParsePrivateKey(caKeyDER)
+		if err != nil {
+			// fallback para DecodeE521PrivateKey se necessário
+			caPriv, err = DecodeE521PrivateKey(caKeyPEM)
+			if err != nil {
+				return fmt.Errorf("failed to decode Ed521 CA key: %w", err)
+			}
+		}
+
+		// 3. Ler CSR
+		csrPEM, err := ioutil.ReadFile(*cert)
+		if err != nil {
+			return err
+		}
+		csrBlock, _ := pem.Decode(csrPEM)
+		if csrBlock == nil {
+			return fmt.Errorf("pem.Decode failed for CSR")
+		}
+		var csrEd521 certificationRequest
+		if _, err := asn1.Unmarshal(csrBlock.Bytes, &csrEd521); err != nil {
+			return fmt.Errorf("failed to parse Ed521 CSR: %w", err)
+		}
+
+		// 4. Validade
+		var validity string
+		if *days > 0 {
+			validity = fmt.Sprintf("%d", *days)
+		} else {
+			println("Digital certificates are valid for up to three years:")
+			fmt.Print("Validity (in Days): ")
+			fmt.Scanln(&validity)
+		}
+		intVar, err := strconv.Atoi(validity)
+		if err != nil {
+			return err
+		}
+		notAfter := time.Now().AddDate(0, 0, intVar)
+
+		// 5. Serial
+		serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 160)
+		serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+		if err != nil {
+			return fmt.Errorf("failed to generate serial number: %w", err)
+		}
+
+		// 6. Extensões
+		pubInfo := csrEd521.TBSCertificationRequest.SubjectPKInfo
+		exts, err := buildEd521Extensions(
+			pubInfo,
+			*isca,
+			x509.KeyUsageDigitalSignature,
+			[]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		)
+		if err != nil {
+			return fmt.Errorf("failed to build extensions: %w", err)
+		}
+
+		// 7. Emitir certificado
+		derBytes, err := CreateEd521CertificateFromCSR(
+			caPriv,
+			serialNumber,
+			csrEd521.TBSCertificationRequest.Subject,      // Subject = do CSR
+			caCert.TBSCertificate.Subject,                 // Issuer = Subject da CA
+			pubInfo,                                       // PublicKey = do CSR
+			time.Now(),
+			notAfter,
+			exts,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create Ed521 certificate: %w", err)
+		}
+
+		// 8. Saída
+		var output *os.File
+		if flag.Arg(0) == "" {
+			output = os.Stdout
+		} else {
+			file, err := os.Create(flag.Arg(0))
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+			output = file
+		}
+		pem.Encode(output, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+		return nil
+	}
+
+	// ============================================================
+	// FLUXO ORIGINAL (RSA, EC, Ed25519, SM2, etc.)
+	// ============================================================
 	caPublicKeyFile, err := ioutil.ReadFile(*root)
 	if err != nil {
 		return err
@@ -27133,6 +27491,9 @@ func printSignature(sigAlgo x509.SignatureAlgorithm, sig []byte, buf *bytes.Buff
 }
 
 func getAlgorithmName(oid string) string {
+	if oid == "1.3.6.1.4.1.44588.2.1" {
+		return "Ed521"
+	}
 	if algo, ok := oidToAlgo[oid]; ok {
 		return algo
 	}
