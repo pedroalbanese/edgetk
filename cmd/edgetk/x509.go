@@ -134,15 +134,19 @@ func marshalEd521KeyUsage(keyUsage x509.KeyUsage) ([]byte, error) {
 
 // buildEd521Extensions monta as extensões X.509 e retorna um RawValue com o
 // [3] EXPLICIT já construído, pronto para ser embutido no TBSCertificate.
+//
+// authorityKeyId: SKI da CA emissora. Se nil/vazio, usa o próprio SKI do
+// titular (caso autoassinado).
 func buildEd521Extensions(
 	pubInfo publicKeyInfo,
+	authorityKeyId []byte,
 	isCA bool,
 	keyUsage x509.KeyUsage,
 	extKeyUsage []x509.ExtKeyUsage,
 ) (asn1.RawValue, error) {
 	var exts []pkix.Extension
 
-	// SubjectKeyIdentifier (2.5.29.14) — SHA-1 da chave pública
+	// SubjectKeyIdentifier (2.5.29.14) — SHA-1 da chave pública do TITULAR
 	ski := sha1.Sum(pubInfo.PublicKey.Bytes)
 	skiDER, err := asn1.Marshal(ski[:])
 	if err != nil {
@@ -153,10 +157,14 @@ func buildEd521Extensions(
 		Value: skiDER,
 	})
 
-	// AuthorityKeyIdentifier (2.5.29.35) — mesmo SKI (autoassinado)
+	// AuthorityKeyIdentifier (2.5.29.35) — SKI da CA (ou do titular se autoassinado)
+	akiValue := authorityKeyId
+	if len(akiValue) == 0 {
+		akiValue = ski[:]
+	}
 	akiStruct := struct {
 		ID []byte `asn1:"optional,tag:0"`
-	}{ID: ski[:]}
+	}{ID: akiValue}
 	akiDER, err := asn1.Marshal(akiStruct)
 	if err != nil {
 		return asn1.RawValue{}, err
@@ -493,4 +501,3 @@ func VerifyEd521CRLSignature(caCert *certificate, crlDER []byte) (bool, error) {
 	valid := pub.Verify(tbsBytes, crlRaw.Signature.Bytes)
 	return valid, nil
 }
-
