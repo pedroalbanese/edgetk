@@ -22475,6 +22475,8 @@ Subcommands:
 			*alg = "ED25519"
 		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
 			*alg = "RSA"
+		} else if _, err := e521.ParsePublicKey(certa.RawSubjectPublicKeyInfo); err == nil {
+			*alg = "E-521"
 		} else {
 			*alg = "GOST2012"
 		}
@@ -22513,6 +22515,76 @@ Subcommands:
 			fmt.Printf("SubjectKeyId:   %x \n", certa.SubjectKeyId)
 			fmt.Printf("AuthorityKeyId: %x \n", certa.AuthorityKeyId)
 			os.Exit(0)
+		}
+
+		if *alg == "E-521" {
+			certaPublicKey, err := e521.ParsePublicKey(certa.RawSubjectPublicKeyInfo)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			if *pkey == "modulus" {
+				fmt.Printf("Public.X=%X\n", certaPublicKey.X)
+				fmt.Printf("Public.Y=%X\n", certaPublicKey.Y)
+				os.Exit(0)
+			}
+
+			var buf2 bytes.Buffer
+			buf2.Grow(4096)
+
+			buf2.WriteString(fmt.Sprintf("Certificate:\n"))
+			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
+			printVersion(certa.Version, &buf2)
+			buf2.WriteString(fmt.Sprintf("%8sSerial Number : %d (%X)\n", "", certa.SerialNumber, certa.SerialNumber))
+			buf2.WriteString(fmt.Sprintf("%8sCommonName    : %s \n", "", certa.Subject.CommonName))
+			buf2.WriteString(fmt.Sprintf("%8sEmailAddresses: %s \n", "", certa.EmailAddresses))
+			buf2.WriteString(fmt.Sprintf("%8sIsCA          : %v \n", "", certa.IsCA))
+
+			buf2.WriteString(fmt.Sprintf("%8sCurve         : %s \n", "", certaPublicKey.Curve.Params().Name))
+
+			buf2.WriteString(fmt.Sprintf("%8sIssuer\n            ", ""))
+			printName(certa.Issuer.Names, &buf2)
+			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
+			printName(certa.Subject.Names, &buf2)
+
+			buf2.WriteString(fmt.Sprintf("%8sValidity\n", ""))
+			buf2.WriteString(fmt.Sprintf("%12sNot Before: %s\n", "", certa.NotBefore.Format("Jan 2 15:04:05 2006 MST")))
+			buf2.WriteString(fmt.Sprintf("%12sNot After : %s\n", "", certa.NotAfter.Format("Jan 2 15:04:05 2006 MST")))
+
+			buf2.WriteString(fmt.Sprintf("%8sPub\n", ""))
+			splitz := SplitSubN(hex.EncodeToString(certaPublicKey.Curve.CompressPoint(certaPublicKey.X, certaPublicKey.Y)), 2)
+			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
+				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
+			}
+
+			buf2.WriteString(fmt.Sprintf("%8sSubjectKeyId  : %x \n", "", certa.SubjectKeyId))
+			buf2.WriteString(fmt.Sprintf("%8sAuthorityKeyId: %x \n", "", certa.AuthorityKeyId))
+
+			if isE521Signature(certa.Raw) {
+				buf2.WriteString(fmt.Sprintf("%4sSignature Algorithm: Ed521", ""))
+				for i, val := range certa.Signature {
+					if (i % 18) == 0 {
+						buf2.WriteString(fmt.Sprintf("\n%9s", ""))
+					}
+					buf2.WriteString(fmt.Sprintf("%02x", val))
+					if i != len(certa.Signature)-1 {
+						buf2.WriteString(":")
+					}
+				}
+				buf2.WriteString("\n")
+			} else {
+				printSignature(certa.SignatureAlgorithm, certa.Signature, &buf2)
+			}
+			fmt.Print(buf2.String())
+
+			ok := time.Now().Before(certa.NotAfter)
+			fmt.Println("IsValid:", ok)
+
+			if ok {
+				os.Exit(0)
+			} else {
+				os.Exit(1)
+			}
 		}
 
 		if *alg == "GOST2012" {
@@ -22696,6 +22768,8 @@ Subcommands:
 			*alg = "ED25519"
 		} else if signature == "SHA256-RSA" || signature == "SHA384-RSA" || signature == "SHA512-RSA" {
 			*alg = "RSA"
+		} else if isE521Signature(certa.Raw) {
+			*alg = "E-521"
 		} else if signature == "0" {
 			*alg = "GOST2012"
 		}
@@ -22737,6 +22811,9 @@ Subcommands:
 			publicKey, err = smx509.ParsePKIXPublicKey(block.Bytes)
 			if err != nil {
 				publicKey, err = gostx509.ParsePKIXPublicKey(block.Bytes)
+				if err != nil {
+					publicKey, err = e521.ParsePublicKey(block.Bytes)
+				}
 			}
 		}
 		if *alg == "EC" {
@@ -22763,6 +22840,12 @@ Subcommands:
 			verifystatus = sm2.VerifyASN1WithSM2(publicKey.(*ecdsa.PublicKey), nil, certa.RawTBSCertificate, certa.Signature)
 		} else if *alg == "ED25519" {
 			verifystatus = ed25519.Verify(publicKey.(ed25519.PublicKey), certa.RawTBSCertificate, certa.Signature)
+		} else if *alg == "E-521" {
+			e521PublicKey, ok := publicKey.(*e521.PublicKey)
+			if !ok {
+				log.Fatal("Public key is not E-521")
+			}
+			verifystatus = e521PublicKey.Verify(certa.RawTBSCertificate, certa.Signature)
 		} else if *alg == "GOST2012" {
 			certa, err := gostx509.ParseCertificate(certPemBlock.Bytes)
 			if err != nil {
@@ -33927,6 +34010,20 @@ func EncodeE521PublicKey(publicKey *e521.PublicKey) ([]byte, error) {
 	}
 
 	return pem.EncodeToMemory(block), nil
+}
+
+// isE521Signature reports whether a certificate is signed with Ed521
+// (OID 1.3.6.1.4.1.44588.2.1, as the ICP-Brasil v7 root).
+func isE521Signature(der []byte) bool {
+	var certificate struct {
+		TBSCertificate     asn1.RawValue
+		SignatureAlgorithm pkix.AlgorithmIdentifier
+		SignatureValue     asn1.BitString
+	}
+	if _, err := asn1.Unmarshal(der, &certificate); err != nil {
+		return false
+	}
+	return certificate.SignatureAlgorithm.Algorithm.Equal(asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 44588, 2, 1})
 }
 
 func DecodeE521PrivateKey(pemBytes []byte) (*e521.PrivateKey, error) {
