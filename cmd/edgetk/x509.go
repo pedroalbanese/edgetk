@@ -140,6 +140,20 @@ func buildEd521Extensions(
 	keyUsage x509.KeyUsage,
 	extKeyUsage []x509.ExtKeyUsage,
 ) (asn1.RawValue, error) {
+	return buildEd521ExtensionsIssuedBy(pubInfo, pubInfo, isCA, keyUsage, extKeyUsage)
+}
+
+// buildEd521ExtensionsIssuedBy monta as extensões de um certificado assinado
+// pela chave issuerPubInfo. O AuthorityKeyIdentifier identifica a chave que
+// assina o certificado (RFC 5280, 4.2.1.1): é o SHA-1 da chave pública do
+// emissor, o mesmo valor do SubjectKeyIdentifier do certificado dele.
+func buildEd521ExtensionsIssuedBy(
+	pubInfo publicKeyInfo,
+	issuerPubInfo publicKeyInfo,
+	isCA bool,
+	keyUsage x509.KeyUsage,
+	extKeyUsage []x509.ExtKeyUsage,
+) (asn1.RawValue, error) {
 	var exts []pkix.Extension
 
 	// SubjectKeyIdentifier (2.5.29.14) — SHA-1 da chave pública
@@ -153,10 +167,11 @@ func buildEd521Extensions(
 		Value: skiDER,
 	})
 
-	// AuthorityKeyIdentifier (2.5.29.35) — mesmo SKI (autoassinado)
+	// AuthorityKeyIdentifier (2.5.29.35) — SHA-1 da chave pública do emissor
+	aki := sha1.Sum(issuerPubInfo.PublicKey.Bytes)
 	akiStruct := struct {
 		ID []byte `asn1:"optional,tag:0"`
-	}{ID: ski[:]}
+	}{ID: aki[:]}
 	akiDER, err := asn1.Marshal(akiStruct)
 	if err != nil {
 		return asn1.RawValue{}, err
