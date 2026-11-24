@@ -382,7 +382,7 @@ func main() {
 	flag.Parse()
 
 	if *version {
-		fmt.Println("EDGE Toolkit v1.5.23  21 Nov 2026")
+		fmt.Println("EDGE Toolkit v1.5.24  24 Nov 2026")
 	}
 
 	if len(os.Args) < 2 {
@@ -23101,17 +23101,6 @@ Subcommands:
 
 			subjectSeq := template.Subject.ToRDNSequence()
 
-			// Adicionar emailAddress ao Subject (OID 1.2.840.113549.1.9.1)
-			// Usa a variável global 'email' diretamente, que já foi preenchida no prompt
-			if email != "" {
-				subjectSeq = append(subjectSeq, pkix.RelativeDistinguishedNameSET{
-					pkix.AttributeTypeAndValue{
-						Type:  asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1},
-						Value: email,
-					},
-				})
-			}
-
 			pubInfo, err := ed521PublicKeyInfo(privKey.GetPublic())
 			if err != nil {
 				log.Fatalf("Failed to build public key info: %v", err)
@@ -23128,6 +23117,7 @@ Subcommands:
 				isCA,
 				template.KeyUsage,
 				template.ExtKeyUsage,
+				template.EmailAddresses,
 			)
 			if err != nil {
 				log.Fatalf("Failed to build extensions: %v", err)
@@ -23348,8 +23338,11 @@ Subcommands:
 			PostalCode:         []string{postalcode},
 		}
 		rawSubj := subj.ToRDNSequence()
-		rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
-			{Type: oidEmailAddress, Value: emailAddress},
+		rawSubj = append(rawSubj, pkix.RelativeDistinguishedNameSET{
+			pkix.AttributeTypeAndValue{
+				Type:  asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1},
+				Value: emailAddress,
+			},
 		})
 
 		asn1Subj, _ := asn1.Marshal(rawSubj)
@@ -26954,12 +26947,24 @@ func csrToCrt() error {
 		caPubInfo := caCert.TBSCertificate.PublicKey
 		caSki := sha1.Sum(caPubInfo.PublicKey.Bytes)
 
+		var csrEmails []string
+		for _, rdn := range csrEd521.TBSCertificationRequest.Subject {
+			for _, atv := range rdn {
+				if atv.Type.Equal(asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1}) {
+					if s, ok := atv.Value.(string); ok && s != "" {
+						csrEmails = append(csrEmails, s)
+					}
+				}
+			}
+		}
+
 		exts, err := buildEd521Extensions(
 			pubInfo,                                         // chave do titular → SKI
 			caSki[:],                                        // chave da CA → AKI
 			*isca,
 			x509.KeyUsageDigitalSignature,
 			[]x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+			csrEmails,
 		)
 		if err != nil {
 			return fmt.Errorf("failed to build extensions: %w", err)

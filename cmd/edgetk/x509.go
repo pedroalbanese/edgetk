@@ -137,12 +137,16 @@ func marshalEd521KeyUsage(keyUsage x509.KeyUsage) ([]byte, error) {
 //
 // authorityKeyId: SKI da CA emissora. Se nil/vazio, usa o próprio SKI do
 // titular (caso autoassinado).
+//
+// emails: lista de endereços de email a serem incluídos na extensão
+// Subject Alternative Name (2.5.29.17) como rfc822Name.
 func buildEd521Extensions(
 	pubInfo publicKeyInfo,
 	authorityKeyId []byte,
 	isCA bool,
 	keyUsage x509.KeyUsage,
 	extKeyUsage []x509.ExtKeyUsage,
+	emails []string,
 ) (asn1.RawValue, error) {
 	var exts []pkix.Extension
 
@@ -219,6 +223,28 @@ func buildEd521Extensions(
 			Id:    asn1.ObjectIdentifier{2, 5, 29, 37},
 			Value: ekuDER,
 		})
+	}
+
+	// Subject Alternative Name (2.5.29.17) — rfc822Name para email
+	if len(emails) > 0 {
+		var sanBuilder []byte
+		for _, email := range emails {
+			if email == "" {
+				continue
+			}
+			// rfc822Name é [1] IMPLICIT IA5String
+			sanBuilder = append(sanBuilder, 0x81) // context-specific [1], primitive
+			sanBuilder = append(sanBuilder, byte(len(email)))
+			sanBuilder = append(sanBuilder, []byte(email)...)
+		}
+		if len(sanBuilder) > 0 {
+			// Envolver em SEQUENCE
+			sanDER := append([]byte{0x30, byte(len(sanBuilder))}, sanBuilder...)
+			exts = append(exts, pkix.Extension{
+				Id:    asn1.ObjectIdentifier{2, 5, 29, 17},
+				Value: sanDER,
+			})
+		}
 	}
 
 	// Marshal a SEQUENCE OF Extension
@@ -501,3 +527,5 @@ func VerifyEd521CRLSignature(caCert *certificate, crlDER []byte) (bool, error) {
 	valid := pub.Verify(tbsBytes, crlRaw.Signature.Bytes)
 	return valid, nil
 }
+
+
