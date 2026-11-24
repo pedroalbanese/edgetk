@@ -19449,8 +19449,11 @@ Subcommands:
 			PostalCode:         []string{postalcode},
 		}
 		rawSubj := subject.ToRDNSequence()
-		rawSubj = append(rawSubj, []pkix.AttributeTypeAndValue{
-			{Type: oidEmailAddress, Value: emailAddress},
+		rawSubj = append(rawSubj, pkix.RelativeDistinguishedNameSET{
+			pkix.AttributeTypeAndValue{
+				Type:  asn1.ObjectIdentifier{1, 2, 840, 113549, 1, 9, 1},
+				Value: emailAddress,
+			},
 		})
 		asn1Subj, err := asn1.Marshal(rawSubj)
 		if err != nil {
@@ -21411,7 +21414,7 @@ Subcommands:
 			fmt.Printf("Curve: %s\n", publicKey.Curve.Params().Name)
 		} else if strings.ToUpper(*alg) == "GOST2012" {
 			publicKey := publicInterface.(*gost3410.PublicKey)
-			derBytes, err := x509.MarshalPKIXPublicKey(publicKey)
+			derBytes, err := gostx509.MarshalPKIXPublicKey(publicKey)
 			if err != nil {
 				log.Println(err)
 			}
@@ -34675,7 +34678,7 @@ func ParseCertificateRequest(der []byte) (*CertificationRequest, error) {
 	csr.Subject = subject
 
 	// EmailAddresses (extrai do Subject)
-	for _, atv := range subject.ExtraNames {
+	for _, atv := range subject.Names {
 		if atv.Type.Equal(oidEmailAddress) {
 			if s, ok := atv.Value.(string); ok {
 				csr.EmailAddresses = append(csr.EmailAddresses, s)
