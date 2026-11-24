@@ -24094,7 +24094,8 @@ Subcommands:
 			var buf2 bytes.Buffer
 			buf2.WriteString("Certificate Request:\n")
 			buf2.WriteString(fmt.Sprintf("%4sData:\n", ""))
-			buf2.WriteString(fmt.Sprintf("%8sVersion       : %d \n", "", ed521CSR.TBSCertificationRequest.Version))
+			v := ed521CSR.TBSCertificationRequest.Version
+			buf2.WriteString(fmt.Sprintf("%8sVersion: %d (0x%x) \n", "", v, v))
 			buf2.WriteString(fmt.Sprintf("%8sSubject\n            ", ""))
 			printName(attrs, &buf2)
 			buf2.WriteString(fmt.Sprintf("%8sPublic Key Algorithm: %s \n", "",
