@@ -29645,6 +29645,8 @@ func lagrangeCoefficientForIndices(indices []int, i int) *ff.Scalar {
 		xj.SetUint64(uint64(indices[j]))
 
 		negXj := new(ff.Scalar)
+		negXj.Set(xj)   // primeiro copia o valor de xj
+		negXj.Neg()     // depois nega no próprio receptor (sem argumentos)
 		numerator.Mul(numerator, negXj)
 
 		diff := new(ff.Scalar)
