@@ -24102,7 +24102,7 @@ Subcommands:
 				getAlgorithmName(ed521CSR.TBSCertificationRequest.SubjectPKInfo.Algorithm.Algorithm.String())))
 
 			pub := ed521CSR.TBSCertificationRequest.SubjectPKInfo.PublicKey.Bytes
-			buf2.WriteString(fmt.Sprintf("%8sPub.Key\n", ""))
+			buf2.WriteString(fmt.Sprintf("%8sPub\n", ""))
 			splitz := SplitSubN(hex.EncodeToString(pub), 2)
 			for _, chunk := range split(strings.Trim(fmt.Sprint(splitz), "[]"), 45) {
 				buf2.WriteString(fmt.Sprintf("            %-10s            \n", strings.ReplaceAll(chunk, " ", ":")))
