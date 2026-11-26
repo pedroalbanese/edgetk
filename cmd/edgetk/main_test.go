@@ -294,7 +294,7 @@ func keyUsageValue(t *testing.T, der []byte) []byte {
 // Ed521 certificate carry for the given usage.
 func writtenKeyUsage(t *testing.T, usage x509.KeyUsage) []byte {
 	t.Helper()
-	raw, err := buildEd521Extensions(publicKeyInfo{}, nil, false, usage, nil)
+	raw, err := buildEd521Extensions(publicKeyInfo{}, nil, false, usage, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
